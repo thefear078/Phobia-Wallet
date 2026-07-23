@@ -1,0 +1,1192 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+        xmlns:app="using:Umbrella.Wallet.App"
+        xmlns:lottie="using:Avalonia.Labs.Lottie"
+        xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+        xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1240"
+        d:DesignHeight="820"
+        x:Class="Umbrella.Wallet.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        x:CompileBindings="True"
+        x:Name="RootWindow"
+        Title="Umbrella Wallet"
+        Icon="/Assets/umbrella.ico"
+        Width="1240"
+        Height="820"
+        MinWidth="1000"
+        MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome"
+        ExtendClientAreaTitleBarHeightHint="36"
+        Background="{DynamicResource UmBg}">
+
+  <Window.Resources>
+    <app:StringEqualsConverter x:Key="StringEquals" />
+  </Window.Resources>
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+L" Command="{Binding LockCommand}" />
+  </Window.KeyBindings>
+
+  <Grid RowDefinitions="36,*">
+
+    <!-- Title bar. Keep content on the left/centre only — the right edge is reserved for the
+         native minimise / maximise / close buttons, which the old Refresh button overlapped.
+         PointerPressed drags the window (double-click maximises). -->
+    <Border Grid.Row="0" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,0,0,1" Padding="14,0,150,0"
+            PointerPressed="OnTitleBarPressed">
+      <Grid ColumnDefinitions="Auto,*">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Image Source="avares://Umbrella.Wallet.App/Assets/umbrella-mark-white.png"
+                 Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
+          <TextBlock FontSize="12" LetterSpacing="1.5" VerticalAlignment="Center">
+            <Run Text="UMBRELLA WALLET" Foreground="{DynamicResource UmText}" FontWeight="SemiBold"/>
+            <Run Text="  ·  local vault" Foreground="{DynamicResource UmTextDim}"/>
+          </TextBlock>
+        </StackPanel>
+        <TextBlock Grid.Column="1" Margin="24,0" VerticalAlignment="Center" FontSize="11"
+                   Foreground="{DynamicResource UmTextDim}" Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1">
+
+      <!-- ============================ ONBOARDING (no sidebar) ============================ -->
+      <ScrollViewer IsVisible="{Binding !ShowSidebar}" AllowAutoHide="True"
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Panel Margin="0,0,0,40">
+
+          <!-- Welcome / cover -->
+          <StackPanel IsVisible="{Binding IsWelcomeStage}" MaxWidth="720" Margin="24,48,24,24"
+                      HorizontalAlignment="Center" Spacing="0">
+            <!-- Brand mark stays the logo; the Telegram sticker sits beside it as a greeting
+                 rather than replacing the identity. -->
+            <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center" Margin="0,8,0,0">
+              <Image Source="{Binding LogoImage}"
+                     Width="132" Stretch="Uniform" VerticalAlignment="Center"/>
+              <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/wau.json"
+                             Width="96" Height="96" VerticalAlignment="Center" RepeatCount="-1"/>
+            </StackPanel>
+            <TextBlock Text="UMBRELLA WALLET" FontSize="30" FontWeight="SemiBold" LetterSpacing="4"
+                       HorizontalAlignment="Center" Margin="0,16,0,0"/>
+            <TextBlock Text="Anonymous crypto wallet · your keys stay on this PC"
+                       Foreground="{DynamicResource UmTextDim}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,32,0,0">
+              <Border Classes="hairline" Padding="16,18">
+                <StackPanel Spacing="8" HorizontalAlignment="Center">
+                  <TextBlock Text="🛡" FontSize="20" HorizontalAlignment="Center"/>
+                  <TextBlock Text="ANONYMOUS" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
+                  <TextBlock Text="No account, email, or phone" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
+                             TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="hairline" Padding="16,18">
+                <StackPanel Spacing="8" HorizontalAlignment="Center">
+                  <TextBlock Text="🔑" FontSize="20" HorizontalAlignment="Center"/>
+                  <TextBlock Text="YOUR KEYS" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
+                  <TextBlock Text="Seed encrypted on device only" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
+                             TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="2" Classes="hairline" Padding="16,18">
+                <StackPanel Spacing="8" HorizontalAlignment="Center">
+                  <TextBlock Text="⚡" FontSize="20" HorizontalAlignment="Center"/>
+                  <TextBlock Text="LOCAL-FIRST" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
+                  <TextBlock Text="No server holds your funds" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
+                             TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <Border Classes="card" Margin="0,20,0,0">
+              <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="13" LineHeight="21" TextWrapping="Wrap"
+                         Text="Unlike a standard exchange wallet, Umbrella never asks who you are and never takes custody. Your 24-word seed is generated on this computer, encrypted with Argon2id + AES-256-GCM, and stored only here. Balances are read straight from public block explorers — no API keys, no analytics, no third party in between."/>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,24,0,0">
+              <Button Classes="primary" Content="Create new wallet" Command="{Binding GoToCreateCommand}"/>
+              <Button Classes="ghost" Content="Import existing wallet" Command="{Binding GoToImportCommand}"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center" Margin="0,28,0,0">
+              <TextBlock Text="built by" Foreground="{DynamicResource UmBorder3}" FontSize="11" VerticalAlignment="Center"/>
+              <!-- the fear maker's mark, beside the name rather than replacing it. -->
+              <Image Source="{Binding FearMark}" Width="26" Height="26" VerticalAlignment="Center"/>
+              <TextBlock Text="the fear" Foreground="{DynamicResource UmAccentBright}" FontSize="12.5" FontWeight="SemiBold"
+                         LetterSpacing="0.5" VerticalAlignment="Center"/>
+              <TextBlock Text="· privacy · self-custody · no middlemen" Foreground="{DynamicResource UmBorder3}" FontSize="11"
+                         VerticalAlignment="Center"/>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Create -->
+          <StackPanel IsVisible="{Binding IsCreateStage}" MaxWidth="480" Margin="24,40,24,24"
+                      HorizontalAlignment="Center" Spacing="0">
+            <Button Classes="ghost" Content="← Back" HorizontalAlignment="Left" Padding="12,7"
+                    Command="{Binding GoToWelcomeCommand}"/>
+            <TextBlock Classes="serif" FontSize="30" Text="Create your wallet" Margin="0,20,0,0"/>
+            <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Margin="0,8,0,0"
+                       Text="A fresh 24-word BIP39 seed is generated on this PC and encrypted with a password only you know."/>
+
+            <TextBlock Classes="eyebrow" Text="VAULT PASSWORD" Margin="0,22,0,8"/>
+            <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="At least 12 characters"/>
+            <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
+                       Text="{Binding PasswordMeterLabel}" Foreground="{Binding PasswordMeterColor}"/>
+            <TextBlock Classes="eyebrow" Text="CONFIRM PASSWORD" Margin="0,16,0,8"/>
+            <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="Repeat password"/>
+
+            <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
+                    BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
+              <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+            </Border>
+
+            <Button Classes="primary" Content="Create local wallet" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center" Margin="0,18,0,0"
+                    IsEnabled="{Binding !IsBusy}" Command="{Binding CreateWalletCommand}"/>
+            <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="0,14,0,0"
+                       Text="Argon2id (m=64 MiB, t=4, p=2) → AES-256-GCM. The password is never stored and never leaves this PC — if you lose it, only your 24-word phrase can restore the wallet."/>
+          </StackPanel>
+
+          <!-- Import -->
+          <StackPanel IsVisible="{Binding IsImportStage}" MaxWidth="520" Margin="24,40,24,24"
+                      HorizontalAlignment="Center" Spacing="0">
+            <Button Classes="ghost" Content="← Back" HorizontalAlignment="Left" Padding="12,7"
+                    Command="{Binding GoToWelcomeCommand}"/>
+            <TextBlock Classes="serif" FontSize="30" Text="Import existing wallet" Margin="0,20,0,0"/>
+            <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Margin="0,8,0,0"
+                       Text="Paste your recovery phrase — 12, 15, 18, 21 or 24 English BIP39 words, separated by spaces."/>
+
+            <TextBlock Classes="eyebrow" Text="RECOVERY PHRASE" Margin="0,22,0,8"/>
+            <TextBox Text="{Binding ImportPhrase}" AcceptsReturn="True" Height="120"
+                     TextWrapping="Wrap" Watermark="word1 word2 word3 …"/>
+
+            <TextBlock Classes="eyebrow" Text="VAULT PASSWORD" Margin="0,16,0,8"/>
+            <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="At least 12 characters"/>
+            <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
+                       Text="{Binding PasswordMeterLabel}" Foreground="{Binding PasswordMeterColor}"/>
+            <TextBlock Classes="eyebrow" Text="CONFIRM PASSWORD" Margin="0,16,0,8"/>
+            <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="Repeat password"/>
+
+            <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
+                    BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
+              <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+            </Border>
+
+            <Button Classes="primary" Content="Import &amp; encrypt" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center" Margin="0,18,0,0"
+                    IsEnabled="{Binding !IsBusy}" Command="{Binding ImportWalletCommand}"/>
+          </StackPanel>
+
+          <!-- Unlock -->
+          <StackPanel IsVisible="{Binding IsUnlockStage}" MaxWidth="440" Margin="24,64,24,24"
+                      HorizontalAlignment="Center" Spacing="0">
+            <Image Source="{Binding LogoImage}"
+                   Width="120" Stretch="Uniform" HorizontalAlignment="Center"/>
+            <TextBlock Classes="serif" FontSize="28" Text="Unlock your vault" HorizontalAlignment="Center" Margin="0,24,0,0"/>
+            <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
+                       Text="Your seed is encrypted on this PC. Enter the vault password to load live balances."/>
+            <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="Vault password" Margin="0,22,0,0"/>
+            <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
+                    BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
+              <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+            </Border>
+            <Button Classes="primary" Content="Unlock" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center" Margin="0,16,0,0"
+                    IsEnabled="{Binding !IsBusy}" Command="{Binding UnlockCommand}"/>
+          </StackPanel>
+
+          <!-- Backup phrase (after create) -->
+          <StackPanel IsVisible="{Binding IsBackupStage}" MaxWidth="640" Margin="24,44,24,24"
+                      HorizontalAlignment="Center" Spacing="0">
+            <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/secret.json"
+                           Width="120" Height="120" HorizontalAlignment="Center" RepeatCount="-1"/>
+            <TextBlock Classes="serif" FontSize="30" Text="Write down your recovery phrase"
+                       HorizontalAlignment="Center" Margin="0,10,0,0"/>
+            <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,10,0,0"
+                       Text="These 24 words are the ONLY way to restore your wallet. Write them on paper, in order. Never screenshot them or paste them into a website."/>
+
+            <Border Background="{DynamicResource UmBg}" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="12"
+                    Padding="20" Margin="0,22,0,0">
+              <TextBlock Classes="mono" FontSize="16" LineHeight="30" TextWrapping="Wrap"
+                         Text="{Binding RecoveryPhrase}"/>
+            </Border>
+
+            <Border Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="10"
+                    Padding="14" Margin="0,14,0,0">
+              <TextBlock Foreground="#D9C99A" FontSize="12" TextWrapping="Wrap"
+                         Text="Anyone who sees these words can take your funds. Umbrella has no copy — we cannot recover them for you."/>
+            </Border>
+
+            <Button Classes="primary" Content="I've written it down — continue" HorizontalAlignment="Center"
+                    Margin="0,22,0,0" Command="{Binding ConfirmPhraseBackupCommand}"/>
+          </StackPanel>
+
+        </Panel>
+      </ScrollViewer>
+
+      <!-- ============================ WORKSPACE (with sidebar) ============================ -->
+      <DockPanel IsVisible="{Binding ShowSidebar}" LastChildFill="True">
+
+        <!-- Navigation panel. Docked per the user's choice; tall on the sides, a compact
+             bar on the top or bottom. -->
+        <Border DockPanel.Dock="{Binding SidebarDock}" IsVisible="{Binding IsSidebarVertical}"
+                Width="248" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,0,1,0">
+          <Grid RowDefinitions="Auto,*,Auto">
+            <StackPanel Margin="20,22,16,12" Spacing="10">
+              <TextBlock Classes="eyebrow" Text="WALLET"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="serif" FontSize="22" Text="{Binding WalletLabel}"/>
+                  <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextDim}" Margin="0,6,0,0"
+                             Text="{Binding ShortAddress}"/>
+                </StackPanel>
+                <Button Grid.Column="1" Width="30" Height="30" Classes="ghost" Padding="0"
+                        Command="{Binding CopyPrimaryAddressCommand}" ToolTip.Tip="Copy address">
+                  <TextBlock Text="⧉" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+              </Grid>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Margin="10,4,10,0" Spacing="3">
+              <Button Classes="nav" Content="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsPortfolio}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"/>
+              <Button Classes="nav" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsReceive}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
+              <Button Classes="nav" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSend}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Send"/>
+              <Button Classes="nav" Content="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsConnect}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Connect"/>
+              <Button Classes="nav" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsMarket}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Market"/>
+              <Button Classes="nav" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsActivity}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Activity"/>
+              <Button Classes="nav" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Classes.active="{Binding IsSettings}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="Settings"/>
+            </StackPanel>
+
+            <Border Grid.Row="2" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="18,14">
+              <StackPanel Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Ellipse Width="7" Height="7" Fill="{DynamicResource UmPos}"/>
+                  <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="Keys encrypted on this PC"/>
+                </StackPanel>
+                <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" Text="{Binding AutoLockLabel}" TextWrapping="Wrap"/>
+                <Button Classes="ghost" Content="Lock vault  ·  Ctrl+L" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center" Command="{Binding LockCommand}"/>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </Border>
+
+        <!-- Content -->
+        <!-- Compact horizontal navigation for the top/bottom placements. -->
+        <Border DockPanel.Dock="{Binding SidebarDock}" IsVisible="{Binding IsSidebarHorizontal}"
+                Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}"
+                BorderThickness="0,1,0,1" Padding="14,8">
+          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+            <Button Classes="chip" Content="{Binding [nav.portfolio], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio" Classes.active="{Binding IsPortfolio}"/>
+            <Button Classes="chip" Content="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Receive" Classes.active="{Binding IsReceive}"/>
+            <Button Classes="chip" Content="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Send" Classes.active="{Binding IsSend}"/>
+            <Button Classes="chip" Content="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Connect" Classes.active="{Binding IsConnect}"/>
+            <Button Classes="chip" Content="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Market" Classes.active="{Binding IsMarket}"/>
+            <Button Classes="chip" Content="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity" Classes.active="{Binding IsActivity}"/>
+            <Button Classes="chip" Content="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSectionCommand}" CommandParameter="Settings" Classes.active="{Binding IsSettings}"/>
+            <Button Classes="chip" Content="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}" Command="{Binding LockCommand}"/>
+          </StackPanel>
+        </Border>
+
+        <Grid RowDefinitions="*,28">
+          <!-- Padding lives on the content, NOT the ScrollViewer. With horizontal scrolling
+               disabled Avalonia measures content at the full viewport width and only then
+               insets it by the ScrollViewer's padding, so the right edge overflowed by exactly
+               that padding — which is what clipped the Receive QR card. A margin is measured. -->
+          <ScrollViewer Grid.Row="0" AllowAutoHide="True"
+                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="24" Margin="34,28,34,88">
+
+              <!-- Portfolio -->
+              <StackPanel Classes="page" IsVisible="{Binding IsPortfolio}" Spacing="18">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="eyebrow" Text="TOTAL BALANCE · USD"/>
+                  <Button Grid.Column="1" Classes="chip" Content="{Binding HideBalanceLabel}"
+                          Command="{Binding ToggleBalanceHiddenCommand}"/>
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="18">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Classes="serif" FontSize="62" Foreground="{DynamicResource UmTextDim}" Text="$" Margin="0,0,2,6" VerticalAlignment="Bottom"/>
+                    <TextBlock Classes="serif" FontSize="62" Text="{Binding BalanceDisplayMain}" VerticalAlignment="Bottom"/>
+                    <TextBlock Classes="serif" FontSize="28" Foreground="{DynamicResource UmTextDim}" Text="{Binding BalanceDisplayCents}"
+                               VerticalAlignment="Bottom" Margin="0,0,0,12"/>
+                  </StackPanel>
+                  <TextBlock Text="{Binding Change24hLabel}" Foreground="{DynamicResource UmPos}" FontSize="12"
+                             VerticalAlignment="Bottom" Margin="0,0,0,16"/>
+                </StackPanel>
+
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
+                  <Button Classes="tile" Command="{Binding SelectSectionCommand}" CommandParameter="Receive">
+                    <StackPanel Spacing="7">
+                      <!-- Vector icons: emoji rendered inconsistently across fonts and looked crooked. -->
+                      <Path Classes="tileIcon" Data="M12 3 V17 M12 17 L6 11 M12 17 L18 11 M4 21 H20"/>
+                      <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Grid.Column="1" Classes="tile" Command="{Binding SelectSectionCommand}" CommandParameter="Send">
+                    <StackPanel Spacing="7">
+                      <Path Classes="tileIcon" Data="M12 21 V7 M12 7 L6 13 M12 7 L18 13 M4 3 H20"/>
+                      <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Grid.Column="2" Classes="tile" Command="{Binding SelectSectionCommand}" CommandParameter="Connect">
+                    <StackPanel Spacing="7">
+                      <Path Classes="tileIcon" Data="M9.5 14.5 L14.5 9.5 M8 12 L5.5 14.5 A3.5 3.5 0 0 0 10.5 19.5 L13 17 M16 12 L18.5 9.5 A3.5 3.5 0 0 0 13.5 4.5 L11 7"/>
+                      <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Grid.Column="3" Classes="tile" Command="{Binding SelectSectionCommand}" CommandParameter="Market">
+                    <StackPanel Spacing="7">
+                      <Path Classes="tileIcon" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
+                      <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                  <TextBlock Classes="serif" FontSize="24" Text="Holdings"/>
+                  <Border Grid.Column="1" Classes="hairline" Padding="4">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                      <Button Classes="chip" Content="All" Command="{Binding SetChainFilterCommand}" CommandParameter="All"
+                              Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=All}"/>
+                      <Button Classes="chip" Content="Bitcoin" Command="{Binding SetChainFilterCommand}" CommandParameter="Bitcoin"
+                              Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=Bitcoin}"/>
+                      <Button Classes="chip" Content="Ethereum" Command="{Binding SetChainFilterCommand}" CommandParameter="Ethereum"
+                              Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=Ethereum}"/>
+                      <Button Classes="chip" Content="Solana" Command="{Binding SetChainFilterCommand}" CommandParameter="Solana"
+                              Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=Solana}"/>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+
+                <Border Classes="hairline">
+                  <StackPanel>
+                    <Grid ColumnDefinitions="2.2*,1.1*,1.4*,1.1*,0.85*,Auto" Height="34" Background="{DynamicResource UmCard}">
+                      <TextBlock Classes="eyebrow" Text="ASSET" Margin="16,0,0,0" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="1" Classes="eyebrow" Text="PRICE" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Classes="eyebrow" Text="BALANCE" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="3" Classes="eyebrow" Text="VALUE" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="4" Classes="eyebrow" Text="24H" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="5" Width="70"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Holdings}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:HoldingRowViewModel">
+                          <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Height="60">
+                            <Grid ColumnDefinitions="2.2*,1.1*,1.4*,1.1*,0.85*,Auto" Margin="16,0">
+                              <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <Border Width="32" Height="32" CornerRadius="16" Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmAccentDim}" BorderThickness="1">
+                                  <TextBlock Classes="mono" FontSize="10" Text="{Binding Symbol}"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center" MinWidth="0">
+                                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                  <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding NetworkLabel}"
+                                             TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                              </StackPanel>
+                              <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Text="{Binding PriceLabel}" HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Grid.Column="2" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding AmountLabel}" HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Grid.Column="3" Classes="mono" FontSize="12" Text="{Binding ValueLabel}" HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Grid.Column="4" Classes="mono" FontSize="12" Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                              <Button Grid.Column="5" Classes="ghost" Content="Copy" Height="28" Padding="10,0" Margin="8,0,0,0"
+                                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).CopyAddressCommand}"
+                                      CommandParameter="{Binding Address}"/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <!-- Receive. DockPanel rather than a star Grid on purpose: a 95-char Monero
+                   address reports a desired width far wider than any star share, which pushed
+                   the QR card off the right edge. DockPanel sizes the docked QR card first and
+                   hands the list exactly what remains, so it can never overflow. -->
+              <!-- Receive: full-width list. The QR now opens as a centred popup (see the
+                   overlay at the end of this file) instead of a cramped side panel. -->
+              <StackPanel Classes="page" IsVisible="{Binding IsReceive}" Spacing="12" MinWidth="0" ClipToBounds="True">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center"
+                               Text="{Binding [receive.title], Source={x:Static app:Loc.Instance}}"/>
+                    <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-04.json" Width="42" Height="42" RepeatCount="-1" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
+                             Text="Pick a coin, then share its address or QR. Green = live and safe to receive. Always check the network line — sending on the wrong network loses the coins."/>
+                  <ItemsControl ItemsSource="{Binding Accounts}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:WalletAccountViewModel">
+                        <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                Margin="0,0,0,8" Padding="12" IsEnabled="{Binding IsReady}"
+                                Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectReceiveAccountCommand}"
+                                CommandParameter="{Binding}">
+                          <Grid ColumnDefinitions="Auto,56,*,Auto">
+                            <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                     Fill="{Binding StatusColor}"/>
+                            <Border Grid.Column="1" Width="44" Height="44" CornerRadius="8" Background="{DynamicResource UmCardAlt}" Margin="12,0,0,0">
+                              <TextBlock Text="{Binding Symbol}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                            </Border>
+                            <StackPanel Grid.Column="2" Margin="12,0" VerticalAlignment="Center"
+                                        MinWidth="0" ClipToBounds="True">
+                              <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                              <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding NetworkLabel}"
+                                         TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextDim}" Margin="0,2,0,0"
+                                         Text="{Binding Address}" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="3" Text="{Binding StatusLabel}" Foreground="{Binding StatusColor}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+              </StackPanel>
+
+              <!-- Send -->
+              <StackPanel Classes="page" IsVisible="{Binding IsSend}" Spacing="14" MaxWidth="620" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [send.title], Source={x:Static app:Loc.Instance}}"/>
+                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-08.json" Width="42" Height="42" RepeatCount="-1" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
+                           Text="Transfers to any wallet or exchange. The transaction is built and signed on this PC — only the signed bytes go out. Live for ETH, BTC, LTC and SOL. Monero is receive-only here: export its keys in Settings and spend from Feather."/>
+
+                <!-- Step 1 · what & where -->
+                <Border Classes="card">
+                  <StackPanel Spacing="12">
+                    <TextBlock Classes="eyebrow" Text="STEP 1 · WHAT AND WHERE"/>
+                    <TextBlock Classes="eyebrow" Text="ASSET"/>
+                    <ComboBox ItemsSource="{Binding SendableAssets}"
+                              SelectedItem="{Binding SelectedSendAsset}"
+                              HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SendOption">
+                          <StackPanel Spacing="1" Margin="0,3">
+                            <TextBlock Text="{Binding Display}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                          </StackPanel>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Classes="eyebrow" Text="DESTINATION ADDRESS (wallet or exchange deposit)"/>
+                    <TextBox Text="{Binding SendTo}" Watermark="Paste the destination — check every character"/>
+                    <TextBlock Classes="eyebrow" Text="AMOUNT"/>
+                    <TextBox Text="{Binding SendAmount}" Watermark="0.0"/>
+                    <Border IsVisible="{Binding SendError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
+                      <TextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                    <Button Classes="primary" Content="Review transfer" HorizontalAlignment="Left"
+                            IsEnabled="{Binding !IsBusy}" Command="{Binding PrepareSendCommand}"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Step 2 · review & confirm -->
+                <Border Classes="card" BorderBrush="#7A6230" IsVisible="{Binding HasSendQuote}">
+                  <StackPanel Spacing="12">
+                    <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="STEP 2 · REVIEW — THIS CANNOT BE UNDONE"/>
+                    <TextBlock Classes="mono" FontSize="13" TextWrapping="Wrap" Text="{Binding SendQuoteSummary}"/>
+                    <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Text="{Binding SendQuoteFee}"/>
+                    <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
+                               Text="Check the address and amount once more. A blockchain transfer is final — a wrong address means the funds are gone."/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Button Classes="danger" Content="Confirm &amp; broadcast" IsEnabled="{Binding !IsBusy}"
+                              Command="{Binding ConfirmSendCommand}"/>
+                      <Button Classes="ghost" Content="Cancel" Command="{Binding CancelSendQuoteCommand}"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
+                <!-- Broadcasting animation -->
+                <Border Classes="card" IsVisible="{Binding IsBusy}">
+                  <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
+                    <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/sending.json"
+                                   Width="64" Height="64" RepeatCount="-1"/>
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource UmTextDim}" FontSize="12.5"
+                               VerticalAlignment="Center" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Result -->
+                <Border Background="#14231A" BorderBrush="#2F5A3C" BorderThickness="1" CornerRadius="10" Padding="14"
+                        IsVisible="{Binding SendSuccess, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                  <StackPanel Orientation="Horizontal" Spacing="14">
+                    <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/money.json"
+                                   Width="56" Height="56" RepeatCount="-1" VerticalAlignment="Top"/>
+                    <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmPos}" TextWrapping="Wrap"
+                               Text="{Binding SendSuccess}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <!-- Connect watch-only -->
+              <StackPanel Classes="page" IsVisible="{Binding IsConnect}" Spacing="16">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [connect.title], Source={x:Static app:Loc.Instance}}"/>
+                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-09.json" Width="42" Height="42" RepeatCount="-1" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" MaxWidth="640"
+                           Text="Add watch-only addresses from MetaMask, Ledger, explorers, or hardware wallets. Balances sync via public APIs — no private keys imported."/>
+                <Border Classes="card">
+                  <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                      <StackPanel Spacing="8">
+                        <TextBlock Classes="eyebrow" Text="NETWORK"/>
+                        <ComboBox ItemsSource="{Binding WatchableNetworks}"
+                                  SelectedItem="{Binding SelectedWatchNetwork}"
+                                  HorizontalAlignment="Stretch">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SendOption">
+                              <StackPanel Spacing="1" Margin="0,3">
+                                <TextBlock Text="{Binding Display}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                              </StackPanel>
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="8">
+                        <TextBlock Classes="eyebrow" Text="LABEL (optional)"/>
+                        <TextBox Text="{Binding WatchLabel}" Watermark="e.g. Ledger, Binance"/>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="eyebrow" Text="PUBLIC ADDRESS"/>
+                    <TextBox Text="{Binding WatchAddress}" Watermark="0x… / bc1… / T… / base58 — public address only, never a key"/>
+                    <Button Classes="primary" Content="Link address" HorizontalAlignment="Left"
+                            Command="{Binding AddWatchAddressCommand}"/>
+                  </StackPanel>
+                </Border>
+                <!-- Exchange accounts (read-only API keys) -->
+                <Border Classes="card" BorderBrush="{DynamicResource UmAccent}">
+                  <StackPanel Spacing="12">
+                    <TextBlock Classes="eyebrow" Text="EXCHANGE ACCOUNTS"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="Pull balances from Binance, Bybit, OKX, Kraken, KuCoin, Gate.io, MEXC, Bitget or Telegram CryptoBot, so exchange funds sit next to your on-chain coins and count toward the same total."/>
+
+                    <Border Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1"
+                            CornerRadius="10" Padding="12">
+                      <StackPanel Spacing="6">
+                        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="CREATE A READ-ONLY KEY"/>
+                        <TextBlock Foreground="#BBAF91" FontSize="11.5" TextWrapping="Wrap"
+                                   Text="On the exchange, enable ONLY &quot;read&quot; / &quot;view&quot; permission — never trading and never withdrawal. Umbrella never withdraws from an exchange and has no code that could. Your keys are encrypted on this PC with a key derived from your seed, and are sent only to that exchange."/>
+                      </StackPanel>
+                    </Border>
+
+                    <Grid ColumnDefinitions="180,*" ColumnSpacing="10">
+                      <ComboBox ItemsSource="{Binding SupportedExchanges}"
+                                SelectedItem="{Binding ExchangeName, Mode=TwoWay}"
+                                HorizontalAlignment="Stretch"/>
+                      <TextBox Grid.Column="1" Text="{Binding ExchangeLabel}" Watermark="Label (optional)"/>
+                    </Grid>
+                    <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap"
+                               Text="{Binding ExchangeKeyHint}"/>
+                    <TextBox Text="{Binding ExchangeApiKey}" Watermark="API key"/>
+                    <TextBox Text="{Binding ExchangeApiSecret}" PasswordChar="●" Watermark="API secret"
+                             IsVisible="{Binding ExchangeNeedsSecret}"/>
+                    <TextBox Text="{Binding ExchangePassphrase}" PasswordChar="●" Watermark="API passphrase (OKX only)"
+                             IsVisible="{Binding ExchangeNeedsPassphrase}"/>
+
+                    <Border IsVisible="{Binding ExchangeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                      <TextBlock Text="{Binding ExchangeError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                    <TextBlock IsVisible="{Binding ExchangeStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Text="{Binding ExchangeStatus}" Foreground="{DynamicResource UmPos}" FontSize="12" TextWrapping="Wrap"/>
+
+                    <Button Classes="primary" Content="Connect exchange" HorizontalAlignment="Left"
+                            IsEnabled="{Binding !IsBusy}" Command="{Binding ConnectExchangeCommand}"/>
+
+                    <ItemsControl ItemsSource="{Binding Exchanges}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="infra:ExchangeCredential">
+                          <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1"
+                                  CornerRadius="10" Padding="12" Margin="0,6,0,0">
+                            <Grid ColumnDefinitions="*,Auto">
+                              <StackPanel>
+                                <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Exchange}" FontSize="11" Foreground="{DynamicResource UmTextDim}"/>
+                              </StackPanel>
+                              <Button Grid.Column="1" Classes="ghost" Content="Disconnect"
+                                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveExchangeCommand}"
+                                      CommandParameter="{Binding}"/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding WatchAddresses}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="net:WatchAddress">
+                      <Border Classes="card" Margin="0,0,0,8" Padding="14">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel>
+                            <TextBlock Text="{Binding Label}"/>
+                            <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                                       Text="{Binding Address}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"
+                                       Text="{Binding Chain}"/>
+                          </StackPanel>
+                          <Button Grid.Column="1" Classes="ghost" Content="Remove"
+                                  Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveWatchAddressCommand}"
+                                  CommandParameter="{Binding}"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+
+              <!-- Market -->
+              <StackPanel Classes="page" IsVisible="{Binding IsMarket}" Spacing="14">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="serif" FontSize="26"
+                               Text="{Binding [market.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" Text="{Binding MarketStatus}"/>
+                  </StackPanel>
+
+                  <!-- Chart window. Real candles: 1H is 60 one-minute points, not a daily smear. -->
+                  <Border Grid.Column="1" Classes="hairline" Padding="4" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                      <Button Classes="chip" Content="1H" Command="{Binding SelectChartRangeCommand}"
+                              CommandParameter="1H" Classes.active="{Binding IsRange1H}"/>
+                      <Button Classes="chip" Content="24H" Command="{Binding SelectChartRangeCommand}"
+                              CommandParameter="24H" Classes.active="{Binding IsRange24H}"/>
+                      <Button Classes="chip" Content="7D" Command="{Binding SelectChartRangeCommand}"
+                              CommandParameter="7D" Classes.active="{Binding IsRange7D}"/>
+                      <Button Classes="chip" Content="30D" Command="{Binding SelectChartRangeCommand}"
+                              CommandParameter="30D" Classes.active="{Binding IsRange30D}"/>
+                      <Button Classes="chip" Content="1Y" Command="{Binding SelectChartRangeCommand}"
+                              CommandParameter="1Y" Classes.active="{Binding IsRange1Y}"/>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+
+                <!-- Detail chart (click a coin) -->
+                <Border Classes="card" IsVisible="{Binding HasChart}">
+                  <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                      <TextBlock Text="{Binding SelectedMarketName}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="1" Text="{Binding SelectedMarketSymbol}" Classes="mono" FontSize="11"
+                                 Foreground="{DynamicResource UmTextMuted}" Margin="8,4,0,0" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding SelectedMarketPriceLabel}" Classes="mono" FontSize="15"
+                                 VerticalAlignment="Center" Margin="0,0,12,0"/>
+                      <Button Grid.Column="3" Classes="chip" Content="✕ close" Command="{Binding CloseChartCommand}"/>
+                    </Grid>
+                    <TextBlock Text="{Binding ChartRange, StringFormat='{}{0} PRICE · USD'}" Classes="eyebrow"/>
+                    <Border Background="{DynamicResource UmBg}" CornerRadius="10" Height="176" Padding="0" ClipToBounds="True">
+                      <Panel>
+                        <TextBlock Text="Loading chart…" Foreground="{DynamicResource UmTextMuted}" FontSize="12"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding IsChartLoading}"/>
+                        <!-- Grid positions are constants (always five levels, five ticks), so the
+                             lines and labels are placed directly rather than through an
+                             ItemsControl, which does not position generated Canvas children. -->
+                        <Canvas Width="870" Height="152" HorizontalAlignment="Center" VerticalAlignment="Center">
+                          <Line StartPoint="58,10"  EndPoint="860,10"  Stroke="{DynamicResource UmBorder}" StrokeThickness="1"/>
+                          <Line StartPoint="58,40"  EndPoint="860,40"  Stroke="{DynamicResource UmBorder}" StrokeThickness="1"/>
+                          <Line StartPoint="58,70"  EndPoint="860,70"  Stroke="{DynamicResource UmBorder}" StrokeThickness="1"/>
+                          <Line StartPoint="58,100" EndPoint="860,100" Stroke="{DynamicResource UmBorder}" StrokeThickness="1"/>
+                          <Line StartPoint="58,130" EndPoint="860,130" Stroke="{DynamicResource UmBorder2}" StrokeThickness="1"/>
+
+                          <TextBlock Canvas.Left="2" Canvas.Top="3"   Classes="mono" FontSize="9.5" Width="52" TextAlignment="Right" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel0}"/>
+                          <TextBlock Canvas.Left="2" Canvas.Top="33"  Classes="mono" FontSize="9.5" Width="52" TextAlignment="Right" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel1}"/>
+                          <TextBlock Canvas.Left="2" Canvas.Top="63"  Classes="mono" FontSize="9.5" Width="52" TextAlignment="Right" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel2}"/>
+                          <TextBlock Canvas.Left="2" Canvas.Top="93"  Classes="mono" FontSize="9.5" Width="52" TextAlignment="Right" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel3}"/>
+                          <TextBlock Canvas.Left="2" Canvas.Top="123" Classes="mono" FontSize="9.5" Width="52" TextAlignment="Right" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel4}"/>
+
+                          <!-- Area under the curve, then the curve itself on top. -->
+                          <Polygon Points="{Binding ChartArea}" Fill="{Binding SelectedMarketChangeColor}" Opacity="0.16"/>
+                          <Polyline Points="{Binding ChartPoints}" Stroke="{Binding SelectedMarketChangeColor}"
+                                    StrokeThickness="1.9" StrokeLineCap="Round" StrokeJoin="Round"/>
+
+                          <TextBlock Canvas.Left="40"  Canvas.Top="135" Classes="mono" FontSize="9.5" Width="36" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime0}"/>
+                          <TextBlock Canvas.Left="240" Canvas.Top="135" Classes="mono" FontSize="9.5" Width="36" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime1}"/>
+                          <TextBlock Canvas.Left="441" Canvas.Top="135" Classes="mono" FontSize="9.5" Width="36" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime2}"/>
+                          <TextBlock Canvas.Left="641" Canvas.Top="135" Classes="mono" FontSize="9.5" Width="36" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime3}"/>
+                          <TextBlock Canvas.Left="842" Canvas.Top="135" Classes="mono" FontSize="9.5" Width="36" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime4}"/>
+                        </Canvas>
+
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right"
+                                    VerticalAlignment="Top" Margin="0,8,12,0">
+                          <TextBlock Classes="mono" FontSize="10" Foreground="{DynamicResource UmTextDim}"
+                                     Text="{Binding ChartHigh}"/>
+                          <TextBlock Classes="mono" FontSize="10" Foreground="{DynamicResource UmTextDim}"
+                                     Text="{Binding ChartLow}"/>
+                        </StackPanel>
+                      </Panel>
+                    </Border>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="hairline">
+                  <StackPanel>
+                    <Grid ColumnDefinitions="1.6*,Auto,1.1*,0.8*,1.4*" Height="34" Background="{DynamicResource UmCard}">
+                      <TextBlock Classes="eyebrow" Text="COIN" Margin="16,0,0,0" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="1" Classes="eyebrow" Text="{Binding ChartRange}" Width="110" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Classes="eyebrow" Text="PRICE" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="3" Classes="eyebrow" Text="24H" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="4" Classes="eyebrow" Text="THIS WALLET" HorizontalAlignment="Right" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Market}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MarketRowViewModel">
+                          <Button Classes="row" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0"
+                                  Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+                                  CommandParameter="{Binding}">
+                            <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Height="58">
+                              <Grid ColumnDefinitions="1.6*,Auto,1.1*,0.8*,1.4*" Margin="16,0">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                  <Border Width="30" Height="30" CornerRadius="15" Background="{DynamicResource UmCardAlt}"
+                                          BorderBrush="{DynamicResource UmAccentDim}" BorderThickness="1">
+                                    <TextBlock Classes="mono" FontSize="9" Text="{Binding Symbol}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                  </Border>
+                                  <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}"/>
+                                    <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding NetworkLabel}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                  </StackPanel>
+                                </StackPanel>
+                                <!-- Inline sparkline at the selected window: every coin gets a chart, not just the selected one. -->
+                                <Canvas Grid.Column="1" Width="110" Height="30" VerticalAlignment="Center" Margin="10,0">
+                                  <Polyline Points="{Binding Spark}" Stroke="{Binding ChangeColor}"
+                                            StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"
+                                            IsVisible="{Binding HasSpark}"/>
+                                </Canvas>
+                                <TextBlock Grid.Column="2" Classes="mono" Text="{Binding PriceLabel}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Classes="mono" Text="{Binding ChangeLabel}"
+                                           Foreground="{Binding ChangeColor}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="4" FontSize="11.5" Text="{Binding Accepts}"
+                                           Foreground="{Binding AcceptsColor}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                              </Grid>
+                            </Border>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+                <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
+                           Text="Prices refresh automatically every minute. Use 1H–1Y above to change the window; click any coin for its full chart. &quot;Accepted&quot; means this build derives a real address and syncs the balance; &quot;adapter pending&quot; coins have no address here — do not send them from this wallet."/>
+              </StackPanel>
+
+              <!-- Activity -->
+              <StackPanel Classes="page" IsVisible="{Binding IsActivity}" Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}"/>
+                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-10.json" Width="42" Height="42" RepeatCount="-1" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Border Classes="hairline">
+                  <ItemsControl ItemsSource="{Binding Activity}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ActivityRowViewModel">
+                        <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,0,0,1" Height="52" Padding="14,0">
+                          <Grid ColumnDefinitions="120,*,Auto,60">
+                            <TextBlock Text="{Binding Kind}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                                       Text="{Binding Counterparty}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Amount}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="3" Foreground="{DynamicResource UmTextDim}" Text="{Binding When}"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Border>
+              </StackPanel>
+
+              <!-- Settings. Split into panes: one long scroll buried the danger zone under the
+                   status bar, and no amount of padding makes a 2000px column discoverable. -->
+              <StackPanel Classes="page" IsVisible="{Binding IsSettings}" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [settings.title], Source={x:Static app:Loc.Instance}}"/>
+                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-11.json" Width="42" Height="42" RepeatCount="-1" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Border Classes="hairline" Padding="4" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="2">
+                    <!-- Appearance first: theme and language are what people look for. -->
+                    <Button Classes="chip" Content="{Binding [settings.appearance], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Appearance"
+                            Classes.active="{Binding IsTabAppearance}"/>
+                    <Button Classes="chip" Content="{Binding [settings.security], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Security"
+                            Classes.active="{Binding IsTabSecurity}"/>
+                    <Button Classes="chip" Content="{Binding [settings.privacy], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Privacy"
+                            Classes.active="{Binding IsTabPrivacy}"/>
+                    <Button Classes="chip" Content="{Binding [settings.backup], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Backup"
+                            Classes.active="{Binding IsTabBackup}"/>
+                    <Button Classes="chip" Content="{Binding [settings.guide], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Guide"
+                            Classes.active="{Binding IsTabGuide}"/>
+                    <Button Classes="chip" Content="{Binding [settings.danger], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Danger"
+                            Classes.active="{Binding IsTabDanger}"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Appearance: language + theme -->
+                <Border Classes="card" IsVisible="{Binding IsTabAppearance}" BorderBrush="{DynamicResource UmAccent}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow"
+                               Text="{Binding [settings.language], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [settings.languageHint], Source={x:Static app:Loc.Instance}}"/>
+                    <ComboBox ItemsSource="{Binding Languages}"
+                              SelectedValue="{Binding LanguageCode, Mode=TwoWay}"
+                              SelectedValueBinding="{Binding Code}"
+                              Width="260" HorizontalAlignment="Left">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="app:Loc+Language">
+                          <TextBlock Text="{Binding Name}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="card" IsVisible="{Binding IsTabAppearance}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow"
+                               Text="{Binding [settings.theme], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="{Binding [settings.themeHint], Source={x:Static app:Loc.Instance}}"/>
+                    <ComboBox ItemsSource="{Binding ThemeOptions}"
+                              SelectedValue="{Binding ThemeId, Mode=TwoWay}"
+                              SelectedValueBinding="{Binding Id}"
+                              Width="260" HorizontalAlignment="Left">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="app:Theming+ThemeOption">
+                          <TextBlock Text="{Binding Name}"/>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap"
+                               Text="The QR plate in Receive always stays white — a tinted QR code will not scan."/>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="card" IsVisible="{Binding IsTabAppearance}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="NAVIGATION PANEL"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="Where the menu sits. Left and right keep the tall panel; top and bottom switch to a compact bar so it does not eat the window height."/>
+                    <!-- SelectedValue, not SelectedItem: a TwoWay SelectedItem pushed the first entry back
+                         during initialisation and overwrote the saved choice. -->
+                    <ComboBox ItemsSource="{Binding SidebarPositions}"
+                              SelectedValue="{Binding SidebarPosition, Mode=TwoWay}"
+                              Width="260" HorizontalAlignment="Left"/>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="card" IsVisible="{Binding IsTabSecurity}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="ENCRYPTION"/>
+                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" Text="Vault"/>
+                      <TextBlock Grid.Column="1" Classes="mono" FontSize="11.5" TextWrapping="Wrap"
+                                 Text="{Binding VaultCryptoLabel}"/>
+                      <TextBlock Grid.Row="1" Foreground="{DynamicResource UmTextDim}" FontSize="12" Text="Seed"/>
+                      <TextBlock Grid.Row="1" Grid.Column="1" Classes="mono" FontSize="11.5" TextWrapping="Wrap"
+                                 Text="{Binding SeedSchemeLabel}"/>
+                      <TextBlock Grid.Row="2" Foreground="{DynamicResource UmTextDim}" FontSize="12" Text="Vault file"/>
+                      <TextBlock Grid.Row="2" Grid.Column="1" Classes="mono" FontSize="11.5" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource UmTextDim}" Text="{Binding VaultLocation}"/>
+                    </Grid>
+                    <Button Classes="ghost" Content="Open vault folder" HorizontalAlignment="Left"
+                            Command="{Binding OpenVaultFolderCommand}"/>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="PRIVACY &amp; NETWORK"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Ellipse Width="7" Height="7" Fill="{DynamicResource UmPos}" VerticalAlignment="Center"/>
+                      <TextBlock FontSize="12" Foreground="{DynamicResource UmTextSoft}"
+                                 Text="No account, no email, no telemetry, no analytics SDK."/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Ellipse Width="7" Height="7" Fill="{DynamicResource UmPos}" VerticalAlignment="Center"/>
+                      <TextBlock FontSize="12" Foreground="{DynamicResource UmTextSoft}"
+                                 Text="Seed and private keys never leave this PC — there is no server-side copy."/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Ellipse Width="7" Height="7" Fill="#E7CA83" VerticalAlignment="Center"/>
+                      <TextBlock FontSize="12" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap" MaxWidth="600"
+                                 Text="Balance and price lookups use public explorers. By default they see your IP; turn on Tor below to route that traffic through your local Tor so they see a Tor exit instead."/>
+                    </StackPanel>
+                    <TextBlock Classes="eyebrow" Text="ENDPOINTS" Margin="0,4,0,0"/>
+                    <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"
+                               Text="{Binding NetworkLabel}"/>
+                    <TextBlock Classes="eyebrow" Text="CHAINS" Margin="0,4,0,0"/>
+                    <TextBlock FontSize="11.5" Foreground="{DynamicResource UmPos}"
+                               Text="{Binding SupportedChainsLabel, StringFormat='Address + balance: {0}'}"/>
+                    <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextDim}"
+                               Text="{Binding PlannedChainsLabel, StringFormat='Adapter pending: {0}'}"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Tor -->
+                <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="TOR · ANONYMOUS TRAFFIC (BUILT IN)"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="Tor ships inside Umbrella — nothing to install. Switch it on and the wallet starts its own Tor client, then routes every balance, price and broadcast request through it, so explorers and RPC nodes see a Tor exit instead of your IP. It runs on a private port (9250) so a Tor Browser you already use is untouched, and it shuts down with the wallet."/>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                      <ToggleSwitch IsChecked="{Binding TorEnabled}" OnContent="Tor on" OffContent="Tor off"
+                                    Command="{Binding ApplyTorCommand}"/>
+                    </StackPanel>
+                    <TextBlock FontSize="12" Text="{Binding TorStatus}" Foreground="{Binding TorStatusColor}" TextWrapping="Wrap"/>
+
+                    <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
+
+                    <TextBlock Classes="eyebrow" Text="MONERO WALLET SERVICE (BUILT IN)"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="Monero's own wallet daemon ships inside Umbrella. Switch it on and XMR becomes a full coin — real balance and real sending — because Monero amounts are hidden on-chain and can only be read by scanning with your view key. Your keys stay on this PC; only the daemon sees them, and it goes through Tor when Tor is on. The first scan takes a few minutes."/>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                      <ToggleSwitch IsChecked="{Binding MoneroEnabled}" OnContent="Monero on" OffContent="Monero off"
+                                    Command="{Binding EnableMoneroCommand}"/>
+                    </StackPanel>
+                    <TextBlock FontSize="12" Text="{Binding MoneroStatus}" Foreground="{Binding MoneroStatusColor}" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Documentation -->
+                <Border Classes="card" IsVisible="{Binding IsTabGuide}">
+                  <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="eyebrow" Text="DOCUMENTATION" VerticalAlignment="Center"/>
+                      <Button Grid.Column="1" Classes="ghost" Content="Open guide" Command="{Binding ToggleDocsCommand}"/>
+                    </Grid>
+                    <StackPanel Spacing="12" IsVisible="{Binding IsDocsVisible}">
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="1 · CREATE OR IMPORT"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Create generates a 24-word BIP39 seed on this PC and encrypts it into a local vault (Argon2id → AES-256-GCM) with your password. Import accepts any 12/15/18/21/24-word BIP39 phrase from another wallet — the derived addresses will match the original wallet exactly."/>
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="2 · RECEIVE"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Open Receive, pick a green (Ready) coin, and share the address or QR with the sender — a person, another wallet, or an exchange withdrawal. Addresses are safe to share publicly. Never share the 24 words."/>
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="3 · SEND"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Send builds the transaction here, signs it with your key locally, and broadcasts only the signed bytes through a public RPC. You always get a review step with the exact fee before anything is signed. ETH is live today; for BTC/LTC/SOL restore the same phrase in Electrum or Phantom — same addresses, same funds."/>
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="4 · BACKUP AND RESTORE"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Your 24 words are the wallet. Write them on paper, keep them offline. The vault file only protects the copy on this PC — if the PC dies, the words restore everything in any BIP39 wallet. While the phrase is on screen, the window is excluded from screenshots and screen sharing."/>
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="5 · WHICH COINS, AND ON WHICH NETWORK"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Every row in Receive and Holdings prints the network under the coin name, because sending on the wrong network is the most common way people lose funds. Full support (address + balance + send): Bitcoin (BIP84 native SegWit), Ethereum, Litecoin (BIP84), Solana. Address + balance only: Dogecoin, TRON — plus USDT as TRC-20 on TRON, read from your TRON address. Receive only: Monero. Not yet derived at all: TON and Cardano — nothing is shown for them rather than a guessed address."/>
+
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="6 · USDT (TRC-20)"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="USDT here means Tether on the TRON network (TRC-20). It uses the same address as your TRX, its balance is read from that address, and you can both receive and send it. Only ever send USDT to it over TRON — the identical-looking address on Ethereum (ERC-20) is a different network and those coins would be lost. Sending USDT is a contract call, so the fee is paid in TRX: keep a small amount of TRX on the address or the transfer will fail for lack of energy."/>
+
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="7 · MONERO"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Umbrella derives a genuine Monero mainnet account and you can receive to it. It is marked &quot;Receive only&quot; for an honest reason: Monero hides amounts on-chain, so no public explorer can report your balance, and this build does not construct Monero transactions. To see the balance or spend, open Settings → Monero → Reveal keys and put the address, secret spend key and secret view key into Feather or monero-wallet-cli via &quot;Restore from keys&quot;. The spend key is as sensitive as your seed phrase."/>
+
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="8 · TOR (BUILT IN)"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Tor ships inside the wallet — nothing to install. Switching it on starts a private Tor client on port 9250 (so a Tor Browser you already run is untouched) and routes every balance lookup, price fetch and transaction broadcast through it, so explorers and RPC nodes see a Tor exit instead of your IP. It takes ~20 seconds to bootstrap and shuts down with the wallet. Turn it on BEFORE unlocking if you don't want your addresses queried over clearnet even once."/>
+
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="9 · WHAT LEAKS, AND WHAT DOESN'T"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Never leaves this PC: your seed phrase, every private key, your vault password. Leaves this PC: the addresses you look up and transactions you broadcast (to public explorers/RPCs — hidden behind Tor when it's on) and coin prices. There is no account, no email, no telemetry and no analytics of any kind. Umbrella cannot freeze, seize or recover your funds, and neither can anyone else holding this software."/>
+
+                      <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextSoft}" Text="10 · SECURITY HABITS THAT ACTUALLY MATTER"/>
+                      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                                 Text="Write the 24 words on paper, never in a photo, cloud note or password manager you don't control. While the phrase or Monero keys are on screen the window is excluded from screenshots and screen sharing — but a camera pointed at the screen still works, so reveal them alone. The vault auto-locks after 5 minutes idle; Ctrl+L locks instantly. Always send a small test amount first to a new address. A blockchain transfer is final: there is no support desk that can reverse it."/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
+                <!-- Backup file: a copy of the still-encrypted vault, never the plain seed. -->
+                <Border Classes="card" IsVisible="{Binding IsTabBackup}" BorderBrush="{DynamicResource UmAccent}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="BACKUP FILE"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="Saves your vault, linked addresses and exchange keys to one file. It is exported exactly as encrypted — the file is worthless without your vault password, and for the same reason it can only be restored with that password. There is no recovery if you lose it."/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Button Classes="primary" Content="Save backup…" Command="{Binding ExportBackupCommand}"/>
+                      <Button Classes="ghost" Content="Restore from backup…" Command="{Binding RestoreBackupCommand}"/>
+                    </StackPanel>
+                    <TextBlock IsVisible="{Binding BackupStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Text="{Binding BackupStatus}" Foreground="{DynamicResource UmPos}" FontSize="12" TextWrapping="Wrap"/>
+                    <Border IsVisible="{Binding BackupError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                      <TextBlock Text="{Binding BackupError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                    <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap"
+                               Text="Restoring replaces the wallet on this PC. The previous vault is kept beside it as a .replaced file rather than deleted, so a mistaken restore can be undone."/>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="card" IsVisible="{Binding IsTabBackup}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="RECOVERY PHRASE"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="Enter your vault password to decrypt and show the recovery phrase. It stays hidden until the password is correct."/>
+                    <TextBox Text="{Binding SettingsPassword}" PasswordChar="●" Watermark="Vault password" MaxWidth="320" HorizontalAlignment="Left"/>
+                    <Button Classes="ghost" Content="Reveal recovery phrase" HorizontalAlignment="Left"
+                            IsEnabled="{Binding !IsBusy}" Command="{Binding RevealPhraseCommand}"/>
+
+                    <Border IsVisible="{Binding IsSettingsPhraseVisible}" Background="{DynamicResource UmBg}"
+                            BorderBrush="#7A6230" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,4,0,0">
+                      <StackPanel Spacing="10">
+                        <TextBlock Classes="mono" FontSize="14" LineHeight="26" TextWrapping="Wrap"
+                                   Text="{Binding SettingsRevealedPhrase}"/>
+                        <Button Classes="ghost" Content="Hide phrase" HorizontalAlignment="Left"
+                                Command="{Binding HideSettingsPhraseCommand}"/>
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                </Border>
+
+                <!-- Monero keys export -->
+                <Border Classes="card" IsVisible="{Binding IsTabBackup}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="MONERO · EXPORT KEYS"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="Umbrella derives a real Monero account and can receive to it, but Monero balances are hidden on-chain and cannot be read from a public explorer — and Umbrella does not build XMR transactions. To see the balance or spend, put these three values into Feather (or monero-wallet-cli) via &quot;Restore from keys&quot;. Enter your vault password above first."/>
+                    <Button Classes="ghost" Content="Reveal Monero keys" HorizontalAlignment="Left"
+                            IsEnabled="{Binding !IsBusy}" Command="{Binding RevealMoneroKeysCommand}"/>
+
+                    <Border IsVisible="{Binding IsMoneroKeysVisible}" Background="{DynamicResource UmBg}"
+                            BorderBrush="#7A6230" BorderThickness="1" CornerRadius="10" Padding="16">
+                      <StackPanel Spacing="10">
+                        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="PRIMARY ADDRESS"/>
+                        <TextBlock Classes="mono" FontSize="11.5" TextWrapping="Wrap" Text="{Binding MoneroAddress}"/>
+                        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="SECRET SPEND KEY  ·  treat like your seed"/>
+                        <TextBlock Classes="mono" FontSize="11.5" TextWrapping="Wrap" Text="{Binding MoneroSpendKey}"/>
+                        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="SECRET VIEW KEY"/>
+                        <TextBlock Classes="mono" FontSize="11.5" TextWrapping="Wrap" Text="{Binding MoneroViewKey}"/>
+                        <Button Classes="ghost" Content="Hide keys" HorizontalAlignment="Left"
+                                Command="{Binding HideMoneroKeysCommand}"/>
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="card" BorderBrush="#7A3034" IsVisible="{Binding IsTabDanger}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Foreground="#E09A9A" Text="DANGER ZONE"/>
+                    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                               Text="Deleting the vault erases the encrypted seed from this PC. Nothing is stored on a server, so your written 24-word phrase is the only way back. Type DELETE to confirm."/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBox Text="{Binding DeleteConfirmation}" Watermark="Type DELETE" Width="150"/>
+                      <Button Classes="danger" Content="Delete vault" Command="{Binding DeleteVaultCommand}"/>
+                      <Button Classes="ghost" Content="Lock now" Command="{Binding LockCommand}"/>
+                    </StackPanel>
+                    <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
+                            BorderThickness="1" CornerRadius="6" Padding="12,9">
+                      <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <!-- Guarantees the last card (Danger Zone) can always be scrolled clear of the
+                   status bar, whatever the window height. -->
+              <Border Height="48" Background="Transparent"/>
+
+            </StackPanel>
+          </ScrollViewer>
+
+          <Border Grid.Row="1" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="20,0">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Ellipse Width="6" Height="6" Fill="{DynamicResource UmPos}"/>
+                  <TextBlock Classes="mono" FontSize="10.5" Foreground="{DynamicResource UmTextDim}" Text="Local · public RPC"/>
+                </StackPanel>
+                <TextBlock Classes="mono" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"
+                           Text="{Binding ActiveSection, StringFormat='{}{0}'}"/>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Classes="mono" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"
+                         VerticalAlignment="Center" Text="Umbrella Wallet v1.7.0 · the fear"/>
+            </Grid>
+          </Border>
+        </Grid>
+      </DockPanel>
+    </Grid>
+
+    <!-- ============================ QR POPUP ============================
+         Sits in the last row of the root grid so it covers the whole window,
+         including the sidebar. Clicking the dimmed backdrop closes it. -->
+    <Border Grid.Row="0" Grid.RowSpan="2" IsVisible="{Binding IsQrPopupOpen}"
+            Background="#CC07060D">
+      <Border.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut"/>
+        </Transitions>
+      </Border.Transitions>
+      <Grid>
+        <!-- Backdrop click-to-close. Needs the .backdrop class: a plain Button still picks up
+             Fluent's hover/pressed brushes, which flashed the scrim white then blue. -->
+        <Button Classes="backdrop" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                Command="{Binding CloseQrPopupCommand}"/>
+
+        <Border Classes="card" Width="380" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Padding="26" CornerRadius="20" BorderBrush="{DynamicResource UmAccent}">
+          <Border.Transitions>
+            <Transitions>
+              <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+            </Transitions>
+          </Border.Transitions>
+          <StackPanel Spacing="16">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Text="{Binding SelectedReceiveSymbol}" FontSize="20" FontWeight="SemiBold"/>
+                <TextBlock FontSize="11.5" Foreground="{DynamicResource UmPos}" TextWrapping="Wrap"
+                           Text="{Binding SelectedReceiveNetwork}"/>
+              </StackPanel>
+              <Button Grid.Column="1" Classes="chip" Content="✕" VerticalAlignment="Top"
+                      Command="{Binding CloseQrPopupCommand}"/>
+            </Grid>
+
+            <Border Background="#FFFFFF" Padding="14" CornerRadius="14"
+                    Width="260" Height="260" HorizontalAlignment="Center">
+              <Image Source="{Binding ReceiveQr}" Stretch="Uniform"
+                     IsVisible="{Binding ReceiveQr, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+            </Border>
+
+            <TextBlock FontSize="12" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"
+                       TextAlignment="Center" TextWrapping="Wrap"
+                       Text="{Binding [receive.scan], Source={x:Static app:Loc.Instance}}"/>
+
+            <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1"
+                    CornerRadius="10" Padding="12">
+              <TextBlock Classes="mono" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center"
+                         Foreground="{DynamicResource UmTextSoft}" Text="{Binding SelectedReceiveAddress}"/>
+            </Border>
+
+            <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                    Content="{Binding [common.copyAddress], Source={x:Static app:Loc.Instance}}"
+                    Command="{Binding CopyAddressCommand}"
+                    CommandParameter="{Binding SelectedReceiveAddress}"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

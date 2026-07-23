@@ -1,0 +1,243 @@
+using System.Globalization;
+using System.Net.Http.Json;
+using System.Numerics;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using NBitcoin;
+using NBitcoin.DataEncoders;
+
+namespace Umbrella.Wallet.Infrastructure.Network;
+
+public sealed record TronSendQuote(
+    string Symbol,
+    string From,
+    string To,
+    decimal Amount,
+    bool IsToken,
+    string? RawTransactionJson);
+
+/// <summary>
+/// TRON sending: native TRX and USDT (TRC-20).
+///
+/// TronGrid builds the unsigned transaction (so we don't have to serialise protobuf by hand),
+/// we sign its txID locally with the secp256k1 key derived from the vault, and broadcast the
+/// signed result. The private key never leaves the process.
+///
+/// USDT-TRC20 is a contract call — <c>transfer(address,uint256)</c> on the Tether contract —
+/// not a plain transfer, which is why it needs its own path.
+/// </summary>
+public sealed class TronTransactionSender
+{
+    private const string ApiBase = "https://api.trongrid.io";
+
+    /// <summary>Tether (USDT) TRC-20 contract on TRON mainnet.</summary>
+    private const string UsdtContract = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+
+    private const int UsdtDecimals = 6;
+    private const long TrxSun = 1_000_000;
+
+    /// <summary>Energy budget for a USDT transfer, in SUN. Unused fee is not charged.</summary>
+    private const long FeeLimitSun = 40_000_000;
+
+    private static HttpClient Http => PublicHttp.Shared;
+
+    public async Task<(TronSendQuote? Quote, string? Error)> PrepareAsync(
+        string symbol, string from, string to, decimal amount, CancellationToken ct = default)
+    {
+        if (amount <= 0) return (null, "Amount must be positive.");
+        if (!IsTronAddress(to)) return (null, "That is not a valid TRON address (should start with T).");
+
+        var isToken = symbol.Equals("USDT", StringComparison.OrdinalIgnoreCase);
+
+        try
+        {
+            string? raw;
+            if (isToken)
+            {
+                var balance = await GetUsdtBalanceAsync(from, ct);
+                if (balance is not null && balance < amount)
+                {
+                    return (null, $"Insufficient USDT: balance {balance:0.######}, need {amount:0.######}.");
+                }
+
+                raw = await BuildTokenTransferAsync(from, to, amount, ct);
+            }
+            else
+            {
+                raw = await BuildTrxTransferAsync(from, to, amount, ct);
+            }
+
+            if (raw is null)
+            {
+                return (null, "TRON API did not return a transaction — try again in a moment.");
+            }
+
+            return (new TronSendQuote(isToken ? "USDT" : "TRX", from, to, amount, isToken, raw), null);
+        }
+        catch (Exception ex)
+        {
+            return (null, $"Could not prepare the TRON transaction: {ex.Message}");
+        }
+    }
+
+    /// <summary>Signs the prepared transaction's txID and broadcasts it.</summary>
+    public async Task<(bool Ok, string? TxId, string? Error)> SignAndBroadcastAsync(
+        TronSendQuote quote, Key privateKey, CancellationToken ct = default)
+    {
+        try
+        {
+            if (quote.RawTransactionJson is null) return (false, null, "Nothing to sign.");
+
+            using var doc = JsonDocument.Parse(quote.RawTransactionJson);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("txID", out var txIdEl) || txIdEl.GetString() is not { } txId)
+            {
+                var apiError = root.TryGetProperty("Error", out var e) ? e.GetString() : null;
+                return (false, null, apiError ?? "TRON API returned no txID.");
+            }
+
+            // TRON signs the raw 32-byte txID directly (no extra hashing/prefix).
+            var signature = SignTxId(Convert.FromHexString(txId), privateKey);
+
+            // Re-emit the transaction with the signature array attached.
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream))
+            {
+                writer.WriteStartObject();
+                foreach (var property in root.EnumerateObject())
+                {
+                    if (property.NameEquals("signature")) continue;
+                    property.WriteTo(writer);
+                }
+
+                writer.WriteStartArray("signature");
+                writer.WriteStringValue(signature);
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+
+            var signedJson = Encoding.UTF8.GetString(stream.ToArray());
+            using var content = new StringContent(signedJson, Encoding.UTF8, "application/json");
+            using var res = await Http.PostAsync($"{ApiBase}/wallet/broadcasttransaction", content, ct);
+            var body = await res.Content.ReadAsStringAsync(ct);
+
+            using var result = JsonDocument.Parse(body);
+            if (result.RootElement.TryGetProperty("result", out var okEl) && okEl.GetBoolean())
+            {
+                return (true, txId, null);
+            }
+
+            var message = result.RootElement.TryGetProperty("message", out var m)
+                ? DecodeHexMessage(m.GetString())
+                : body;
+            return (false, null, $"TRON rejected the transaction: {message}");
+        }
+        catch (Exception ex)
+        {
+            return (false, null, $"Send failed: {ex.Message}");
+        }
+    }
+
+    private static async Task<string?> BuildTrxTransferAsync(
+        string from, string to, decimal amount, CancellationToken ct)
+    {
+        var payload = new
+        {
+            owner_address = from,
+            to_address = to,
+            amount = (long)(amount * TrxSun),
+            visible = true,
+        };
+        using var res = await Http.PostAsJsonAsync($"{ApiBase}/wallet/createtransaction", payload, ct);
+        return res.IsSuccessStatusCode ? await res.Content.ReadAsStringAsync(ct) : null;
+    }
+
+    private static async Task<string?> BuildTokenTransferAsync(
+        string from, string to, decimal amount, CancellationToken ct)
+    {
+        // transfer(address,uint256) — ABI-encoded: 32-byte padded address, then 32-byte amount.
+        var units = new BigInteger(amount * (decimal)Math.Pow(10, UsdtDecimals));
+        var toHex = Convert.ToHexString(Base58CheckDecodeTron(to)).ToLowerInvariant();
+        var parameter = toHex.PadLeft(64, '0') + units.ToString("x").PadLeft(64, '0');
+
+        var payload = new
+        {
+            owner_address = from,
+            contract_address = UsdtContract,
+            function_selector = "transfer(address,uint256)",
+            parameter,
+            fee_limit = FeeLimitSun,
+            call_value = 0,
+            visible = true,
+        };
+
+        using var res = await Http.PostAsJsonAsync($"{ApiBase}/wallet/triggersmartcontract", payload, ct);
+        if (!res.IsSuccessStatusCode) return null;
+
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
+        // triggersmartcontract wraps the unsigned tx under "transaction".
+        return doc.RootElement.TryGetProperty("transaction", out var tx) ? tx.GetRawText() : null;
+    }
+
+    private async Task<decimal?> GetUsdtBalanceAsync(string address, CancellationToken ct)
+    {
+        var client = new PublicChainBalanceClient();
+        return await client.GetTronUsdtAsync(address, ct);
+    }
+
+    /// <summary>
+    /// Recoverable secp256k1 signature over the txID: r ‖ s ‖ v, 65 bytes, hex encoded.
+    /// </summary>
+    private static string SignTxId(byte[] txId, Key privateKey)
+    {
+        var compact = privateKey.SignCompact(new uint256(txId), forceLowR: false);
+
+        // NBitcoin gives r‖s (64 bytes) plus a separate recovery id; TRON wants r‖s‖v (65 bytes).
+        var signature = new byte[65];
+        Buffer.BlockCopy(compact.Signature, 0, signature, 0, 64);
+        signature[64] = (byte)compact.RecoveryId;
+        return Convert.ToHexString(signature).ToLowerInvariant();
+    }
+
+    /// <summary>Base58Check-decodes a TRON address to its 21-byte form (0x41 ‖ 20-byte hash).</summary>
+    private static byte[] Base58CheckDecodeTron(string address)
+    {
+        var full = Encoders.Base58.DecodeData(address);
+        if (full.Length != 25) throw new FormatException("Invalid TRON address length.");
+
+        var payload = full[..21];
+        var checksum = SHA256.HashData(SHA256.HashData(payload))[..4];
+        if (!full[21..].SequenceEqual(checksum)) throw new FormatException("Invalid TRON address checksum.");
+
+        // ABI expects the 20-byte address without TRON's 0x41 prefix.
+        return payload[1..];
+    }
+
+    private static bool IsTronAddress(string value)
+    {
+        if (value is not { Length: 34 } || !value.StartsWith('T')) return false;
+        try
+        {
+            Base58CheckDecodeTron(value);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string DecodeHexMessage(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex)) return "unknown error";
+        try
+        {
+            return Encoding.UTF8.GetString(Convert.FromHexString(hex));
+        }
+        catch
+        {
+            return hex;
+        }
+    }
+}

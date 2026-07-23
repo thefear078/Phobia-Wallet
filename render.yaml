@@ -1,0 +1,51 @@
+# Umbrella Wallet API — Render Blueprint
+# Blueprint: https://dashboard.render.com/blueprint/new?repo=https://github.com/kiurakku/umbrella-wallet
+#
+# Default boot uses backend DEMO_MODE=true (in-memory auth) so register/login work
+# without Postgres. For full production later, set in the Render dashboard:
+#   DEMO_MODE=false  +  DATABASE_URL  +  REDIS_URL
+# Frontend stays non-demo (VITE_DEMO_MODE=false) and proxies to this API.
+
+services:
+  - type: web
+    name: umbrella-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:render
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEMO_MODE
+        value: "true"
+      - key: PORT
+        value: "3001"
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://umbra-wallet-web.vercel.app
+      - key: TELEGRAM_WEBAPP_URL
+        value: https://umbra-wallet-web.vercel.app
+      - key: COOKIE_SECURE
+        value: "true"
+      # Optional — wire these (and set DEMO_MODE=false) for Postgres/Redis production:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_URL
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: ALCHEMY_API_KEY
+        sync: false
+      - key: SMTP_URL
+        sync: false
+      - key: SMTP_FROM
+        sync: false

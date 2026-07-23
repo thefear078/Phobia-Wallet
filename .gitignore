@@ -1,0 +1,57 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.output
+backend/dist
+backend/node_modules
+.vinxi
+.tanstack/**
+.nitro
+.env
+backend/.env
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+!desktop/Umbrella.Wallet.sln
+*.sw?
+
+.vercel
+.env*
+
+# Native desktop build output
+desktop/**/bin/
+desktop/**/obj/
+desktop/artifacts/
+.kiro/
+
+# Bundled Tor binaries — third-party, ~35 MB, fetched by desktop/scripts/fetch-tor.ps1
+# rather than committed, so the repo stays small. The folder's README is tracked.
+desktop/src/Umbrella.Wallet.App/tor/*
+!desktop/src/Umbrella.Wallet.App/tor/README.md
+
+# Packaged installers / portable builds
+desktop/dist/
+
+# Bundled monero-wallet-rpc (~39 MB, third-party) — staged by scripts, not committed
+desktop/src/Umbrella.Wallet.App/monero/*
+!desktop/src/Umbrella.Wallet.App/monero/README.md

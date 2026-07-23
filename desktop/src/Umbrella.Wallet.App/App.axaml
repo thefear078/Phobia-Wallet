@@ -1,0 +1,468 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Umbrella.Wallet.App.App"
+             xmlns:local="using:Umbrella.Wallet.App"
+             RequestedThemeVariant="Dark"
+             Name="Umbrella Wallet">
+
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- "the fear" palette: a deep indigo-black base lifted with violet, so the app reads
+             like the web build instead of flat black. Accents are used for emphasis only. -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource UmBg}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI, AvaloniaSans" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- Brand accent, reusable from markup -->
+        <Style Selector="TextBlock.accent">
+            <Setter Property="Foreground" Value="{DynamicResource UmAccentBright}" />
+        </Style>
+        <Style Selector="TextBlock.accent2">
+            <Setter Property="Foreground" Value="#5EEAD4" />
+        </Style>
+
+        <Style Selector="TextBlock.eyebrow">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="LetterSpacing" Value="2" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextMuted}" />
+        </Style>
+
+        <Style Selector="TextBlock.serif">
+            <Setter Property="FontFamily" Value="Georgia, Cambria, Times New Roman, serif" />
+        </Style>
+
+        <Style Selector="TextBlock.mono">
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
+        </Style>
+
+        <!-- Base button: glassy, rounded, springy hover/press, clear disabled state.
+             RenderTransformOrigin keeps the press-scale centred instead of pulling to a corner. -->
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Padding" Value="16,11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.13" Easing="CubicEaseOut" />
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.13" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.015)" />
+        </Style>
+        <Style Selector="Button:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.965)" />
+        </Style>
+        <Style Selector="Button:disabled">
+            <Setter Property="Opacity" Value="0.4" />
+            <Setter Property="Cursor" Value="Arrow" />
+        </Style>
+
+        <!-- Sidebar navigation: accent bar on the active item, quiet hover otherwise. -->
+        <Style Selector="Button.nav">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextDim}" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.nav /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+        </Style>
+        <Style Selector="Button.nav.active">
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.nav.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+        </Style>
+
+        <!-- Primary: solid white, the single strongest call to action on a screen. -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource UmInverse}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmInverseText}" />
+            <Setter Property="Padding" Value="20,12" />
+        </Style>
+        <Style Selector="Button.primary /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmInverseHover}" />
+        </Style>
+        <Style Selector="Button.primary:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmInverseHover}" />
+        </Style>
+
+        <!-- Ghost: quiet secondary action. Frosted-glass fill (translucent white over the
+             indigo base) instead of a flat block, so cards read as layered rather than painted. -->
+        <Style Selector="Button.ghost">
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder3}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background">
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#1FFFFFFF" />
+                    <GradientStop Offset="1" Color="#0AFFFFFF" />
+                </LinearGradientBrush>
+            </Setter>
+        </Style>
+        <Style Selector="Button.ghost /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+        </Style>
+        <Style Selector="Button.ghost:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+        </Style>
+
+        <!-- Danger: destructive actions (delete vault). -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#241416" />
+            <Setter Property="Foreground" Value="#F0A8A8" />
+            <Setter Property="BorderBrush" Value="#5E2A2E" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.danger /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3A1A1E" />
+        </Style>
+
+        <!-- Quick action tile: used on the Portfolio row. Glassy, like the ghost buttons. -->
+        <Style Selector="Button.tile">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder3}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Background">
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#24FFFFFF" />
+                    <GradientStop Offset="1" Color="#0BFFFFFF" />
+                </LinearGradientBrush>
+            </Setter>
+            <Setter Property="Foreground" Value="{DynamicResource UmTextSoft}" />
+            <Setter Property="Height" Value="60" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Button.tile /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.tile:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+        </Style>
+        <!-- Lift on hover so the quick actions feel like physical keys. -->
+        <Style Selector="Button.tile">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.tile:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-2px)" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentHover}" />
+        </Style>
+        <Style Selector="Button.tile:pressed">
+            <Setter Property="RenderTransform" Value="translateY(0px) scale(0.98)" />
+        </Style>
+
+        <!-- Full-width clickable list row (market coins). -->
+        <Style Selector="Button.row">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <!-- Rows are Buttons, so unstyled child text inherits Fluent's control foreground —
+                 which stays light and vanishes on the light theme. Pin it to the palette. -->
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+        </Style>
+        <Style Selector="Button.row /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.10" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.row:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+            <!-- Fluent also flips the foreground on hover; without this the hovered row
+                 turns white-on-light and the coin disappears under the cursor. -->
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+        </Style>
+
+        <!-- Stroked line icons for the quick-action tiles. Drawn as geometry so they scale
+             cleanly and inherit the palette, unlike emoji which vary by installed font. -->
+        <Style Selector="Path.tileIcon">
+            <Setter Property="Stroke" Value="{DynamicResource UmTextSoft}" />
+            <Setter Property="StrokeThickness" Value="1.6" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="StrokeJoin" Value="Round" />
+            <Setter Property="Fill" Value="Transparent" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.tile:pointerover Path.tileIcon">
+            <Setter Property="Stroke" Value="{DynamicResource UmAccentBright}" />
+        </Style>
+
+        <!-- Invisible full-bleed click target behind a modal. Every visual state must stay
+             transparent, otherwise Fluent tints the scrim on hover and press. -->
+        <Style Selector="Button.backdrop">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Cursor" Value="Arrow" />
+        </Style>
+        <Style Selector="Button.backdrop /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.backdrop:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.backdrop:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.backdrop:pointerover">
+            <Setter Property="RenderTransform" Value="none" />
+        </Style>
+        <Style Selector="Button.backdrop:pressed">
+            <Setter Property="RenderTransform" Value="none" />
+        </Style>
+
+        <!-- Segmented filter chip. -->
+        <Style Selector="Button.chip">
+            <Setter Property="Padding" Value="13,7" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextDim}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="7" />
+        </Style>
+        <Style Selector="Button.chip /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.10" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.chip:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextSoft}" />
+        </Style>
+        <Style Selector="Button.chip.active">
+            <Setter Property="Foreground" Value="{DynamicResource UmBg}" />
+        </Style>
+        <Style Selector="Button.chip.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmText}" />
+        </Style>
+
+        <!-- Dropdowns: matched to the glass inputs instead of the default Fluent chrome. -->
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="{DynamicResource UmInput}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder2}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Padding" Value="14,11" />
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinHeight" Value="46" />
+        </Style>
+        <Style Selector="ComboBox /template/ Border#Background">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ComboBox:pointerover /template/ Border#Background">
+            <Setter Property="Background" Value="{DynamicResource UmCard}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccent}" />
+        </Style>
+        <Style Selector="ComboBox:focus /template/ Border#Background">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentBright}" />
+        </Style>
+        <!-- The dropdown surface itself, so the popup isn't a pale default sheet. -->
+        <Style Selector="ComboBox /template/ Popup Border">
+            <Setter Property="Background" Value="{DynamicResource UmCard}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder3}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+        </Style>
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Padding" Value="14,11" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Margin" Value="4,2" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextSoft}" />
+        </Style>
+        <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+        <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmAccentSel}" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <!-- Inputs: subtle by default, bright focus ring so typing feels responsive. -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="{DynamicResource UmInput}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder2}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Padding" Value="13,10" />
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource UmText}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource UmAccent}" />
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentDim}" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccentBright}" />
+            <Setter Property="Background" Value="{DynamicResource UmCard}" />
+        </Style>
+
+        <!-- Cards get a faint top-down sheen so they sit above the background like glass. -->
+        <!-- The sheen is driven by Color resources (a GradientStop needs a Color, not a Brush),
+             so cards follow the theme instead of staying dark on the light palette. -->
+        <Style Selector="Border.card">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="22" />
+            <Setter Property="Background">
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="{DynamicResource UmCardTop}" />
+                    <GradientStop Offset="1" Color="{DynamicResource UmCardBottom}" />
+                </LinearGradientBrush>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.hairline">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="{DynamicResource UmBgAlt}" />
+        </Style>
+
+        <!-- Section fade+rise on switch. Applied to the top-level panel of each workspace
+             section, so navigating feels like a page turn rather than a hard cut. -->
+        <Style Selector=":is(Panel).page, :is(StackPanel).page, :is(Grid).page">
+            <Style.Animations>
+                <Animation Duration="0:0:0.26" Easing="CubicEaseOut" FillMode="Forward">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="14"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Cards ease in, so lists don't snap into place. -->
+        <Style Selector="Border.card">
+            <Style.Animations>
+                <Animation Duration="0:0:0.3" Easing="CubicEaseOut" FillMode="Forward">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="0.985"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="1"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Nav items glide rather than jump between states. -->
+        <Style Selector="Button.nav">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.nav:pointerover">
+            <Setter Property="RenderTransform" Value="translateX(3px)"/>
+        </Style>
+
+        <!-- Thin, unobtrusive overlay scrollbar (Wasabi-like). Track is invisible; only a slim
+             thumb shows while scrolling, then auto-hides. -->
+        <Style Selector="ScrollBar:vertical">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Margin" Value="0,4,2,4" />
+        </Style>
+        <Style Selector="ScrollBar:vertical /template/ Border#TrackBackground">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ScrollBar:vertical Thumb">
+            <Setter Property="Background" Value="#33FFFFFF" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+        <Style Selector="ScrollBar:vertical Thumb:pointerover">
+            <Setter Property="Background" Value="#55FFFFFF" />
+        </Style>
+        <Style Selector="ScrollBar:horizontal">
+            <Setter Property="Height" Value="6" />
+        </Style>
+        <!-- Kill the repeat-button arrows so the bar is a clean thin thumb only. -->
+        <Style Selector="ScrollBar RepeatButton">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
+    </Application.Styles>
+</Application>

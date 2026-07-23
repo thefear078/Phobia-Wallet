@@ -1,0 +1,5 @@
+backend/
+docker-compose.yml
+render.yaml
+UMBRA_*.md
+AGENTS.md

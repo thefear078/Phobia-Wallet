@@ -1,0 +1,70 @@
+Umbrella Wallet — Free-Use, No-Derivatives License
+Copyright (c) 2026 kiurakku ("the fear"). All rights reserved.
+
+Umbrella Wallet (the "Software") is the property of kiurakku, published in
+this repository. It is offered to the public free of charge on the following
+terms. By downloading, installing or using the Software you accept them.
+
+1. WHAT YOU MAY DO
+   a) Download, install and run the Software, for personal or commercial
+      purposes, at no charge.
+   b) View and study the source code as published in this repository.
+   c) Share an unmodified link to this repository or its official releases.
+
+2. WHAT YOU MAY NOT DO
+   Except with prior written permission from the copyright holder, you may
+   not:
+   a) modify the Software or create derivative works of it;
+   b) copy, republish, mirror or redistribute the Software or its source, in
+      original or modified form;
+   c) sell, rent, sublicense or otherwise commercialise the Software;
+   d) publish the Software or any part of it under another name or brand, or
+      remove or alter its copyright, attribution or watermarks;
+   e) use the names "Umbrella Wallet", "the fear" or "kiurakku", or the
+      associated logos, to endorse or promote any other product.
+
+3. SERVICE FEES
+   The Software is and remains free to obtain and use. The copyright holder
+   reserves the right for the Software to include a small service fee applied
+   to certain in-app transactions. Any such fee is part of the Software's
+   operation, is disclosed in the interface where it applies, and does not
+   create custody of user funds, a deposit relationship, or any liability
+   beyond Section 4.
+
+4. NO WARRANTY; NO LIABILITY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
+   THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+   OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+   ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+   OTHER DEALINGS IN THE SOFTWARE.
+
+5. FINANCIAL RESPONSIBILITY
+   The Software is non-custodial: cryptographic keys are generated and stored
+   solely on the user's own device, and the copyright holder never has access
+   to them or to any funds. By using the Software you acknowledge that:
+   a) you alone are responsible for safeguarding your recovery phrase,
+      passwords, keys and funds;
+   b) lost credentials cannot be recovered by anyone, including the copyright
+      holder, and blockchain transactions cannot be reversed;
+   c) all financial decisions and their outcomes, up to and including total
+      loss of funds, are exclusively your own responsibility;
+   d) nothing in the Software or its documentation constitutes financial,
+      investment or legal advice.
+
+6. SUPPORT
+   The copyright holder may, at their sole discretion, provide support,
+   updates and contact channels. Doing so is voluntary and best-effort, and
+   creates no legal obligation, warranty, custodial duty or fiduciary
+   relationship of any kind.
+
+7. THIRD-PARTY COMPONENTS
+   The Software bundles or downloads third-party components (including Tor
+   and monero-wallet-rpc) that are licensed under their own terms, which
+   remain in force and are unaffected by this license. Nothing in Section 2
+   restricts rights granted directly to you by those components' licenses.
+
+8. TERMINATION
+   Any breach of Section 2 ends the permissions granted in Section 1
+   automatically. Sections 4 and 5 survive termination.

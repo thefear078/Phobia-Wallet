@@ -1,0 +1,104 @@
+namespace Umbrella.Wallet.Core.Chains;
+
+/// <summary>
+/// Static catalog of chains for the desktop MVP.
+/// Supported chains have real HD derivation; planned chains are explicit stubs.
+/// </summary>
+public static class ChainCatalog
+{
+    private static readonly IReadOnlyDictionary<ChainId, ChainInfo> ById;
+
+    public static IReadOnlyList<ChainInfo> All { get; }
+
+    static ChainCatalog()
+    {
+        All =
+        [
+            new ChainInfo(
+                ChainId.Btc,
+                "BTC",
+                "Bitcoin",
+                ChainSupportLevel.Supported,
+                "BIP84",
+                "m/84'/0'/0'/0/{index}"),
+            new ChainInfo(
+                ChainId.Eth,
+                "ETH",
+                "Ethereum",
+                ChainSupportLevel.Supported,
+                "BIP44",
+                "m/44'/60'/0'/0/{index}"),
+            new ChainInfo(
+                ChainId.Ltc,
+                "LTC",
+                "Litecoin",
+                ChainSupportLevel.Supported,
+                "BIP84",
+                "m/84'/2'/0'/0/{index}"),
+            new ChainInfo(
+                ChainId.Doge,
+                "DOGE",
+                "Dogecoin",
+                ChainSupportLevel.Supported,
+                "BIP44",
+                "m/44'/3'/0'/0/{index}"),
+            new ChainInfo(
+                ChainId.Tron,
+                "TRX",
+                "TRON",
+                ChainSupportLevel.Supported,
+                "BIP44",
+                "m/44'/195'/0'/0/{index}"),
+            new ChainInfo(
+                ChainId.Sol,
+                "SOL",
+                "Solana",
+                ChainSupportLevel.Supported,
+                "SLIP-0010 ed25519",
+                "m/44'/501'/0'/{index}'"),
+            new ChainInfo(
+                ChainId.Ton,
+                "TON",
+                "TON",
+                ChainSupportLevel.Planned,
+                DerivationScheme: null,
+                ReceivePathTemplate: null),
+            new ChainInfo(
+                ChainId.Ada,
+                "ADA",
+                "Cardano",
+                ChainSupportLevel.Planned,
+                DerivationScheme: null,
+                ReceivePathTemplate: null),
+            new ChainInfo(
+                ChainId.Xmr,
+                "XMR",
+                "Monero",
+                ChainSupportLevel.ReceiveOnly,
+                "Monero ed25519 · restore-from-keys",
+                "umbrella-monero-v1"),
+        ];
+
+        ById = All.ToDictionary(c => c.Id);
+    }
+
+    public static IEnumerable<ChainInfo> Supported =>
+        All.Where(c => c.Support == ChainSupportLevel.Supported);
+
+    /// <summary>Real derivable address, but no public balance sync (Monero).</summary>
+    public static IEnumerable<ChainInfo> ReceiveOnly =>
+        All.Where(c => c.Support == ChainSupportLevel.ReceiveOnly);
+
+    public static IEnumerable<ChainInfo> Planned =>
+        All.Where(c => c.Support == ChainSupportLevel.Planned);
+
+    /// <summary>Chains that produce a genuine address the user can safely receive to.</summary>
+    public static bool HasRealAddress(ChainId id) =>
+        ById.TryGetValue(id, out var info) &&
+        info.Support is ChainSupportLevel.Supported or ChainSupportLevel.ReceiveOnly;
+
+    public static ChainInfo Get(ChainId id) => ById[id];
+
+    public static bool IsSupported(ChainId id) =>
+        ById.TryGetValue(id, out var info) && info.Support == ChainSupportLevel.Supported;
+}

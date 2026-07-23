@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{AA69FEB0-804F-4382-9709-2DC0727A8E66}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Umbrella.Wallet.App", "src\Umbrella.Wallet.App\Umbrella.Wallet.App.csproj", "{23B16B84-FDEF-4178-9523-036C7B339348}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Umbrella.Wallet.Core", "src\Umbrella.Wallet.Core\Umbrella.Wallet.Core.csproj", "{54ED0F73-2FDF-467B-B9DB-E9E96407921C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Umbrella.Wallet.Infrastructure", "src\Umbrella.Wallet.Infrastructure\Umbrella.Wallet.Infrastructure.csproj", "{685293E4-CB33-45F8-A85D-6F96385B9955}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{5813CCA1-380F-47B6-BB7E-573ECDF99012}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Umbrella.Wallet.Core.Tests", "tests\Umbrella.Wallet.Core.Tests\Umbrella.Wallet.Core.Tests.csproj", "{1D785239-6222-4D7D-9AA2-4554109D25BD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{23B16B84-FDEF-4178-9523-036C7B339348}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23B16B84-FDEF-4178-9523-036C7B339348}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23B16B84-FDEF-4178-9523-036C7B339348}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23B16B84-FDEF-4178-9523-036C7B339348}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54ED0F73-2FDF-467B-B9DB-E9E96407921C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54ED0F73-2FDF-467B-B9DB-E9E96407921C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54ED0F73-2FDF-467B-B9DB-E9E96407921C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54ED0F73-2FDF-467B-B9DB-E9E96407921C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{685293E4-CB33-45F8-A85D-6F96385B9955}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{685293E4-CB33-45F8-A85D-6F96385B9955}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{685293E4-CB33-45F8-A85D-6F96385B9955}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{685293E4-CB33-45F8-A85D-6F96385B9955}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D785239-6222-4D7D-9AA2-4554109D25BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D785239-6222-4D7D-9AA2-4554109D25BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D785239-6222-4D7D-9AA2-4554109D25BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D785239-6222-4D7D-9AA2-4554109D25BD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{23B16B84-FDEF-4178-9523-036C7B339348} = {AA69FEB0-804F-4382-9709-2DC0727A8E66}
+		{54ED0F73-2FDF-467B-B9DB-E9E96407921C} = {AA69FEB0-804F-4382-9709-2DC0727A8E66}
+		{685293E4-CB33-45F8-A85D-6F96385B9955} = {AA69FEB0-804F-4382-9709-2DC0727A8E66}
+		{1D785239-6222-4D7D-9AA2-4554109D25BD} = {5813CCA1-380F-47B6-BB7E-573ECDF99012}
+	EndGlobalSection
+EndGlobal
