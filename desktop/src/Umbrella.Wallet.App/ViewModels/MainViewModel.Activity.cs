@@ -237,6 +237,9 @@ public partial class MainViewModel
     private async Task LoadOnChainHistoryAsync()
     {
         if (string.IsNullOrEmpty(_unlockedMnemonic)) return;
+        // The wallet this load is for. It runs for seconds, fire-and-forget; if the wallet is locked or
+        // switched meanwhile, its rows belong to a wallet no longer on screen and are not written.
+        var epoch = _lockEpoch;
         // Decrypt this wallet's private transaction notes first, so each row is built with its note.
         await LoadTxNotesAsync();
         HistoryLoading = true;
@@ -316,6 +319,8 @@ public partial class MainViewModel
                 foreach (var t in await _history.GetSolanaAsync(sol!))
                     rows.Add((t.UnixMs, ToActivityRow(t)));
 
+            if (epoch != _lockEpoch) return;
+
             // Dedupe by explorer URL (a tx that touches two of the user's own addresses is one event).
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             _onChainRows.Clear();
@@ -336,8 +341,11 @@ public partial class MainViewModel
         }
         finally
         {
-            HistoryLoading = false;
-            HistorySynced = true;
+            if (epoch == _lockEpoch)
+            {
+                HistoryLoading = false;
+                HistorySynced = true;
+            }
         }
     }
 

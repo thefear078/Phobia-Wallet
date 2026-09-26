@@ -4228,6 +4228,7 @@ public partial class MainViewModel : ViewModelBase
         if (!IsUnlocked) return;
         _refreshCts?.Cancel();
         _refreshCts = new CancellationTokenSource();
+        var mine = _refreshCts;
         var ct = _refreshCts.Token;
         IsBusy = true;
         StatusMessage = Loc.Instance["status.refreshingLive"];
@@ -4268,6 +4269,11 @@ public partial class MainViewModel : ViewModelBase
             await Task.WhenAll(pricesTask, balancesTask);
             var prices = await pricesTask;
             var balanceResults = await balancesTask;
+
+            // Every write below goes into THIS wallet's account list. A lock or a switch cancels this
+            // token, and answers that arrive after it belong to a wallet no longer on screen — they are
+            // dropped here and after each later await, never written into the next wallet's list.
+            ct.ThrowIfCancellationRequested();
 
             _priceUsd = prices; // snapshot for the Send fiat estimate
             OnPropertyChanged(nameof(SendAmountFiat));
@@ -4354,6 +4360,7 @@ public partial class MainViewModel : ViewModelBase
                 .ToList();
             var watchBalances = await Task.WhenAll(
                 watchTargets.Select(x => _balances.GetBalanceAsync(x.Chain!.Value, x.Watch.Address, ct)));
+            ct.ThrowIfCancellationRequested();
 
             for (var w = 0; w < watchTargets.Count; w++)
             {
@@ -4425,7 +4432,9 @@ public partial class MainViewModel : ViewModelBase
         }
         finally
         {
-            IsBusy = false;
+            // Only the latest refresh owns the busy flag: a cancelled one finishing late must not clear
+            // it while the refresh that replaced it is still running.
+            if (ReferenceEquals(_refreshCts, mine)) IsBusy = false;
         }
     }
 
@@ -4437,13 +4446,13 @@ public partial class MainViewModel : ViewModelBase
         string address, string status,
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
         AddTokenRows(await _balances.GetTronTokensAsync(address, ct),
-            address, status, prices, marker: "TRC20 on TRON", chain: "TRON", suffix: "TRC20");
+            address, status, prices, marker: "TRC20 on TRON", chain: "TRON", suffix: "TRC20", ct: ct);
 
     private async Task AddEthTokenRowsAsync(
         string address, string status,
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
         AddTokenRows(await _balances.GetEthTokensAsync(address, ct),
-            address, status, prices, marker: "ERC20 on Ethereum", chain: "Ethereum", suffix: "ERC20");
+            address, status, prices, marker: "ERC20 on Ethereum", chain: "Ethereum", suffix: "ERC20", ct: ct);
 
     /// <summary>Adds/refreshes a Holdings row for every Jetton at a TON address. Read-only: this build
     /// reads jetton balances but does not send them, which the row's status says plainly.</summary>
@@ -4451,7 +4460,7 @@ public partial class MainViewModel : ViewModelBase
         string address, string status,
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
         AddTokenRows(await _balances.GetTonJettonsAsync(address, ct),
-            address, status, prices, marker: "Jetton on TON", chain: "TON", suffix: "Jetton");
+            address, status, prices, marker: "Jetton on TON", chain: "TON", suffix: "Jetton", ct: ct);
 
     /// <summary>Adds/refreshes a Holdings row for every SPL token at a Solana address. A failed read
     /// leaves the previous rows in place — "could not read" must not look like "sold everything".</summary>
@@ -4460,13 +4469,14 @@ public partial class MainViewModel : ViewModelBase
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
     {
         if (await _balances.GetSolTokensAsync(address, ct) is { } tokens)
-            AddTokenRows(tokens, address, status, prices, marker: "SPL on Solana", chain: "Solana", suffix: "SPL");
+            AddTokenRows(tokens, address, status, prices, marker: "SPL on Solana", chain: "Solana", suffix: "SPL", ct: ct);
     }
 
     /// <summary>Refreshes the NFT list from the wallet's Ethereum address (names + counts only).</summary>
     private async Task RefreshNftsAsync(string address, CancellationToken ct)
     {
         var nfts = await _balances.GetEthNftsAsync(address, ct);
+        ct.ThrowIfCancellationRequested();
         Nfts.Clear();
         foreach (var n in nfts) Nfts.Add(n);
         OnPropertyChanged(nameof(HasNfts));
@@ -4476,7 +4486,9 @@ public partial class MainViewModel : ViewModelBase
     private async Task AddEvmSideRowsAsync(
         string address, IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
     {
-        foreach (var (symbol, amount, network, canSend) in await _balances.GetEvmSideReadsAsync(address, ct))
+        var reads = await _balances.GetEvmSideReadsAsync(address, ct);
+        ct.ThrowIfCancellationRequested();
+        foreach (var (symbol, amount, network, canSend) in reads)
         {
             var previous = Accounts.FirstOrDefault(a => a.Derivation == EvmSideDerivation
                 && a.Address.Equals(address, StringComparison.OrdinalIgnoreCase)
@@ -4510,8 +4522,9 @@ public partial class MainViewModel : ViewModelBase
     private void AddTokenRows(
         IReadOnlyList<TokenBalance> tokens, string address, string status,
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices,
-        string marker, string chain, string suffix)
+        string marker, string chain, string suffix, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();   // an answer for a wallet no longer open is not written
         // Drop previous token rows for this address+network so removed or zeroed tokens don't linger.
         foreach (var stale in Accounts
                      .Where(a => a.Derivation == marker &&
@@ -4578,6 +4591,7 @@ public partial class MainViewModel : ViewModelBase
         {
             var result = await ExchangeConnectors.FetchBalancesAsync(
                 credential.Exchange, credential.ApiKey, credential.ApiSecret, credential.Passphrase, ct);
+            ct.ThrowIfCancellationRequested();
 
             if (!result.Ok)
             {
@@ -4589,6 +4603,7 @@ public partial class MainViewModel : ViewModelBase
 
             var prices = await _rates.GetUsdPricesAsync(
                 result.Assets.Select(a => a.Symbol).Distinct().ToList(), ct);
+            ct.ThrowIfCancellationRequested();
 
             foreach (var asset in result.Assets)
             {
