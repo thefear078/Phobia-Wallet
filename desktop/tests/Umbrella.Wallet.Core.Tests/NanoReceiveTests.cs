@@ -74,6 +74,16 @@ public sealed class NanoReceiveTests
         Assert.Null(NanoAccounts.TryDecode(address));
 
     [Fact]
+    public void A_pasted_address_in_another_case_or_the_old_prefix_is_sent_to_the_node_in_its_own_form()
+    {
+        // Nano's alphabet is lower-case only: the checksum accepts "NANO_1PU7…" but a node would not.
+        Assert.Equal(Address, NanoAccounts.Normalize(Address.ToUpperInvariant()));
+        Assert.Equal(Address, NanoAccounts.Normalize("xrb_" + Address["nano_".Length..]));
+        Assert.Equal(Address, NanoAccounts.Normalize("  " + Address + " "));
+        Assert.Null(NanoAccounts.Normalize("nano_not_an_address"));
+    }
+
+    [Fact]
     public void The_burn_address_is_a_valid_address()
     {
         // All-zero key: a well-known account that anyone can check against a block explorer.

@@ -486,7 +486,8 @@ public sealed class PublicChainBalanceClient
 
     private static async Task<ChainBalance?> ReadNanoAsync(string root, string address, CancellationToken ct)
     {
-        using var res = await Http.PostAsJsonAsync(root, NanoAccounts.AccountBalanceRequest(address), ct);
+        // The node reads the lower-case nano_ form only; a pasted address may be in another case.
+        using var res = await Http.PostAsJsonAsync(root, NanoAccounts.AccountBalanceRequest(NanoAccounts.Normalize(address)!), ct);
         if (!res.IsSuccessStatusCode) return null;
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
 

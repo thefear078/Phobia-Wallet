@@ -97,6 +97,14 @@ public static class NanoAccounts
 
     public static bool IsValid(string? address) => TryDecode(address) is not null;
 
+    /// <summary>
+    /// The form a node accepts: trimmed, lower-case (Nano's alphabet has no capitals), <c>nano_</c>
+    /// prefix. A pasted address in another case passes the checksum, and must not then fail at the node.
+    /// Null when the address is not valid.
+    /// </summary>
+    public static string? Normalize(string? address) =>
+        TryDecode(address) is { } key ? Address(key) : null;
+
     /// <summary>The node's <c>account_balance</c> request.</summary>
     public static object AccountBalanceRequest(string address) => new { action = "account_balance", account = address };
 
