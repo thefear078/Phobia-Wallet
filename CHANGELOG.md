@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+## [4.10.0] — 2026-09-30 — Umbrella is now Phobia; Monero seeds in every language
+
 ### Umbrella is now Phobia — a new name and a new look
 
 - **The wallet is called Phobia Wallet.** Same code, same keys, same vault: nothing about anyone's money
