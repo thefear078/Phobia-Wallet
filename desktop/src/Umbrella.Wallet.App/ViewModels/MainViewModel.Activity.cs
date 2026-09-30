@@ -243,6 +243,7 @@ public partial class MainViewModel
         // The wallet this load is for. It runs for seconds, fire-and-forget; if the wallet is locked or
         // switched meanwhile, its rows belong to a wallet no longer on screen and are not written.
         var epoch = _lockEpoch;
+        var load = ++_historyLoad;
         // Decrypt this wallet's private transaction notes first, so each row is built with its note.
         await LoadTxNotesAsync();
         HistoryLoading = true;
@@ -358,13 +359,15 @@ public partial class MainViewModel
         }
         finally
         {
-            if (epoch == _lockEpoch)
-            {
-                HistoryLoading = false;
-                HistorySynced = true;
-            }
+            // The latest load owns the spinner — a stale one that nothing replaced included, so a lock
+            // mid-load can never leave "fetching…" on screen for a wallet that starts no load of its own.
+            if (load == _historyLoad) HistoryLoading = false;
+            if (epoch == _lockEpoch) HistorySynced = true;
         }
     }
+
+    /// <summary>Counts history loads; only the newest one clears the loading flag.</summary>
+    private int _historyLoad;
 
     /// <summary>User-triggered re-fetch of on-chain history, so the Activity feed and its last-sync
     /// stamp can be refreshed on demand (roadmap §6). Best-effort; failures leave the feed untouched.</summary>
