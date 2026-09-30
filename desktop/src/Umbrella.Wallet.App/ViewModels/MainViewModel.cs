@@ -5213,6 +5213,7 @@ public partial class MainViewModel : ViewModelBase
         if (a.StartsWith('T') && a.Length == 34) return "TRX";
         if (a.Length == 48 && (a.StartsWith("UQ") || a.StartsWith("EQ") || a.StartsWith("kQ") || a.StartsWith("0Q"))) return "TON";
         if ((a.StartsWith('4') || a.StartsWith('8')) && a.Length is 95 or 106) return "XMR";
+        if (a.StartsWith('D') && a.Length == 35 && Umbrella.Wallet.Core.Chains.DecredAddress.IsValid(a)) return "DCR";
         if (a.StartsWith('D') && a.Length == 34) return "DOGE";
         if (a.StartsWith("bitcoincash:", StringComparison.OrdinalIgnoreCase)) return "BCH";
         if (a.StartsWith("t1", StringComparison.Ordinal) && a.Length == 35) return "ZEC"; // Zcash transparent
@@ -5711,6 +5712,7 @@ public partial class MainViewModel : ViewModelBase
         "ATOM" or "COSMOS" or "COSMOS HUB" => ChainId.Atom,
         "NEAR" or "NEAR PROTOCOL" => ChainId.Near,
         "XNO" or "NANO" => ChainId.Nano,
+        "DCR" or "DECRED" => ChainId.Dcr,
         "DOT" or "POLKADOT" => ChainId.Dot,
         _ => null,
     };
@@ -5779,6 +5781,7 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Near => "NEAR",
         ChainId.Dot => "DOT",
         ChainId.Nano => "XNO",
+        ChainId.Dcr => "DCR",
         _ => chain.ToString().ToUpperInvariant(),
     };
 

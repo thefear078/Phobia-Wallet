@@ -22,4 +22,5 @@ public enum ChainId
     Near,
     Dot,
     Nano,
+    Dcr,
 }

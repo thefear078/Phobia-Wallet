@@ -57,6 +57,12 @@ public static class AddressInspector
                 ? new("DOT", AddressValidity.Valid)
                 : new(string.Empty, AddressValidity.Unverified);
 
+        // Decred: Ds…/Dc…, 35 characters, with a double-BLAKE-256 checksum — so this is definitive. It must
+        // come BEFORE the Bitcoin family, which reads any leading 'D' as Dogecoin (Dogecoin's are 34
+        // characters): checked after it, a Decred address was reported as an invalid DOGE address.
+        if ((a.StartsWith("Ds", StringComparison.Ordinal) || a.StartsWith("Dc", StringComparison.Ordinal)) && a.Length == 35)
+            return new("DCR", DecredAddress.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
         // Bitcoin-family: NBitcoin validates the base58check / bech32 checksum against the network.
         var (sym, net) = BitcoinLikeNetwork(a);
         if (net is not null)
