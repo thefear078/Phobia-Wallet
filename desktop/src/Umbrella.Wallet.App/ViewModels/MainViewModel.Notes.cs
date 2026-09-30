@@ -37,14 +37,19 @@ public partial class MainViewModel
     private async Task LoadTxNotesAsync()
     {
         if (_unlockedMnemonic is null) { _txNotes = new(System.StringComparer.OrdinalIgnoreCase); return; }
+        var epoch = _lockEpoch;
         try
         {
             var loaded = await NoteStore().LoadAsync(_unlockedMnemonic);
+            // Decrypted for the wallet that was open when this started. If it was locked or switched
+            // meanwhile, these notes belong to another wallet: keeping them would show them there — and
+            // the next note saved would write them into that wallet's encrypted file.
+            if (epoch != _lockEpoch) return;
             _txNotes = new Dictionary<string, string>(loaded, System.StringComparer.OrdinalIgnoreCase);
         }
         catch
         {
-            _txNotes = new(System.StringComparer.OrdinalIgnoreCase);
+            if (epoch == _lockEpoch) _txNotes = new(System.StringComparer.OrdinalIgnoreCase);
         }
     }
 

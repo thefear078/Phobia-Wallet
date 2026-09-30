@@ -6,6 +6,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### Nano (XNO): receive and balance
+
+- **A Nano account from the same recovery phrase** — `m/44'/165'/0'`, the path Ledger, Trust Wallet and
+  Nault's BIP39 mode use, so the phrase shows the same account there. Nano signs with ed25519 over
+  BLAKE2b instead of SHA-512; the whole pipeline (seed → private key → public key → address) is pinned to
+  the Nano documentation's own test vector, so a wrong step fails the build instead of producing an
+  address nobody can spend from.
+- Addresses are checked by their BLAKE2b checksum; the old `xrb_` prefix is accepted as the same
+  account, and a pasted Nano address is recognised by its checksum.
+- **The balance counts receivable XNO.** Nano holds incoming funds as "receivable" until a signed receive
+  block pockets them; that money is yours either way, so it is shown. Sending — and pocketing — needs
+  signed blocks with proof of work, which this build does not do yet: the row says "Receive only", and the
+  note says to restore the phrase in Nault or a Ledger to move it.
+- The node is choosable (Nano.to, NanoSLO, SomeNano) with failover, and all three are named on the list
+  of who can see your addresses.
+
+### Switching wallets is one click
+
+- **The wallet name in the sidebar (and the wallet chip in the top or bottom bar) now opens a switcher**
+  listing every wallet, with its colour tag; one click opens that wallet — no trip through Settings.
+  "Manage or add wallets…" still leads to Settings → Wallets.
+- **Ctrl+Shift+W** jumps to the next wallet, wrapping round; the **Ctrl+K** palette lists your other
+  wallets by name.
+- The next wallet is opened BEFORE the current one is closed, with a notice while its vault is being
+  unlocked — the screen no longer drops to the lock screen in between — and a second click cannot start
+  a second unlock on top of the first.
+- The lock screen deliberately does **not** list your wallets: it would show their names to anyone who
+  can see a locked screen. Unlock, then switch.
+
 ### History for XRP and Stellar
 
 - **Activity now shows XRP and XLM transactions** — including ones made before this wallet was opened.

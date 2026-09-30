@@ -894,6 +894,7 @@ public partial class MainViewModel
         }
 
         var scans = await Task.WhenAll(targets.Select(t => ScanOrNullAsync(t.Symbol, t.Chain)));
+        ct.ThrowIfCancellationRequested();   // scanned for a wallet that may no longer be open
 
         for (var i = 0; i < targets.Count; i++)
         {

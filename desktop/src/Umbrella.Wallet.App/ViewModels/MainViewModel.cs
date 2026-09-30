@@ -3290,6 +3290,8 @@ public partial class MainViewModel : ViewModelBase
 
     public void LockVault()
     {
+        _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
+        ToastVisible = false;   // a notice about this wallet (or the one being opened) never outlives the lock
         _refreshCts?.Cancel();
         if (_unlockedMnemonic is not null)
         {
@@ -3464,26 +3466,70 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task SwitchWalletAsync(string? id)
     {
-        if (string.IsNullOrWhiteSpace(id) || id == _registry.Active?.Id) return;
-        var pw = _sessionPassword;               // capture before LockVault wipes it
-        _registry.SetActive(id);
-        LockVault();
-        _vault = BuildActiveVault();
-        HasVault = _vault.Exists;
-        RefreshWalletList();
+        if (string.IsNullOrWhiteSpace(id) || id == _registry.Active?.Id || _switchingWallet) return;
 
-        // Seamless switch when the common password matches (the normal case).
-        if (HasVault && !string.IsNullOrEmpty(pw))
+        // Never away from the recovery-phrase backup: switching locks this wallet, which would clear the
+        // phrase and the "I've written it down" gate with it, before it was ever confirmed.
+        if (PendingPhraseBackup) return;
+
+        bool opened;
+        _switchingWallet = true;
+        try
         {
+            opened = await SwitchWalletCoreAsync(id);
+        }
+        finally
+        {
+            // Released as soon as the vault question is settled — not after the balance refresh below,
+            // which can take many seconds and would silently swallow the user's next choice.
+            _switchingWallet = false;
+        }
+
+        if (opened) await RefreshLiveDataAsync();
+    }
+
+    /// <summary>True while a switch is opening the next vault: a second click (or Ctrl+Shift+W held
+    /// down) must not start another key derivation on top of the first.</summary>
+    private bool _switchingWallet;
+
+    /// <summary>Counts locks. A switch notes it before the key derivation and gives up if it moved: a
+    /// lock (Ctrl+L, auto-lock, lock-on-minimise) during "Opening…" must stay a lock, not be undone by
+    /// the unlock finishing a moment later.</summary>
+    private int _lockEpoch;
+
+    /// <summary>
+    /// Ctrl+Shift+W: the next wallet in the list, wrapping round. The quickest way between two wallets
+    /// someone uses side by side.
+    /// </summary>
+    [RelayCommand]
+    private async Task SwitchToNextWalletAsync()
+    {
+        if (!IsWorkspace) return;
+        var wallets = _registry.Wallets.ToList();
+        if (wallets.Count < 2) return;
+        var at = wallets.FindIndex(w => w.Id == _registry.Active?.Id);
+        await SwitchWalletAsync(wallets[(at + 1) % wallets.Count].Id);
+    }
+
+    /// <returns>True when the target wallet ended up open, so its balances should be read.</returns>
+    private async Task<bool> SwitchWalletCoreAsync(string id)
+    {
+        var pw = _sessionPassword;               // capture before LockVault wipes it
+        var target = _registry.Wallets.FirstOrDefault(w => w.Id == id);
+        if (target is null) return false;
+        var targetVault = new EncryptedFileSeedVault(_registry.VaultPathFor(target));
+
+        // Open the next wallet BEFORE closing this one. The key derivation takes a moment by design;
+        // meanwhile the current screen stays up with a notice, instead of dropping to the lock screen
+        // and leaving the user to wonder whether the click did anything.
+        string? mnemonic = null;
+        var epoch = _lockEpoch;
+        if (targetVault.Exists && !string.IsNullOrEmpty(pw))
+        {
+            ShowToast(string.Format(Loc.Instance["status.openingWallet"], target.Label), isError: false);
             try
             {
-                var mnemonic = await _vault.UnlockAsync(pw);
-                SetSessionPassword(pw);
-                SetUnlocked(mnemonic);
-                ActiveSection = "Portfolio";
-                StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
-                await RefreshLiveDataAsync();
-                return;
+                mnemonic = await targetVault.UnlockAsync(pw);
             }
             catch
             {
@@ -3491,10 +3537,32 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
+        // Locked while the vault was being opened: the lock wins. Nothing is switched and nothing is
+        // left unlocked; the user unlocks again, from the wallet they were in.
+        if (_lockEpoch != epoch) return false;
+
+        _registry.SetActive(id);
+        LockVault();
+        _vault = targetVault;
+        HasVault = _vault.Exists;
+        RefreshWalletList();
+
+        // Seamless switch when the common password matches (the normal case).
+        if (mnemonic is not null)
+        {
+            SetSessionPassword(pw!);
+            SetUnlocked(mnemonic);
+            ActiveSection = "Portfolio";
+            StatusMessage = string.Format(Loc.Instance["status.switchedTo"], ActiveWalletLabel);
+            ShowToast(StatusMessage, isError: false);
+            return true;
+        }
+
         SetupStage = HasVault ? SetupStage : "Welcome";
         StatusMessage = HasVault
             ? $"Switched to “{ActiveWalletLabel}” · enter its password"
             : $"“{ActiveWalletLabel}” · create or import to set it up";
+        return false;
     }
 
     /// <summary>Begin adding a new, independent wallet: registers it, makes it active, locks the current
@@ -4160,6 +4228,7 @@ public partial class MainViewModel : ViewModelBase
         if (!IsUnlocked) return;
         _refreshCts?.Cancel();
         _refreshCts = new CancellationTokenSource();
+        var mine = _refreshCts;
         var ct = _refreshCts.Token;
         IsBusy = true;
         StatusMessage = Loc.Instance["status.refreshingLive"];
@@ -4200,6 +4269,11 @@ public partial class MainViewModel : ViewModelBase
             await Task.WhenAll(pricesTask, balancesTask);
             var prices = await pricesTask;
             var balanceResults = await balancesTask;
+
+            // Every write below goes into THIS wallet's account list. A lock or a switch cancels this
+            // token, and answers that arrive after it belong to a wallet no longer on screen — they are
+            // dropped here and after each later await, never written into the next wallet's list.
+            ct.ThrowIfCancellationRequested();
 
             _priceUsd = prices; // snapshot for the Send fiat estimate
             OnPropertyChanged(nameof(SendAmountFiat));
@@ -4286,6 +4360,7 @@ public partial class MainViewModel : ViewModelBase
                 .ToList();
             var watchBalances = await Task.WhenAll(
                 watchTargets.Select(x => _balances.GetBalanceAsync(x.Chain!.Value, x.Watch.Address, ct)));
+            ct.ThrowIfCancellationRequested();
 
             for (var w = 0; w < watchTargets.Count; w++)
             {
@@ -4357,7 +4432,9 @@ public partial class MainViewModel : ViewModelBase
         }
         finally
         {
-            IsBusy = false;
+            // Only the latest refresh owns the busy flag: a cancelled one finishing late must not clear
+            // it while the refresh that replaced it is still running.
+            if (ReferenceEquals(_refreshCts, mine)) IsBusy = false;
         }
     }
 
@@ -4369,13 +4446,13 @@ public partial class MainViewModel : ViewModelBase
         string address, string status,
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
         AddTokenRows(await _balances.GetTronTokensAsync(address, ct),
-            address, status, prices, marker: "TRC20 on TRON", chain: "TRON", suffix: "TRC20");
+            address, status, prices, marker: "TRC20 on TRON", chain: "TRON", suffix: "TRC20", ct: ct);
 
     private async Task AddEthTokenRowsAsync(
         string address, string status,
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
         AddTokenRows(await _balances.GetEthTokensAsync(address, ct),
-            address, status, prices, marker: "ERC20 on Ethereum", chain: "Ethereum", suffix: "ERC20");
+            address, status, prices, marker: "ERC20 on Ethereum", chain: "Ethereum", suffix: "ERC20", ct: ct);
 
     /// <summary>Adds/refreshes a Holdings row for every Jetton at a TON address. Read-only: this build
     /// reads jetton balances but does not send them, which the row's status says plainly.</summary>
@@ -4383,7 +4460,7 @@ public partial class MainViewModel : ViewModelBase
         string address, string status,
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
         AddTokenRows(await _balances.GetTonJettonsAsync(address, ct),
-            address, status, prices, marker: "Jetton on TON", chain: "TON", suffix: "Jetton");
+            address, status, prices, marker: "Jetton on TON", chain: "TON", suffix: "Jetton", ct: ct);
 
     /// <summary>Adds/refreshes a Holdings row for every SPL token at a Solana address. A failed read
     /// leaves the previous rows in place — "could not read" must not look like "sold everything".</summary>
@@ -4392,13 +4469,14 @@ public partial class MainViewModel : ViewModelBase
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
     {
         if (await _balances.GetSolTokensAsync(address, ct) is { } tokens)
-            AddTokenRows(tokens, address, status, prices, marker: "SPL on Solana", chain: "Solana", suffix: "SPL");
+            AddTokenRows(tokens, address, status, prices, marker: "SPL on Solana", chain: "Solana", suffix: "SPL", ct: ct);
     }
 
     /// <summary>Refreshes the NFT list from the wallet's Ethereum address (names + counts only).</summary>
     private async Task RefreshNftsAsync(string address, CancellationToken ct)
     {
         var nfts = await _balances.GetEthNftsAsync(address, ct);
+        ct.ThrowIfCancellationRequested();
         Nfts.Clear();
         foreach (var n in nfts) Nfts.Add(n);
         OnPropertyChanged(nameof(HasNfts));
@@ -4408,7 +4486,9 @@ public partial class MainViewModel : ViewModelBase
     private async Task AddEvmSideRowsAsync(
         string address, IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
     {
-        foreach (var (symbol, amount, network, canSend) in await _balances.GetEvmSideReadsAsync(address, ct))
+        var reads = await _balances.GetEvmSideReadsAsync(address, ct);
+        ct.ThrowIfCancellationRequested();
+        foreach (var (symbol, amount, network, canSend) in reads)
         {
             var previous = Accounts.FirstOrDefault(a => a.Derivation == EvmSideDerivation
                 && a.Address.Equals(address, StringComparison.OrdinalIgnoreCase)
@@ -4442,8 +4522,9 @@ public partial class MainViewModel : ViewModelBase
     private void AddTokenRows(
         IReadOnlyList<TokenBalance> tokens, string address, string status,
         IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices,
-        string marker, string chain, string suffix)
+        string marker, string chain, string suffix, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();   // an answer for a wallet no longer open is not written
         // Drop previous token rows for this address+network so removed or zeroed tokens don't linger.
         foreach (var stale in Accounts
                      .Where(a => a.Derivation == marker &&
@@ -4510,6 +4591,7 @@ public partial class MainViewModel : ViewModelBase
         {
             var result = await ExchangeConnectors.FetchBalancesAsync(
                 credential.Exchange, credential.ApiKey, credential.ApiSecret, credential.Passphrase, ct);
+            ct.ThrowIfCancellationRequested();
 
             if (!result.Ok)
             {
@@ -4521,6 +4603,7 @@ public partial class MainViewModel : ViewModelBase
 
             var prices = await _rates.GetUsdPricesAsync(
                 result.Assets.Select(a => a.Symbol).Distinct().ToList(), ct);
+            ct.ThrowIfCancellationRequested();
 
             foreach (var asset in result.Assets)
             {
@@ -5138,6 +5221,7 @@ public partial class MainViewModel : ViewModelBase
         if (a.StartsWith('G') && Umbrella.Wallet.Core.Chains.StellarKeys.IsValidAccountId(a)) return "XLM";
         if (a.StartsWith("cosmos1", StringComparison.OrdinalIgnoreCase) && Umbrella.Wallet.Core.Chains.CosmosHub.IsValidAddress(a)) return "ATOM";
         if (a.StartsWith('1') && a.Length is 47 or 48 && Umbrella.Wallet.Core.Polkadot.Ss58.IsPolkadotAddress(a)) return "DOT";
+        if (Umbrella.Wallet.Core.Chains.NanoAccounts.IsValid(a)) return "XNO";   // nano_… / xrb_…, checksummed
         if ((a.StartsWith('1') || a.StartsWith('3')) && a.Length is >= 26 and <= 35) return "BTC";
         return null; // Solana / other base58 is ambiguous — keep the selected network
     }
@@ -5626,6 +5710,7 @@ public partial class MainViewModel : ViewModelBase
         "XLM" or "STELLAR" or "LUMENS" => ChainId.Xlm,
         "ATOM" or "COSMOS" or "COSMOS HUB" => ChainId.Atom,
         "NEAR" or "NEAR PROTOCOL" => ChainId.Near,
+        "XNO" or "NANO" => ChainId.Nano,
         "DOT" or "POLKADOT" => ChainId.Dot,
         _ => null,
     };
@@ -5693,6 +5778,7 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Atom => "ATOM",
         ChainId.Near => "NEAR",
         ChainId.Dot => "DOT",
+        ChainId.Nano => "XNO",
         _ => chain.ToString().ToUpperInvariant(),
     };
 
