@@ -22,6 +22,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - The node is choosable (Nano.to, NanoSLO, SomeNano) with failover, and all three are named on the list
   of who can see your addresses.
 
+### Switching wallets is one click
+
+- **The wallet name in the sidebar (and the wallet chip in the top or bottom bar) now opens a switcher**
+  listing every wallet, with its colour tag; one click opens that wallet — no trip through Settings.
+  "Manage or add wallets…" still leads to Settings → Wallets.
+- **Ctrl+Shift+W** jumps to the next wallet, wrapping round; the **Ctrl+K** palette lists your other
+  wallets by name.
+- The next wallet is opened BEFORE the current one is closed, with a notice while its vault is being
+  unlocked — the screen no longer drops to the lock screen in between — and a second click cannot start
+  a second unlock on top of the first.
+- The lock screen deliberately does **not** list your wallets: it would show their names to anyone who
+  can see a locked screen. Unlock, then switch.
+
 ### History for XRP and Stellar
 
 - **Activity now shows XRP and XLM transactions** — including ones made before this wallet was opened.
