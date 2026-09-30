@@ -57,6 +57,12 @@ public static class AddressInspector
                 ? new("DOT", AddressValidity.Valid)
                 : new(string.Empty, AddressValidity.Unverified);
 
+        // Decred: Ds…/Dc…, 35 characters, with a double-BLAKE-256 checksum — so this is definitive. It must
+        // come BEFORE the Bitcoin family, which reads any leading 'D' as Dogecoin (Dogecoin's are 34
+        // characters): checked after it, a Decred address was reported as an invalid DOGE address.
+        if ((a.StartsWith("Ds", StringComparison.Ordinal) || a.StartsWith("Dc", StringComparison.Ordinal)) && a.Length == 35)
+            return new("DCR", DecredAddress.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
+
         // Bitcoin-family: NBitcoin validates the base58check / bech32 checksum against the network.
         var (sym, net) = BitcoinLikeNetwork(a);
         if (net is not null)
@@ -83,11 +89,6 @@ public static class AddressInspector
         // Nano: base32 key + a BLAKE2b checksum, so this is definitive. "xrb_" is the old prefix.
         if (a.StartsWith("nano_", OIC) || a.StartsWith("xrb_", OIC))
             return new("XNO", NanoAccounts.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
-
-        // Decred: Ds…/Dc…, with a double-BLAKE-256 checksum, so this is definitive.
-        if ((a.StartsWith("Ds", StringComparison.Ordinal) || a.StartsWith("Dc", StringComparison.Ordinal)) && a.Length == 35
-            && DecredAddress.IsValid(a))
-            return new("DCR", AddressValidity.Valid);
 
         // NEAR named accounts: recognisable by suffix, but a name carries no checksum to verify.
         if (a.EndsWith(".near", OIC) && a.Length > 5)
