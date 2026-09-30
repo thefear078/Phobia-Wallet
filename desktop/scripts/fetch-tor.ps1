@@ -14,11 +14,11 @@ param(
     # https://dist.torproject.org/torbrowser/<Version>/sha256sums-unsigned-build.txt (see THIRD_PARTY_NOTICES.md).
     #
     # The version is part of the URL, and the Tor Project PRUNES old releases from the mirror — a pin
-    # left behind becomes a 404 rather than an old-but-working download. That is exactly what had
-    # happened here: 15.0.22 no longer exists upstream, while the hash below is the one Tor's own
-    # signed sums file publishes for 15.0.23.
-    [string]$Version = '15.0.23',
-    [string]$ExpectedSha256 = '231dad6b9cb401a54c260db7046965ef04e4f72ff071b140d423fb5da281ab1e',
+    # left behind becomes a 404 rather than an old-but-working download. It has happened twice: 15.0.22
+    # and then 15.0.23 vanished upstream (the supply-chain CI job caught the second). The hash below is
+    # the one Tor's signed sums file publishes for 15.0.24, signature checked against the pinned key.
+    [string]$Version = '15.0.24',
+    [string]$ExpectedSha256 = 'e9dc6ccc93cd6afa507193f4de284d6424233ff5102155cd2c94b259e8a22b65',
     [string]$Destination = (Join-Path $PSScriptRoot '..\src\Umbrella.Wallet.App\tor'),
     # The Tor Browser Developers signing key. The pinned hash is only worth as much as the file it
     # came from, and that file is signed — checking the signature is what makes the pin mean "what

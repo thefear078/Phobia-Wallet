@@ -19,11 +19,11 @@ project’s own signed hashes file — never a random mirror.
 | | |
 |---|---|
 | Component | `tor.exe` + GeoIP databases (Windows x86_64 expert bundle) |
-| Version | 15.0.23 |
-| Archive | `tor-expert-bundle-windows-x86_64-15.0.23.tar.gz` |
-| Source URL | https://dist.torproject.org/torbrowser/15.0.23/tor-expert-bundle-windows-x86_64-15.0.23.tar.gz |
-| SHA-256 | `231dad6b9cb401a54c260db7046965ef04e4f72ff071b140d423fb5da281ab1e` |
-| Hash source | https://dist.torproject.org/torbrowser/15.0.23/sha256sums-unsigned-build.txt (+ `.asc`) |
+| Version | 15.0.24 |
+| Archive | `tor-expert-bundle-windows-x86_64-15.0.24.tar.gz` |
+| Source URL | https://dist.torproject.org/torbrowser/15.0.24/tor-expert-bundle-windows-x86_64-15.0.24.tar.gz |
+| SHA-256 | `e9dc6ccc93cd6afa507193f4de284d6424233ff5102155cd2c94b259e8a22b65` |
+| Hash source | https://dist.torproject.org/torbrowser/15.0.24/sha256sums-unsigned-build.txt (+ `.asc`) |
 | Signing key | `EF6E286DDA85EA2A4BA7DE684E2C6E8793298290` — Tor Browser Developers |
 | License | BSD 3-Clause (Tor Project upstream `LICENSE`) |
 
@@ -43,7 +43,7 @@ project’s own signed hashes file — never a random mirror.
 ### Verifying binaries by hand
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.23.tar.gz
+Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.24.tar.gz
 Get-FileHash -Algorithm SHA256 .\monero-win-x64-v0.18.5.1.zip
 ```
 
