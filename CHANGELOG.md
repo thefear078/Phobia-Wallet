@@ -47,6 +47,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - The lock screen deliberately does **not** list your wallets: it would show their names to anyone who
   can see a locked screen. Unlock, then switch.
 
+### Decred (DCR): receive and balance
+
+- **A Decred account from the same recovery phrase** — `m/44'/42'/0'/0/0`, the account Trust Wallet,
+  Ledger and Exodus use. Decred's own wallet (Decrediton) derives from a different kind of seed and will
+  not show it; the chain note says so rather than let the two be confused.
+- Decred addresses look like Bitcoin's and are not: the key hash is RIPEMD-160 of **BLAKE-256** and the
+  checksum is a double BLAKE-256. BLAKE-256 (the SHA-3 finalist — not BLAKE2) is written from its
+  specification and pinned to its published digests; addresses are pinned to Decred's own dcrd vectors
+  and to Trust Wallet's phrase-to-address vectors, with and without a passphrase.
+- The balance is the unspent DCR dcrdata reports for the address; an answer that is not one reads as
+  unknown, never 0. Sending needs Decred's own transaction format and is not here yet — the row says
+  "Receive only".
+
 ### History for XRP and Stellar
 
 - **Activity now shows XRP and XLM transactions** — including ones made before this wallet was opened.

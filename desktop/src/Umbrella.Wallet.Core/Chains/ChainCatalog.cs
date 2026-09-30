@@ -141,6 +141,17 @@ public static class ChainCatalog
                 CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. Incoming XNO stays \"receivable\" until a signed receive block pockets it; this wallet shows it in the balance but cannot sign Nano blocks yet — restore the phrase in Nault or a Ledger to move it."),
+            // Decred — receive and balance. BIP44 m/44'/42'/0'/0/0 (Trust Wallet, Ledger, Exodus); a
+            // Bitcoin-shaped address with Decred's own hashing: RIPEMD-160 of BLAKE-256 for the key hash
+            // and double BLAKE-256 for the checksum, pinned to dcrd's and Trust Wallet's vectors
+            // (DecredReceiveTests). Sending builds a Decred transaction (its own serialisation and
+            // BLAKE-256 signature hash) and stays off until that path is proven. Decred's own wallet
+            // (dcrwallet / Decrediton) uses a different seed scheme and will NOT show this account.
+            new ChainInfo(
+                ChainId.Dcr, "DCR", "Decred", ChainSupportLevel.Supported, "BIP44 · secp256k1 · BLAKE-256", "m/44'/42'/0'/0/{index}",
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                HasTokens: false, Maturity: ChainMaturity.Beta,
+                PrivacyNote: "Public ledger. This is the BIP44 account Trust Wallet, Ledger and Exodus use — Decred's own wallet (Decrediton) derives differently and will not show it. Sending is not available here yet."),
         ];
 
         ById = All.ToDictionary(c => c.Id);

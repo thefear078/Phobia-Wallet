@@ -123,6 +123,11 @@ public static class ChainEndpoints
                 new("https://nanoslo.0x.no/proxy", "NanoSLO"),
                 new("https://node.somenano.com/proxy", "SomeNano"),
             ],
+            // dcrdata, the Decred project's block explorer API (address totals).
+            ["DCR"] =
+            [
+                new("https://dcrdata.decred.org", "Decred project (dcrdata)"),
+            ],
             // NEAR JSON-RPC. near.lava.build was discontinued in 2025 — these two answered view_account.
             ["NEAR"] =
             [

@@ -340,6 +340,7 @@ public sealed class PublicChainBalanceClient
                 ChainId.Atom => await GetAtomAsync(address, cancellationToken),
                 ChainId.Near => await GetNearAsync(address, cancellationToken),
                 ChainId.Nano => await GetNanoAsync(address, cancellationToken),
+                ChainId.Dcr => await GetDecredAsync(address, cancellationToken),
                 ChainId.Dot => await GetDotAsync(address, cancellationToken),
                 _ => null,
             };
@@ -493,6 +494,26 @@ public sealed class PublicChainBalanceClient
 
         return NanoAccounts.ParseAccountBalance(doc.RootElement) is { } nano
             ? new ChainBalance(ChainId.Nano, address, nano.Total, "XNO")
+            : null;
+    }
+
+    /// <summary>The dcrdata root: the user's chosen server, or the Decred project's.</summary>
+    private static string DcrRoot => ChainEndpoints.Resolve("DCR", "https://dcrdata.decred.org");
+
+    /// <summary>Unspent DCR at an address, from dcrdata's totals. Any failure is unknown, never zero.</summary>
+    private static Task<ChainBalance?> GetDecredAsync(string address, CancellationToken ct) =>
+        DecredAddress.IsValid(address)
+            ? FirstAnswerAsync("DCR", DcrRoot, root => ReadDecredAsync(root, address, ct), ct)
+            : Task.FromResult<ChainBalance?>(null);
+
+    private static async Task<ChainBalance?> ReadDecredAsync(string root, string address, CancellationToken ct)
+    {
+        using var res = await Http.GetAsync($"{root.TrimEnd('/')}/api/address/{Uri.EscapeDataString(address)}/totals", ct);
+        if (!res.IsSuccessStatusCode) return null;
+        using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+
+        return DecredAddress.ParseTotals(doc.RootElement) is { } dcr
+            ? new ChainBalance(ChainId.Dcr, address, dcr, "DCR")
             : null;
     }
 
@@ -1387,6 +1408,7 @@ public sealed class PublicMarketRatesClient
         ["ATOM"] = "cosmos",
         ["NEAR"] = "near",
         ["XNO"] = "nano",
+        ["DCR"] = "decred",
         ["BCH"] = "bitcoin-cash",
         ["ZEC"] = "zcash",
         // Tether trades a cent either side of $1; quoting it beats assuming exactly 1.00.
@@ -1416,6 +1438,7 @@ public sealed class PublicMarketRatesClient
         ["ATOM"] = "ATOMUSDT",
         ["NEAR"] = "NEARUSDT",
         ["XNO"] = "XNOUSDT",
+        ["DCR"] = "DCRUSDT",
         ["BCH"] = "BCHUSDT",
         ["ZEC"] = "ZECUSDT",
         ["USDC"] = "USDCUSDT",

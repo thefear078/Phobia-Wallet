@@ -77,6 +77,27 @@ public sealed class AddressInspectorTests
         Assert.Equal(AddressValidity.Valid, r.Validity);
     }
 
+    [Theory]
+    [InlineData("DsUZxxoHJSty8DCfwfartwTYbuhmVct7tJu", AddressValidity.Valid)]     // dcrd's own vector
+    [InlineData("Dcur2mcGjmENx4DhNqDctW5wJCVyT3Qeqkx", AddressValidity.Valid)]     // P2SH
+    [InlineData("DsUZxxoHJSty8DCfwfartwTYbuhmVct7tJv", AddressValidity.Invalid)]   // one character off
+    public void A_decred_address_is_named_decred_not_dogecoin(string address, AddressValidity validity)
+    {
+        // Every 'D' used to be read as Dogecoin first, so a Decred address came back as an invalid DOGE
+        // address — the wrong chain AND the wrong verdict.
+        var r = AddressInspector.Inspect(address);
+        Assert.Equal("DCR", r.Network);
+        Assert.Equal(validity, r.Validity);
+    }
+
+    [Fact]
+    public void A_dogecoin_address_is_still_dogecoin()
+    {
+        var r = AddressInspector.Inspect("DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L");
+        Assert.Equal("DOGE", r.Network);
+        Assert.Equal(AddressValidity.Valid, r.Validity);
+    }
+
     [Fact]
     public void A_corrupted_xrp_address_is_named_but_reported_invalid()
     {

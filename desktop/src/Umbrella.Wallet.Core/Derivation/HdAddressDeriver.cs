@@ -101,6 +101,7 @@ public sealed class HdAddressDeriver
             ChainId.Dot => DerivePolkadot(parsed, passphrase),
             ChainId.Eth => DeriveEthereum(masterKey, addressIndex),
             ChainId.Tron => DeriveTron(masterKey, addressIndex),
+            ChainId.Dcr => DeriveDecred(masterKey, addressIndex),
             ChainId.Sol => DeriveSolana(parsed, addressIndex, passphrase),
             ChainId.Xmr => DeriveMonero(parsed, passphrase),
             ChainId.Ton => DeriveTon(parsed, passphrase),
@@ -649,6 +650,18 @@ public sealed class HdAddressDeriver
 
         var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
         return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/133'/0'/0/{addressIndex}")).PrivateKey;
+    }
+
+    /// <summary>
+    /// Decred at m/44'/42'/0'/0/{index} — the BIP44 path Trust Wallet, Ledger and Exodus derive — with
+    /// Decred's own Hash160 (RIPEMD-160 of BLAKE-256) and double-BLAKE-256 checksum. Pinned to dcrd's
+    /// and Trust Wallet's vectors (DecredReceiveTests).
+    /// </summary>
+    private static ReceiveAddress DeriveDecred(ExtKey masterKey, uint addressIndex)
+    {
+        var path = new KeyPath($"44'/{DecredAddress.CoinType}'/0'/0/{addressIndex}");
+        var pub = masterKey.Derive(path).PrivateKey.PubKey.ToBytes();
+        return new ReceiveAddress(ChainId.Dcr, DecredAddress.FromPublicKey(pub), FormatPath(path), addressIndex);
     }
 
     private static ReceiveAddress DeriveTron(ExtKey masterKey, uint addressIndex)
