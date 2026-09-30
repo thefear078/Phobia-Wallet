@@ -37,6 +37,18 @@ public sealed class MoneroRestoreHeightTests : IDisposable
     }
 
     [Fact]
+    public void A_lone_keys_file_is_still_a_wallet()
+    {
+        // The cache can be gone (cleaned up, or never written) while the keys file stays: that is still a
+        // wallet to open — creating over it fails — and, from an older build, still one to restore again.
+        var wallet = Path.Combine(_dir, "umbrella-4abcdef01234");
+        File.WriteAllText(wallet + ".keys", "keys");
+
+        Assert.True(MoneroRpcService.WalletExists(wallet));
+        Assert.True(MoneroRpcService.NeedsFullRestore(wallet));
+    }
+
+    [Fact]
     public void No_wallet_yet_means_nothing_to_restore_again()
     {
         Assert.False(MoneroRpcService.NeedsFullRestore(Path.Combine(_dir, "umbrella-none")));

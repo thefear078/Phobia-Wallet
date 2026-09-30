@@ -59,7 +59,12 @@ public sealed class MoneroRpcService : IDisposable
     /// may be missing older funds and must be restored again. Pure, so the rule is testable.
     /// </summary>
     public static bool NeedsFullRestore(string walletFile) =>
-        File.Exists(walletFile) && !File.Exists(walletFile + ScanFromSuffix);
+        WalletExists(walletFile) && !File.Exists(walletFile + ScanFromSuffix);
+
+    /// <summary>A wallet is its ".keys" file — the cache beside it is rebuilt by a rescan when missing, so
+    /// either one on disk means "open it", and creating over a lone keys file fails ("already exists").</summary>
+    public static bool WalletExists(string walletFile) =>
+        File.Exists(walletFile + ".keys") || File.Exists(walletFile);
 
     /// <summary>
     /// The remote node this wallet asks about the chain — the single most consequential setting on
@@ -145,7 +150,7 @@ public sealed class MoneroRpcService : IDisposable
             }
         }
 
-        if (File.Exists(walletFile))
+        if (WalletExists(walletFile))
         {
             progress?.Report("Opening Monero wallet…");
             var opened = await CallAsync("open_wallet", new
