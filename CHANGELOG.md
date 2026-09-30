@@ -11,18 +11,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 ### Umbrella is now Phobia — a new name and a new look
 
 - **The wallet is called Phobia Wallet.** Same code, same keys, same vault: nothing about anyone's money
-  moves. The data folder, the installer's identity and the release file names stay as they were, so
-  installed and portable copies update in place.
+  moves. The data folder and the installer's identity stay as they were, so installed and portable copies
+  update in place.
+- **Phobia files.** Downloads are `PhobiaWallet-Setup-<v>.exe`, `PhobiaWallet-<v>-win-x64-portable.exe` and
+  `PhobiaWallet-<v>-linux-x64.tar.gz`; the program is `Phobia.exe` on Windows and `phobia-wallet` on Linux.
+  Every release also attaches the same files under their `UmbrellaWallet-` names (same bytes, listed in the
+  checksums), because copies from before the rename look for those when they update themselves. An upgrade
+  removes the old `Umbrella.exe` and its shortcuts; a pin on the old exe needs pinning again.
 - **A new logo** — two cut crystals, drawn as vectors so they are sharp from the 16 px title bar to the
   installer — and a new app icon rendered from it at every size. The launch screen shows the large
   Phobia crystal.
-- **Phobia crystal blue is the default theme**: the logo's blues on deep indigo, crystals drifting behind
-  the window (a drift across the lower half while locked or setting up, a few in the corners once the
-  wallet is open, clear of every card). An install still on the old gold default moves to it once; gold
-  stays in Settings as Honey gold.
-- **Every other theme was brought into the same design**: each page now has the soft glow of its own
-  accent, and the crystals and logo take the theme's hue (gold crystals on gold, violet on Kraken).
-- The brand artwork (logo, launch crystal, backgrounds) is kept in `brand/`.
+- **Phobia midnight violet is the default theme** — bold and quiet: a near-black page with a breath of
+  violet, charcoal cards on hairline edges, one solid violet for every call to action, headings in a clean
+  sans. The only scenery is a range of crystal mountains along the bottom of the lock and setup screens.
+  An install still on the old gold default moves to it once; gold stays in Settings as Honey gold.
+- **Two logos, each used once.** The two crystals are the main logo (title bar, sidebar, app icon, QR
+  codes, the lock and welcome screens); the large crystal is the secondary one (launch screen and the
+  balance card), re-coloured to each theme. Where a logo used to be repeated, small drawings now say what
+  the card is about: a shield for "your keys", a rising chart for the market, a dashed line in a chart
+  with nothing to show yet.
+- **Phobia's own effects, each with a switch** (Settings → Appearance → Animation) — and cheap: they run
+  at a low frame rate, pause whenever the window is not in front, and the card shine is a single sweep
+  every few seconds (continuous 60-frame effects measured at over half a CPU core): crystals floating
+  slowly up behind the page, crystal glints twinkling across it, and a sweep of light across the balance
+  card. The large crystal sits at the balance card's edge with its own light, a small crystal marks each
+  section heading, and faint crystal mountains hold the bottom of the wallet screens. Umbrella's rain is
+  gone; stickers are off by default (Settings → Appearance → Stickers brings them back).
+- **Every other theme was brought into the same design**: each page has the soft glow of its own accent,
+  and the logos and mountains take the theme's hue.
+- **Brand kit** in `brand/`: both logos, the channel picture, the colours, and posters (portrait and
+  landscape) in all six languages, rendered from real screens of the wallet in each language.
+- The Telegram channel picture inside the wallet was still the umbrella; it is the Phobia crystal now.
+- The coin status on Receive and the asset pages ("Ready", "Receive only"…) was English in every
+  language; it follows the wallet's language now.
 - **Linux:** the tarball now carries the Phobia icon and `install-desktop-entry.sh`, which adds the
   wallet to your application menu (pointing at wherever you extracted it).
 

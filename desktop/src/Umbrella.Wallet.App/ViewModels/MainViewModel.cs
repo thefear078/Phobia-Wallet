@@ -399,28 +399,16 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(LottieRepeat));
-            OnPropertyChanged(nameof(RainVisible));
             OnPropertyChanged(nameof(AuroraVisible));
-            OnPropertyChanged(nameof(PortfolioVideoOn));
+            OnPropertyChanged(nameof(FloatingCrystalsVisible));
+            OnPropertyChanged(nameof(CrystalGlintsVisible));
+            OnPropertyChanged(nameof(CardShineVisible));
             if (IsUnlocked) PushActivity("Settings", "Animations", value ? "on" : "off", "changed", "now");
         }
     }
 
-    /// <summary>Rain layer toggle — individual, gated by the master motion toggle.</summary>
-    public bool RainEnabled
-    {
-        get => _uiSettings.RainEnabled;
-        set
-        {
-            if (_uiSettings.RainEnabled == value) return;
-            _uiSettings.RainEnabled = value;
-            _uiSettings.Save();
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(RainVisible));
-        }
-    }
-
-    /// <summary>Sticker (Lottie) toggle — individual, gated by the master motion toggle.</summary>
+    /// <summary>Stickers (Lottie) shown at all — off by default; the window leaves every sticker out
+    /// without them. While shown, they loop only when motion is on too (<see cref="LottieRepeat"/>).</summary>
     public bool StickersEnabled
     {
         get => _uiSettings.StickersEnabled;
@@ -448,28 +436,54 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Portfolio-card video toggle — individual, gated by the master motion toggle. On swaps
-    /// the still photo for the looping rain footage behind the balance.</summary>
-    public bool PortfolioVideo
+    /// <summary>The aurora glow shows only when both the master motion toggle and the aurora toggle are on.</summary>
+    public bool AuroraVisible => AnimationsEnabled && AuroraEnabled;
+
+    /// <summary>Crystals floating up behind the page — individual, gated by the master motion toggle.</summary>
+    public bool FloatingCrystals
     {
-        get => _uiSettings.PortfolioVideo;
+        get => _uiSettings.FloatingCrystals;
         set
         {
-            if (_uiSettings.PortfolioVideo == value) return;
-            _uiSettings.PortfolioVideo = value;
+            if (_uiSettings.FloatingCrystals == value) return;
+            _uiSettings.FloatingCrystals = value;
             _uiSettings.Save();
             OnPropertyChanged();
-            OnPropertyChanged(nameof(PortfolioVideoOn));
+            OnPropertyChanged(nameof(FloatingCrystalsVisible));
         }
     }
 
-    /// <summary>The ambient rain shows only when both the master motion toggle and the rain toggle are on.</summary>
-    public bool RainVisible => AnimationsEnabled && RainEnabled;
-    /// <summary>The aurora glow shows only when both the master motion toggle and the aurora toggle are on.</summary>
-    public bool AuroraVisible => AnimationsEnabled && AuroraEnabled;
-    /// <summary>The balance card plays the rain footage only when both the master motion toggle and the
-    /// portfolio-video toggle are on; otherwise it shows a still photo.</summary>
-    public bool PortfolioVideoOn => AnimationsEnabled && PortfolioVideo;
+    /// <summary>Twinkling glints — individual, gated by the master motion toggle.</summary>
+    public bool CrystalGlints
+    {
+        get => _uiSettings.CrystalGlints;
+        set
+        {
+            if (_uiSettings.CrystalGlints == value) return;
+            _uiSettings.CrystalGlints = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CrystalGlintsVisible));
+        }
+    }
+
+    /// <summary>The sweep of light across the balance card — individual, gated by the master motion toggle.</summary>
+    public bool CardShine
+    {
+        get => _uiSettings.CardShine;
+        set
+        {
+            if (_uiSettings.CardShine == value) return;
+            _uiSettings.CardShine = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CardShineVisible));
+        }
+    }
+
+    public bool FloatingCrystalsVisible => AnimationsEnabled && FloatingCrystals;
+    public bool CrystalGlintsVisible => AnimationsEnabled && CrystalGlints;
+    public bool CardShineVisible => AnimationsEnabled && CardShine;
 
     /// <summary>-1 = loop forever (stickers on); 0 = play once and settle. Off if either the master or
     /// the sticker toggle is disabled.</summary>
@@ -1505,9 +1519,9 @@ public partial class MainViewModel : ViewModelBase
         new("4.10", "Umbrella is now Phobia",
             "Same wallet, new name and a new look.\n\n" +
             "• Nothing about your money changes. Your recovery phrase, your addresses and your encrypted vault are exactly where they were, and every setting carries over.\n" +
-            "• The crystal logo and a deep-blue theme drawn from it are the new default. If you liked the gold, it is still in Settings → Appearance as Honey gold, and every other theme now shares the same soft glow and crystals in its own colours.\n" +
+            "• A new crystal logo and a bold, quiet midnight-violet theme are the new default. If you liked the gold, it is still in Settings → Appearance as Honey gold, and every other theme shares the same design in its own colours. Crystals float behind the page, glints twinkle and light sweeps the balance card — each can be switched off in Settings → Appearance. Stickers are off by default and can be turned back on there too.\n" +
             "• Monero seeds in all 12 of Monero's languages — Chinese included — now import as a Monero-only wallet.\n\n" +
-            "The official channel and the GitHub releases are where they were; download files keep their UmbrellaWallet- names for one more release so every installed copy can update itself.",
+            "The official channel and the GitHub releases are where they were. Downloads are named PhobiaWallet- now, and the old UmbrellaWallet- names are attached as well, so every installed copy can still update itself.",
             "2026-09-30"),
         new("4.7", "Version 4.7 — you choose which server sees your addresses",
             "Your keys never leave your device. That is true, and every wallet says it.\n\n" +

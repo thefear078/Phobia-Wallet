@@ -25,7 +25,7 @@ public static class Theming
     /// </summary>
     public static IReadOnlyList<ThemeOption> Themes { get; } =
     [
-        new("phobia", "Phobia · crystal blue"),
+        new("phobia", "Phobia · midnight violet"),
         new("umbrella", "Honey gold · light on black"),
         new("navy", "Navy · the classic blue"),
         new("purple", "The fear · monochrome noir"),
@@ -60,19 +60,18 @@ public static class Theming
 
     private static readonly Dictionary<string, string[]> Palettes = new()
     {
-        // Phobia — the signature look, and the default: the crystal logo's blues on the deep indigo of
-        // its artwork (#010165 at the edges, a #25398F glow in the middle). Surfaces are indigo rather
-        // than grey so the page, the cards and the crystals read as one place; the accent is the
-        // logo's front facet, deep enough that button labels are white; gains in a cool green that
-        // stays clear of the blue.
+        // Phobia — the signature look, and the default. Bold and quiet: a near-black page with a breath of
+        // violet in it, dark charcoal cards on hairline edges, one violet accent taken from the crystal's
+        // deep facets (white labels on it, 6.3:1), the crystal's own blue kept for the logos. Everything
+        // else is left out on purpose.
         // bg        bgAlt      card       input      cardAlt    hover      bd         bd2        bd3        accent     accentBr   accentHv   accentSel  accentDim  text       textSoft   textDim    textMut    pos        inverse    inverseHv  inverseTx
         ["phobia"] =
         [
-            "#02034A", "#03045A", "#080C5C", "#060953", "#0E1470", "#141C80",
-            "#161D78", "#212A90", "#3240AA",
-            "#316EE5", "#2F6BEF", "#5AA9FF", "#10197A", "#13207F",
-            "#F3F6FF", "#C9D3F5", "#8F9BD0", "#6A76B0", "#37E0A0",
-            "#F3F6FF", "#FFFFFF", "#02034A",
+            "#0A0A10", "#0D0D14", "#14141C", "#101018", "#1A1A24", "#20202C",
+            "#22222E", "#2C2C3A", "#3A3A4C",
+            "#5B3FE8", "#5B3FE8", "#7A63F5", "#231A55", "#1C1640",
+            "#F4F4F8", "#C9C9D6", "#8C8CA0", "#6C6C82", "#3DDC97",
+            "#F4F4F8", "#FFFFFF", "#0A0A10",
         ],
         // Honey gold — Umbrella's signature look and its default, kept under its old id: gold light on black. Near-neutral blacks with
         // only a breath of warmth, so the gold reads as light on the surface rather than a tint over it;
@@ -312,17 +311,17 @@ public static class Theming
     {
         if (id == "phobia")
         {
-            // The artwork's own light: a soft glow a little right of centre, deep indigo at the edges.
+            // Near-black, with a breath of violet light from the top right — and nothing else.
             var glow = new RadialGradientBrush
             {
-                Center = new RelativePoint(0.62, 0.42, RelativeUnit.Relative),
-                GradientOrigin = new RelativePoint(0.62, 0.42, RelativeUnit.Relative),
-                RadiusX = new RelativeScalar(0.75, RelativeUnit.Relative),
-                RadiusY = new RelativeScalar(0.85, RelativeUnit.Relative),
+                Center = new RelativePoint(0.85, 0.0, RelativeUnit.Relative),
+                GradientOrigin = new RelativePoint(0.85, 0.0, RelativeUnit.Relative),
+                RadiusX = new RelativeScalar(0.9, RelativeUnit.Relative),
+                RadiusY = new RelativeScalar(0.9, RelativeUnit.Relative),
             };
-            glow.GradientStops.Add(new GradientStop(Color.Parse("#16217A"), 0.0));
-            glow.GradientStops.Add(new GradientStop(Color.Parse("#070A62"), 0.45));
-            glow.GradientStops.Add(new GradientStop(Color.Parse("#02034A"), 1.0));
+            glow.GradientStops.Add(new GradientStop(Color.Parse("#19132F"), 0.0));
+            glow.GradientStops.Add(new GradientStop(Color.Parse("#0D0C15"), 0.55));
+            glow.GradientStops.Add(new GradientStop(Color.Parse("#0A0A10"), 1.0));
             return glow;
         }
 
@@ -348,7 +347,7 @@ public static class Theming
 
     public static string Current { get; private set; } = DefaultTheme;
 
-    /// <summary>The theme a fresh install opens in — Phobia's crystal blue.</summary>
+    /// <summary>The theme a fresh install opens in — Phobia's midnight violet.</summary>
     public const string DefaultTheme = "phobia";
 
     /// <summary>Light themes need dark artwork; the solid-white logo would vanish. Decided from the
@@ -502,6 +501,7 @@ public static class Theming
         resources["UmHeroGradient"] = hero;
 
         PublishSignature(resources, palette, hero, accent);
+        if (id == DefaultTheme) PublishPhobiaSignature(resources);
 
         Current = id;
     }
@@ -525,7 +525,6 @@ public static class Theming
         resources["UmHeroUnderlay"] = Brushes.Transparent;
         resources["UmHeroShade"] = Color.Parse("#B3060B14");
         resources["UmHeroShadeClear"] = Color.Parse("#00060B14");
-        resources["UmHeroVideoOpacity"] = 0.6;
 
         // Action tiles: dark, with the accent only in the icon — and a hairline of it on hover.
         resources["UmDiscFill"] = Solid("UmCard");
@@ -546,6 +545,62 @@ public static class Theming
         resources["UmNavActiveFill"] = navFill;
         resources["UmNavActiveIcon"] = Solid("UmAccentBright");
         resources["UmNavActiveText"] = Solid("UmText");
+
+        // Buttons and card edges in this theme's plain form; Phobia replaces them with its own.
+        resources["UmPrimaryFill"] = Solid("UmAccentBright");
+        resources["UmPrimaryFillHover"] = Solid("UmAccentHover");
+        resources["UmPrimaryGlow"] = new BoxShadows(new BoxShadow { Color = Colors.Transparent });
+        resources["UmCardEdge"] = Solid("UmBorder");
+        resources["UmAccent2"] = Solid("UmAccentHover");
+    }
+
+    /// <summary>
+    /// Phobia's own finish, on top of the treatment every theme gets — restraint more than decoration:
+    /// <list type="bullet">
+    /// <item>Call-to-action buttons are one solid violet with a soft glow of it underneath.</item>
+    /// <item>Cards are charcoal on a hairline edge that is a shade lighter at the top.</item>
+    /// <item>The balance card is the same charcoal with violet light in its top-right corner.</item>
+    /// <item>The page you are on is marked by a violet wash.</item>
+    /// </list>
+    /// Every other theme publishes the plain versions of the same keys (PublishSignature), so nothing of
+    /// Phobia's lingers after a switch.
+    /// </summary>
+    private static void PublishPhobiaSignature(Avalonia.Controls.IResourceDictionary resources)
+    {
+        static LinearGradientBrush Sweep(double x1, double y1, double x2, double y2, params (string Colour, double At)[] stops)
+        {
+            var brush = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(x1, y1, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(x2, y2, RelativeUnit.Relative),
+            };
+            foreach (var (colour, at) in stops) brush.GradientStops.Add(new GradientStop(Color.Parse(colour), at));
+            return brush;
+        }
+
+        resources["UmPrimaryFill"] = new SolidColorBrush(Color.Parse("#5B3FE8"));
+        resources["UmPrimaryFillHover"] = new SolidColorBrush(Color.Parse("#6A50F0"));
+        resources["UmPrimaryGlow"] = new BoxShadows(new BoxShadow
+        {
+            OffsetY = 8, Blur = 24, Spread = -10, Color = Color.Parse("#905B3FE8"),
+        });
+        resources["UmCardEdge"] = Sweep(0, 0, 0, 1, ("#30303F", 0), ("#1E1E29", 1));
+
+        var hero = new RadialGradientBrush
+        {
+            Center = new RelativePoint(1.0, 0.0, RelativeUnit.Relative),
+            GradientOrigin = new RelativePoint(1.0, 0.0, RelativeUnit.Relative),
+            RadiusX = new RelativeScalar(1.1, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(1.3, RelativeUnit.Relative),
+        };
+        hero.GradientStops.Add(new GradientStop(Color.Parse("#2E2270"), 0.0));
+        hero.GradientStops.Add(new GradientStop(Color.Parse("#17162A"), 0.55));
+        hero.GradientStops.Add(new GradientStop(Color.Parse("#14141C"), 1.0));
+        resources["UmHeroSurface"] = hero;
+        resources["UmHeroWash"] = Brushes.Transparent;
+        resources["UmHeroEdge"] = new SolidColorBrush(Color.Parse("#2A2A3A"));
+        resources["UmNavActiveFill"] = Sweep(0, 0.5, 1, 0.5, ("#385B3FE8", 0), ("#085B3FE8", 1));
+        resources["UmAccent2"] = new SolidColorBrush(Color.Parse("#4E7BFF"));
     }
 
     /// <summary>Perceptual-ish brightness in 0..1, to decide dark-vs-light text on a colour.</summary>

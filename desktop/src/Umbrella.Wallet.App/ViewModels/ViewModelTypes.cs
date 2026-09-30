@@ -124,7 +124,16 @@ public sealed record WalletAccountViewModel(
     };
 
     public bool IsReady => SupportStatus is "Ready" or "Watch" or "Receive only";
-    public string StatusLabel => SupportStatus == "Planned" ? "Not ready" : SupportStatus;
+    /// <summary>The status in the reader's language. SupportStatus itself stays an English token: code
+    /// compares against it.</summary>
+    public string StatusLabel => SupportStatus switch
+    {
+        "Ready" => Loc.Instance["support.ready"],
+        "Receive only" => Loc.Instance["support.receiveOnly"],
+        "Watch" => Loc.Instance["support.watch"],
+        "Planned" => Loc.Instance["support.notReady"],
+        _ => SupportStatus,
+    };
 
     /// <summary>
     /// Which chain this address actually lives on. Sending a coin over the wrong network is one

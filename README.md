@@ -11,8 +11,8 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 <sub>an independent project by <b>the fear</b></sub>
 
 > **Umbrella Wallet is now Phobia Wallet.** Same code, same keys, same encrypted vault — a new name and
-> a new look. Installed copies update in place; the release files keep their `UmbrellaWallet-` names for
-> one more release so every copy in use can still find its update.
+> a new look. Installed copies update in place: each release also carries its files under the old
+> `UmbrellaWallet-` names, so copies from before the rename still find their update.
 
 <br/>
 
@@ -38,7 +38,8 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 [The rules](MANIFESTO.md) ·
 [Threat model](THREAT_MODEL.md) ·
 [Privacy](PRIVACY.md) ·
-[**Docs index**](docs/INDEX.md)
+[**Docs index**](docs/INDEX.md) ·
+[Brand kit & posters](brand/README.md)
 
 <br/>
 
@@ -152,10 +153,12 @@ You pay the network's miner/validator fee and nothing else. See [What this costs
 | **Receive** | **Settings** |
 | <img src="docs/assets/screenshot-receive-v410.png" alt="Receive"/> | <img src="docs/assets/screenshot-settings-v410.png" alt="Settings"/> |
 
-The default look is **Phobia's crystal blue**: the logo's own blues on deep indigo, crystals drifting
-behind the window, charts drawn as lines of light. **21 themes** share that design in their own colours —
-the glow behind the page, the crystals and the logo all take the theme's hue — and the gold that was
-Umbrella's default is still there as **Honey gold**:
+The default look is **Phobia's midnight violet** — bold and quiet: a near-black page, charcoal cards,
+one violet accent, clean type, crystal mountains on the horizon and the large crystal on the balance card.
+Motion is Phobia's own and each piece has a switch: crystals floating up behind the page, glints
+twinkling across it, a sweep of light over the balance card. **21 themes**
+share that design in their own colours — the glow behind the page, the mountains and both logos take the
+theme's hue — and the gold that was Umbrella's default is still there as **Honey gold**:
 
 | Honey gold · light on black | Kraken · abyssal violet |
 |---|---|
@@ -210,9 +213,9 @@ This is the icon you will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | `UmbrellaWallet-Setup-4.10.0.exe` |
-| **Windows portable** | `UmbrellaWallet-4.10.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
-| **Linux** | `UmbrellaWallet-4.10.0-linux-x64.tar.gz` |
+| **Windows installer** | `PhobiaWallet-Setup-4.10.0.exe` |
+| **Windows portable** | `PhobiaWallet-4.10.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
+| **Linux** | `PhobiaWallet-4.10.0-linux-x64.tar.gz` |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
@@ -228,7 +231,7 @@ sha256sum -c SHA256SUMS-4.10.0.txt
 
 ```powershell
 # Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\UmbrellaWallet-Setup-4.10.0.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-4.10.0.exe -Algorithm SHA256
 ```
 
 If the hash does not match, do not run it. Better still, [build it yourself](docs/building.md) — the

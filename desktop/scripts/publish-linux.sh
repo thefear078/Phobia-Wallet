@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 # Portable version extraction (avoids grep -P, which some Git Bash locales reject).
 VERSION="$(sed -n 's/.*<Version>\([^<]*\)<\/Version>.*/\1/p' src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj)"
-OUT="dist/linux/umbrella-wallet-${VERSION}-linux-x64"
+OUT="dist/linux/phobia-wallet-${VERSION}-linux-x64"
 
 echo "Publishing Phobia Wallet ${VERSION} for linux-x64…"
 dotnet publish src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj \
@@ -64,7 +64,7 @@ cat > "$dir/phobia-wallet.desktop" <<EOF
 Type=Application
 Name=Phobia Wallet
 Comment=Self-custody crypto wallet
-Exec="$here/Umbrella.Wallet.App"
+Exec="$here/phobia-wallet"
 Icon=$here/phobia.png
 Terminal=false
 Categories=Finance;Office;
@@ -73,12 +73,16 @@ echo "Added: $dir/phobia-wallet.desktop"
 ENTRY
 chmod +x "${OUT}/install-desktop-entry.sh"
 
+# The program is called phobia-wallet. The assembly keeps its name (its resources are addressed by it);
+# a single-file apphost reads its own bundle, so renaming the file itself is safe.
+mv -f "${OUT}/Umbrella.Wallet.App" "${OUT}/phobia-wallet"
+
 # Ensure the app itself is executable in the tarball (the .NET apphost + bundled helpers).
-chmod +x "${OUT}/Umbrella.Wallet.App" 2>/dev/null || true
+chmod +x "${OUT}/phobia-wallet" 2>/dev/null || true
 chmod +x "${OUT}/tor/tor" "${OUT}/monero/monero-wallet-rpc" 2>/dev/null || true
 
 echo "Packing…"
-tar -czf "dist/linux/umbrella-wallet-${VERSION}-linux-x64.tar.gz" -C dist/linux \
-    "umbrella-wallet-${VERSION}-linux-x64"
-echo "Done: dist/linux/umbrella-wallet-${VERSION}-linux-x64.tar.gz"
-echo "Run with: ./Umbrella.Wallet.App  (./install-desktop-entry.sh adds it to the app menu)"
+tar -czf "dist/linux/phobia-wallet-${VERSION}-linux-x64.tar.gz" -C dist/linux \
+    "phobia-wallet-${VERSION}-linux-x64"
+echo "Done: dist/linux/phobia-wallet-${VERSION}-linux-x64.tar.gz"
+echo "Run with: ./phobia-wallet  (./install-desktop-entry.sh adds it to the app menu)"

@@ -114,6 +114,7 @@ public partial class MainWindow : Window
         if (_observed is not null)
         {
             _observed.PropertyChanged += OnViewModelPropertyChanged;
+            Classes.Set("nostickers", !_observed.StickersEnabled);
             UpdateCaptureProtection();
             ApplyMobileMode();
             WirePickers(_observed);
@@ -225,6 +226,11 @@ public partial class MainWindow : Window
         if (e.PropertyName is nameof(MainViewModel.ActiveSection))
         {
             PageScroll.Offset = default;
+        }
+
+        if (e.PropertyName is nameof(MainViewModel.StickersEnabled) && _observed is not null)
+        {
+            Classes.Set("nostickers", !_observed.StickersEnabled);
         }
 
         if (e.PropertyName is nameof(MainViewModel.IsBackupStage)

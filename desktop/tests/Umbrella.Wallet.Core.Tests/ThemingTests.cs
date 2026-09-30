@@ -150,14 +150,14 @@ public sealed class ThemingTests
     }
 
     [Fact]
-    public void The_default_is_Phobia_blue_and_the_gold_is_still_offered()
+    public void The_default_is_Phobia_violet_and_the_gold_is_still_offered()
     {
-        // The wallet became Phobia and its look blue; the gold that was the default is still there for
+        // The wallet became Phobia and its look violet; the gold that was the default is still there for
         // everyone who picks it (under its old id, so a saved choice keeps working).
         Assert.Equal("phobia", Theming.DefaultTheme);
         Assert.Equal(Theming.DefaultTheme, Theming.Themes[0].Id);
         var blue = Color.Parse(Theming.PaletteOf("phobia")!["UmAccentBright"]);
-        Assert.True(blue.B > 0xC0 && blue.B > blue.R + 0x80, $"the default accent is not blue: {blue}");
+        Assert.True(blue.B > 0xC0 && blue.B > blue.R + 0x80, $"the default accent is not violet-blue: {blue}");
         var gold = Color.Parse(Theming.PaletteOf("umbrella")!["UmAccentBright"]);
         Assert.True(gold.R > 0xE0 && gold.G > 0xB0 && gold.B < 0x70, $"the gold theme is not gold: {gold}");
         Assert.True(Theming.IsKnown("navy"));
@@ -166,14 +166,23 @@ public sealed class ThemingTests
     [Fact]
     public void A_settings_file_on_the_old_gold_default_moves_to_blue_once()
     {
-        var old = new UiSettings { Theme = "umbrella", BrandVersion = 0 };
+        var old = new UiSettings { Theme = "umbrella", BrandVersion = 0, StickersEnabled = true };
         Assert.True(UiSettings.MoveToPhobia(old));
         Assert.Equal("phobia", old.Theme);
+        Assert.False(old.StickersEnabled);   // Phobia's look is clean: stickers become an opt-in
 
-        // Picked gold again afterwards: kept.
+        // Picked gold and stickers again afterwards: kept.
         old.Theme = "umbrella";
+        old.StickersEnabled = true;
         Assert.False(UiSettings.MoveToPhobia(old));
         Assert.Equal("umbrella", old.Theme);
+        Assert.True(old.StickersEnabled);
+
+        // Someone on the first Phobia build who then picked gold keeps it; only stickers go.
+        var beta = new UiSettings { Theme = "umbrella", BrandVersion = 1, StickersEnabled = true };
+        Assert.True(UiSettings.MoveToPhobia(beta));
+        Assert.Equal("umbrella", beta.Theme);
+        Assert.False(beta.StickersEnabled);
 
         // Someone who had chosen another theme keeps it.
         var nord = new UiSettings { Theme = "nord", BrandVersion = 0 };

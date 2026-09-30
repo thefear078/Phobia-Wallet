@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 
 namespace Umbrella.Wallet.App.Controls;
 
@@ -36,6 +39,22 @@ internal static class CrystalPalette
         var (r, g, b) = FromHsl(th, saturation, l);
         return Color.FromArgb(alpha, r, g, b);
     }
+
+    /// <summary>
+    /// Moves a colour of the artwork (drawn around <paramref name="artworkHue"/>) onto <paramref name="hue"/>,
+    /// keeping a third of its own hue offset — so the crystal's blue-to-violet shading survives as a gentle
+    /// shift within the new colour instead of swinging into a neighbouring one (violet facets turned lime on
+    /// the gold theme when the whole spread was kept).
+    /// </summary>
+    public static Color Rehue(Color colour, double artworkHue, double hue, double saturationScale)
+    {
+        var (h, s, l) = ToHsl(colour);
+        var offset = ((h - artworkHue + 540) % 360) - 180;
+        var (r, g, b) = FromHsl((((hue + (offset * 0.35)) % 360) + 360) % 360, Math.Clamp(s * saturationScale, 0, 1), l);
+        return Color.FromRgb(r, g, b);
+    }
+
+    public static (double H, double S, double L) Hsl(Color c) => ToHsl(c);
 
     private static (double H, double S, double L) ToHsl(Color c)
     {
@@ -207,35 +226,116 @@ public sealed class CrystalLogo : Control
     }
 }
 
-/// <summary>Where a <see cref="CrystalField"/> puts its crystals.</summary>
-public enum CrystalLayout
+/// <summary>
+/// The one piece of scenery Phobia keeps: crystalline mountains along the bottom of the screens where the
+/// wallet is locked or being set up — the Phobia artwork pared down to a single bold shape. Two ranges (a
+/// far, faint one behind a near one), each cut into facets shaded by the way they face, a thin line of the
+/// accent along the near crest, and a faint glow of it rising behind. Colours come from the theme's accent
+/// (<c>UmGlow</c>), mixed toward black, so every theme gets its own mountains. Deterministic and still.
+/// </summary>
+public sealed class CrystalRidge : Control
 {
-    /// <summary>A drift across the lower half, like the Phobia artwork — for the welcome and lock screens.</summary>
-    Band,
+    public static readonly StyledProperty<Color> AccentProperty =
+        AvaloniaProperty.Register<CrystalRidge, Color>(nameof(Accent), Color.Parse("#5B3FE8"));
 
-    /// <summary>A few in the top-right and bottom-left corners, clear of the content — behind the wallet.</summary>
-    Corners,
+    static CrystalRidge() => AffectsRender<CrystalRidge>(AccentProperty);
+
+    private static readonly Color Night = Color.Parse("#07060C");
+
+    public CrystalRidge()
+    {
+        Bind(AccentProperty, this.GetResourceObservable("UmGlow"));
+        IsHitTestVisible = false;
+    }
+
+    public Color Accent
+    {
+        get => GetValue(AccentProperty);
+        set => SetValue(AccentProperty, value);
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        var w = Bounds.Width;
+        var h = Bounds.Height;
+        if (w <= 0 || h <= 0) return;
+
+        // The glow the mountains stand in front of.
+        var glow = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        };
+        glow.GradientStops.Add(new GradientStop(Color.FromArgb(0x30, Accent.R, Accent.G, Accent.B), 0));
+        glow.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, Accent.R, Accent.G, Accent.B), 1));
+        context.FillRectangle(glow, new Rect(0, 0, w, h));
+
+        Range(context, w, h, seed: 11, peaks: 9, low: 0.30, high: 0.92, strength: 0.55, crest: false);
+        Range(context, w, h, seed: 4, peaks: 13, low: 0.12, high: 0.58, strength: 1.0, crest: true);
+    }
+
+    private void Range(DrawingContext context, double w, double h, int seed, int peaks,
+        double low, double high, double strength, bool crest)
+    {
+        var rng = new Random(seed);
+        var points = new List<Point>();
+        for (var i = 0; i <= peaks; i++)
+        {
+            var x = (-0.04 + (1.08 * i / peaks) + ((rng.NextDouble() - 0.5) * 0.04)) * w;
+            // Alternate summits and saddles, so the line reads as a range rather than noise.
+            var lift = i % 2 == 0 ? low + ((high - low) * (0.55 + (0.45 * rng.NextDouble())))
+                                  : low + ((high - low) * 0.35 * rng.NextDouble());
+            points.Add(new Point(x, h - (lift * h)));
+        }
+
+        Color Shade(double k) => Color.FromArgb(
+            (byte)Math.Round(255 * strength),
+            (byte)Math.Round(Night.R + ((Accent.R - Night.R) * k)),
+            (byte)Math.Round(Night.G + ((Accent.G - Night.G) * k)),
+            (byte)Math.Round(Night.B + ((Accent.B - Night.B) * k)));
+
+        // The body of the range, then its facets: every slope split at a foot point below its middle, the
+        // side that faces the light (up and to the left) a step brighter than the side that faces away.
+        var body = new List<Point>(points) { new(w + 2, h + 2), new(-2, h + 2) };
+        context.DrawGeometry(new SolidColorBrush(Shade(0.14)), null, CrystalLogo.Polygon(body));
+        for (var i = 0; i < points.Count - 1; i++)
+        {
+            var a = points[i];
+            var b = points[i + 1];
+            var foot = new Point((a.X + b.X) / 2 + ((rng.NextDouble() - 0.5) * 0.02 * w), h + 2);
+            var rising = b.Y < a.Y;
+            context.DrawGeometry(new SolidColorBrush(Shade(rising ? 0.30 : 0.10)), null, CrystalLogo.Polygon([a, b, foot]));
+            // A narrow sliver of light on the summit's lit side.
+            var summit = rising ? b : a;
+            var sliver = new Point(summit.X + (rising ? -0.012 * w : 0.012 * w), summit.Y + (0.22 * (h - summit.Y)));
+            context.DrawGeometry(new SolidColorBrush(Shade(0.42)), null, CrystalLogo.Polygon([summit, sliver, foot]));
+        }
+
+        if (!crest) return;
+        var line = new StreamGeometry();
+        using (var ctx = line.Open())
+        {
+            ctx.BeginFigure(points[0], isFilled: false);
+            for (var i = 1; i < points.Count; i++) ctx.LineTo(points[i]);
+            ctx.EndFigure(isClosed: false);
+        }
+        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb(0x8C, Accent.R, Accent.G, Accent.B)), 1.2), line);
+    }
 }
 
 /// <summary>
-/// Crystals drifting in the dark: the background of the Phobia artwork, drawn as vectors so it is sharp
-/// at any window size and follows the theme. Deterministic (a fixed seed), so the scene does not jump
-/// between launches, and still — nothing here animates or takes input.
+/// One loose crystal — the floating crystals behind the page are made of these. A small control of its own
+/// (not one big canvas) so each moves under its own animation and only its own few pixels are redrawn.
+/// Four facets in the crystal palette, re-hued with the theme like the logo.
 /// </summary>
-public sealed class CrystalField : Control
+public sealed class CrystalShard : Control
 {
     public static readonly StyledProperty<Color> TintProperty =
-        AvaloniaProperty.Register<CrystalField, Color>(nameof(Tint), Colors.Transparent);
+        AvaloniaProperty.Register<CrystalShard, Color>(nameof(Tint), Colors.Transparent);
 
-    public static readonly StyledProperty<CrystalLayout> LayoutProperty =
-        AvaloniaProperty.Register<CrystalField, CrystalLayout>(nameof(Layout), CrystalLayout.Band);
+    static CrystalShard() => AffectsRender<CrystalShard>(TintProperty);
 
-    public static readonly StyledProperty<int> SeedProperty =
-        AvaloniaProperty.Register<CrystalField, int>(nameof(Seed), 7);
-
-    static CrystalField() => AffectsRender<CrystalField>(TintProperty, LayoutProperty, SeedProperty);
-
-    public CrystalField()
+    public CrystalShard()
     {
         Bind(TintProperty, this.GetResourceObservable("UmCrystalTint"));
         IsHitTestVisible = false;
@@ -247,130 +347,123 @@ public sealed class CrystalField : Control
         set => SetValue(TintProperty, value);
     }
 
-    public CrystalLayout Layout
-    {
-        get => GetValue(LayoutProperty);
-        set => SetValue(LayoutProperty, value);
-    }
-
-    public int Seed
-    {
-        get => GetValue(SeedProperty);
-        set => SetValue(SeedProperty, value);
-    }
-
-    /// <summary>One crystal: position (0..1 of the field), length (0..1 of its shorter side), slant,
-    /// thickness, how far along its axis the ridge sits, and how far away it is (0 near, 1 far).</summary>
-    private readonly record struct Shard(double X, double Y, double Length, double Angle, double Width, double Ridge, double Depth, bool Flare = false);
-
     public override void Render(DrawingContext context)
     {
         var w = Bounds.Width;
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
 
-        var unit = Math.Min(w, h);
-        foreach (var shard in Shards(Layout, Seed))
-        {
-            DrawShard(context, shard, w, h, unit, Tint);
-        }
-    }
+        // Long axis vertical: tips top and bottom, shoulders off-centre, a ridge where the faces meet.
+        var top = new Point(w * 0.46, 0);
+        var bottom = new Point(w * 0.54, h);
+        var right = new Point(w, h * 0.38);
+        var left = new Point(0, h * 0.56);
+        var ridge = new Point(w * 0.56, h * 0.44);
 
-    private static IEnumerable<Shard> Shards(CrystalLayout layout, int seed)
-    {
-        var rng = new Random(seed);
-        double Next(double min, double max) => min + (rng.NextDouble() * (max - min));
-
-        if (layout == CrystalLayout.Corners)
+        void Face(Point a, Point b, Color from, Color to)
         {
-            // Two loose clusters where the corners are empty: top right and bottom left.
-            foreach (var (cx, cy, spreadX, spreadY) in new[] { (0.9, 0.12, 0.14, 0.16), (0.1, 0.9, 0.16, 0.12) })
+            var brush = new LinearGradientBrush
             {
-                for (var i = 0; i < 9; i++)
-                {
-                    var depth = Next(0, 1);
-                    yield return new Shard(
-                        cx + Next(-spreadX, spreadX), cy + Next(-spreadY, spreadY),
-                        Next(0.025, 0.09) * (1.3 - depth), Next(-1.1, 1.1), Next(0.32, 0.55), Next(0.3, 0.6), depth);
-                }
-            }
-            yield break;
-        }
-
-        // The artwork's drift: most crystals in a band across the lower middle, larger and nearer toward
-        // the lower left, small far ones scattered above them — and the middle column, where the screen's
-        // own text and buttons are, left clear.
-        for (var i = 0; i < 46; i++)
-        {
-            var x = Next(-0.02, 1.02);
-            if (x is > 0.3 and < 0.7) x = x < 0.5 ? x - 0.3 : x + 0.3;
-            var band = 0.62 - (0.18 * x);                    // the band rises gently to the right
-            var y = band + (Next(-1, 1) * Next(0, 0.26));
-            var depth = Math.Clamp(Next(0, 1) + (x * 0.25), 0, 1);
-            var length = Next(0.02, 0.11) * (1.25 - depth);
-            yield return new Shard(x, y, length, Next(-1.2, 1.2), Next(0.3, 0.6), Next(0.3, 0.65), depth, rng.NextDouble() < 0.2);
-        }
-    }
-
-    private static void DrawShard(DrawingContext context, Shard s, double w, double h, double unit, Color tint)
-    {
-        var length = s.Length * unit;
-        var half = length / 2;
-        var width = length * s.Width;
-
-        // A cut crystal: two tips on its long axis, two shoulders across it, and a ridge where the four
-        // faces meet, off-centre so the light and dark sides differ in size.
-        Point Rot(double px, double py)
-        {
-            var (sin, cos) = Math.SinCos(s.Angle);
-            return new Point((s.X * w) + (px * cos) - (py * sin), (s.Y * h) + (px * sin) + (py * cos));
-        }
-
-        var top = Rot(0, -half);
-        var bottom = Rot(0, half);
-        var right = Rot(width / 2, -half * 0.15);
-        var left = Rot(-width / 2, half * 0.1);
-        var ridge = Rot(width * 0.08, (s.Ridge - 0.5) * length);
-
-        // Far crystals are fainter; near ones carry the full cut.
-        var alpha = (byte)Math.Round(255 * (0.95 - (0.6 * s.Depth)));
-        var faces = new (Point[] Points, Color Colour)[]
-        {
-            ([top, right, ridge], CrystalPalette.Highlight),
-            ([right, bottom, ridge], CrystalPalette.Side),
-            ([bottom, left, ridge], CrystalPalette.Front),
-            ([left, top, ridge], CrystalPalette.Mid),
-        };
-
-        var outline = CrystalLogo.Polygon([top, right, bottom, left]);
-        context.DrawGeometry(new SolidColorBrush(CrystalPalette.Tinted(CrystalPalette.Shade, tint, alpha)), null, outline);
-        foreach (var (points, colour) in faces)
-        {
-            // Each face darkens from its outer edge toward the ridge, so the cut reads as depth.
-            var edge = new Point((points[0].X + points[1].X) / 2, (points[0].Y + points[1].Y) / 2);
-            var face = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(edge, RelativeUnit.Absolute),
-                EndPoint = new RelativePoint(points[2], RelativeUnit.Absolute),
+                StartPoint = new RelativePoint(a, RelativeUnit.Absolute),
+                EndPoint = new RelativePoint(ridge, RelativeUnit.Absolute),
             };
-            face.GradientStops.Add(new GradientStop(CrystalPalette.Tinted(colour, tint, alpha), 0));
-            face.GradientStops.Add(new GradientStop(CrystalPalette.Tinted(Blend(colour, CrystalPalette.Deep, 0.28), tint, alpha), 1));
-            context.DrawGeometry(face, null, CrystalLogo.Polygon(points));
+            brush.GradientStops.Add(new GradientStop(CrystalPalette.Tinted(from, Tint), 0));
+            brush.GradientStops.Add(new GradientStop(CrystalPalette.Tinted(to, Tint), 1));
+            context.DrawGeometry(brush, null, CrystalLogo.Polygon([a, b, ridge]));
         }
 
-        // Now and then light catches a tip, as in the artwork.
-        if (s.Flare)
-        {
-            var radius = Math.Max(6, length * 0.45);
-            var flare = new RadialGradientBrush();
-            flare.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(alpha * 0.55), 255, 255, 255), 0));
-            flare.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 1));
-            context.DrawEllipse(flare, null, top, radius, radius);
-        }
+        context.DrawGeometry(new SolidColorBrush(CrystalPalette.Tinted(CrystalPalette.Shade, Tint)), null,
+            CrystalLogo.Polygon([top, right, bottom, left]));
+        Face(top, right, CrystalPalette.Highlight, CrystalPalette.Light);
+        Face(right, bottom, CrystalPalette.Side, CrystalPalette.Shade);
+        Face(bottom, left, CrystalPalette.Front, CrystalPalette.Deep);
+        Face(left, top, CrystalPalette.Mid, CrystalPalette.Front);
+    }
+}
+
+/// <summary>
+/// The secondary Phobia logo: the single large cut crystal, for the places the brand is an illustration
+/// rather than a signature — the launch screen, the balance card, the promo cards. Drawn from its artwork
+/// in its own blues on the Phobia theme, and re-hued to any other theme's accent (every colour turned by
+/// the same angle, so its blue-to-violet shading survives), cached per colour.
+/// </summary>
+public sealed class CrystalGem : Image
+{
+    public static readonly StyledProperty<Color> TintProperty =
+        AvaloniaProperty.Register<CrystalGem, Color>(nameof(Tint), Colors.Transparent);
+
+    private const string Artwork = "avares://Umbrella.Wallet.App/Assets/phobia-crystal.png";
+
+    /// <summary>The hue the artwork is drawn around (its main blue), which the theme's hue replaces.</summary>
+    private const double ArtworkHue = 222;
+
+    private static Bitmap? _artwork;
+    private static readonly Dictionary<uint, Bitmap> Tinted = [];
+
+    public CrystalGem()
+    {
+        Stretch = Stretch.Uniform;
+        RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.HighQuality);
+        IsHitTestVisible = false;
+        Bind(TintProperty, this.GetResourceObservable("UmCrystalTint"));
+        Source = For(Tint);
     }
 
-    private static Color Blend(Color a, Color b, double t) => Color.FromRgb(
-        (byte)Math.Round(a.R + ((b.R - a.R) * t)),
-        (byte)Math.Round(a.G + ((b.G - a.G) * t)),
-        (byte)Math.Round(a.B + ((b.B - a.B) * t)));
+    public Color Tint
+    {
+        get => GetValue(TintProperty);
+        set => SetValue(TintProperty, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == TintProperty) Source = For(Tint);
+    }
+
+    private static Bitmap For(Color tint)
+    {
+        _artwork ??= new Bitmap(AssetLoader.Open(new Uri(Artwork)));
+        if (tint.A == 0) return _artwork;
+        var key = tint.ToUInt32();
+        if (Tinted.TryGetValue(key, out var cached)) return cached;
+        var made = Recolour(_artwork, tint);
+        Tinted[key] = made;
+        return made;
+    }
+
+    private static WriteableBitmap Recolour(Bitmap source, Color tint)
+    {
+        var target = new WriteableBitmap(source.PixelSize, source.Dpi, PixelFormat.Bgra8888, AlphaFormat.Premul);
+        using var frame = target.Lock();
+        source.CopyPixels(frame, AlphaFormat.Premul);
+
+        var bytes = new byte[frame.RowBytes * frame.Size.Height];
+        Marshal.Copy(frame.Address, bytes, 0, bytes.Length);
+
+        var (tintHue, tintSat) = HueAndSaturation(tint);
+        var satScale = tintSat / 0.8;
+        for (var i = 0; i < bytes.Length; i += 4)
+        {
+            var a = bytes[i + 3];
+            if (a == 0) continue;
+            // Premultiplied BGRA: undo the alpha, turn the hue, put it back.
+            var k = 255.0 / a;
+            var c = Color.FromRgb(
+                (byte)Math.Min(255, bytes[i + 2] * k), (byte)Math.Min(255, bytes[i + 1] * k), (byte)Math.Min(255, bytes[i] * k));
+            var turned = CrystalPalette.Rehue(c, ArtworkHue, tintHue, satScale);
+            bytes[i] = (byte)(turned.B * a / 255);
+            bytes[i + 1] = (byte)(turned.G * a / 255);
+            bytes[i + 2] = (byte)(turned.R * a / 255);
+        }
+
+        Marshal.Copy(bytes, 0, frame.Address, bytes.Length);
+        return target;
+    }
+
+    private static (double Hue, double Saturation) HueAndSaturation(Color c)
+    {
+        var (h, s, _) = CrystalPalette.Hsl(c);
+        return (h, s);
+    }
 }

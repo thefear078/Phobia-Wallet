@@ -213,14 +213,20 @@ public static class UpdateService
     }
 
     /// <summary>The exact file name the release process gives the asset for this kind of install.</summary>
-    public static string AssetNameFor(InstallKind kind, Version version)
+    public static string AssetNameFor(InstallKind kind, Version version) => NameFor("PhobiaWallet", kind, version);
+
+    /// <summary>The same file under its name from before the rename (releases from 4.10.0 attach both;
+    /// earlier ones only this).</summary>
+    public static string LegacyAssetNameFor(InstallKind kind, Version version) => NameFor("UmbrellaWallet", kind, version);
+
+    private static string NameFor(string product, InstallKind kind, Version version)
     {
         var v = $"{version.Major}.{version.Minor}.{version.Build}";
         return kind switch
         {
-            InstallKind.WindowsPortable => $"UmbrellaWallet-{v}-win-x64-portable.exe",
-            InstallKind.Linux => $"UmbrellaWallet-{v}-linux-x64.tar.gz",
-            _ => $"UmbrellaWallet-Setup-{v}.exe",
+            InstallKind.WindowsPortable => $"{product}-{v}-win-x64-portable.exe",
+            InstallKind.Linux => $"{product}-{v}-linux-x64.tar.gz",
+            _ => $"{product}-Setup-{v}.exe",
         };
     }
 
@@ -301,6 +307,12 @@ public static class UpdateService
     {
         var fileName = AssetNameFor(kind, release.Version);
         var asset = release.Assets.FirstOrDefault(a => a.Name == fileName);
+        if (asset is null && release.Assets.FirstOrDefault(a => a.Name == LegacyAssetNameFor(kind, release.Version)) is { } legacy)
+        {
+            // A release from before the rename carries only the Umbrella-era name.
+            fileName = legacy.Name;
+            asset = legacy;
+        }
         if (release.Assets.Count > 0 && asset is null)
             return (null, $"The release has no {fileName} to download.");
 

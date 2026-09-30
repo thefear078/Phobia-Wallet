@@ -4,13 +4,11 @@
 
 #define AppName "Phobia Wallet"
 #define AppPublisher "the fear"
-; The exe keeps its Umbrella-era file name for now: installed and portable copies update by name, and
-; renaming it waits until every copy in use can find the new one.
-#define AppExe "Umbrella.exe"
+#define AppExe "Phobia.exe"
 
 ; SourceDir = the published `app` folder; DistDir = where the installer is written.
 ; Both default to the local D:\umbrella-dist layout but can be overridden on CI, e.g.
-;   ISCC /DSourceDir=dist\app /DDistDir=dist desktop\installer\umbrella.iss
+;   ISCC /DSourceDir=dist\app /DDistDir=dist desktop\installer\phobia.iss
 #ifndef SourceDir
   #define SourceDir "D:\umbrella-dist\app"
 #endif
@@ -60,8 +58,8 @@ LicenseFile=..\..\LICENSE
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
 OutputDir={#DistDir}
-; Release file names stay UmbrellaWallet-* for now, for the same reason as the exe name.
-OutputBaseFilename=UmbrellaWallet-Setup-{#AppVersion}
+; The release attaches this file under its Umbrella-era name too, for copies from before the rename.
+OutputBaseFilename=PhobiaWallet-Setup-{#AppVersion}
 SetupIconFile=..\src\Umbrella.Wallet.App\Assets\phobia.ico
 Compression=lzma2
 SolidCompression=yes
@@ -86,6 +84,8 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "data\*,data"; Flags: recu
 Type: files; Name: "{group}\Umbrella Wallet.lnk"
 Type: files; Name: "{group}\Uninstall Umbrella Wallet.lnk"
 Type: files; Name: "{autodesktop}\Umbrella Wallet.lnk"
+; ...and its program: the wallet is Phobia.exe now, so the old exe would only be a second, stale copy.
+Type: files; Name: "{app}\Umbrella.exe"
 
 [Icons]
 Name: "{group}\Phobia Wallet"; Filename: "{app}\{#AppExe}"

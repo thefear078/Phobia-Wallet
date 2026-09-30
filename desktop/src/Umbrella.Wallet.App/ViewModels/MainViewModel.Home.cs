@@ -263,7 +263,7 @@ public partial class MainViewModel
 
     /// <summary>The four themes offered on the home screen — Phobia's own blue first; every other one is
     /// in Settings.</summary>
-    private static readonly string[] SwatchThemes = ["phobia", "umbrella", "kraken", "black"];
+    private static readonly string[] SwatchThemes = ["phobia", "umbrella", "navy", "black"];
 
     public IReadOnlyList<ThemeSwatch> ThemeSwatches => SwatchThemes
         .Where(Theming.IsKnown)

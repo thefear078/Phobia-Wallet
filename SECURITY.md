@@ -108,7 +108,7 @@ sha256sum -c SHA256SUMS-4.6.0.txt
 ```
 
 ```powershell
-Get-FileHash .\UmbrellaWallet-Setup-4.6.0.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-4.10.0.exe -Algorithm SHA256
 ```
 
 Better still, [build it yourself](docs/building.md). Reproducible builds with published attestations
@@ -153,7 +153,7 @@ Each release should include:
 Verify an attestation with the GitHub CLI:
 
 ```bash
-gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
 ```
 
 It checks, against a public transparency log rather than against anything we say, that those exact

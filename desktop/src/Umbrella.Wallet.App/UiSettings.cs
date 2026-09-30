@@ -14,9 +14,10 @@ public sealed class UiSettings
     public string Theme { get; set; } = Theming.DefaultTheme;
 
     /// <summary>
-    /// Which rebrand this file has seen. 0 = written by Umbrella, whose default theme was gold. The
-    /// wallet is Phobia now and its look is blue, so a file still on the old default moves to the new
-    /// one, once; anyone who then picks gold again keeps it.
+    /// Which rebrand this file has seen. 0 = written by Umbrella, whose default theme was gold and whose
+    /// screens carried stickers. The wallet is Phobia now — violet, and clean — so a file from before
+    /// moves to the new default theme (if it was still on the old one) and leaves stickers off, once;
+    /// anyone who then picks gold or turns stickers back on keeps that.
     /// </summary>
     public int BrandVersion { get; set; }
     public string Language { get; set; } = "en";
@@ -26,15 +27,21 @@ public sealed class UiSettings
     /// tab bar, in a phone-sized window. Off = the normal wide desktop layout.</summary>
     public bool MobileMode { get; set; } = false;
     public bool AnimationsEnabled { get; set; } = true;
-    /// <summary>Individual motion toggles (gated by the master AnimationsEnabled above).</summary>
-    public bool RainEnabled { get; set; } = true;
-    public bool StickersEnabled { get; set; } = true;
+    /// <summary>Stickers shown at all (off by default: Phobia's look is clean); they loop only while
+    /// the master AnimationsEnabled above is on.</summary>
+    public bool StickersEnabled { get; set; } = false;
+    /// <summary>Crystals floating slowly up behind the page. On by default; gated by AnimationsEnabled.</summary>
+    public bool FloatingCrystals { get; set; } = true;
+
+    /// <summary>Tiny facets of light that twinkle across the page. On by default; gated by AnimationsEnabled.</summary>
+    public bool CrystalGlints { get; set; } = true;
+
+    /// <summary>A sweep of light across the balance card now and then. On by default; gated by AnimationsEnabled.</summary>
+    public bool CardShine { get; set; } = true;
+
     /// <summary>Soft drifting "aurora" glow behind the content. Opt-in (off by default) so the default
     /// look stays clean.</summary>
     public bool AuroraEnabled { get; set; } = false;
-    /// <summary>Animated rain footage on the portfolio balance card. On by default; when off the card
-    /// shows a still photo instead — for people who don't want motion. Gated by AnimationsEnabled.</summary>
-    public bool PortfolioVideo { get; set; } = true;
 
     /// <summary>Look for a newer release without being asked (shortly after start, then twice a day).
     /// Goes through the same route as everything else, Tor included. Installing still takes a click.</summary>
@@ -121,7 +128,7 @@ public sealed class UiSettings
         {
             // Fresh install (incl. after a delete + re-download): pick the OS language if we translate
             // it, so a Ukrainian/Russian/… user isn't dropped into English with no setting to restore.
-            if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage(), BrandVersion = 1 };
+            if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage(), BrandVersion = CurrentBrandVersion };
             var settings = JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(Path)) ?? new UiSettings();
             if (MoveToPhobia(settings)) settings.Save();
             return settings;
@@ -139,11 +146,16 @@ public sealed class UiSettings
     /// </summary>
     public static bool MoveToPhobia(UiSettings settings)
     {
-        if (settings.BrandVersion >= 1) return false;
-        if (settings.Theme == "umbrella") settings.Theme = Theming.DefaultTheme;
-        settings.BrandVersion = 1;
+        if (settings.BrandVersion >= CurrentBrandVersion) return false;
+        // Only a file from before Phobia can be sitting on the old default; after that, gold was a choice.
+        if (settings.BrandVersion < 1 && settings.Theme == "umbrella") settings.Theme = Theming.DefaultTheme;
+        settings.StickersEnabled = false;
+        settings.BrandVersion = CurrentBrandVersion;
         return true;
     }
+
+    /// <summary>1 = the first Phobia build (blue); 2 = Phobia's violet, clean look.</summary>
+    public const int CurrentBrandVersion = 2;
 
     /// <summary>The OS UI language if Phobia ships a translation for it, otherwise English.</summary>
     // A fresh install always starts in English; the user can switch language in Settings, and that

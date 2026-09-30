@@ -109,13 +109,18 @@
 
   <Grid RowDefinitions="36,*">
 
-    <!-- Crystals behind the window (the Phobia artwork): a drift across the lower half while the wallet
-         is locked or being set up, a few in the corners once it is open, clear of the cards. Vector, in
-         the theme's colours, still, never hit-testable. -->
-    <Panel Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" ClipToBounds="True">
-      <controls:CrystalField Layout="Band" Seed="7" Opacity="0.85" IsVisible="{Binding !ShowSidebar}"/>
-      <controls:CrystalField Layout="Corners" Seed="11" Opacity="0.5" IsVisible="{Binding ShowSidebar}"/>
-    </Panel>
+    <!-- The one piece of scenery (the Phobia artwork, pared down): crystalline mountains along the bottom
+         while the wallet is locked or being set up. Nothing sits behind the wallet itself. -->
+    <controls:CrystalRidge Grid.Row="0" Grid.RowSpan="2" Height="200" VerticalAlignment="Bottom"
+                           IsVisible="{Binding !ShowSidebar}"/>
+    <!-- Inside the wallet the same mountains stay, faint, at the very bottom — a horizon, not a picture. -->
+    <controls:CrystalRidge Grid.Row="0" Grid.RowSpan="2" Height="130" VerticalAlignment="Bottom" Opacity="0.4"
+                           IsVisible="{Binding ShowSidebar}"/>
+
+    <!-- Phobia's ambient motion (Settings → Appearance → Animation), played by the compositor: crystals
+         rising slowly behind the page, and glints twinkling across it. -->
+    <controls:CrystalEffects Grid.Row="0" Grid.RowSpan="2" Kind="Floating" Active="{Binding FloatingCrystalsVisible}"/>
+    <controls:CrystalEffects Grid.Row="0" Grid.RowSpan="2" Kind="Glints" Active="{Binding CrystalGlintsVisible}"/>
 
     <!-- No visible chrome panel (per design): just an invisible strip so the window still drags
          (double-click maximises) and the native min/max/close buttons have their room. Status and
@@ -235,21 +240,24 @@
                       HorizontalAlignment="Center" Spacing="0">
             <!-- Brand mark stays the logo; the Telegram sticker sits beside it as a greeting
                  rather than replacing the identity. -->
-            <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
-              <!-- The Phobia crystals, in the theme's colours; the name is set right under them. -->
-              <controls:BrandMark Kind="Mark" Width="112" Height="112" HorizontalAlignment="Center"/>
-            </StackPanel>
-            <TextBlock Text="PHOBIA WALLET" FontSize="30" FontWeight="SemiBold" LetterSpacing="4"
-                       HorizontalAlignment="Center" Margin="0,16,0,0"/>
+            <!-- The lockup: the main logo, the name large, and one spaced line in the accent. -->
+            <controls:BrandMark Kind="Mark" Width="104" Height="104" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+            <TextBlock Text="Phobia" FontSize="52" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0"
+                       FontFamily="Segoe UI Variable Display, Segoe UI, AvaloniaSans"/>
+            <TextBlock Text="{Binding [brand.line], Source={x:Static app:Loc.Instance}}" FontSize="14" FontWeight="SemiBold" LetterSpacing="6"
+                       Foreground="{DynamicResource UmAccentHover}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
             <TextBlock Text="{Binding [app.tagline], Source={x:Static app:Loc.Instance}}"
-                       Foreground="{DynamicResource UmTextDim}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                       Foreground="{DynamicResource UmTextDim}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,16,0,0"/>
 
             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,32,0,0">
               <Border Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
-                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/GhostPepe.json"
-                                 Width="48" Height="48" HorizontalAlignment="Center"
-                                 RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
+                  <Border Width="48" Height="48" CornerRadius="14" Background="{DynamicResource UmCardAlt}"
+                          HorizontalAlignment="Center">
+                    <Path Data="M12 3 L20 6 V12 C20 16.4 16.6 19.7 12 21 C7.4 19.7 4 16.4 4 12 V6 Z M8.5 12 L11 14.5 L15.5 9.5" Stroke="{DynamicResource UmAccentHover}" StrokeThickness="1.7"
+                          StrokeLineCap="Round" StrokeJoin="Round" Width="24" Height="24" Stretch="Uniform"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
                   <TextBlock Text="{Binding [welcome.anon], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
                   <TextBlock Text="{Binding [welcome.anonSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
@@ -257,9 +265,12 @@
               </Border>
               <Border Grid.Column="1" Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
-                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/encryption.json"
-                                 Width="48" Height="48" HorizontalAlignment="Center"
-                                 RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
+                  <Border Width="48" Height="48" CornerRadius="14" Background="{DynamicResource UmCardAlt}"
+                          HorizontalAlignment="Center">
+                    <Path Data="M7 11 V8 A5 5 0 0 1 17 8 V11 M5 11 H19 V20 H5 Z M12 14.5 V17" Stroke="{DynamicResource UmAccentHover}" StrokeThickness="1.7"
+                          StrokeLineCap="Round" StrokeJoin="Round" Width="24" Height="24" Stretch="Uniform"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
                   <TextBlock Text="{Binding [welcome.keys], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
                   <TextBlock Text="{Binding [welcome.keysSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
@@ -267,11 +278,12 @@
               </Border>
               <Border Grid.Column="2" Classes="hairline" Padding="16,18">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
-                  <!-- Animated sticker (moved here from beside the logo) instead of a bare ⚡ emoji, so all
-                       three feature cards carry a themed sticker. -->
-                  <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/wau.json"
-                                 Width="48" Height="48" HorizontalAlignment="Center"
-                                 RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}"/>
+                  <Border Width="48" Height="48" CornerRadius="14" Background="{DynamicResource UmCardAlt}"
+                          HorizontalAlignment="Center">
+                    <Path Data="M4 6 H20 V16 H4 Z M9 20 H15 M12 16 V20" Stroke="{DynamicResource UmAccentHover}" StrokeThickness="1.7"
+                          StrokeLineCap="Round" StrokeJoin="Round" Width="24" Height="24" Stretch="Uniform"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
                   <TextBlock Text="{Binding [welcome.local], Source={x:Static app:Loc.Instance}}" FontSize="10" LetterSpacing="1.5" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Center"/>
                   <TextBlock Text="{Binding [welcome.localSub], Source={x:Static app:Loc.Instance}}" FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
                              TextWrapping="Wrap" TextAlignment="Center"/>
@@ -648,8 +660,8 @@
                     </RadialGradientBrush>
                   </Border.Background>
                 </Border>
-                <controls:BrandMark Kind="Glyph" Width="56" Height="56" HorizontalAlignment="Center" VerticalAlignment="Top"
-                                    Margin="0,14,0,0" Opacity="0.95"/>
+                <controls:Illustration Kind="Vault" Width="62" Height="62" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                       Margin="0,12,0,0"/>
                 <StackPanel VerticalAlignment="Bottom" Margin="14,0,14,12" Spacing="3">
                   <TextBlock Text="{Binding [sidebar.promoTitle], Source={x:Static app:Loc.Instance}}" FontSize="13.5" FontWeight="SemiBold"
                              TextWrapping="Wrap" Foreground="{DynamicResource UmText}"/>
@@ -674,15 +686,12 @@
                              Foreground="{Binding ConnectionChipColor}" VerticalAlignment="Center"/>
                 </StackPanel>
               </Button>
-              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                <Border Classes="brandTile" Width="30" Height="30" CornerRadius="9" VerticalAlignment="Center">
-                  <controls:BrandMark Margin="5" Glow="False"/>
-                </Border>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="0">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="0" Margin="4,0,0,0">
                   <TextBlock Text="Phobia Wallet" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource UmTextSoft}"/>
                   <TextBlock Text="{Binding AppVersionShort}" FontSize="10" Foreground="{DynamicResource UmTextMuted}"/>
                 </StackPanel>
-                <Button Grid.Column="2" Classes="navicon" Width="38" Height="38" VerticalAlignment="Center"
+                <Button Grid.Column="1" Classes="navicon" Width="38" Height="38" VerticalAlignment="Center"
                         Command="{Binding LockCommand}" AutomationProperties.Name="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}"
                         ToolTip.Tip="{Binding [footer.lock], Source={x:Static app:Loc.Instance}}">
                   <Path Data="M7 11 V8 A5 5 0 0 1 17 8 V11 M5 11 H19 V20 H5 Z"/>
@@ -823,18 +832,21 @@
                         BorderThickness="1" BoxShadow="0 16 44 -16 #80000000"
                         PointerMoved="OnHeroPointerMoved" PointerExited="OnHeroPointerExited">
                   <Panel>
-                    <!-- ANIMATED (default): a deep-navy base with rain footage composited over it. The
-                         frames are keyed to alpha, so only the silver streaks show over the navy — no
-                         darkening. Shown when the portfolio-video toggle and master motion are both on. -->
-                    <Border Background="{DynamicResource UmHeroSurface}" IsVisible="{Binding PortfolioVideoOn}"/>
-                    <Border Background="{DynamicResource UmHeroWash}" IsVisible="{Binding PortfolioVideoOn}"/>
-                    <controls:FrameAnimation Opacity="{DynamicResource UmHeroVideoOpacity}" Margin="-1" IsVisible="{Binding PortfolioVideoOn}"/>
-
-                    <!-- STILL (motion off): the same clean navy hero gradient as the animated base, just
-                         without the rain. No photo — the old photo backdrop blew out to bright white at
-                         the card edges, which looked broken with motion off. -->
-                    <Border Background="{DynamicResource UmHeroSurface}" IsVisible="{Binding !PortfolioVideoOn}"/>
-                    <Border Background="{DynamicResource UmHeroWash}" IsVisible="{Binding !PortfolioVideoOn}"/>
+                    <!-- The balance on the theme's hero surface; the large crystal at the right edge, part
+                         of it past the card, with its own light behind it; a sweep of light now and then. -->
+                    <Border Background="{DynamicResource UmHeroSurface}"/>
+                    <Border Background="{DynamicResource UmHeroWash}"/>
+                    <Ellipse Width="260" Height="260" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-70,0">
+                      <Ellipse.Fill>
+                        <RadialGradientBrush>
+                          <GradientStop Color="{DynamicResource UmGlowSoft}" Offset="0"/>
+                          <GradientStop Color="{DynamicResource UmGlowClear}" Offset="1"/>
+                        </RadialGradientBrush>
+                      </Ellipse.Fill>
+                    </Ellipse>
+                    <controls:CrystalGem Width="150" Height="150" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                         Margin="0,0,-26,0" Opacity="0.92"/>
+                    <controls:ShineSweep Active="{Binding CardShineVisible}"/>
 
                     <!-- Bottom-left vignette so the balance always reads cleanly over either backdrop. -->
                     <Border>
@@ -845,10 +857,6 @@
                         </LinearGradientBrush>
                       </Border.Background>
                     </Border>
-                    <!-- Logo to the right, vertically centred — balance sits bottom-left, so the mark
-                         reads as the card's brand without covering the numbers. -->
-                    <controls:BrandMark Width="84" Height="84"
-                                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,22,0"/>
                     <Grid Margin="30,22">
                       <!-- Balance anchored bottom-left so it never collides with the centred logo. -->
                       <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Spacing="3">
@@ -922,9 +930,11 @@
                         <!-- No chart yet: a quiet baseline and the reason, never an invented line. -->
                         <Border IsVisible="{Binding !HasPortfolioSeries}" Height="1" VerticalAlignment="Bottom" Margin="0,0,0,12"
                                 Background="{DynamicResource UmBorder2}"/>
+                        <controls:Illustration Kind="EmptyChart" IsVisible="{Binding !HasPortfolioSeries}"
+                                               Height="80" VerticalAlignment="Top" Margin="12,34,12,0"/>
                         <TextBlock IsVisible="{Binding !HasPortfolioSeries}" Text="{Binding PortfolioChartStatus}" TextWrapping="Wrap"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" FontSize="12"
-                                   Foreground="{DynamicResource UmTextMuted}"/>
+                                   HorizontalAlignment="Center" VerticalAlignment="Bottom" TextAlignment="Center" FontSize="12"
+                                   Margin="12,0,12,26" Foreground="{DynamicResource UmTextMuted}"/>
                       </Panel>
                       <TextBlock Grid.Row="2" Text="{Binding PortfolioChartNoteShort}" ToolTip.Tip="{Binding PortfolioChartNote}"
                                  FontSize="10.5" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"
@@ -2775,7 +2785,7 @@
                 <Border Classes="card" Background="{DynamicResource UmCardAlt}">
                   <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
                     <Border Width="42" Height="42" CornerRadius="12" ClipToBounds="True" VerticalAlignment="Center">
-                      <Image Source="avares://Umbrella.Wallet.App/Assets/tg-news.jpg" Stretch="UniformToFill"/>
+                      <Image Source="avares://Umbrella.Wallet.App/Assets/phobia-channel.png" Stretch="UniformToFill"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                       <TextBlock Text="{Binding [sec.tgChannel], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>
@@ -3506,22 +3516,24 @@
                     <ToggleSwitch IsChecked="{Binding AnimationsEnabled, Mode=TwoWay}"
                                   OnContent="{Binding [settings.animOn], Source={x:Static app:Loc.Instance}}"
                                   OffContent="{Binding [settings.animOff], Source={x:Static app:Loc.Instance}}"/>
+                    <!-- Stickers: shown or left out altogether (off by default — Phobia's look is clean). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                      <TextBlock Text="{Binding [settings.stickers], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                      <ToggleSwitch Grid.Column="1" IsChecked="{Binding StickersEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
+                    </Grid>
                     <!-- Individual toggles (only meaningful while the master toggle is on). -->
                     <StackPanel IsVisible="{Binding AnimationsEnabled}" Spacing="6" Margin="0,4,0,0">
                       <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="{Binding [settings.rain], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
-                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding RainEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
+                        <TextBlock Text="{Binding [settings.floating], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding FloatingCrystals, Mode=TwoWay}" OnContent="" OffContent=""/>
                       </Grid>
                       <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel VerticalAlignment="Center">
-                          <TextBlock Text="{Binding [settings.portfolioVideo], Source={x:Static app:Loc.Instance}}" FontSize="13"/>
-                          <TextBlock Text="{Binding [settings.portfolioVideoHint], Source={x:Static app:Loc.Instance}}" FontSize="11" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding PortfolioVideo, Mode=TwoWay}" OnContent="" OffContent=""/>
+                        <TextBlock Text="{Binding [settings.glints], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding CrystalGlints, Mode=TwoWay}" OnContent="" OffContent=""/>
                       </Grid>
                       <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="{Binding [settings.stickers], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
-                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding StickersEnabled, Mode=TwoWay}" OnContent="" OffContent=""/>
+                        <TextBlock Text="{Binding [settings.shine], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding CardShine, Mode=TwoWay}" OnContent="" OffContent=""/>
                       </Grid>
                       <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="{Binding [settings.aurora], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center" FontSize="13"/>
@@ -4504,8 +4516,8 @@
                           </RadialGradientBrush>
                         </Border.Background>
                       </Border>
-                      <controls:BrandMark Kind="Canopy" Width="112" Height="108" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                          Margin="0,10,-14,0" Opacity="0.9"/>
+                      <controls:Illustration Kind="Market" Width="150" Height="58" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                             Margin="0,14,14,0"/>
                       <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="16,0,56,14" Spacing="3">
                         <TextBlock Text="{Binding [home.explore], Source={x:Static app:Loc.Instance}}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding [home.exploreSub], Source={x:Static app:Loc.Instance}}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextMuted}"/>
@@ -4732,19 +4744,6 @@
       <Ellipse Classes="auroraB" Width="720" Height="720" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-160,-180"/>
     </Panel>
 
-    <Canvas Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" ClipToBounds="True"
-            IsVisible="{Binding RainVisible}">
-      <Rectangle Classes="raindrop rd3" Height="50" Canvas.Left="90"/>
-      <Rectangle Classes="raindrop rd7" Height="34" Canvas.Left="210"/>
-      <Rectangle Classes="raindrop rd1" Height="60" Canvas.Left="330"/>
-      <Rectangle Classes="raindrop rd9" Height="40" Canvas.Left="440"/>
-      <Rectangle Classes="raindrop rd5" Height="30" Canvas.Left="560"/>
-      <Rectangle Classes="raindrop rd10" Height="58" Canvas.Left="680"/>
-      <Rectangle Classes="raindrop rd2" Height="44" Canvas.Left="800"/>
-      <Rectangle Classes="raindrop rd6" Height="62" Canvas.Left="920"/>
-      <Rectangle Classes="raindrop rd8" Height="36" Canvas.Left="1050"/>
-      <Rectangle Classes="raindrop rd4" Height="52" Canvas.Left="1180"/>
-    </Canvas>
 
     <!-- ============================ COMMAND PALETTE (Ctrl+K) ============================
          A pro-desktop quick launcher: jump to any screen or a coin's chart. Overlay only —

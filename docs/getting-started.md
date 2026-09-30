@@ -26,9 +26,9 @@ Typical assets:
 
 | Platform | File |
 |---|---|
-| Windows installer | `UmbrellaWallet-Setup-<version>.exe` |
-| Windows portable | `UmbrellaWallet-<version>-win-x64-portable.exe` (or `.zip`) |
-| Linux | `UmbrellaWallet-<version>-linux-x64.tar.gz` |
+| Windows installer | `PhobiaWallet-Setup-<version>.exe` |
+| Windows portable | `PhobiaWallet-<version>-win-x64-portable.exe` |
+| Linux | `PhobiaWallet-<version>-linux-x64.tar.gz` |
 
 Also download **`SHA256SUMS-<version>.txt`** from the same release.
 
@@ -38,7 +38,7 @@ Do not run an unsigned copy you cannot check.
 
 ```powershell
 # Windows PowerShell — compare to the matching line in SHA256SUMS
-Get-FileHash .\UmbrellaWallet-Setup-4.8.2.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-4.10.0.exe -Algorithm SHA256
 ```
 
 ```bash
@@ -54,8 +54,8 @@ Details: [SECURITY.md — Verifying what you run](../SECURITY.md#verifying-what-
 - **Portable:** run next to its folder; data typically stays in `data/` beside the binary — useful when
   you do not want an installed footprint.
 
-Linux: unpack the tarball and run `./Umbrella.Wallet.App` (or the published apphost name listed in
-the release notes).
+Linux: unpack the tarball and run `./phobia-wallet`; `./install-desktop-entry.sh` adds it to your
+application menu. (Releases before 4.10.0 named the program `Umbrella.Wallet.App`.)
 
 ## 4. First launch
 

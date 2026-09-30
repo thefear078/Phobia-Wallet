@@ -79,12 +79,19 @@ public sealed class UpdateServiceTests
         Assert.Equal(tag, UpdateService.TagFromReleaseUrl(url));
 
     [Theory]
+    [InlineData(InstallKind.WindowsInstaller, "PhobiaWallet-Setup-4.10.0.exe")]
+    [InlineData(InstallKind.WindowsFolder, "PhobiaWallet-Setup-4.10.0.exe")]
+    [InlineData(InstallKind.WindowsPortable, "PhobiaWallet-4.10.0-win-x64-portable.exe")]
+    [InlineData(InstallKind.Linux, "PhobiaWallet-4.10.0-linux-x64.tar.gz")]
+    public void Each_install_gets_the_file_the_release_process_names_for_it(InstallKind kind, string name) =>
+        Assert.Equal(name, UpdateService.AssetNameFor(kind, new Version(4, 10, 0)));
+
+    [Theory]
     [InlineData(InstallKind.WindowsInstaller, "UmbrellaWallet-Setup-4.9.0.exe")]
-    [InlineData(InstallKind.WindowsFolder, "UmbrellaWallet-Setup-4.9.0.exe")]
     [InlineData(InstallKind.WindowsPortable, "UmbrellaWallet-4.9.0-win-x64-portable.exe")]
     [InlineData(InstallKind.Linux, "UmbrellaWallet-4.9.0-linux-x64.tar.gz")]
-    public void Each_install_gets_the_file_the_release_process_names_for_it(InstallKind kind, string name) =>
-        Assert.Equal(name, UpdateService.AssetNameFor(kind, new Version(4, 9, 0)));
+    public void The_umbrella_era_names_are_still_known(InstallKind kind, string name) =>
+        Assert.Equal(name, UpdateService.LegacyAssetNameFor(kind, new Version(4, 9, 0)));
 
     [Fact]
     public void The_asset_names_match_what_the_release_workflow_publishes()
@@ -95,6 +102,8 @@ public sealed class UpdateServiceTests
         if (root is null) return;
         var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
+        Assert.Contains("PhobiaWallet-Setup-", workflow);
+        // Copies from before the rename look for these; the release keeps attaching them.
         Assert.Contains("UmbrellaWallet-Setup-", workflow);
         Assert.Contains("-win-x64-portable.exe", workflow);
         Assert.Contains("-linux-x64.tar.gz", workflow);

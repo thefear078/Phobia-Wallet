@@ -95,7 +95,7 @@ cannot pass for the wrong reason.
 Every release carries `SHA256SUMS-<version>.txt`. Verify what you downloaded before you run it:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\UmbrellaWallet-Setup-4.8.2.exe
+Get-FileHash -Algorithm SHA256 .\PhobiaWallet-Setup-4.10.0.exe
 ```
 
 ```bash
@@ -115,7 +115,7 @@ page there** — somebody who can replace the artifacts can replace the manifest
 release from the next one on also carries a build attestation:
 
 ```bash
-gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
 ```
 
 That checks against a public transparency log — not against us — that these exact bytes came out of

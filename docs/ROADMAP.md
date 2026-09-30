@@ -41,7 +41,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | SHA256SUMS on releases | ✅ |
 | Monero 25-word seeds in all 12 Monero languages (Chinese included) → Monero-only wallet, optional scan-from | ✅ (4.10) |
 | Monero service reachable (RPC bodies with a stated length) and restore over the account's whole life | ✅ (4.10) |
-| Rebrand Umbrella → **Phobia**: vector crystal logo + icons, crystal-blue default theme, every theme adapted | ✅ (4.10) |
+| Rebrand Umbrella → **Phobia**: vector crystal logos + icons, midnight-violet default theme, every theme adapted, Phobia file names (+ legacy copies) | ✅ (4.10) |
 
 ---
 
