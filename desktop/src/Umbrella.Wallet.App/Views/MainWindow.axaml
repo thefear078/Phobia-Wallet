@@ -15,8 +15,8 @@
         x:DataType="vm:MainViewModel"
         x:CompileBindings="True"
         x:Name="RootWindow"
-        Title="Umbrella Wallet"
-        Icon="avares://Umbrella.Wallet.App/Assets/umbrella-appicon.png"
+        Title="Phobia Wallet"
+        Icon="avares://Umbrella.Wallet.App/Assets/phobia-appicon.png"
         Width="1240"
         Height="820"
         MinWidth="1000"
@@ -109,52 +109,12 @@
 
   <Grid RowDefinitions="36,*">
 
-    <!-- Light behind the window (the gold design): long arcs of the theme's accent, as if the window
-         sat in front of a lit edge — a soft blurred band and a fine bright line on top of it. Behind
-         every card, never hit-testable, and still: nothing here animates. -->
+    <!-- Crystals behind the window (the Phobia artwork): a drift across the lower half while the wallet
+         is locked or being set up, a few in the corners once it is open, clear of the cards. Vector, in
+         the theme's colours, still, never hit-testable. -->
     <Panel Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" ClipToBounds="True">
-      <Panel HorizontalAlignment="Right" VerticalAlignment="Top" Width="820" Height="460" Margin="0,-70,-90,0">
-        <Path Stretch="Fill" Data="M0,0 A 900 640 0 0 1 820 460" StrokeThickness="16" Opacity="0.30">
-          <Path.Stroke>
-            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-              <GradientStop Color="{DynamicResource UmGlowClear}" Offset="0"/>
-              <GradientStop Color="{DynamicResource UmGlow}" Offset="0.55"/>
-              <GradientStop Color="{DynamicResource UmGlowClear}" Offset="1"/>
-            </LinearGradientBrush>
-          </Path.Stroke>
-          <Path.Effect><BlurEffect Radius="30"/></Path.Effect>
-        </Path>
-        <Path Stretch="Fill" Data="M0,0 A 900 640 0 0 1 820 460" StrokeThickness="1.6" Opacity="0.85">
-          <Path.Stroke>
-            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-              <GradientStop Color="{DynamicResource UmGlowClear}" Offset="0"/>
-              <GradientStop Color="{DynamicResource UmGlow}" Offset="0.55"/>
-              <GradientStop Color="{DynamicResource UmGlowClear}" Offset="1"/>
-            </LinearGradientBrush>
-          </Path.Stroke>
-        </Path>
-      </Panel>
-      <Panel HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="900" Height="360" Margin="-120,0,0,-150">
-        <Path Stretch="Fill" Data="M0,360 A 980 560 0 0 1 900 0" StrokeThickness="14" Opacity="0.24">
-          <Path.Stroke>
-            <LinearGradientBrush StartPoint="0%,100%" EndPoint="100%,0%">
-              <GradientStop Color="{DynamicResource UmGlowClear}" Offset="0"/>
-              <GradientStop Color="{DynamicResource UmGlow}" Offset="0.5"/>
-              <GradientStop Color="{DynamicResource UmGlowClear}" Offset="1"/>
-            </LinearGradientBrush>
-          </Path.Stroke>
-          <Path.Effect><BlurEffect Radius="28"/></Path.Effect>
-        </Path>
-        <Path Stretch="Fill" Data="M0,360 A 980 560 0 0 1 900 0" StrokeThickness="1.4" Opacity="0.7">
-          <Path.Stroke>
-            <LinearGradientBrush StartPoint="0%,100%" EndPoint="100%,0%">
-              <GradientStop Color="{DynamicResource UmGlowClear}" Offset="0"/>
-              <GradientStop Color="{DynamicResource UmGlow}" Offset="0.5"/>
-              <GradientStop Color="{DynamicResource UmGlowClear}" Offset="1"/>
-            </LinearGradientBrush>
-          </Path.Stroke>
-        </Path>
-      </Panel>
+      <controls:CrystalField Layout="Band" Seed="7" Opacity="0.85" IsVisible="{Binding !ShowSidebar}"/>
+      <controls:CrystalField Layout="Corners" Seed="11" Opacity="0.5" IsVisible="{Binding ShowSidebar}"/>
     </Panel>
 
     <!-- No visible chrome panel (per design): just an invisible strip so the window still drags
@@ -164,13 +124,11 @@
 
     <Grid Grid.Row="1">
 
-      <!-- Lock-screen backdrop (a moody coastline), so the unlock screen isn't a flat black. Behind
-           everything and only while the vault is locked; a scrim keeps the form readable. -->
-      <Image Source="avares://Umbrella.Wallet.App/Assets/lock-bg.jpg" Stretch="UniformToFill"
-             IsVisible="{Binding ShowDefaultLockBg}" Opacity="0.5"/>
+      <!-- Lock-screen backdrop: by default the crystals behind the window are the backdrop; a photo the
+           user chose sits over them, with a scrim that keeps the form readable. -->
       <Image Source="{Binding LockBgImage}" Stretch="UniformToFill"
              IsVisible="{Binding ShowCustomLockBg}" Opacity="0.5"/>
-      <Border Background="#BF05050A" IsVisible="{Binding IsUnlockStage}"/>
+      <Border Background="#BF05050A" IsVisible="{Binding ShowCustomLockBg}"/>
 
       <!-- News article overlay — floats above everything when a news item is opened. -->
       <Border ZIndex="200" IsVisible="{Binding IsNewsOpen}" Background="#C4000000">
@@ -278,10 +236,10 @@
             <!-- Brand mark stays the logo; the Telegram sticker sits beside it as a greeting
                  rather than replacing the identity. -->
             <StackPanel HorizontalAlignment="Center" Margin="0,8,0,0">
-              <!-- The Umbrella wordmark, in the theme's colours. -->
-              <controls:BrandMark Kind="Wordmark" Width="150" Height="111" HorizontalAlignment="Center"/>
+              <!-- The Phobia crystals, in the theme's colours; the name is set right under them. -->
+              <controls:BrandMark Kind="Mark" Width="112" Height="112" HorizontalAlignment="Center"/>
             </StackPanel>
-            <TextBlock Text="UMBRELLA WALLET" FontSize="30" FontWeight="SemiBold" LetterSpacing="4"
+            <TextBlock Text="PHOBIA WALLET" FontSize="30" FontWeight="SemiBold" LetterSpacing="4"
                        HorizontalAlignment="Center" Margin="0,16,0,0"/>
             <TextBlock Text="{Binding [app.tagline], Source={x:Static app:Loc.Instance}}"
                        Foreground="{DynamicResource UmTextDim}" FontSize="13.5" HorizontalAlignment="Center" Margin="0,10,0,0"/>
@@ -623,7 +581,7 @@
                   <controls:BrandMark Margin="8" Glow="False"/>
                 </Border>
                 <StackPanel VerticalAlignment="Center" Spacing="1">
-                  <TextBlock Text="Umbrella" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource UmText}"/>
+                  <TextBlock Text="Phobia" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource UmText}"/>
                   <TextBlock Text="{Binding ActiveWalletLabel}" FontSize="12" FontWeight="Normal"
                              Foreground="{DynamicResource UmTextDim}" MaxWidth="128" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
@@ -690,8 +648,8 @@
                     </RadialGradientBrush>
                   </Border.Background>
                 </Border>
-                <controls:BrandMark Kind="Glyph" Width="100" Height="88" HorizontalAlignment="Center" VerticalAlignment="Top"
-                                    Margin="0,12,0,0" Opacity="0.95"/>
+                <controls:BrandMark Kind="Glyph" Width="56" Height="56" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                    Margin="0,14,0,0" Opacity="0.95"/>
                 <StackPanel VerticalAlignment="Bottom" Margin="14,0,14,12" Spacing="3">
                   <TextBlock Text="{Binding [sidebar.promoTitle], Source={x:Static app:Loc.Instance}}" FontSize="13.5" FontWeight="SemiBold"
                              TextWrapping="Wrap" Foreground="{DynamicResource UmText}"/>
@@ -721,7 +679,7 @@
                   <controls:BrandMark Margin="5" Glow="False"/>
                 </Border>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="0">
-                  <TextBlock Text="Umbrella Wallet" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource UmTextSoft}"/>
+                  <TextBlock Text="Phobia Wallet" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource UmTextSoft}"/>
                   <TextBlock Text="{Binding AppVersionShort}" FontSize="10" Foreground="{DynamicResource UmTextMuted}"/>
                 </StackPanel>
                 <Button Grid.Column="2" Classes="navicon" Width="38" Height="38" VerticalAlignment="Center"
@@ -889,8 +847,8 @@
                     </Border>
                     <!-- Logo to the right, vertically centred — balance sits bottom-left, so the mark
                          reads as the card's brand without covering the numbers. -->
-                    <controls:BrandMark Width="104" Height="82"
-                                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,40,0"/>
+                    <controls:BrandMark Width="84" Height="84"
+                                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,22,0"/>
                     <Grid Margin="30,22">
                       <!-- Balance anchored bottom-left so it never collides with the centred logo. -->
                       <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Spacing="3">

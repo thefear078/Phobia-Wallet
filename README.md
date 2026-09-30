@@ -1,14 +1,18 @@
 <div align="center">
 
-<img src="docs/assets/readme-banner.png" width="100%" alt="Umbrella Wallet"/>
+<img src="docs/assets/readme-banner.png" width="100%" alt="Phobia Wallet"/>
 
-# Umbrella Wallet
+# Phobia Wallet
 
 **A self-custody desktop crypto wallet that never asks who you are.**
 
 No account. No email. No phone number. No KYC. No tracking. No fee on your transfers.
 
 <sub>an independent project by <b>the fear</b></sub>
+
+> **Umbrella Wallet is now Phobia Wallet.** Same code, same keys, same encrypted vault — a new name and
+> a new look. Installed copies update in place; the release files keep their `UmbrellaWallet-` names for
+> one more release so every copy in use can still find its update.
 
 <br/>
 
@@ -38,7 +42,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 <br/>
 
-<img src="docs/assets/screenshot-portfolio-v48.png" width="88%" alt="Umbrella Wallet portfolio"/>
+<img src="docs/assets/screenshot-portfolio-v410.png" width="88%" alt="Phobia Wallet portfolio"/>
 
 </div>
 
@@ -76,7 +80,7 @@ UmbrellaWallet/
 
 ## What this is
 
-Umbrella is a desktop wallet for Windows and Linux that holds your keys and nothing else of yours.
+Phobia is a desktop wallet for Windows and Linux that holds your keys and nothing else of yours.
 
 Your 24-word seed is generated on your machine, encrypted into a local vault with your password
 (Argon2id → AES-256-GCM), and never leaves the device. There is no server that knows you exist. There
@@ -98,7 +102,7 @@ Most wallets ask you to trade privacy for convenience, and most of them don't sa
 - Wallets with Tor support usually make you configure it. Which means most people don't.
 - Nearly every wallet takes a cut of your transfers, and many bury it.
 
-Umbrella is the wallet we wanted to exist: one vault for the coins people actually hold together,
+Phobia is the wallet we wanted to exist: one vault for the coins people actually hold together,
 Tor as a switch instead of a setup guide, and no cut of your money.
 
 ## What makes it different
@@ -118,7 +122,7 @@ It reads live settings and reports what is *actually* protecting the wallet righ
 it says your IP is visible to every explorer you use. It will not flatter you.
 
 <div align="center">
-<img src="docs/assets/screenshot-security-v48.png" width="80%" alt="Security Center"/>
+<img src="docs/assets/screenshot-security-v410.png" width="80%" alt="Security Center"/>
 </div>
 
 **You choose which server sees your addresses.**
@@ -142,21 +146,22 @@ You pay the network's miner/validator fee and nothing else. See [What this costs
 
 ## Screenshots
 
-| Market | Receive |
+| Welcome | Unlock |
 |---|---|
-| <img src="docs/assets/screenshot-market-v48.png" alt="Market"/> | <img src="docs/assets/screenshot-receive-v48.png" alt="Receive"/> |
-| **Settings** | |
-| <img src="docs/assets/screenshot-settings-v48.png" alt="Settings"/> | |
+| <img src="docs/assets/screenshot-welcome-v410.png" alt="Welcome"/> | <img src="docs/assets/screenshot-unlock-v410.png" alt="Unlock"/> |
+| **Receive** | **Settings** |
+| <img src="docs/assets/screenshot-receive-v410.png" alt="Receive"/> | <img src="docs/assets/screenshot-settings-v410.png" alt="Settings"/> |
 
-The default look is gold light on black: charts drawn as lines of light, and every Umbrella logo in the
-app tinted to the theme you pick — only the desktop icon keeps its own colours. **20 themes**, each with
-its own character rather than one accent swapped around (the original navy is still there):
+The default look is **Phobia's crystal blue**: the logo's own blues on deep indigo, crystals drifting
+behind the window, charts drawn as lines of light. **21 themes** share that design in their own colours —
+the glow behind the page, the crystals and the logo all take the theme's hue — and the gold that was
+Umbrella's default is still there as **Honey gold**:
 
-| Kraken · abyssal violet | Void · electric OLED |
+| Honey gold · light on black | Kraken · abyssal violet |
 |---|---|
-| <img src="docs/assets/theme-kraken.png" alt="Kraken theme"/> | <img src="docs/assets/theme-void.png" alt="Void theme"/> |
-| **Ember · crimson editorial** | **Matrix · phosphor terminal** |
-| <img src="docs/assets/theme-ember.png" alt="Ember theme"/> | <img src="docs/assets/theme-matrix.png" alt="Matrix theme"/> |
+| <img src="docs/assets/theme-gold-v410.png" alt="Honey gold theme"/> | <img src="docs/assets/theme-kraken-v410.png" alt="Kraken theme"/> |
+| **Void · electric OLED** | **Matrix · phosphor terminal** |
+| <img src="docs/assets/theme-void-v410.png" alt="Void theme"/> | <img src="docs/assets/theme-matrix-v410.png" alt="Matrix theme"/> |
 
 ## Coins
 
@@ -196,7 +201,7 @@ network delivers to your own address. Nobody holds your funds in between.
 
 ## Download
 
-<img src="docs/assets/logo-umbrella-v48.png" width="64" align="left" alt="" hspace="14"/>
+<img src="docs/assets/logo-phobia.png" width="64" align="left" alt="" hspace="14"/>
 
 Builds are published on the [releases page](https://github.com/thefear078/UmbrellaWallet/releases/latest).
 This is the icon you will see once it is installed.
@@ -388,7 +393,7 @@ More in **[docs/troubleshooting.md](docs/troubleshooting.md)**.
 
 ## What this costs
 
-**Umbrella takes no cut of your transfers.** You pay the network's own miner/validator fee and nothing
+**Phobia takes no cut of your transfers.** You pay the network's own miner/validator fee and nothing
 else — no platform fee, no subscription, no withdrawal fee, no account fee. A wallet that holds your
 own keys should not charge you for touching your own money.
 
@@ -413,7 +418,7 @@ The short version:
 - Every network call goes through one Tor-aware client; the kill-switch makes "no Tor" mean "no
   request", not "quietly direct".
 
-The long version, including the threat model and what Umbrella explicitly does **not** protect you
+The long version, including the threat model and what Phobia explicitly does **not** protect you
 from, is in **[SECURITY.md](SECURITY.md)**.
 
 Found a vulnerability? [Report it privately](https://github.com/thefear078/UmbrellaWallet/security/advisories/new).
@@ -508,7 +513,7 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 <br/>
 
 <a href="https://t.me/UmbrellaWallet">
-  <img src="docs/assets/logo-telegram-channel.png" width="72" alt="Umbrella Wallet on Telegram"/>
+  <img src="docs/assets/logo-telegram-channel.png" width="72" alt="Phobia Wallet on Telegram"/>
 </a>
 
 **[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** ·
@@ -529,6 +534,6 @@ Nobody there will ever ask you for your seed phrase.</sub>
 <br/>
 <br/>
 
-<sub>© 2026 Umbrella Wallet · by <b>the fear</b></sub>
+<sub>© 2026 Phobia Wallet · by <b>the fear</b></sub>
 
 </div>

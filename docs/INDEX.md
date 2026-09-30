@@ -1,8 +1,8 @@
-# Umbrella documentation
+# Phobia documentation
 
-This is the **central index** for all official Umbrella Wallet documents.
+This is the **central index** for all official Phobia Wallet documents.
 
-Umbrella is a **desktop-only**, non-custodial crypto wallet (.NET 8 + Avalonia; Windows and Linux;
+Phobia is a **desktop-only**, non-custodial crypto wallet (.NET 8 + Avalonia; Windows and Linux;
 Android planned). There is no web app and no backend that knows who you are.
 
 ---

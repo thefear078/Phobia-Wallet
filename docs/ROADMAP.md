@@ -1,4 +1,4 @@
-# Umbrella Wallet — unified roadmap
+# Phobia Wallet — unified roadmap
 
 **Product version:** see [`VERSION`](../VERSION) (currently **4.8.2**).  
 **Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.2, P1.4–P1.7, P1.9–P1.13 and L.1/L.2/L.3/L.8 closed).  
@@ -39,6 +39,9 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | Address poisoning / EIP-55 / reuse warnings | ✅ |
 | Desktop Win/Linux, themes, 6 languages, encrypted backup | ✅ |
 | SHA256SUMS on releases | ✅ |
+| Monero 25-word seeds in all 12 Monero languages (Chinese included) → Monero-only wallet, optional scan-from | ✅ (4.10) |
+| Monero service reachable (RPC bodies with a stated length) and restore over the account's whole life | ✅ (4.10) |
+| Rebrand Umbrella → **Phobia**: vector crystal logo + icons, crystal-blue default theme, every theme adapted | ✅ (4.10) |
 
 ---
 
@@ -113,7 +116,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | # | Task | Status |
 |---|---|---|
 | H.1 | Bitcoin **PSBT** export/import + watch-only xpub | ✅ **PSBT both ways.** Export: the reviewed payment as an unsigned PSBT naming the master fingerprint and every BIP32 path — BIP-371 Taproot fields filled by hand, because NBitcoin's `AddKeyPath` leaves a Taproot coin unnamed — with the change index reserved as for a real send. Import (base64, hex or `.psbt`): reviewed line by line with the cost to this wallet, and only coins the wallet's **own scan** found are signed, at the value read from the chain; a PSBT that misstates one of them, or spends from one of its addresses a coin the scan cannot see, is refused. Completed PSBTs broadcast through the same route gate. The xpub export now includes the Taproot account the balance counts. **Not done:** a seedless watch-only wallet (import an xpub, sign elsewhere) — the app is built around an unlocked seed, and that mode is the same work H.2 needs, so they go together. Signing needs a synced wallet: this is not an air-gapped signer |
-| **H.2** | **Ledger / Trezor** (sign on device, no seed in Umbrella) + seedless watch-only | 🏆 **P0 next** — design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md); H.1 PSBT is the interim path |
+| **H.2** | **Ledger / Trezor** (sign on device, no seed in Phobia) + seedless watch-only | 🏆 **P0 next** — design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md); H.1 PSBT is the interim path |
 | H.3 | **Multisig** 2-of-3 | 📅 long |
 | H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 📅 Planned |
 | R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | 🟡 docs / ⏳ attestations |
@@ -313,7 +316,7 @@ Difference: **how the wallet works technically** (Tor, duress, non-custodial) �
 **On-start draft (EN, for implementing L.1/L.2/L.3):**
 
 > **NOT A FINANCIAL INSTITUTION**  
-> Umbrella Wallet is non-custodial software. We do not hold your funds, manage your keys, or provide banking services. You are solely responsible for your recovery phrase and for complying with local law.  
+> Phobia Wallet is non-custodial software. We do not hold your funds, manage your keys, or provide banking services. You are solely responsible for your recovery phrase and for complying with local law.  
 >  
 > **NO GUARANTEE OF ANONYMITY**  
 > Privacy features (Tor, encrypted local storage) do not make a public ledger private. Blockchain analysis can still link activity on transparent chains.  

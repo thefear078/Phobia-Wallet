@@ -39,7 +39,7 @@ recognise, and treat the machine as suspect before the wallet.
 That is an unsolicited airdrop. Anyone can send a token to any address; it arriving means nothing
 about you. Their name is the attack — it lures you to a site that asks for your seed phrase.
 
-Umbrella folds them away and tells you how many. **Never open a site named in a token, and never enter
+Phobia folds them away and tells you how many. **Never open a site named in a token, and never enter
 your 24 words anywhere.**
 
 They are hidden, not deleted — one click shows them. A token with a real market price is never

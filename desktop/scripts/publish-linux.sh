@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publishes the Linux build of Umbrella Wallet as a self-contained tar.gz.
+# Publishes the Linux build of Phobia Wallet as a self-contained tar.gz.
 #
 # The Tor and Monero helpers are per-OS binaries; the Windows staging scripts fetch .exe
 # files, so on Linux the two helpers are fetched here from the same upstream projects.
@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 VERSION="$(sed -n 's/.*<Version>\([^<]*\)<\/Version>.*/\1/p' src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj)"
 OUT="dist/linux/umbrella-wallet-${VERSION}-linux-x64"
 
-echo "Publishing Umbrella Wallet ${VERSION} for linux-x64…"
+echo "Publishing Phobia Wallet ${VERSION} for linux-x64…"
 dotnet publish src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj \
     -c Release -r linux-x64 --self-contained true \
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
@@ -49,6 +49,30 @@ fi
 # Strip the Windows helpers that the build copies from the source tree — dead weight here.
 rm -f "${OUT}/tor/tor.exe" "${OUT}/monero/monero-wallet-rpc.exe"
 
+# A menu entry for launchers: the icon ships beside the app, and install-desktop-entry.sh writes a
+# .desktop file pointing at wherever the folder was extracted (run it again after moving the folder).
+cp src/Umbrella.Wallet.App/Assets/phobia-appicon.png "${OUT}/phobia.png"
+cat > "${OUT}/install-desktop-entry.sh" <<'ENTRY'
+#!/usr/bin/env sh
+# Adds Phobia Wallet to your application menu, pointing at this folder.
+set -eu
+here="$(cd "$(dirname "$0")" && pwd)"
+dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+mkdir -p "$dir"
+cat > "$dir/phobia-wallet.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Phobia Wallet
+Comment=Self-custody crypto wallet
+Exec="$here/Umbrella.Wallet.App"
+Icon=$here/phobia.png
+Terminal=false
+Categories=Finance;Office;
+EOF
+echo "Added: $dir/phobia-wallet.desktop"
+ENTRY
+chmod +x "${OUT}/install-desktop-entry.sh"
+
 # Ensure the app itself is executable in the tarball (the .NET apphost + bundled helpers).
 chmod +x "${OUT}/Umbrella.Wallet.App" 2>/dev/null || true
 chmod +x "${OUT}/tor/tor" "${OUT}/monero/monero-wallet-rpc" 2>/dev/null || true
@@ -57,4 +81,4 @@ echo "Packing…"
 tar -czf "dist/linux/umbrella-wallet-${VERSION}-linux-x64.tar.gz" -C dist/linux \
     "umbrella-wallet-${VERSION}-linux-x64"
 echo "Done: dist/linux/umbrella-wallet-${VERSION}-linux-x64.tar.gz"
-echo "Run with: ./Umbrella.Wallet.App"
+echo "Run with: ./Umbrella.Wallet.App  (./install-desktop-entry.sh adds it to the app menu)"

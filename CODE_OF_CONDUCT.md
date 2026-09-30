@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-15
 
-Umbrella Wallet is an independent open-source project (MIT). Collaboration happens through issues,
+Phobia Wallet is an independent open-source project (MIT). Collaboration happens through issues,
 security advisories and pull requests. Forks are welcome under the MIT licence; rebrands that borrow the
-Umbrella name or logo are not (see [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)).
+Phobia name or logo are not (see [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)).
 
 ## Our standards
 

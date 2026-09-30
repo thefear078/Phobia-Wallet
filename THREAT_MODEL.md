@@ -6,7 +6,7 @@ A threat model that only lists wins is marketing. Each vector below states the a
 wallet actually does, and what remains true afterwards. Where the honest answer is "this does not
 help", it says so.
 
-**Scope.** Umbrella is a desktop wallet for Windows and Linux, .NET 8 / Avalonia. There is no server,
+**Scope.** Phobia is a desktop wallet for Windows and Linux, .NET 8 / Avalonia. There is no server,
 no account and no backend: nothing about a user exists anywhere except on their own machine.
 
 ## Contents
@@ -70,7 +70,7 @@ powered-off disk; it does not help malware already running as you.
 **Mitigation (partial today, stronger next):**
 
 - **H.1 ✅** — Bitcoin **PSBT** export/import so spends can be signed on a hardware wallet or
-  air-gapped machine; Umbrella only signs coins its own scan found. Guide:
+  air-gapped machine; Phobia only signs coins its own scan found. Guide:
   [docs/HARDWARE_WALLETS.md](docs/HARDWARE_WALLETS.md).
 - **H.2 🏆 next** — USB Ledger / Trezor so the seed never decrypts on this PC for spends.
 - **H.3** — Multisig 2-of-3 for amounts that justify operational complexity.
@@ -207,7 +207,7 @@ pending transaction offline and says what it would reveal — chiefly which addr
 always goes to a freshly derived internal address.
 
 **Where the defence ends.** A transparent chain publishes the amount and both addresses permanently.
-A spend that joins two addresses cannot be un-joined. Whoever you paid knows you paid them. Umbrella
+A spend that joins two addresses cannot be un-joined. Whoever you paid knows you paid them. Phobia
 has **no CoinJoin, no PayJoin, no Dandelion++ and no Taproot** — these are real gaps, listed in the
 roadmap rather than implied away.
 

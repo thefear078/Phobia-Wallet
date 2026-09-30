@@ -2,7 +2,7 @@
 
 Every number this wallet shows you comes from the same program that tells you your money is safe.
 That is not a reason to distrust it. It is the reason this page exists: each check below asks
-somebody who is **not** Umbrella the same question, so the answer stops depending on us being honest.
+somebody who is **not** Phobia the same question, so the answer stops depending on us being honest.
 
 None of it requires trusting this document either — every command is one you run yourself, and every
 result is something you can see.
@@ -71,13 +71,13 @@ Settings → Privacy, watch its connections:
 
 ```powershell
 Get-NetTCPConnection -State Established |
-  Where-Object OwningProcess -eq (Get-Process Umbrella).Id |
+  Where-Object OwningProcess -eq (Get-Process Phobia).Id |
   Select-Object RemoteAddress, RemotePort
 ```
 
 ```bash
 # Linux
-ss -tnp | grep Umbrella
+ss -tnp | grep Phobia
 ```
 
 With Tor-only on, every remote endpoint should be loopback (`127.0.0.1:9250`). Anything else going

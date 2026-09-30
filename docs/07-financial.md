@@ -1,6 +1,6 @@
 # 07 — Network Fees & Costs
 
-Umbrella Wallet is **non-custodial**. Users pay only **blockchain network fees** (miner/validator
+Phobia Wallet is **non-custodial**. Users pay only **blockchain network fees** (miner/validator
 costs). There are no subscriptions and no hidden platform charges in the product documentation.
 
 ## What you pay when sending

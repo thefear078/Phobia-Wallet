@@ -13,18 +13,21 @@
         Background="Transparent">
 
   <!-- Small animated intro window. Transparent window + a rounded Border give real rounded corners
-       (the sharp square edges came from a solid window). The brand mark scales + fades in over a
-       breathing blue glow, then App.axaml.cs reveals the main window and closes this one. -->
-  <Border CornerRadius="28" Background="#070707" BorderBrush="{DynamicResource UmTileEdge}" BorderThickness="1"
+       (the sharp square edges came from a solid window). The Phobia crystal scales + fades in over a
+       breathing glow and the crystals of the artwork, then App.axaml.cs reveals the main window and
+       closes this one. -->
+  <Border CornerRadius="28" Background="{DynamicResource UmBg}" BorderBrush="{DynamicResource UmTileEdge}" BorderThickness="1"
           BoxShadow="0 26 70 -22 #B3000000" ClipToBounds="True">
     <Panel>
+      <controls:CrystalField Layout="Band" Seed="3" Opacity="0.55"/>
       <Ellipse Width="560" Height="560" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="splashGlow"/>
-      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="22">
-        <controls:BrandMark Kind="Canopy" Width="136" Height="131" HorizontalAlignment="Center" Classes="splashLogo"/>
-        <TextBlock Text="UMBRELLA WALLET" FontSize="23" FontWeight="SemiBold" LetterSpacing="6"
-                   HorizontalAlignment="Center" Foreground="#F7F9FC" Classes="splashTitle"/>
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="18">
+        <Image Source="avares://Umbrella.Wallet.App/Assets/phobia-crystal.png" Width="150" Height="150"
+               HorizontalAlignment="Center" Classes="splashLogo" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+        <TextBlock Text="PHOBIA WALLET" FontSize="23" FontWeight="SemiBold" LetterSpacing="6"
+                   HorizontalAlignment="Center" Foreground="{DynamicResource UmText}" Classes="splashTitle"/>
         <TextBlock Text="{Binding [splash.tagline], Source={x:Static app:Loc.Instance}}" FontSize="13" HorizontalAlignment="Center"
-                   Foreground="#8994A7" Classes="splashSub"/>
+                   Foreground="{DynamicResource UmTextDim}" Classes="splashSub"/>
       </StackPanel>
     </Panel>
   </Border>

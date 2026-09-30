@@ -1,6 +1,6 @@
 # The rules
 
-Umbrella is a self-custody wallet for people who may one day have to explain it to somebody they did
+Phobia is a self-custody wallet for people who may one day have to explain it to somebody they did
 not choose to explain it to.
 
 That sentence decides most of what follows. A wallet for a hobbyist can afford to be optimistic. A

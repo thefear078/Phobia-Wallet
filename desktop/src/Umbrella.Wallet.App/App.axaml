@@ -3,13 +3,13 @@
              x:Class="Umbrella.Wallet.App.App"
              xmlns:local="using:Umbrella.Wallet.App"
              RequestedThemeVariant="Dark"
-             Name="Umbrella Wallet">
+             Name="Phobia Wallet">
 
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
 
-    <!-- Brand gradients are the same across every palette (they ARE the Umbrella signature), so they
+    <!-- Brand gradients are the same across every palette (they ARE the Phobia signature), so they
          live here as static resources rather than in the per-theme brush set. -->
     <Application.Resources>
         <LinearGradientBrush x:Key="UmSignature" StartPoint="0%,0%" EndPoint="100%,100%">
@@ -29,16 +29,17 @@
             <GradientStop Offset="0.5" Color="#4D8BFF"/>
             <GradientStop Offset="1" Color="#8E72FF"/>
         </LinearGradientBrush>
-        <!-- The mark's fill before a theme is applied (the splash can show first). Theming.Apply
-             replaces it with the chosen theme's accent. -->
+        <!-- The brand's colours before a theme is applied (the splash can show first): Phobia's crystal
+             blue. Theming.Apply replaces them with the chosen theme's. -->
         <LinearGradientBrush x:Key="UmMarkFill" StartPoint="0%,0%" EndPoint="100%,100%">
-            <GradientStop Offset="0" Color="#FFD766"/>
-            <GradientStop Offset="0.45" Color="#F8C846"/>
-            <GradientStop Offset="1" Color="#E3A72F"/>
+            <GradientStop Offset="0" Color="#A6DCFF"/>
+            <GradientStop Offset="0.45" Color="#5AA9FF"/>
+            <GradientStop Offset="1" Color="#316EE5"/>
         </LinearGradientBrush>
-        <Color x:Key="UmGlow">#F8C846</Color>
-        <SolidColorBrush x:Key="UmTileEdge" Color="#99F8C846"/>
-        <BoxShadows x:Key="UmTileGlow">0 0 22 0 #40F8C846</BoxShadows>
+        <Color x:Key="UmGlow">#2F6BEF</Color>
+        <Color x:Key="UmCrystalTint">#00000000</Color>
+        <SolidColorBrush x:Key="UmTileEdge" Color="#992F6BEF"/>
+        <BoxShadows x:Key="UmTileGlow">0 0 22 0 #402F6BEF</BoxShadows>
         <!-- Hero balance surface: a muted navy→blue→violet sweep that stays readable under white text. -->
         <LinearGradientBrush x:Key="UmHeroGradient" StartPoint="0%,0%" EndPoint="100%,100%">
             <GradientStop Offset="0" Color="#183A66"/>
@@ -1015,7 +1016,8 @@
             </Style.Animations>
         </Style>
         <!-- The mark scales up and fades in. -->
-        <!-- The app-icon tile the mark sits in: near-black, a hairline and a glow of the accent. -->
+        <!-- The app-icon tile the mark sits in: the theme's card lifting to its page, a hairline and a
+             glow of the accent. -->
         <Style Selector="Border.brandTile">
             <Setter Property="CornerRadius" Value="14" />
             <Setter Property="BorderThickness" Value="1" />
@@ -1023,8 +1025,8 @@
             <Setter Property="BoxShadow" Value="{DynamicResource UmTileGlow}" />
             <Setter Property="Background">
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                    <GradientStop Offset="0" Color="#1A1A1A" />
-                    <GradientStop Offset="1" Color="#070707" />
+                    <GradientStop Offset="0" Color="{DynamicResource UmCardTop}" />
+                    <GradientStop Offset="1" Color="{DynamicResource UmCardBottom}" />
                 </LinearGradientBrush>
             </Setter>
         </Style>

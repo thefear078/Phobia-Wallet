@@ -5,19 +5,19 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Assets\umbrella.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\phobia.ico</ApplicationIcon>
     <AssemblyName>Umbrella.Wallet.App</AssemblyName>
-    <Product>Umbrella Wallet</Product>
-    <AssemblyTitle>Umbrella Wallet</AssemblyTitle>
+    <Product>Phobia Wallet</Product>
+    <AssemblyTitle>Phobia Wallet</AssemblyTitle>
     <Version>4.9.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
     <!-- The app icon ALSO lands on disk next to the exe. Assets are embedded Avalonia resources, so
-         `{app}\Assets\umbrella.ico` would otherwise not exist — and a shortcut whose IconLocation points
+         `{app}\Assets\phobia.ico` would otherwise not exist — and a shortcut whose IconLocation points
          there renders blank. Shipping the real file makes any such shortcut resolve. -->
-    <Content Include="Assets\umbrella.ico">
+    <Content Include="Assets\phobia.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>

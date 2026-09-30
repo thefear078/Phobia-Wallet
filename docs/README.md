@@ -1,6 +1,6 @@
-# Umbrella Wallet — documentation
+# Phobia Wallet — documentation
 
-Umbrella is a **desktop-only**, self-custody crypto wallet (.NET 8 + Avalonia; Windows and Linux,
+Phobia is a **desktop-only**, self-custody crypto wallet (.NET 8 + Avalonia; Windows and Linux,
 Android planned). There is **no web app and no backend server** — nothing to sign in to and nothing
 that knows you exist.
 

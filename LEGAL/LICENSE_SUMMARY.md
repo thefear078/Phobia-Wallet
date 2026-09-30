@@ -6,8 +6,8 @@
 | You may | You may not |
 |---------|-------------|
 | Use, copy, modify, merge, publish, distribute, sublicense, sell | Remove the copyright / permission notice from substantial copies |
-| Fork publicly and ship derivatives under MIT terms | Use “Umbrella Wallet”, “the fear”, logos, or confusing names without permission ([TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md)) |
-| Submit pull requests | Imply endorsement by thefear078 / Umbrella |
+| Fork publicly and ship derivatives under MIT terms | Use “Phobia Wallet”, “the fear”, logos, or confusing names without permission ([TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md)) |
+| Submit pull requests | Imply endorsement by thefear078 / Phobia |
 
 Third-party components (Tor, Monero, NuGet libraries) keep **their own** licenses — see
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).

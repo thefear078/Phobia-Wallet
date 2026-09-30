@@ -1,11 +1,11 @@
 # 12 — Coins, Chains & Tokens — Complete User Guide
 
-> This document covers everything about coins, networks and tokens in Umbrella Wallet.
+> This document covers everything about coins, networks and tokens in Phobia Wallet.
 > Written for users of all levels — from first-time crypto users to experienced traders.
 
 ---
 
-## Quick answer: what Umbrella supports right now
+## Quick answer: what Phobia supports right now
 
 ### Coins you can send and receive today
 
@@ -229,7 +229,7 @@ Select the coin you want to send.
 
 ### 4. Review the fee
 The wallet shows:
-- Network fee (paid to miners/validators, not to Umbrella)
+- Network fee (paid to miners/validators, not to Phobia)
 - Total cost (amount + fee)
 - Estimated confirmation time
 
@@ -296,7 +296,7 @@ No one, not even blockchain analysis companies, can see your balance or transact
 **The part most wallets do not tell you: the node.**
 
 A Monero wallet cannot read the chain by itself — it has to ask some machine, and unless you run
-your own, that machine belongs to somebody else. Umbrella used to pick one for you silently. It no
+your own, that machine belongs to somebody else. Phobia used to pick one for you silently. It no
 longer does: **Settings → Privacy → Monero node** shows exactly which machine is being asked, lets
 you choose a different one, and lets you point at your own.
 
@@ -320,7 +320,7 @@ to a clearnet node in that state would hand out the very IP the kill-switch exis
 
 ### 🟡 Bitcoin with Tor — medium privacy
 Bitcoin is a public ledger — every transaction is visible. However:
-- Umbrella routes Bitcoin queries through Tor → your IP is not linked to your address
+- Phobia routes Bitcoin queries through Tor → your IP is not linked to your address
 - Fresh address per receive → harder to link transactions
 - Still: anyone with your address can see your balance and full history
 
@@ -330,7 +330,7 @@ Fully public blockchains. Anyone can:
 - See your current balance
 - Track movements between addresses
 
-This is not specific to Umbrella — it's how these blockchains work. For private transfers, use Monero.
+This is not specific to Phobia — it's how these blockchains work. For private transfers, use Monero.
 
 ---
 
@@ -355,11 +355,11 @@ Bitcoin: normal during network congestion. Economy-fee transactions may wait 1-2
 ETH: usually confirms in minutes. If stuck: the fee may have been too low during a congestion spike.
 Solana: if not confirmed in 30 seconds, it was likely dropped — retry.
 
-### "Can Umbrella see my balance or transactions?"
-No. Balances are fetched directly from public blockchain nodes and explorers — no Umbrella server is involved. When Tor is enabled, even the blockchain nodes don't see your real IP.
+### "Can Phobia see my balance or transactions?"
+No. Balances are fetched directly from public blockchain nodes and explorers — no Phobia server is involved. When Tor is enabled, even the blockchain nodes don't see your real IP.
 
-### "What happens to my coins if Umbrella shuts down?"
-Your coins are safe. They live on the blockchain, not in any app. Import your 24-word seed phrase into any BIP39-compatible wallet (MetaMask, Trust Wallet, Ledger, etc.) and you have full access. Umbrella is just an interface.
+### "What happens to my coins if Phobia shuts down?"
+Your coins are safe. They live on the blockchain, not in any app. Import your 24-word seed phrase into any BIP39-compatible wallet (MetaMask, Trust Wallet, Ledger, etc.) and you have full access. Phobia is just an interface.
 
 ### "My Monero balance is 0 but I know I received XMR"
 Monero requires scanning the blockchain with your ViewKey to find incoming transactions. Make sure the bundled monero-wallet-rpc is running (you'll see a status indicator in the app). Initial sync can take 10-60 minutes depending on how many blocks need scanning.
@@ -419,7 +419,7 @@ The wallet works like this:
 | Man-in-the-middle network attack | All connections via Tor (optional), HTTPS |
 | Someone brute-forces your password | Argon2id KDF — costs $1000+ per guess on GPU |
 | Exchange gets hacked | Your coins aren't on an exchange — they're in your wallet |
-| Umbrella's servers get hacked | Servers never had your keys — nothing to steal |
+| Phobia's servers get hacked | Servers never had your keys — nothing to steal |
 
 ### What you must protect yourself
 
@@ -428,7 +428,7 @@ The wallet works like this:
 | Losing your seed phrase | Write 24 words on paper, store securely offline |
 | Weak wallet password | Use 12+ characters, mix of types |
 | Sending to wrong address | Always verify the first and last 4 characters |
-| Phishing (fake Umbrella site) | Always download from official GitHub only |
+| Phishing (fake Phobia site) | Always download from official GitHub only |
 | Keylogger on your PC | Keep system clean, use antivirus |
 
 ---

@@ -13,7 +13,7 @@ When one is completed, this file will link:
 - full report (including findings), not only a marketing badge;
 - which items were fixed and which remain accepted risk.
 
-Until then, do **not** describe Umbrella as “audited” in README, store listings, or press.
+Until then, do **not** describe Phobia as “audited” in README, store listings, or press.
 
 ## What exists today (not a substitute for an audit)
 

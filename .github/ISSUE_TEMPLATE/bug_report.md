@@ -19,7 +19,7 @@ labels: ["bug"]
 ### Actual
 
 ### Environment
-- Umbrella version:
+- Phobia version:
 - OS:
 - Tor on / off / Tor-only:
 - Installer or portable:

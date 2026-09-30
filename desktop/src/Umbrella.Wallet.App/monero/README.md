@@ -2,7 +2,7 @@
 
 Monero is the one coin whose balance cannot be read from a public explorer — amounts are hidden
 on-chain, so a balance only exists after scanning with your view key, and spending requires
-RingCT + Bulletproofs. Re-implementing that would be reckless, so Umbrella ships **Monero's own
+RingCT + Bulletproofs. Re-implementing that would be reckless, so Phobia ships **Monero's own
 audited wallet daemon** and drives it over JSON-RPC (`MoneroRpcService`).
 
 ## Contents (not committed)

@@ -1,6 +1,6 @@
 # Getting started
 
-Install Umbrella Wallet, verify the download, create or import a wallet, and make a first small send
+Install Phobia Wallet, verify the download, create or import a wallet, and make a first small send
 safely.
 
 <!-- TOC -->
@@ -72,7 +72,7 @@ the random word checks. Anyone with those words has the funds; if you lose them 
 can recover them — including us.
 
 **Import:** paste a BIP39 phrase from another wallet. Addresses will match the original derivation
-paths Umbrella supports. Two other formats import as single-coin wallets:
+paths Phobia supports. Two other formats import as single-coin wallets:
 
 - a **TON phrase** (Telegram Wallet, Tonkeeper, TON Space — 24 words) → a Toncoin-only wallet;
 - a **Monero seed** (Monero GUI, Feather, Cake Wallet, MyMonero — 25 words, in any of Monero's 12

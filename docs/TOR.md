@@ -1,6 +1,6 @@
-# Umbrella Wallet over Tor
+# Phobia Wallet over Tor
 
-Umbrella is anonymous-first: the web client makes **zero third-party requests**
+Phobia is anonymous-first: the web client makes **zero third-party requests**
 for ordinary visitors (Telegram's script loads only inside the Telegram client,
 WalletConnect only when the user links a wallet). This document covers running
 the full stack as a Tor v3 hidden service.

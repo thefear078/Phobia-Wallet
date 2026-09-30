@@ -1,10 +1,28 @@
 # Changelog
 
-All notable releases of **Umbrella Wallet**.
+All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
+
+### Umbrella is now Phobia — a new name and a new look
+
+- **The wallet is called Phobia Wallet.** Same code, same keys, same vault: nothing about anyone's money
+  moves. The data folder, the installer's identity and the release file names stay as they were, so
+  installed and portable copies update in place.
+- **A new logo** — two cut crystals, drawn as vectors so they are sharp from the 16 px title bar to the
+  installer — and a new app icon rendered from it at every size. The launch screen shows the large
+  Phobia crystal.
+- **Phobia crystal blue is the default theme**: the logo's blues on deep indigo, crystals drifting behind
+  the window (a drift across the lower half while locked or setting up, a few in the corners once the
+  wallet is open, clear of every card). An install still on the old gold default moves to it once; gold
+  stays in Settings as Honey gold.
+- **Every other theme was brought into the same design**: each page now has the soft glow of its own
+  accent, and the crystals and logo take the theme's hue (gold crystals on gold, violet on Kraken).
+- The brand artwork (logo, launch crystal, backgrounds) is kept in `brand/`.
+- **Linux:** the tarball now carries the Phobia icon and `install-desktop-entry.sh`, which adds the
+  wallet to your application menu (pointing at wherever you extracted it).
 
 ### Monero seeds in every language Monero offers
 

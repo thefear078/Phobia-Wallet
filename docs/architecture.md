@@ -1,6 +1,6 @@
 # Architecture
 
-How Umbrella is put together, and — more usefully for anyone changing it — *why* it is put together
+How Phobia is put together, and — more usefully for anyone changing it — *why* it is put together
 this way. Most of these boundaries exist because crossing them is how wallets lose people's money.
 
 ## The three projects

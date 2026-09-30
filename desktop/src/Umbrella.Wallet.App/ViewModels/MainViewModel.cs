@@ -92,7 +92,7 @@ public partial class MainViewModel : ViewModelBase
     private void ToggleSpamTokens() => ShowSpamTokens = !ShowSpamTokens;
     /// <summary>How the Holdings list is ordered: "Default" (catalog), "Value", "Change" or "Name".</summary>
     [ObservableProperty] private string _holdingsSort = "Default";
-    [ObservableProperty] private string _walletLabel = "Umbrella Wallet";
+    [ObservableProperty] private string _walletLabel = "Phobia Wallet";
     [ObservableProperty] private string _shortAddress = "—";
     [ObservableProperty] private string _totalBalanceMain = "0";
     [ObservableProperty] private string _totalBalanceCents = "00";
@@ -978,7 +978,7 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Version shown in the status bar — read from the assembly so it never drifts from the csproj.</summary>
     public string AppVersionLabel =>
-        $"Umbrella Wallet v{CurrentVersion} · the fear";
+        $"Phobia Wallet v{CurrentVersion} · the fear";
 
     /// <summary>Just the version, for the sidebar's foot.</summary>
     public string AppVersionShort => $"v{CurrentVersion}";
@@ -1502,6 +1502,13 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("4.10", "Umbrella is now Phobia",
+            "Same wallet, new name and a new look.\n\n" +
+            "• Nothing about your money changes. Your recovery phrase, your addresses and your encrypted vault are exactly where they were, and every setting carries over.\n" +
+            "• The crystal logo and a deep-blue theme drawn from it are the new default. If you liked the gold, it is still in Settings → Appearance as Honey gold, and every other theme now shares the same soft glow and crystals in its own colours.\n" +
+            "• Monero seeds in all 12 of Monero's languages — Chinese included — now import as a Monero-only wallet.\n\n" +
+            "The official channel and the GitHub releases are where they were; download files keep their UmbrellaWallet- names for one more release so every installed copy can update itself.",
+            "2026-09-30"),
         new("4.7", "Version 4.7 — you choose which server sees your addresses",
             "Your keys never leave your device. That is true, and every wallet says it.\n\n" +
             "What almost none of them say is that a wallet still has to ASK somebody what is on the chain — and on a public chain, asking means handing over the address. Whoever answers can tie together every address you ask about in one session. Tor hides your IP. It does not un-send an address.\n\n" +
@@ -5714,13 +5721,13 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>The mark drawn in the middle of every receive QR — the umbrella glyph in dark, so it
-    /// reads on the white centre pad. Loaded once and reused.</summary>
+    /// <summary>The mark drawn in the middle of every receive QR — the Phobia crystals, which read on the
+    /// white centre pad in their own blues. Loaded once and reused.</summary>
     private static Bitmap? QrCenterMark
     {
         get
         {
-            try { return LoadAsset("umbrella-mark-black.png"); }
+            try { return LoadAsset("phobia-mark.png"); }
             catch { return null; }
         }
     }

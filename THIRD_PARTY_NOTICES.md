@@ -1,7 +1,7 @@
 # Third-party notices
 
-Umbrella Wallet includes third-party software under separate licenses. Those licenses remain in force
-and are **not** replaced by the Umbrella [LICENSE](LICENSE).
+Phobia Wallet includes third-party software under separate licenses. Those licenses remain in force
+and are **not** replaced by the Phobia [LICENSE](LICENSE).
 
 ---
 
@@ -75,7 +75,7 @@ Full transitive graphs appear in each project’s `*.csproj` / restore graph.
 ## Attribution
 
 Some components require attribution in documentation or an About screen. This file and the in-app
-About / open-source notices (where present) satisfy that requirement for Umbrella’s distribution.
+About / open-source notices (where present) satisfy that requirement for Phobia’s distribution.
 
 If a license is missing or incorrect, report via [CONTACT.md](CONTACT.md) (never send seeds).
 

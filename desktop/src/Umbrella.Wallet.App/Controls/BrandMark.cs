@@ -1,37 +1,30 @@
 using System;
-using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
+using Avalonia.Layout;
 
 namespace Umbrella.Wallet.App.Controls;
 
-/// <summary>Which Umbrella logo a <see cref="BrandMark"/> draws.</summary>
+/// <summary>Which Phobia logo a <see cref="BrandMark"/> draws.</summary>
 public enum BrandKind
 {
-    /// <summary>The folded umbrella-and-gem mark — the app icon's own artwork.</summary>
+    /// <summary>The two crystals — the app icon's own artwork.</summary>
     Mark,
 
-    /// <summary>The umbrella with the UMBRELLA name under it.</summary>
+    /// <summary>The crystals with the PHOBIA name under them.</summary>
     Wordmark,
 
-    /// <summary>The umbrella on its own.</summary>
+    /// <summary>The crystals on their own (kept for layouts that asked for the old umbrella glyph).</summary>
     Glyph,
 
-    /// <summary>The canopy seen from above: light panels in the accent, dark panels between them.</summary>
+    /// <summary>The crystals on their own (kept for layouts that asked for the old canopy).</summary>
     Canopy,
 }
 
 /// <summary>
-/// An Umbrella logo in the colours of whatever theme is on — gold on the default theme, blue on Navy,
-/// and so on. Only the desktop icon (umbrella.ico) keeps fixed colours.
-///
-/// Each logo is a silhouette used as a mask over the theme's <c>UmMarkFill</c> gradient, plus, where
-/// the artwork has them, a layer that stays dark (the canopy's dark panels) or shades it (the mark's
-/// facets). Masks are drawn with high-quality scaling: the sources are large, and nearest-neighbour
-/// sampling turned their edges into steps.
+/// The Phobia logo in the colours of whatever theme is on — the logo's own blues on the default theme,
+/// the theme's hue on any other (see <see cref="CrystalLogo"/>). Vector, so it is sharp at every size.
 /// </summary>
 public sealed class BrandMark : Panel
 {
@@ -41,13 +34,10 @@ public sealed class BrandMark : Panel
     public static readonly StyledProperty<BrandKind> KindProperty =
         AvaloniaProperty.Register<BrandMark, BrandKind>(nameof(Kind), defaultValue: BrandKind.Mark);
 
-    private static readonly Dictionary<string, Bitmap> Cache = [];
-
     private readonly DropShadowEffect _glow = new() { OffsetX = 0, OffsetY = 0, BlurRadius = 22, Opacity = 0.5 };
 
     public BrandMark()
     {
-        RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.HighQuality);
         _glow.Bind(DropShadowEffect.ColorProperty, this.GetResourceObservable("UmGlow"));
         Effect = _glow;
         IsHitTestVisible = false;
@@ -77,40 +67,30 @@ public sealed class BrandMark : Panel
     private void Build()
     {
         Children.Clear();
-        switch (Kind)
+        if (Kind != BrandKind.Wordmark)
         {
-            case BrandKind.Wordmark:
-                AddFill("umbrella-wordmark-shape.png");
-                break;
-            case BrandKind.Glyph:
-                AddFill("umbrella-glyph-shape.png");
-                break;
-            case BrandKind.Canopy:
-                AddImage("umbrella-canopy-base.png");
-                AddFill("umbrella-canopy-shape.png");
-                break;
-            default:
-                AddFill("umbrella-mark-shape.png");
-                AddImage("umbrella-mark-shade.png");
-                break;
+            Children.Add(new CrystalLogo());
+            return;
         }
-    }
 
-    private void AddFill(string mask)
-    {
-        var fill = new Border { OpacityMask = new ImageBrush(Load(mask)) { Stretch = Stretch.Uniform } };
-        fill.Bind(Border.BackgroundProperty, fill.GetResourceObservable("UmMarkFill"));
-        Children.Add(fill);
-    }
-
-    private void AddImage(string name) =>
-        Children.Add(new Image { Source = Load(name), Stretch = Stretch.Uniform });
-
-    private static Bitmap Load(string name)
-    {
-        if (Cache.TryGetValue(name, out var cached)) return cached;
-        var bitmap = new Bitmap(AssetLoader.Open(new Uri($"avares://Umbrella.Wallet.App/Assets/{name}")));
-        Cache[name] = bitmap;
-        return bitmap;
+        // The name set under the crystals, scaled with them as one piece.
+        var name = new TextBlock
+        {
+            Text = "PHOBIA",
+            FontSize = 17,
+            FontWeight = FontWeight.SemiBold,
+            LetterSpacing = 5,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(5, 8, 0, 0),
+        };
+        name.Bind(TextBlock.ForegroundProperty, name.GetResourceObservable("UmText"));
+        Children.Add(new Viewbox
+        {
+            Stretch = Stretch.Uniform,
+            Child = new StackPanel
+            {
+                Children = { new CrystalLogo { Width = 96, Height = 96, HorizontalAlignment = HorizontalAlignment.Center }, name },
+            },
+        });
     }
 }

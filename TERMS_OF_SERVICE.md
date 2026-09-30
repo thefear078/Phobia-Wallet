@@ -1,10 +1,10 @@
 # Terms of Service
 
 **Last updated:** 2026-09-15  
-**Product:** Umbrella Wallet (desktop self-custody software)  
+**Product:** Phobia Wallet (desktop self-custody software)  
 **Publisher:** the fear (thefear078)
 
-By downloading, installing, or using Umbrella Wallet (“the Software”), you agree to these Terms. If you do not agree, do not use the Software.
+By downloading, installing, or using Phobia Wallet (“the Software”), you agree to these Terms. If you do not agree, do not use the Software.
 
 These Terms are intended for store listings (Apple App Store, Google Play, Microsoft Store) and for public distribution. The binding copyright licence for the source and binaries remains the [LICENSE](LICENSE) in this repository. Where they conflict on redistribution or forking, the [LICENSE](LICENSE) controls.
 
@@ -16,7 +16,7 @@ You confirm that you have read these Terms, the [store-facing Privacy Policy](PR
 
 ## 2. Non-custodial software — not a financial institution
 
-Umbrella is **non-custodial software** that helps you manage cryptographic keys **on your own device**.
+Phobia is **non-custodial software** that helps you manage cryptographic keys **on your own device**.
 
 We do **not**:
 

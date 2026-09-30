@@ -1,9 +1,11 @@
-; Inno Setup script for Umbrella Wallet (desktop).
+; Inno Setup script for Phobia Wallet (desktop; formerly Umbrella Wallet).
 ; Produces a Windows installer that lets the user choose the install folder,
 ; create a desktop / Start-menu shortcut, and uninstall cleanly.
 
-#define AppName "Umbrella Wallet"
+#define AppName "Phobia Wallet"
 #define AppPublisher "the fear"
+; The exe keeps its Umbrella-era file name for now: installed and portable copies update by name, and
+; renaming it waits until every copy in use can find the new one.
 #define AppExe "Umbrella.exe"
 
 ; SourceDir = the published `app` folder; DistDir = where the installer is written.
@@ -31,6 +33,8 @@
 #define AppReleases "https://github.com/thefear078/UmbrellaWallet/releases"
 
 [Setup]
+; The AppId is the Umbrella-era one on purpose: it is what makes this an upgrade of the installed wallet
+; rather than a second program beside it.
 AppId={{7C1B0E2A-0B7E-4E9A-9C2E-UMBRELLA0001}
 AppName={#AppName}
 AppVersion={#AppVersion}
@@ -45,8 +49,8 @@ VersionInfoDescription={#AppName} — self-custody crypto wallet
 VersionInfoProductName={#AppName}
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany={#AppPublisher}
-DefaultDirName={autopf}\Umbrella Wallet
-DefaultGroupName=Umbrella Wallet
+DefaultDirName={autopf}\Phobia Wallet
+DefaultGroupName=Phobia Wallet
 DisableProgramGroupPage=no
 AllowNoIcons=yes
 ; This is what gives the "choose where to install" page:
@@ -56,8 +60,9 @@ LicenseFile=..\..\LICENSE
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
 OutputDir={#DistDir}
+; Release file names stay UmbrellaWallet-* for now, for the same reason as the exe name.
 OutputBaseFilename=UmbrellaWallet-Setup-{#AppVersion}
-SetupIconFile=..\src\Umbrella.Wallet.App\Assets\umbrella.ico
+SetupIconFile=..\src\Umbrella.Wallet.App\Assets\phobia.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -76,13 +81,19 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 ; update. The user's data lives in {app}\data (portable) or %APPDATA%\UmbrellaWallet and is never touched.
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "data\*,data"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+[InstallDelete]
+; An upgrade from Umbrella Wallet: its shortcuts go, so the Start menu and desktop show one wallet.
+Type: files; Name: "{group}\Umbrella Wallet.lnk"
+Type: files; Name: "{group}\Uninstall Umbrella Wallet.lnk"
+Type: files; Name: "{autodesktop}\Umbrella Wallet.lnk"
+
 [Icons]
-Name: "{group}\Umbrella Wallet"; Filename: "{app}\{#AppExe}"
-Name: "{group}\Uninstall Umbrella Wallet"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Umbrella Wallet"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+Name: "{group}\Phobia Wallet"; Filename: "{app}\{#AppExe}"
+Name: "{group}\Uninstall Phobia Wallet"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\Phobia Wallet"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "Launch Umbrella Wallet"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Description: "Launch Phobia Wallet"; Flags: nowait postinstall skipifsilent
 
 [Code]
 // A wallet must never silently destroy funds on uninstall. We deliberately leave the encrypted
@@ -92,7 +103,7 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
   begin
-    MsgBox('Umbrella Wallet has been removed.' + #13#10 + #13#10 +
+    MsgBox('Phobia Wallet has been removed.' + #13#10 + #13#10 +
       'Your wallet data was NOT deleted — it stays encrypted on this PC in one of:' + #13#10 +
       '   • ' + ExpandConstant('{app}\data') + #13#10 +
       '   • ' + ExpandConstant('{userappdata}\UmbrellaWallet') + #13#10 + #13#10 +

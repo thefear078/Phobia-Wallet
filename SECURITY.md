@@ -1,6 +1,6 @@
 # Security Policy
 
-Umbrella is a self-custody wallet. A bug here can cost somebody everything they hold, so this page is
+Phobia is a self-custody wallet. A bug here can cost somebody everything they hold, so this page is
 specific rather than reassuring.
 
 The technical detail — threat model, cryptography, what is deliberately not protected — is in
@@ -202,7 +202,7 @@ These are the things that would make everything else on this page untrue, so the
 
 - Your seed and keys never leave your device. There is no server that could receive them.
 - No telemetry, no analytics, no crash reporting, no advertising. Ever.
-- Umbrella takes **no cut** of your transfers.
+- Phobia takes **no cut** of your transfers.
 - We cannot freeze, seize, or recover your funds — and neither can anyone else holding this software.
 - If we ever find that one of these was broken, we will say so publicly, including how long it was
   broken and what we know about the impact.

@@ -1,4 +1,4 @@
-# Umbrella — Secure & Anonymous Wallet Roadmap
+# Phobia — Secure & Anonymous Wallet Roadmap
 
 Goal: an **ideal non-custodial, private, self-verifiable** desktop wallet. No custody, no accounts,
 no KYC, no telemetry; keys and traffic never leak; the user can prove to themselves that this is true.

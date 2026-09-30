@@ -164,7 +164,7 @@ public sealed class VaultBackupVerifyTests
         {
             var result = await VaultBackup.VerifyAsync(notBackup, Password);
             Assert.False(result.Ok);
-            Assert.Contains("not an Umbrella backup", result.Message);
+            Assert.Contains("not a Phobia backup", result.Message);
         }
         finally { Cleanup(notBackup); }
     }

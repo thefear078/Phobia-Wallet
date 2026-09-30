@@ -176,13 +176,13 @@ public partial class MainWindow : Window
                 ? ("csv", "CSV spreadsheet")
                 : isPsbt
                     ? ("psbt", "Partially signed Bitcoin transaction")
-                    : ("json", "Umbrella backup");
+                    : ("json", "Phobia backup");
 
             if (save)
             {
                 var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
                 {
-                    Title = isCsv ? "Export transaction history" : isPsbt ? "Save PSBT" : "Save Umbrella backup",
+                    Title = isCsv ? "Export transaction history" : isPsbt ? "Save PSBT" : "Save Phobia backup",
                     SuggestedFileName = suggested,
                     DefaultExtension = ext,
                     FileTypeChoices = [new FilePickerFileType(typeName) { Patterns = [$"*.{ext}"] }],
@@ -192,7 +192,7 @@ public partial class MainWindow : Window
 
             var opened = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = isPsbt ? "Open a PSBT" : "Restore Umbrella backup",
+                Title = isPsbt ? "Open a PSBT" : "Restore Phobia backup",
                 AllowMultiple = false,
                 FileTypeFilter = [new FilePickerFileType(typeName) { Patterns = [$"*.{ext}"] }],
             });

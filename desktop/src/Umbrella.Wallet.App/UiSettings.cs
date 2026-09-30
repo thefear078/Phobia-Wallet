@@ -11,7 +11,14 @@ namespace Umbrella.Wallet.App;
 /// </summary>
 public sealed class UiSettings
 {
-    public string Theme { get; set; } = "umbrella";
+    public string Theme { get; set; } = Theming.DefaultTheme;
+
+    /// <summary>
+    /// Which rebrand this file has seen. 0 = written by Umbrella, whose default theme was gold. The
+    /// wallet is Phobia now and its look is blue, so a file still on the old default moves to the new
+    /// one, once; anyone who then picks gold again keeps it.
+    /// </summary>
+    public int BrandVersion { get; set; }
     public string Language { get; set; } = "en";
     public string Currency { get; set; } = "USD";
     public string SidebarPosition { get; set; } = "Left";
@@ -114,8 +121,10 @@ public sealed class UiSettings
         {
             // Fresh install (incl. after a delete + re-download): pick the OS language if we translate
             // it, so a Ukrainian/Russian/… user isn't dropped into English with no setting to restore.
-            if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage() };
-            return JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(Path)) ?? new UiSettings();
+            if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage(), BrandVersion = 1 };
+            var settings = JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(Path)) ?? new UiSettings();
+            if (MoveToPhobia(settings)) settings.Save();
+            return settings;
         }
         catch
         {
@@ -124,7 +133,19 @@ public sealed class UiSettings
         }
     }
 
-    /// <summary>The OS UI language if Umbrella ships a translation for it, otherwise English.</summary>
+    /// <summary>
+    /// The one-time move from Umbrella's gold default to Phobia's blue. Returns true when the file
+    /// changed. Pure apart from the object it is given, so the rule is testable.
+    /// </summary>
+    public static bool MoveToPhobia(UiSettings settings)
+    {
+        if (settings.BrandVersion >= 1) return false;
+        if (settings.Theme == "umbrella") settings.Theme = Theming.DefaultTheme;
+        settings.BrandVersion = 1;
+        return true;
+    }
+
+    /// <summary>The OS UI language if Phobia ships a translation for it, otherwise English.</summary>
     // A fresh install always starts in English; the user can switch language in Settings, and that
     // choice is then persisted. (Previously this followed the OS locale, which surprised users on a
     // non-English Windows by opening in a language they hadn't chosen.)

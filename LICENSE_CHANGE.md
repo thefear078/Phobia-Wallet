@@ -5,7 +5,7 @@
 
 ## Why
 
-Umbrella is security-critical software. A custom **no-derivatives** licence blocked public forks,
+Phobia is security-critical software. A custom **no-derivatives** licence blocked public forks,
 independent patches, and long-term audit surface. That looked closed even when the code was readable.
 
 To maximise review, allow community patches, and reduce bus-factor risk, the project is switching to
@@ -13,7 +13,7 @@ the **MIT License** for the code.
 
 ## What stays protected
 
-- **Trademark / brand** — [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md) still forbids using “Umbrella
+- **Trademark / brand** — [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md) still forbids using “Phobia
   Wallet”, “the fear”, logos, or confusingly similar names for forks and look-alikes.
 - **Honesty docs** — MANIFESTO / THREAT_MODEL / PRIVACY expectations for derivatives: do not ship a
   clone that looks official while changing the money path. See [docs/forking.md](docs/forking.md).

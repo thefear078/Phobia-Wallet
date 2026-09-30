@@ -364,7 +364,7 @@ public sealed class MoneroRpcService : IDisposable
         if (!File.Exists(ExecutablePath))
         {
             return (false,
-                "monero-wallet-rpc.exe is missing from this build. Reinstall Umbrella, or run " +
+                "monero-wallet-rpc.exe is missing from this build. Reinstall Phobia, or run " +
                 "scripts/fetch-monero.ps1 to stage it.");
         }
 

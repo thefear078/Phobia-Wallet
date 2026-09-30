@@ -94,8 +94,8 @@ public sealed class MoneyFlowLocalizationTests
     /// </summary>
     private static readonly HashSet<string> AllowedLiterals = new(StringComparer.Ordinal)
     {
-        "UMBRELLA WALLET", "the fear",          // brand
-        "Umbrella", "Umbrella Wallet",          // brand, as the sidebar sets it
+        "PHOBIA WALLET", "the fear",            // brand
+        "Phobia", "Phobia Wallet",              // brand, as the sidebar sets it
         "Bitcoin", "Ethereum", "Solana",        // chain names — proper nouns
         "1H", "7D", "24H", "30D", "1Y",         // chart ranges
         "1D", "1W", "1M",                       // balance chart ranges

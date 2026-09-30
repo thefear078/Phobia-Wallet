@@ -25,7 +25,8 @@ public static class Theming
     /// </summary>
     public static IReadOnlyList<ThemeOption> Themes { get; } =
     [
-        new("umbrella", "Umbrella · honey gold"),
+        new("phobia", "Phobia · crystal blue"),
+        new("umbrella", "Honey gold · light on black"),
         new("navy", "Navy · the classic blue"),
         new("purple", "The fear · monochrome noir"),
         new("signal", "Ember · crimson editorial"),
@@ -59,7 +60,21 @@ public static class Theming
 
     private static readonly Dictionary<string, string[]> Palettes = new()
     {
-        // Umbrella — the signature look, and the default: gold light on black. Near-neutral blacks with
+        // Phobia — the signature look, and the default: the crystal logo's blues on the deep indigo of
+        // its artwork (#010165 at the edges, a #25398F glow in the middle). Surfaces are indigo rather
+        // than grey so the page, the cards and the crystals read as one place; the accent is the
+        // logo's front facet, deep enough that button labels are white; gains in a cool green that
+        // stays clear of the blue.
+        // bg        bgAlt      card       input      cardAlt    hover      bd         bd2        bd3        accent     accentBr   accentHv   accentSel  accentDim  text       textSoft   textDim    textMut    pos        inverse    inverseHv  inverseTx
+        ["phobia"] =
+        [
+            "#02034A", "#03045A", "#080C5C", "#060953", "#0E1470", "#141C80",
+            "#161D78", "#212A90", "#3240AA",
+            "#316EE5", "#2F6BEF", "#5AA9FF", "#10197A", "#13207F",
+            "#F3F6FF", "#C9D3F5", "#8F9BD0", "#6A76B0", "#37E0A0",
+            "#F3F6FF", "#FFFFFF", "#02034A",
+        ],
+        // Honey gold — Umbrella's signature look and its default, kept under its old id: gold light on black. Near-neutral blacks with
         // only a breath of warmth, so the gold reads as light on the surface rather than a tint over it;
         // cards a step up from the page with hairline borders; clean white type; gains in a clear green
         // that sits beside gold without competing. Accent buttons take dark labels.
@@ -263,17 +278,57 @@ public static class Theming
 
     /// <summary>The themes whose page background is a sweep rather than a flat fill. Solana is here
     /// because its brand identity IS a gradient; Sunset because dusk has no single colour.</summary>
-    private static readonly HashSet<string> GradientThemes = new(StringComparer.Ordinal) { "sunset", "solana", "umbrella" };
+    private static readonly HashSet<string> GradientThemes = new(StringComparer.Ordinal) { "sunset", "solana", "phobia" };
+
+    /// <summary>
+    /// The page of every other dark theme, in the Phobia manner: its own background, lifted by a soft glow
+    /// of its accent a little right of centre — so each theme reads as the same designed place in its
+    /// own colours, where it used to be a flat fill behind the cards. Light themes stay flat.
+    /// </summary>
+    private static IBrush AccentGlow(string[] palette)
+    {
+        var bg = Color.Parse(palette[Array.IndexOf(Keys, "UmBg")]);
+        var accent = Color.Parse(palette[Array.IndexOf(Keys, "UmAccent")]);
+        Color Mix(double t) => Color.FromRgb(
+            (byte)Math.Round(bg.R + ((accent.R - bg.R) * t)),
+            (byte)Math.Round(bg.G + ((accent.G - bg.G) * t)),
+            (byte)Math.Round(bg.B + ((accent.B - bg.B) * t)));
+
+        var glow = new RadialGradientBrush
+        {
+            Center = new RelativePoint(0.62, 0.42, RelativeUnit.Relative),
+            GradientOrigin = new RelativePoint(0.62, 0.42, RelativeUnit.Relative),
+            RadiusX = new RelativeScalar(0.75, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(0.85, RelativeUnit.Relative),
+        };
+        glow.GradientStops.Add(new GradientStop(Mix(0.16), 0.0));
+        glow.GradientStops.Add(new GradientStop(Mix(0.05), 0.45));
+        glow.GradientStops.Add(new GradientStop(bg, 1.0));
+        return glow;
+    }
 
     /// <summary>Gradient themes paint the page as a sweep instead of a flat fill.</summary>
     private static IBrush GradientBackground(string id)
     {
+        if (id == "phobia")
+        {
+            // The artwork's own light: a soft glow a little right of centre, deep indigo at the edges.
+            var glow = new RadialGradientBrush
+            {
+                Center = new RelativePoint(0.62, 0.42, RelativeUnit.Relative),
+                GradientOrigin = new RelativePoint(0.62, 0.42, RelativeUnit.Relative),
+                RadiusX = new RelativeScalar(0.75, RelativeUnit.Relative),
+                RadiusY = new RelativeScalar(0.85, RelativeUnit.Relative),
+            };
+            glow.GradientStops.Add(new GradientStop(Color.Parse("#16217A"), 0.0));
+            glow.GradientStops.Add(new GradientStop(Color.Parse("#070A62"), 0.45));
+            glow.GradientStops.Add(new GradientStop(Color.Parse("#02034A"), 1.0));
+            return glow;
+        }
+
         var stops = id switch
         {
             "sunset" => [("#2A0F1B", 0.0), ("#1C1020", 0.5), ("#120C18", 1.0)],
-            // Gold: the faintest warmth in the top-left corner, black everywhere else — the glow comes
-            // from the arcs of light behind the window, not from a brown page.
-            "umbrella" => [("#14100A", 0.0), ("#0A0908", 0.35), ("#070707", 0.7), ("#070707", 1.0)],
             // Solana's purple → teal sweep, darkened to stay a background rather than a poster.
             _ => new[] { ("#1A0B33", 0.0), ("#120C28", 0.5), ("#07211D", 1.0) },
         };
@@ -291,7 +346,10 @@ public static class Theming
         return brush;
     }
 
-    public static string Current { get; private set; } = "umbrella";
+    public static string Current { get; private set; } = DefaultTheme;
+
+    /// <summary>The theme a fresh install opens in — Phobia's crystal blue.</summary>
+    public const string DefaultTheme = "phobia";
 
     /// <summary>Light themes need dark artwork; the solid-white logo would vanish. Decided from the
     /// palette's own background rather than a hardcoded id — the id this used to compare against
@@ -366,6 +424,7 @@ public static class Theming
         }
 
         if (GradientThemes.Contains(id)) resources["UmBg"] = GradientBackground(id);
+        else if (!IsLightTheme(id)) resources["UmBg"] = AccentGlow(palette);
 
         // Card sheen: a GradientStop binds a Color, not a Brush, so these are published separately.
         // Derived from the card colour so every theme keeps the same subtle top-down lift. A light
@@ -391,9 +450,12 @@ public static class Theming
         resources["UmGlowClear"] = Color.FromArgb(0x00, accent.R, accent.G, accent.B);
         resources["UmBgClear"] = Color.FromArgb(0x00, bg.R, bg.G, bg.B);
 
-        // The Umbrella mark in this theme's colours (Controls/BrandMark): light where the fold catches
-        // the light, the accent through the middle, deeper at the far edge. Only the desktop icon keeps
-        // fixed colours.
+        // The crystal logo and the crystals behind the window (Controls/CrystalArt) keep their own blues
+        // on the Phobia theme and take this theme's hue everywhere else; transparent means "as drawn".
+        resources["UmCrystalTint"] = id == DefaultTheme ? Colors.Transparent : accent;
+
+        // A soft fill in this theme's colours for marks drawn as a silhouette: light where it catches
+        // the light, the accent through the middle, deeper at the far edge.
         var markFill = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
