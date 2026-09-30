@@ -15,6 +15,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 - Only plain transfers of successful transactions are listed; contract calls are left out rather than
   shown with a NEAR amount they did not move. Amounts are read from NearBlocks' raw numbers as decimals, and
   a transfer too large for that (millions of NEAR) is still shown rather than dropped.
+- Not listed yet: NEAR that a **contract** sends you (some exchange withdrawals, unwrapping wNEAR) —
+  those arrive inside someone else's transaction, not as one of yours. Your balance includes them.
 
 ### Nano (XNO): receive and balance
 

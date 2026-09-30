@@ -209,14 +209,22 @@ public sealed class AccountHistoryClient
         }
     }
 
+    private const decimal YoctoPerNear = 1_000_000_000_000_000_000_000_000m;
+
     /// <summary>
     /// The NEAR transfers in a NearBlocks <c>txns-only</c> page: TRANSFER actions of successful
     /// transactions this account signed or received. Function calls (tokens, contracts) are left out
-    /// rather than shown with a NEAR amount they did not move. NearBlocks prints yoctoNEAR as JSON numbers,
-    /// sometimes in exponent form; they are read from the raw text as decimals, never through a double.
+    /// rather than shown with a NEAR amount they did not move.
+    ///
+    /// <para>What this does NOT list: NEAR a CONTRACT sends to the account (some exchange withdrawals,
+    /// unwrapping wNEAR). Those arrive as receipts inside someone else's transaction, not as transactions
+    /// of this account. The receipt-level listing would catch them, but it is dominated by gas refunds from
+    /// "system"; the cleaner source is used and the gap is stated here and in the changelog.</para>
+    ///
+    /// <para>NearBlocks prints yoctoNEAR as JSON numbers, sometimes in exponent form. They are read from the
+    /// raw text as decimals; only an amount too large for a decimal in yocto (~79,000 NEAR and up) goes
+    /// through a double, which rounds it far below anything a history row shows.</para>
     /// </summary>
-    private const decimal YoctoPerNear = 1_000_000_000_000_000_000_000_000m;
-
     public static List<ChainTx> ParseNear(string json, string me)
     {
         var list = new List<ChainTx>();
