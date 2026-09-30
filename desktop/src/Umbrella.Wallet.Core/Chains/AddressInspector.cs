@@ -84,6 +84,11 @@ public static class AddressInspector
         if (a.StartsWith("nano_", OIC) || a.StartsWith("xrb_", OIC))
             return new("XNO", NanoAccounts.IsValid(a) ? AddressValidity.Valid : AddressValidity.Invalid);
 
+        // Decred: Ds…/Dc…, with a double-BLAKE-256 checksum, so this is definitive.
+        if ((a.StartsWith("Ds", StringComparison.Ordinal) || a.StartsWith("Dc", StringComparison.Ordinal)) && a.Length == 35
+            && DecredAddress.IsValid(a))
+            return new("DCR", AddressValidity.Valid);
+
         // NEAR named accounts: recognisable by suffix, but a name carries no checksum to verify.
         if (a.EndsWith(".near", OIC) && a.Length > 5)
             return new("NEAR", AddressValidity.Unverified);
