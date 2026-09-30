@@ -6,6 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### Monero: the wallet service could not be talked to, and a restore missed older funds
+
+- **Fixed: every call to the bundled Monero wallet service was rejected.** Monero's HTTP server (the same
+  code in monerod and monero-wallet-rpc) does not read a request body sent in chunks, and every request
+  went out that way — so starting the service, reading the balance and sending all failed with "Invalid
+  Request". Found by asking two public Monero nodes the same question both ways; the wallet now sends a
+  body of stated length, and a test checks that exact body against a real node.
+- **Fixed: restoring the wallet lost Monero older than a month.** A Monero wallet created on a device
+  scanned only the last ~30 days, so on a new PC or after a wipe, anything received earlier was never
+  found. It now scans from block 3,700,000 (2026-06-19, before Umbrella's Monero account could exist at
+  all). A wallet an older build created is set aside — renamed, not deleted — and restored again over the
+  full range, once. The first scan takes longer; nothing is missed.
+
 ### NEAR history
 
 - **Activity now shows NEAR transfers** to and from the wallet's account, read from NearBlocks — the
