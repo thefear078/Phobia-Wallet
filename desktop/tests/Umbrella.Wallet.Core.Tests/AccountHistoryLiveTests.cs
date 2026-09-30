@@ -35,4 +35,16 @@ public sealed class AccountHistoryLiveTests
         Assert.NotEmpty(rows);
         Assert.All(rows, r => Assert.Equal("XLM", r.Asset));
     }
+
+    [Fact]
+    public async Task Near_history_reads_real_transfers()
+    {
+        Online();
+        // An exchange account with frequent plain transfers — including amounts past what a decimal holds
+        // in yocto, which is the case the parser has to scale rather than drop.
+        var rows = await new AccountHistoryClient().GetNearAsync("binance1.near", limit: 10);
+        Assert.NotEmpty(rows);
+        Assert.All(rows, r => Assert.Equal("NEAR", r.Asset));
+        Assert.All(rows, r => Assert.StartsWith("https://nearblocks.io/txns/", r.Explorer));
+    }
 }

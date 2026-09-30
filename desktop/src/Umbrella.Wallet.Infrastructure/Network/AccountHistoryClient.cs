@@ -6,7 +6,7 @@ using Umbrella.Wallet.Core.Safety;
 namespace Umbrella.Wallet.Infrastructure.Network;
 
 /// <summary>
-/// Transaction history for two account-based chains that had none: XRP and Stellar.
+/// Transaction history for account-based chains that had none: XRP, Stellar and NEAR.
 ///
 /// Each is read from the SAME server the balance comes from — the one the user chose, or the default —
 /// so showing history adds no new party that learns the address. Each is best-effort: a server that
@@ -181,6 +181,92 @@ public sealed class AccountHistoryClient
             list.Add(new ChainTx(
                 incoming ? "Received" : "Sent", "XLM", TrimAmount(amount),
                 incoming ? from : to, ts, $"https://stellar.expert/explorer/public/tx/{hash}", hash));
+        }
+
+        return list;
+    }
+
+    // --- NEAR ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Recent NEAR transfers to and from an implicit account, from the NearBlocks indexer. A NEAR node
+    /// keeps no per-account index, so history needs one; NearBlocks is also where the Send screen already
+    /// links a transaction, so the only new thing it learns is the account (declared on the counterparty
+    /// list, contacted only while the account's history is being read).
+    /// </summary>
+    public async Task<IReadOnlyList<ChainTx>> GetNearAsync(string account, int limit = 25, CancellationToken ct = default)
+    {
+        try
+        {
+            using var res = await Http.GetAsync(
+                $"https://api.nearblocks.io/v1/account/{Uri.EscapeDataString(account)}/txns-only?per_page={limit}", ct);
+            if (!res.IsSuccessStatusCode) return [];
+            return ParseNear(await res.Content.ReadAsStringAsync(ct), account);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private const decimal YoctoPerNear = 1_000_000_000_000_000_000_000_000m;
+
+    /// <summary>
+    /// The NEAR transfers in a NearBlocks <c>txns-only</c> page: TRANSFER actions of successful
+    /// transactions this account signed or received. Function calls (tokens, contracts) are left out
+    /// rather than shown with a NEAR amount they did not move.
+    ///
+    /// <para>What this does NOT list: NEAR a CONTRACT sends to the account (some exchange withdrawals,
+    /// unwrapping wNEAR). Those arrive as receipts inside someone else's transaction, not as transactions
+    /// of this account. The receipt-level listing would catch them, but it is dominated by gas refunds from
+    /// "system"; the cleaner source is used and the gap is stated here and in the changelog.</para>
+    ///
+    /// <para>NearBlocks prints yoctoNEAR as JSON numbers, sometimes in exponent form. They are read from the
+    /// raw text as decimals; only an amount too large for a decimal in yocto (~79,000 NEAR and up) goes
+    /// through a double, which rounds it far below anything a history row shows.</para>
+    /// </summary>
+    public static List<ChainTx> ParseNear(string json, string me)
+    {
+        var list = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("txns", out var txns) || txns.ValueKind != JsonValueKind.Array) return list;
+
+        foreach (var tx in txns.EnumerateArray())
+        {
+            if (!tx.TryGetProperty("outcomes", out var outcomes) ||
+                !outcomes.TryGetProperty("status", out var status) || status.ValueKind != JsonValueKind.True)
+                continue;
+
+            var from = Str(tx, "signer_account_id");
+            var to = Str(tx, "receiver_account_id");
+            var incoming = to == me && from != me;
+            if (!incoming && from != me) continue;
+
+            if (!tx.TryGetProperty("actions", out var actions) || actions.ValueKind != JsonValueKind.Array) continue;
+            decimal near = 0;
+            foreach (var action in actions.EnumerateArray())
+            {
+                if (Str(action, "action") != "TRANSFER" || !action.TryGetProperty("deposit", out var deposit)) continue;
+                var raw = deposit.GetRawText().Trim('"');
+                if (decimal.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var yocto) && yocto > 0)
+                    near += yocto / YoctoPerNear;
+                // Past ~79,000 NEAR the yocto figure no longer fits a decimal: scale it as a double instead
+                // of dropping the row — a rounded figure in history beats a transfer that is not there.
+                else if (double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var big) && big > 0)
+                    near += (decimal)(big / 1e24);
+            }
+
+            if (near <= 0) continue;
+
+            var hash = Str(tx, "transaction_hash");
+            var ns = Str(tx, "block_timestamp");
+            var ts = decimal.TryParse(ns, NumberStyles.Integer, CultureInfo.InvariantCulture, out var nanos)
+                ? (long)(nanos / 1_000_000m)
+                : 0;
+
+            list.Add(new ChainTx(
+                incoming ? "Received" : "Sent", "NEAR", near.ToString("0.########################", CultureInfo.InvariantCulture),
+                incoming ? from : to, ts, $"https://nearblocks.io/txns/{hash}", hash));
         }
 
         return list;

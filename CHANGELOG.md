@@ -6,6 +6,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### NEAR history
+
+- **Activity now shows NEAR transfers** to and from the wallet's account, read from NearBlocks — the
+  indexer the Send screen already links a NEAR transaction to. A NEAR node keeps no per-account index, so
+  history needs one; NearBlocks is on the list of who can see your addresses, as contacted while history
+  is read.
+- Only plain transfers of successful transactions are listed; contract calls are left out rather than
+  shown with a NEAR amount they did not move. Amounts are read from NearBlocks' raw numbers as decimals, and
+  a transfer too large for that (millions of NEAR) is still shown rather than dropped.
+- Not listed yet: NEAR that a **contract** sends you (some exchange withdrawals, unwrapping wNEAR) —
+  those arrive inside someone else's transaction, not as one of yours. Your balance includes them.
+
 ### Nano (XNO): receive and balance
 
 - **A Nano account from the same recovery phrase** — `m/44'/165'/0'`, the path Ledger, Trust Wallet and

@@ -147,5 +147,54 @@ public sealed class AccountHistoryTests
     {
         Assert.Empty(AccountHistoryClient.ParseXrp(json, Me));
         Assert.Empty(AccountHistoryClient.ParseStellar(json, StellarMe));
+        Assert.Empty(AccountHistoryClient.ParseNear(json, NearMe));
+    }
+
+    private const string NearMe = "98793cd91a3f870fb126f66285808c7e094afcfc4eda8a970f6648cdf0dbd6de";
+
+    [Fact]
+    public void Near_transfers_are_read_and_contract_calls_and_failures_are_not()
+    {
+        // The shape NearBlocks' txns-only answers with, trimmed. Deposits are JSON numbers — the second
+        // in exponent form, as NearBlocks prints large yocto amounts.
+        var json = """
+            {"txns":[
+              {"transaction_hash":"AAA1","signer_account_id":"alice.near","receiver_account_id":"@me@",
+               "block_timestamp":"1790774824751389720","actions":[{"action":"TRANSFER","deposit":1500000000000000000000000}],
+               "outcomes":{"status":true}},
+              {"transaction_hash":"BBB2","signer_account_id":"@me@","receiver_account_id":"bob.near",
+               "block_timestamp":"1790774822843860191","actions":[{"action":"TRANSFER","deposit":2.5e+23}],
+               "outcomes":{"status":true}},
+              {"transaction_hash":"CCC3","signer_account_id":"@me@","receiver_account_id":"wrap.near",
+               "block_timestamp":"1790774819243183044","actions":[{"action":"FUNCTION_CALL","method":"near_deposit","deposit":0}],
+               "outcomes":{"status":true}},
+              {"transaction_hash":"DDD4","signer_account_id":"@me@","receiver_account_id":"bob.near",
+               "block_timestamp":"1790774819243183044","actions":[{"action":"TRANSFER","deposit":1e+24}],
+               "outcomes":{"status":false}}
+            ]}
+            """.Replace("@me@", NearMe);
+
+        var rows = AccountHistoryClient.ParseNear(json, NearMe);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(("Received", "1.5", "alice.near"), (rows[0].Kind, rows[0].Amount, rows[0].Counterparty));
+        Assert.Equal(("Sent", "0.25", "bob.near"), (rows[1].Kind, rows[1].Amount, rows[1].Counterparty));
+        Assert.Equal("https://nearblocks.io/txns/AAA1", rows[0].Explorer);   // what a send from here stores
+        Assert.Equal(1790774824751L, rows[0].UnixMs);                         // nanoseconds -> milliseconds
+    }
+
+    [Fact]
+    public void A_near_transfer_too_large_for_a_decimal_in_yocto_is_still_shown()
+    {
+        // ~5 million NEAR is ~5 x 10^30 yocto, past decimal's ~7.9 x 10^28. Dropping the row would hide a
+        // real transfer; it is scaled instead.
+        var json = """
+            {"txns":[{"transaction_hash":"EEE5","signer_account_id":"@me@","receiver_account_id":"exchange.near",
+              "block_timestamp":"1790774824751389720","actions":[{"action":"TRANSFER","deposit":4.999999849952385e+30}],
+              "outcomes":{"status":true}}]}
+            """.Replace("@me@", NearMe);
+
+        var row = Assert.Single(AccountHistoryClient.ParseNear(json, NearMe));
+        Assert.StartsWith("4999999.84995", row.Amount);
     }
 }

@@ -73,6 +73,8 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.Automatic, Chain, "XNO"),
         new("node.somenano.com", "SomeNano", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "XNO"),
+        new("api.nearblocks.io", "NearBlocks", CounterpartyPurpose.History,
+            CounterpartyContact.Automatic, Chain, "NEAR"),
         new("dcrdata.decred.org", "Decred project (dcrdata)", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "DCR"),
         new("rpc.mainnet.near.org", "NEAR Foundation", CounterpartyPurpose.Balances,

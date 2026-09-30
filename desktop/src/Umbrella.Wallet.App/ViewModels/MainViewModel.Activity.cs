@@ -328,6 +328,7 @@ public partial class MainViewModel
                      {
                          (ChainId.Xrp, a => _accountHistory.GetXrpAsync(a)),
                          (ChainId.Xlm, a => _accountHistory.GetStellarAsync(a)),
+                         (ChainId.Near, a => _accountHistory.GetNearAsync(a)),
                      })
             {
                 string? address = null;
