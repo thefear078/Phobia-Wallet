@@ -38,8 +38,33 @@ public sealed class MoneroRpcService : IDisposable
     /// <summary>1 XMR = 10^12 piconero.</summary>
     private const decimal Piconero = 1_000_000_000_000m;
 
-    /// <summary>Roughly 30 days of blocks (2 min each) — enough to catch recent deposits fast.</summary>
-    private const ulong RecentBlocksWindow = 21_600;
+    /// <summary>
+    /// Where a wallet derived from the recovery phrase starts scanning when it is first created on a
+    /// device. It used to be "the last ~30 days", which made a restore lose money: on a new PC, or after
+    /// a wipe, Monero received more than a month earlier was never found and could not be spent.
+    ///
+    /// The account comes from Umbrella's own derivation ("umbrella-monero-v1"), which first shipped on
+    /// 2026-07-23 — no coin can have been sent to it before that. Block 3,700,000 was mined on
+    /// 2026-06-19 (the same hash and time on two independent public nodes), a month earlier, so scanning
+    /// from it finds everything the account has ever received. The first scan is longer; nothing is missed.
+    /// </summary>
+    public const ulong DerivedAccountFloorHeight = 3_700_000;
+
+    /// <summary>Written beside a wallet file this build created, recording the height it scans from.
+    /// A wallet without it was created by an older build that scanned only the last ~30 days.</summary>
+    public const string ScanFromSuffix = ".umbrella-scan-from";
+
+    /// <summary>
+    /// True when a wallet file exists that was created before scans started at the full range — so it
+    /// may be missing older funds and must be restored again. Pure, so the rule is testable.
+    /// </summary>
+    public static bool NeedsFullRestore(string walletFile) =>
+        WalletExists(walletFile) && !File.Exists(walletFile + ScanFromSuffix);
+
+    /// <summary>A wallet is its ".keys" file — the cache beside it is rebuilt by a rescan when missing, so
+    /// either one on disk means "open it", and creating over a lone keys file fails ("already exists").</summary>
+    public static bool WalletExists(string walletFile) =>
+        File.Exists(walletFile + ".keys") || File.Exists(walletFile);
 
     /// <summary>
     /// The remote node this wallet asks about the chain — the single most consequential setting on
@@ -84,13 +109,17 @@ public sealed class MoneroRpcService : IDisposable
     /// Boots monero-wallet-rpc and restores the account from its keys. Safe to call repeatedly —
     /// if the wallet already exists on disk it is simply opened.
     /// </summary>
+    /// <param name="scanFrom">The block to scan from when the wallet is first created here. Null means
+    /// <see cref="DerivedAccountFloorHeight"/> — right for the account derived from the recovery phrase.
+    /// An imported Monero seed passes its own (0 when its age is unknown).</param>
     public async Task<(bool Ok, string Message)> StartAsync(
         string address,
         string secretSpendKey,
         string secretViewKey,
         string walletPassword,
         IProgress<string>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        ulong? scanFrom = null)
     {
         if (!IsBundlePresent)
         {
@@ -107,7 +136,21 @@ public sealed class MoneroRpcService : IDisposable
         _walletName = "umbrella-" + address[..12].ToLowerInvariant();
         var walletFile = Path.Combine(WalletDirectory, _walletName);
 
-        if (File.Exists(walletFile))
+        // A wallet an older build created scans only from ~30 days before it was made. It is moved aside —
+        // renamed, never deleted, since it holds this device's transaction keys — and restored again from
+        // the same keys over the full range, once.
+        if (NeedsFullRestore(walletFile))
+        {
+            progress?.Report("Re-reading the full Monero history for this account…");
+            await CallAsync("close_wallet", new { }, ct);
+            var stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            foreach (var file in new[] { walletFile, walletFile + ".keys" })
+            {
+                if (File.Exists(file)) File.Move(file, $"{file}.before-full-scan-{stamp}");
+            }
+        }
+
+        if (WalletExists(walletFile))
         {
             progress?.Report("Opening Monero wallet…");
             var opened = await CallAsync("open_wallet", new
@@ -123,8 +166,7 @@ public sealed class MoneroRpcService : IDisposable
         else
         {
             progress?.Report("Restoring Monero wallet from keys…");
-            var height = await GetChainHeightAsync(ct);
-            var restoreHeight = height > RecentBlocksWindow ? height - RecentBlocksWindow : 0;
+            var restoreHeight = scanFrom ?? DerivedAccountFloorHeight;
 
             var created = await CallAsync("generate_from_keys", new
             {
@@ -140,6 +182,9 @@ public sealed class MoneroRpcService : IDisposable
             {
                 return (false, $"Could not restore the Monero wallet: {created.Error}");
             }
+
+            File.WriteAllText(walletFile + ScanFromSuffix,
+                restoreHeight.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
         progress?.Report("Scanning the Monero chain…");
@@ -384,15 +429,26 @@ public sealed class MoneroRpcService : IDisposable
         return response.Result?.TryGetProperty("height", out var h) == true ? h.GetUInt64() : 0;
     }
 
+    /// <summary>
+    /// A JSON-RPC request body with its length stated. Monero's HTTP server (epee — the same code in
+    /// monerod and monero-wallet-rpc) does not read a chunked body: it answers "Invalid Request", and
+    /// <c>PostAsJsonAsync</c> sends exactly that, because JSON content has no length until it is written.
+    /// Every call went out that way until this was found by asking two public Monero nodes the same
+    /// question both ways; a buffered string carries a Content-Length and is read.
+    /// </summary>
+    public static HttpContent RequestBody(string method, object parameters) =>
+        new StringContent(
+            JsonSerializer.Serialize(new { jsonrpc = "2.0", id = "0", method, @params = parameters }),
+            System.Text.Encoding.UTF8,
+            "application/json");
+
     private async Task<(JsonElement? Result, string? Error)> CallAsync(
         string method, object parameters, CancellationToken ct)
     {
         try
         {
-            using var res = await _http.PostAsJsonAsync(
-                $"http://127.0.0.1:{RpcPort}/json_rpc",
-                new { jsonrpc = "2.0", id = "0", method, @params = parameters },
-                ct);
+            using var body = RequestBody(method, parameters);
+            using var res = await _http.PostAsync($"http://127.0.0.1:{RpcPort}/json_rpc", body, ct);
             if (!res.IsSuccessStatusCode) return (null, $"RPC HTTP {(int)res.StatusCode}");
 
             using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
