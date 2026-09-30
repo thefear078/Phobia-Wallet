@@ -397,6 +397,20 @@
             <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0"
                        Text="{Binding [onboard.importNote], Source={x:Static app:Loc.Instance}}"/>
 
+            <!-- A Monero seed does not say how old it is: an optional start keeps the first scan from
+                 reading the whole chain. Shown only once the phrase is recognised as one. -->
+            <StackPanel Spacing="0" IsVisible="{Binding IsImportPhraseMonero}">
+              <Border Background="{DynamicResource UmCardAlt}" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
+                <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                           Text="{Binding [import.xmrDetected], Source={x:Static app:Loc.Instance}}"/>
+              </Border>
+              <TextBlock Classes="eyebrow" Text="{Binding [import.xmrHeight], Source={x:Static app:Loc.Instance}}" Margin="0,16,0,8"/>
+              <TextBox Text="{Binding ImportMoneroHeight}"
+                       Watermark="{Binding [import.xmrHeightPh], Source={x:Static app:Loc.Instance}}"/>
+              <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0"
+                         Text="{Binding [import.xmrHeightNote], Source={x:Static app:Loc.Instance}}"/>
+            </StackPanel>
+
             <StackPanel Spacing="0" IsVisible="{Binding ShowVaultPasswordFields}">
               <TextBlock Classes="eyebrow" Text="{Binding [onboard.vaultPassword], Source={x:Static app:Loc.Instance}}" Margin="0,16,0,8"/>
               <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="{Binding [onboard.pwPlaceholder], Source={x:Static app:Loc.Instance}}"/>

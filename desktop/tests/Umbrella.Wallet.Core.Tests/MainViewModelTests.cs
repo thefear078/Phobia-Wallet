@@ -587,6 +587,74 @@ public sealed class MainViewModelTests : IDisposable
         Assert.DoesNotContain(vm.Accounts, a => a.Symbol == "BTC"); // TON-only, no BIP39 chains
     }
 
+    /// <summary>The report: a Monero seed in Chinese characters was refused. It now imports as a Monero-only
+    /// wallet holding exactly the account the Monero wallets show, and survives a lock and unlock.</summary>
+    [Fact]
+    public async Task Import_ChineseMoneroSeed_CreatesMoneroOnlyWallet_WithCorrectAddress()
+    {
+        const string address = "468Dewci4TPfs7TATZ2nf4F1mKAEMp6RraG37wiSU4uT5nAbBwGz5LaB9GWHG23o6ANFJ1Q9cBYk5dRqWNNkmFN4Qx3RqBD";
+        var vm = NewViewModel();
+
+        vm.GoToImportCommand.Execute(null);
+        vm.ImportPhrase = "遭牲本点司司仲吉虎只绝生指纯伟破夫惊群楚祥旋暗骨伟";   // pasted as one run, no spaces
+        Assert.True(vm.IsImportPhraseMonero);                                   // the "scan from" field appears
+        vm.ImportMoneroHeight = "2024-03-01";
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.FormError);
+        Assert.True(vm.IsUnlocked);
+        var xmr = Assert.Single(vm.Accounts);
+        Assert.Equal("XMR", xmr.Symbol);
+        Assert.Equal(address, xmr.Address);
+        // Kept with the wallet (the single-vault registry sits beside its vault), for when the Monero
+        // service is first switched on — possibly in a later session.
+        var registry = new WalletRegistry(
+            Path.Combine(_directory, "wallets.json"), Path.Combine(_directory, "vault.json"),
+            id => Path.Combine(_directory, "wallets", id + ".vault.json"));
+        Assert.Equal(
+            Umbrella.Wallet.Core.Chains.MoneroRestoreHeight.ForDate(new DateTimeOffset(2024, 3, 1, 0, 0, 0, TimeSpan.Zero)),
+            registry.Active?.MoneroScanFrom);
+
+        vm.LockVault();
+        vm.Password = GoodPassword;
+        await vm.UnlockCommand.ExecuteAsync(null);
+        Assert.Equal(address, Assert.Single(vm.Accounts).Address);
+    }
+
+    [Fact]
+    public async Task Import_MoneroSeedWithATypo_SaysTheChecksumCaughtIt()
+    {
+        var vm = NewViewModel();
+        vm.GoToImportCommand.Execute(null);
+        // The last word of the English vector swapped for another real Monero word.
+        vm.ImportPhrase = "adjust mugged vaults atlas nasty mews damp toenail suddenly toxic possible framed succeed fuzzy " +
+                          "return demonstrate nucleus album noises peculiar virtual rowboat inorganic jester abbey";
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsUnlocked);
+        Assert.Equal(Umbrella.Wallet.App.Loc.Instance["import.xmrChecksum"], vm.FormError);
+    }
+
+    [Fact]
+    public async Task Import_MoneroSeed_RefusesAScanStartThatIsNotAHeightOrADate()
+    {
+        var vm = NewViewModel();
+        vm.GoToImportCommand.Execute(null);
+        vm.ImportPhrase = "adjust mugged vaults atlas nasty mews damp toenail suddenly toxic possible framed succeed fuzzy " +
+                          "return demonstrate nucleus album noises peculiar virtual rowboat inorganic jester fuzzy";
+        vm.ImportMoneroHeight = "last spring";
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsUnlocked);
+        Assert.Equal(Umbrella.Wallet.App.Loc.Instance["import.xmrHeightBad"], vm.FormError);
+    }
+
     [Fact]
     public async Task DeleteVault_RequiresTypedConfirmation()
     {

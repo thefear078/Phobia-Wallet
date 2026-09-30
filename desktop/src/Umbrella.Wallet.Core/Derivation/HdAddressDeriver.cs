@@ -444,6 +444,9 @@ public sealed class HdAddressDeriver
     /// </summary>
     public MoneroWallet DeriveMoneroWallet(string mnemonic, string? passphrase = null)
     {
+        // A wallet imported from Monero's own 25-word seed holds that account directly.
+        if (MoneroMnemonic.TryDecode(mnemonic, out var moneroSeed, out _)) return moneroSeed!.Wallet;
+
         passphrase = Resolve(passphrase);
         var validation = _mnemonicService.Validate(mnemonic);
         if (!validation.IsValid || validation.NormalizedMnemonic is null)

@@ -72,8 +72,12 @@ the random word checks. Anyone with those words has the funds; if you lose them 
 can recover them — including us.
 
 **Import:** paste a BIP39 phrase from another wallet. Addresses will match the original derivation
-paths Umbrella supports. Telegram/Tonkeeper non-BIP39 formats are a separate case — see release notes
-and import UI messages.
+paths Umbrella supports. Two other formats import as single-coin wallets:
+
+- a **TON phrase** (Telegram Wallet, Tonkeeper, TON Space — 24 words) → a Toncoin-only wallet;
+- a **Monero seed** (Monero GUI, Feather, Cake Wallet, MyMonero — 25 words, in any of Monero's 12
+  languages, Chinese included) → a Monero-only wallet. Give the day the wallet was made (or its restore
+  height) in "Scan from" so the first scan does not read the whole chain.
 
 ## 6. Turn on Tor (recommended)
 

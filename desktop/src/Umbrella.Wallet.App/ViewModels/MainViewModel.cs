@@ -40,6 +40,8 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _confirmPassword = string.Empty;
     [ObservableProperty] private string _formError = string.Empty;
     [ObservableProperty] private string _importPhrase = string.Empty;
+    // Where an imported Monero seed starts scanning: a block height or a date, optional.
+    [ObservableProperty] private string _importMoneroHeight = string.Empty;
     [ObservableProperty] private string _recoveryPhrase = string.Empty;
     [ObservableProperty] private bool _isRecoveryPhraseVisible;
     [ObservableProperty] private string _statusMessage = "Vault is locked";
@@ -129,6 +131,12 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsDestinationTagChain));
     }
     partial void OnSendReviewMemoChanged(string value) => OnPropertyChanged(nameof(HasSendReviewMemo));
+
+    /// <summary>The pasted phrase is a Monero seed — shows the optional "scan from" field and says which
+    /// language was recognised. Checked without deriving keys, so it is cheap on every keystroke.</summary>
+    public bool IsImportPhraseMonero => MoneroMnemonic.Check(ImportPhrase) == MoneroSeedProblem.None;
+
+    partial void OnImportPhraseChanged(string value) => OnPropertyChanged(nameof(IsImportPhraseMonero));
     [ObservableProperty] private Bitmap? _receiveQr;
     [ObservableProperty] private string _selectedReceiveAddress = string.Empty;
     [ObservableProperty] private string _selectedReceiveSymbol = "ETH";
@@ -2796,22 +2804,23 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ImportWalletAsync()
     {
-        // Accept either a BIP39 seed (multi-chain) or a TON-native mnemonic (Telegram Wallet /
-        // Tonkeeper → a TON-only wallet).
-        string normalized;
-        var bip39 = _mnemonics.Validate(ImportPhrase);
-        if (bip39.IsValid && bip39.NormalizedMnemonic is not null)
+        // Accept a BIP39 seed (multi-chain), a TON-native mnemonic (Telegram Wallet / Tonkeeper → a
+        // TON-only wallet) or Monero's own 25-word seed in any of its languages (→ a Monero-only wallet).
+        if (!TryNormalizeImport(out var normalized, out var error))
         {
-            normalized = bip39.NormalizedMnemonic;
-        }
-        else if (TonMnemonic.IsTonMnemonic(ImportPhrase))
-        {
-            normalized = TonMnemonic.Normalize(ImportPhrase);
-        }
-        else
-        {
-            Fail(bip39.Error ?? "Recovery phrase is invalid");
+            Fail(error);
             return;
+        }
+
+        ulong? moneroScanFrom = null;
+        if (MoneroMnemonic.IsMoneroMnemonic(normalized))
+        {
+            if (!MoneroRestoreHeight.TryParse(ImportMoneroHeight, DateTimeOffset.UtcNow, out var height))
+            {
+                Fail(Loc.Instance["import.xmrHeightBad"]);
+                return;
+            }
+            moneroScanFrom = height;
         }
 
         var pw = ReuseAppPassword ? _sessionPassword! : Password;
@@ -2823,16 +2832,24 @@ public partial class MainViewModel : ViewModelBase
             SetSessionPassword(pw);
             HasVault = true;
             FinalizeWalletRegistration();
+            // Before SetUnlocked: the Monero service reads it when it is first switched on.
+            if (moneroScanFrom is not null && _registry.Active is { } imported)
+            {
+                _registry.SetMoneroScanFrom(imported.Id, moneroScanFrom);
+            }
             SetUnlocked(normalized);
             // Imported wallets already have a backup — go straight to the workspace.
             RecoveryPhrase = string.Empty;
             PendingPhraseBackup = false;
             ImportPhrase = string.Empty;
+            ImportMoneroHeight = string.Empty;
             ClearPasswordFields();
             ActiveSection = "Portfolio";
             StatusMessage = _isTonWallet
                 ? "TON wallet imported · fetching your Toncoin balance"
-                : "Wallet imported · fetching live balances";
+                : _isMoneroWallet
+                    ? Loc.Instance["import.xmrDone"]
+                    : "Wallet imported · fetching live balances";
             await RefreshLiveDataAsync();
         });
     }
@@ -3007,8 +3024,13 @@ public partial class MainViewModel : ViewModelBase
         // Re-read rather than trusting a field set long ago: the user may have changed the node since.
         _monero.NodeAddress = ActiveMoneroNode;
 
+        // The account derived from a BIP39 seed cannot predate its derivation, so the service picks the
+        // floor; an imported Monero seed may be years old and scans from the height given at import, or
+        // from the first block.
+        ulong? scanFrom = _isMoneroWallet ? _registry.Active?.MoneroScanFrom ?? 0 : null;
         var (ok, message) = await _monero.StartAsync(
-            wallet.Address, wallet.SecretSpendKeyHex, wallet.SecretViewKeyHex, filePassword, progress);
+            wallet.Address, wallet.SecretSpendKeyHex, wallet.SecretViewKeyHex, filePassword, progress,
+            scanFrom: scanFrom);
 
         if (!ok)
         {
@@ -3729,11 +3751,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ResetWithSeedAsync()
     {
-        string normalized;
-        var bip39 = _mnemonics.Validate(ImportPhrase);
-        if (bip39.IsValid && bip39.NormalizedMnemonic is not null) normalized = bip39.NormalizedMnemonic;
-        else if (TonMnemonic.IsTonMnemonic(ImportPhrase)) normalized = TonMnemonic.Normalize(ImportPhrase);
-        else { Fail(bip39.Error ?? "Recovery phrase is invalid"); return; }
+        if (!TryNormalizeImport(out var normalized, out var error)) { Fail(error); return; }
 
         if (!ValidatePasswords()) return;
 
@@ -3808,7 +3826,7 @@ public partial class MainViewModel : ViewModelBase
         };
 
         // Refresh real on-chain history when the user opens Transactions.
-        if (section == "Transactions" && IsUnlocked && !_isTonWallet) _ = LoadOnChainHistoryAsync();
+        if (section == "Transactions" && IsUnlocked && !_isTonWallet && !_isMoneroWallet) _ = LoadOnChainHistoryAsync();
     }
 
     /// <summary>Opens an external URL in the user's default browser. Used by the P2P/DEX directory and
@@ -5273,6 +5291,43 @@ public partial class MainViewModel : ViewModelBase
     // a BIP39 seed — it derives ONLY a TON address, not the multi-chain BIP39 set.
     private bool _isTonWallet;
 
+    // True when the unlocked wallet is Monero's own 25-word seed — it holds ONLY that Monero account.
+    private bool _isMoneroWallet;
+
+    /// <summary>
+    /// Reads the phrase on the import and forgot-password screens: BIP39, a TON mnemonic, or Monero's
+    /// 25-word seed. The error names what to fix — a Monero seed whose words are all right but whose
+    /// checksum is not has a typo, which "invalid phrase" would never tell anybody.
+    /// </summary>
+    private bool TryNormalizeImport(out string normalized, out string error)
+    {
+        normalized = string.Empty;
+        error = string.Empty;
+        var bip39 = _mnemonics.Validate(ImportPhrase);
+        if (bip39.IsValid && bip39.NormalizedMnemonic is not null)
+        {
+            normalized = bip39.NormalizedMnemonic;
+            return true;
+        }
+        if (TonMnemonic.IsTonMnemonic(ImportPhrase))
+        {
+            normalized = TonMnemonic.Normalize(ImportPhrase);
+            return true;
+        }
+        if (MoneroMnemonic.TryDecode(ImportPhrase, out var monero, out var problem))
+        {
+            normalized = monero!.Normalized;
+            return true;
+        }
+
+        error = problem switch
+        {
+            MoneroSeedProblem.Checksum => Loc.Instance["import.xmrChecksum"],
+            _ => bip39.Error ?? "Recovery phrase is invalid",
+        };
+        return false;
+    }
+
     private void SetUnlocked(string mnemonic, string passphrase = "")
     {
         _unlockedMnemonic = mnemonic;
@@ -5280,7 +5335,9 @@ public partial class MainViewModel : ViewModelBase
         // balance scans and signing all target the same (possibly hidden) wallet.
         _unlockedPassphrase = passphrase ?? "";
         _deriver.ActivePassphrase = _unlockedPassphrase;
-        _isTonWallet = !_mnemonics.Validate(mnemonic).IsValid && TonMnemonic.IsTonMnemonic(mnemonic);
+        var isBip39 = _mnemonics.Validate(mnemonic).IsValid;
+        _isTonWallet = !isBip39 && TonMnemonic.IsTonMnemonic(mnemonic);
+        _isMoneroWallet = !isBip39 && !_isTonWallet && MoneroMnemonic.IsMoneroMnemonic(mnemonic);
         IsUnlocked = true;
         RefreshWalletList(); // reflect which wallet is now active in the switcher
         // Exchange keys are encrypted with a key derived from the seed, so they can only be
@@ -5297,12 +5354,15 @@ public partial class MainViewModel : ViewModelBase
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
         _onChainRows.Clear();
         HistorySynced = false; // this wallet's history hasn't been pulled yet → show "loading", not "empty"
-        if (!_isTonWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history across the user's addresses
+        if (!_isTonWallet && !_isMoneroWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history across the user's addresses
     }
 
     private void SelectFirstReceive()
     {
-        var first = Accounts.FirstOrDefault(a => a.SupportStatus == "Ready" && IsRealAddress(a.Address));
+        // A Monero-only wallet's single account reads "Receive only" until its service has synced, and it
+        // is still the address to receive on.
+        var first = Accounts.FirstOrDefault(a => a.SupportStatus == "Ready" && IsRealAddress(a.Address))
+                    ?? (_isMoneroWallet ? Accounts.FirstOrDefault(a => IsRealAddress(a.Address)) : null);
         if (first is not null) SetReceiveTarget(first);
     }
 
@@ -5319,6 +5379,23 @@ public partial class MainViewModel : ViewModelBase
                 "TON", "Toncoin", "Ready", address, "TON mnemonic · wallet v4R2",
                 0, 0, "The Open Network", 0));
             ShortAddress = Shorten(address);
+            WalletLabel = ActiveWalletLabel;
+            RefreshHoldings();
+            RecalcBalance();
+            return;
+        }
+
+        // A Monero seed (GUI / Feather / Cake / MyMonero, any language) holds exactly one Monero account.
+        // Its balance comes from the Monero service, like every XMR balance here — until then it reads as
+        // receive-only rather than claiming a zero.
+        if (_isMoneroWallet)
+        {
+            var seed = MoneroMnemonic.Decode(mnemonic);
+            Accounts.Add(new WalletAccountViewModel(
+                "XMR", "Monero", "Receive only", seed.Wallet.Address,
+                string.Format(Loc.Instance["import.xmrScheme"], seed.Language),
+                0, 0, "Monero", 0));
+            ShortAddress = Shorten(seed.Wallet.Address);
             WalletLabel = ActiveWalletLabel;
             RefreshHoldings();
             RecalcBalance();

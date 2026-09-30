@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### Monero seeds in every language Monero offers
+
+- **Import a Monero wallet from its own 25-word seed** — the one the Monero GUI, Feather, Cake Wallet and
+  MyMonero show — in any of Monero's 12 languages: Chinese (simplified), English, Dutch, French, Spanish,
+  German, Italian, Portuguese, Japanese, Russian, Esperanto and Lojban. It was refused before (reported
+  with a Chinese seed). It imports as a Monero-only wallet holding exactly that account.
+- Pasted the way people keep them: Chinese with or without spaces, numbered lists, any case, the short
+  first letters Monero itself accepts, and Spanish words typed without their accents.
+- A typo is named as one: when all 25 words are Monero words but the checksum word does not match, the
+  import says so instead of "invalid phrase".
+- **Optional "scan from"**: a Monero seed does not record its age, so the import screen asks — a block
+  height or the day the wallet was made (a week's margin is added). Left empty, the first scan reads the
+  whole chain: slower, but nothing is missed.
+- Pinned: every language against an independent implementation's keys and address, the wordlists
+  byte-for-byte against Monero's source, random keys round-tripped in all 12, and the date-to-block table
+  re-read from a public node.
+
 ### Monero: the wallet service could not be talked to, and a restore missed older funds
 
 - **Fixed: every call to the bundled Monero wallet service was rejected.** Monero's HTTP server (the same
