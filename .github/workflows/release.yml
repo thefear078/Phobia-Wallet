@@ -81,6 +81,9 @@ jobs:
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Build self-contained Linux tarball
+        env:
+          # Tor and Monero are pinned by hash; a release stops rather than ship without them.
+          REQUIRE_HELPERS: "1"
         run: |
           chmod +x desktop/scripts/publish-linux.sh
           ( cd desktop && ./scripts/publish-linux.sh )

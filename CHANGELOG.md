@@ -30,6 +30,12 @@ from the release page); a beta copy updates to newer betas, and then to the full
   A Dogecoin or Decred payment with change shows what actually left the wallet, not the whole input.
 - **History loads all coins at once.** One after another, the list waited for every explorer's
   round-trip in turn; now it waits for the slowest one.
+- **The Linux build carries Tor again.** Its script still fetched Tor 14.5.7, which the Tor Project
+  had since removed, so the download failed and the tarball shipped without Tor, with only a warning in
+  the build log. It now fetches 15.0.24, the version the Windows build uses. Both Tor and Monero are
+  checked against SHA-256 hashes pinned in the script, read from each project's signed sums file
+  (signatures checked against the keys the Windows scripts pin), and a release stops rather than ship
+  without either.
 
 ### The wallet reads its coins again — on Tor and off it
 
