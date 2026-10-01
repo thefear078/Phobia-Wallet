@@ -1056,7 +1056,7 @@
                                     Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenAssetDetailsCommand}"
                                     CommandParameter="{Binding Symbol}"
                                     AutomationProperties.Name="{Binding Name}">
-                              <Grid ColumnDefinitions="Auto,*,Auto" Height="64" Margin="14,0">
+                              <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="64" Margin="14,0">
                                 <!-- Coin mark -->
                                 <Border Width="42" Height="42" CornerRadius="21" Background="{Binding BadgeBg}"
                                         BoxShadow="{Binding BadgeShadow}" ClipToBounds="True" VerticalAlignment="Center">
@@ -1078,8 +1078,16 @@
                                     </Border>
                                   </StackPanel>
                                 </StackPanel>
+                                <!-- The coin's price line over the market window, in its 24h colour. -->
+                                <Canvas Grid.Column="2" Width="110" Height="30" VerticalAlignment="Center" Margin="0,0,18,0"
+                                        IsVisible="{Binding HasSpark}">
+                                  <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{Binding ChangeColor}"
+                                        StrokeThickness="5" Opacity="0.16" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                  <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{Binding ChangeColor}"
+                                        StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                </Canvas>
                                 <!-- Value over amount -->
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="3">
+                                <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="3">
                                   <TextBlock Classes="mono" FontSize="14.5" FontWeight="SemiBold" HorizontalAlignment="Right"
                                              Text="{Binding ValueLabel}"
                                              IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).AreValuesVisible}"/>
@@ -2308,7 +2316,7 @@
                       <Button Grid.Column="4" Classes="chip" Content="{Binding [common.close], Source={x:Static app:Loc.Instance}}" Command="{Binding CloseChartCommand}"/>
                     </Grid>
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                      <TextBlock Text="{Binding ChartRange, StringFormat='{}{0} PRICE · USD'}" Classes="eyebrow" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding ChartCaption}" Classes="eyebrow" VerticalAlignment="Center"/>
                       <Border Grid.Column="1" Background="{Binding ChartChangeColor, Converter={StaticResource ChangeWash}}"
                               CornerRadius="999" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding ChartChangeLabel}" Foreground="{Binding ChartChangeColor}"

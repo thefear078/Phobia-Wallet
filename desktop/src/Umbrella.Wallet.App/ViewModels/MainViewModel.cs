@@ -2231,7 +2231,8 @@ public partial class MainViewModel : ViewModelBase
         if (account.Balance == BalanceRead.Unknown) return ($"— {ticker}", string.Empty);
 
         var amount = (decimal)account.Amount;
-        var text = $"{Fmt(amount)} {ticker}";
+        // Display only, in the wallet's number format (Fmt stays invariant: it also fills input fields).
+        var text = $"{amount.ToString("#,0.########", Fx.Culture)} {ticker}";
         if (account.Balance == BalanceRead.Cached) text += $" · {Loc.Instance["send.lastKnown"]}";
 
         return (text, amount > 0 ? FiatEquivalentLabel(PriceSymbolFor(option), amount) : string.Empty);
@@ -4337,8 +4338,10 @@ public partial class MainViewModel : ViewModelBase
             await Task.Delay(250);
         }
 
-        // The market list just fetched this window's history; the balance chart can draw from it.
+        // The market list just fetched this window's history; the balance chart can draw from it,
+        // and the holdings rows draw the same lines.
         if (MarketRangeFor(PortfolioRange) == ChartRange) _ = RefreshPortfolioChartAsync();
+        RefreshHoldings();
     }
 
     private const double SparkWidth = 110;
@@ -5725,8 +5728,11 @@ public partial class MainViewModel : ViewModelBase
             a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
             a.Balance == BalanceRead.Unknown ? 0 : a.Price * a.Amount,
             a.Change24h, a.Address, a.SupportStatus, a.Balance, a.UnreadNote));
+        var sparks = Market.Where(m => m.HasSpark)
+            .GroupBy(m => m.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Spark, StringComparer.OrdinalIgnoreCase);
         foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
-            Holdings.Add(h);
+            Holdings.Add(sparks.TryGetValue(h.Symbol, out var spark) ? h with { Spark = spark } : h);
         ApplyMarketHoldings();
 
         // A token that arrived becomes sendable; one spent to zero drops off (roadmap N.1).
@@ -5754,6 +5760,54 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(TotalIncompleteLabel));
     }
 
+    /// <summary>The total as it is on screen right now (NaN before the first one).</summary>
+    private double _shownTotal = double.NaN;
+
+    private Avalonia.Threading.DispatcherTimer? _totalCountUp;
+
+    /// <summary>
+    /// Puts <paramref name="target"/> in the hero, counting up (or down) from the figure already there
+    /// over about two thirds of a second — the number visibly arriving rather than snapping. Instant the
+    /// first time, for tiny changes, and with animations off.
+    /// </summary>
+    private void ShowTotal(double target)
+    {
+        _totalCountUp?.Stop();
+        if (double.IsNaN(_shownTotal) || !AnimationsEnabled || Math.Abs(target - _shownTotal) < 0.01)
+        {
+            SetTotalText(target);
+            return;
+        }
+
+        var from = _shownTotal;
+        var started = DateTime.UtcNow;
+        _totalCountUp = new Avalonia.Threading.DispatcherTimer(TimeSpan.FromMilliseconds(33),
+            Avalonia.Threading.DispatcherPriority.Render, (_, _) =>
+            {
+                var t = Math.Min(1, (DateTime.UtcNow - started).TotalMilliseconds / 650);
+                var eased = 1 - Math.Pow(1 - t, 3);
+                SetTotalText(t >= 1 ? target : from + (target - from) * eased);
+                if (t >= 1) _totalCountUp?.Stop();
+            });
+        _totalCountUp.Start();
+    }
+
+    private void SetTotalText(double value)
+    {
+        _shownTotal = value;
+        // Formatted in the SAME locale as every other fiat figure (Fx.Money). This used to be
+        // InvariantCulture, so the hero read "₴16,161.25" while the holdings row right under it read
+        // "₴15 590,68" — one wallet showing money two different ways.
+        //
+        // The split has to be on the locale's own decimal separator, not a literal '.', or a Ukrainian
+        // total would never split at all and the cents would read "00".
+        var text = value.ToString("N2", Fx.Culture);
+        var separator = Fx.Culture.NumberFormat.NumberDecimalSeparator;
+        var cut = text.LastIndexOf(separator, StringComparison.Ordinal);
+        TotalBalanceMain = cut >= 0 ? text[..cut] : text;
+        TotalBalanceCents = cut >= 0 ? text[(cut + separator.Length)..] : "00";
+    }
+
     private void RecalcBalance()
     {
         // The total is a sum of what the wallet actually knows. Anything it could not read is counted
@@ -5769,11 +5823,7 @@ public partial class MainViewModel : ViewModelBase
         //
         // The split has to be on the locale's own decimal separator, not a literal '.', or a Ukrainian
         // total would never split at all and the cents would read "00".
-        var text = displayTotal.ToString("N2", Fx.Culture);
-        var separator = Fx.Culture.NumberFormat.NumberDecimalSeparator;
-        var cut = text.LastIndexOf(separator, StringComparison.Ordinal);
-        TotalBalanceMain = cut >= 0 ? text[..cut] : text;
-        TotalBalanceCents = cut >= 0 ? text[(cut + separator.Length)..] : "00";
+        ShowTotal(displayTotal);
         double weighted = 0;
         double weight = 0;
         foreach (var h in Holdings)

@@ -358,7 +358,12 @@ public partial class MainViewModel
     private void ClearMarketQuery() => MarketQuery = string.Empty;
 
     /// <summary>Selected chart window. Changing it reloads every chart at the new resolution.</summary>
-    [ObservableProperty] private string _chartRange = "24H";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ChartCaption))]
+    private string _chartRange = "24H";
+
+    /// <summary>"Ціна за 24H · USD" over the chart — the candles are USD pairs whatever the display currency.</summary>
+    public string ChartCaption => string.Format(Loc.Instance["chart.caption"], ChartRange);
 
     public IReadOnlyList<string> ChartRanges => PublicMarketRatesClient.ChartRanges;
 

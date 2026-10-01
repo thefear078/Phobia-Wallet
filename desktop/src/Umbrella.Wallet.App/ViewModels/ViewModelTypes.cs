@@ -331,6 +331,11 @@ public sealed record HoldingRowViewModel(
     public string ChangeColor =>
         Change24h > 0 ? "#8FCB9B" : Change24h < 0 ? "#E09A9A" : "#8A9099";
 
+    /// <summary>The coin's price line over the market window, drawn in the row (from the market list).</summary>
+    public System.Collections.Generic.List<Avalonia.Point> Spark { get; init; } = new();
+
+    public bool HasSpark => Spark.Count > 1;
+
     /// <summary>The chain this holding sits on — shown under the coin name.</summary>
     public string NetworkLabel => CoinNetworks.For(Symbol, Chain);
 
