@@ -294,6 +294,17 @@ public sealed record WalletListItemViewModel(
         HasColor ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Color!)) : null;
 }
 
+/// <summary>Which coins are tokens — contracts on another blockchain — and not a blockchain's own coin.</summary>
+public static class CoinKinds
+{
+    private static readonly HashSet<string> Tokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "USDT", "USDC", "DAI", "LINK", "UNI", "WBTC", "SHIB", "PEPE", "AAVE",
+    };
+
+    public static bool IsToken(string symbol) => Tokens.Contains(symbol);
+}
+
 /// <summary>A network chip (Receive's "which network"), lit when chosen.</summary>
 public sealed record NetworkChip(string Name, bool IsActive);
 
@@ -851,8 +862,21 @@ public sealed record MarketRowViewModel(
 
     public bool HasSpark => Spark.Count > 1;
 
-    /// <summary>The chain this coin settles on — same wording as Holdings and Receive.</summary>
-    public string NetworkLabel => CoinNetworks.For(Symbol, Name);
+    /// <summary>The chain this coin settles on — same wording as Holdings and Receive. A token says
+    /// which networks carry it; an EVM network says it is one.</summary>
+    public string NetworkLabel
+    {
+        get
+        {
+            var key = "mnet." + Symbol.ToUpperInvariant();
+            var market = Umbrella.Wallet.App.Loc.Instance[key];
+            return market != key ? market : CoinNetworks.For(Symbol, Name);
+        }
+    }
+
+    /// <summary>A token (a contract on another network: USDT, USDC, Chainlink, Uniswap) rather than a
+    /// blockchain's own coin. Market lists the two apart, so nobody takes Uniswap for a blockchain.</summary>
+    public bool IsToken => CoinKinds.IsToken(Symbol);
 
     /// <summary>Coin badge (brand-coloured disc + glyph), matching Holdings.</summary>
     public string BadgeColor => CoinBadge.Color(Symbol);

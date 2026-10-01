@@ -253,6 +253,8 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "XMR"),
         new("assethub-polkadot.subscan.io", "Subscan", CounterpartyPurpose.ExplorerLink,
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "DOT"),
+        new("nanolooker.com", "NanoLooker", CounterpartyPurpose.ExplorerLink,
+            CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "XNO"),
     ];
 
     /// <summary>Contacted by the wallet on its own, without being asked. The ones worth reading first.</summary>

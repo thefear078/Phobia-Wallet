@@ -463,6 +463,68 @@ public sealed class MainViewModelTests : IDisposable
     }
 
     /// <summary>
+    /// Reported 2026-10-01: "I switched between wallets and then could not any more". The command ended
+    /// with the new wallet's balance refresh, and the toolkit disables a running command — every Switch
+    /// button with it — until it returns, which over Tor took a minute or more.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_SwitchingStaysAvailableWhileTheNextWalletLoads()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var mainId = vm.Wallets.Single(w => w.IsActive).Id;
+
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var savingsId = vm.Wallets.Single(w => w.IsActive).Id;
+
+        var switching = vm.SwitchWalletCommand.ExecuteAsync(mainId);
+        Assert.True(vm.SwitchWalletCommand.CanExecute(savingsId));
+        await switching;
+
+        Assert.Equal("Main wallet", vm.ActiveWalletLabel);
+        await vm.SwitchWalletCommand.ExecuteAsync(savingsId);   // and again: the second switch is not swallowed
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+    }
+
+    /// <summary>
+    /// Reported 2026-10-01: "I turned on every wallet's balance and it does nothing". The figures were
+    /// only in the switcher flyout, and a wallet without a remembered balance showed $0. Every wallet now
+    /// has a figure — or "—" until it has been read, never a made-up zero.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_EveryWalletHasAFigureWhenTotalsAreOn()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        try
+        {
+            vm.ShowAllWalletTotals = true;
+            Assert.Equal(2, vm.Wallets.Count);
+            Assert.All(vm.Wallets, w => Assert.True(w.HasTotal));
+            Assert.NotEmpty(vm.AllWalletsTotalLabel);
+        }
+        finally
+        {
+            vm.ShowAllWalletTotals = false;   // a shared setting: never left on for the next test
+        }
+        Assert.All(vm.Wallets, w => Assert.False(w.HasTotal));
+    }
+
+    /// <summary>
     /// A new wallet's recovery phrase is on screen until "I've written it down". Switching away would
     /// lock it and clear the phrase before it was ever confirmed — so neither the switcher, the shortcut
     /// nor the palette may do it.

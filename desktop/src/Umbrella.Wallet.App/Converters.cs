@@ -77,6 +77,16 @@ public sealed class MarketFilterConverter : IMultiValueConverter
         var symbol = values[0]?.ToString() ?? string.Empty;
         var name = values[1]?.ToString() ?? string.Empty;
         var query = values[2]?.ToString()?.Trim() ?? string.Empty;
+
+        // The section a row belongs to: "chains" (a network's own coin) or "tokens" (a contract that
+        // lives on someone else's network). A row shows in exactly one of the two lists.
+        var section = parameter as string ?? (values.Count > 4 ? values[4] as string : null);
+        if (values.Count > 3 && values[3] is bool isToken && section is not null)
+        {
+            if (section == "chains" && isToken) return false;
+            if (section == "tokens" && !isToken) return false;
+        }
+
         if (query.Length == 0) return true;
         return symbol.Contains(query, StringComparison.OrdinalIgnoreCase)
             || name.Contains(query, StringComparison.OrdinalIgnoreCase);

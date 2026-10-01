@@ -300,18 +300,24 @@ public partial class MainViewModel
         {
             var rows = new List<(long Ts, ActivityRowViewModel Row)>();
             var walletId = _registry.Active?.Id ?? "default";
+            var mnemonic = _unlockedMnemonic!;
 
-            // BTC / LTC / BCH: every address the wallet has used — receive AND change, every branch
-            // (Taproot included) — each transaction judged against the whole set, so change coming back
-            // is netted out of "sent" and a spend funded only by change still appears (roadmap P0.1).
-            // Capped per branch so a huge index never fans out into hundreds of calls.
-            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch) })
+            // Every chain is read at the same time. One after another, the list waited for the SUM of
+            // every explorer's round-trip (a dozen of them, more over Tor); together it waits for the
+            // slowest one.
+            var reads = new List<Task<IReadOnlyList<ChainTx>>>();
+
+            // BTC / LTC / BCH / DOGE: every address the wallet has used — receive AND change, every
+            // branch (Taproot included) — each transaction judged against the whole set, so change
+            // coming back is netted out of "sent" and a spend funded only by change still appears
+            // (roadmap P0.1). Capped per branch so a huge index never fans out into hundreds of calls.
+            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch), ("DOGE", ChainId.Doge) })
             {
                 HistoryAddressPlan plan;
                 try
                 {
                     var floors = _addrIndex.FloorsFor(walletId, sym);
-                    var own = Umbrella.Wallet.Core.Psbt.OwnScripts.For(_deriver, _unlockedMnemonic!, chain, floors);
+                    var own = Umbrella.Wallet.Core.Psbt.OwnScripts.For(_deriver, mnemonic, chain, floors);
                     var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(chain);
                     plan = HistoryAddresses.Plan(own, floors, network);
                 }
@@ -320,70 +326,38 @@ public partial class MainViewModel
                     continue;
                 }
 
-                foreach (var addr in plan.Query)
-                {
-                    var txs = sym switch
-                    {
-                        "BTC" => await _history.GetBitcoinAsync(addr, plan.Own),
-                        "LTC" => await _history.GetLitecoinAsync(addr, plan.Own),
-                        _ => await _history.GetBitcoinCashAsync(addr, plan.Own),
-                    };
-                    foreach (var t in txs) rows.Add((t.UnixMs, ToActivityRow(t)));
-                }
+                // BlockCypher (Dogecoin's source) answers a hundred keyless calls an hour: the first ten
+                // used addresses, not every one.
+                reads.Add(sym == "DOGE"
+                    ? _coinHistory.GetDogecoinAsync(plan.Query.Take(10).ToList())
+                    : ReadUtxoHistoryAsync(sym, plan));
             }
 
-            // ETH / TRON: single-address chains in this wallet.
-            string? tron = null, eth = null;
-            try { tron = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Tron).Address; } catch { }
-            try { eth = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Eth).Address; } catch { }
-
-            if (!string.IsNullOrEmpty(tron))
+            string? AddressOf(ChainId chain)
             {
-                foreach (var t in await _history.GetTronTrc20Async(tron!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-                foreach (var t in await _history.GetTronNativeAsync(tron!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
+                try { return _deriver.DeriveReceiveAddress(mnemonic, chain).Address; }
+                catch { return null; }
             }
 
-            if (!string.IsNullOrEmpty(eth))
-                foreach (var t in await _history.GetEthereumAsync(eth!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // TON: single-address chain (wallet v4R2), history via toncenter.
-            string? ton = null;
-            try { ton = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Ton).Address; } catch { }
-            if (!string.IsNullOrEmpty(ton))
-                foreach (var t in await _history.GetTonAsync(ton!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // ADA: single-address chain, history via Koios (keyless).
-            string? ada = null;
-            try { ada = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Ada).Address; } catch { }
-            if (!string.IsNullOrEmpty(ada))
-                foreach (var t in await _history.GetCardanoAsync(ada!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // SOL: single-address chain, best-effort history via the public Solana RPC.
-            string? sol = null;
-            try { sol = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Sol).Address; } catch { }
-            if (!string.IsNullOrEmpty(sol))
-                foreach (var t in await _history.GetSolanaAsync(sol!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // XRP / XLM: single-account chains, read from the same server as their balance.
-            foreach (var (chain, read) in new (ChainId, Func<string, Task<IReadOnlyList<ChainTx>>>)[]
-                     {
-                         (ChainId.Xrp, a => _accountHistory.GetXrpAsync(a)),
-                         (ChainId.Xlm, a => _accountHistory.GetStellarAsync(a)),
-                         (ChainId.Near, a => _accountHistory.GetNearAsync(a)),
-                     })
+            // The single-address chains, each from the server its balance comes from.
+            if (AddressOf(ChainId.Tron) is { Length: > 0 } tron)
             {
-                string? address = null;
-                try { address = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, chain).Address; } catch { }
-                if (string.IsNullOrEmpty(address)) continue;
-                foreach (var t in await read(address!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
+                reads.Add(_history.GetTronTrc20Async(tron));
+                reads.Add(_history.GetTronNativeAsync(tron));
             }
+            if (AddressOf(ChainId.Eth) is { Length: > 0 } eth) reads.Add(_history.GetEthereumAsync(eth));
+            if (AddressOf(ChainId.Ton) is { Length: > 0 } ton) reads.Add(_history.GetTonAsync(ton));
+            if (AddressOf(ChainId.Ada) is { Length: > 0 } ada) reads.Add(_history.GetCardanoAsync(ada));
+            if (AddressOf(ChainId.Sol) is { Length: > 0 } sol) reads.Add(_history.GetSolanaAsync(sol));
+            if (AddressOf(ChainId.Xrp) is { Length: > 0 } xrp) reads.Add(_accountHistory.GetXrpAsync(xrp));
+            if (AddressOf(ChainId.Xlm) is { Length: > 0 } xlm) reads.Add(_accountHistory.GetStellarAsync(xlm));
+            if (AddressOf(ChainId.Near) is { Length: > 0 } near) reads.Add(_accountHistory.GetNearAsync(near));
+            if (AddressOf(ChainId.Nano) is { Length: > 0 } nano) reads.Add(_coinHistory.GetNanoAsync(nano));
+            if (AddressOf(ChainId.Dcr) is { Length: > 0 } dcr) reads.Add(_coinHistory.GetDecredAsync([dcr]));
+            if (AddressOf(ChainId.Zec) is { Length: > 0 } zec) reads.Add(_coinHistory.GetZcashAsync(zec));
+
+            foreach (var batch in await Task.WhenAll(reads.Select(QuietRead)))
+                foreach (var t in batch) rows.Add((t.UnixMs, ToActivityRow(t)));
 
             if (epoch != _lockEpoch) return;
 
@@ -412,6 +386,33 @@ public partial class MainViewModel
             if (load == _historyLoad) HistoryLoading = false;
             if (epoch == _lockEpoch) HistorySynced = true;
         }
+    }
+
+    /// <summary>History for Nano, Decred, Dogecoin and transparent Zcash.</summary>
+    private readonly CoinHistoryClient _coinHistory = new();
+
+    /// <summary>A UTXO chain's history, its used addresses one after another: the explorers behind
+    /// these (mempool.space, litecoinspace, Haskoin) turn a burst from one client away.</summary>
+    private async Task<IReadOnlyList<ChainTx>> ReadUtxoHistoryAsync(string symbol, HistoryAddressPlan plan)
+    {
+        var all = new List<ChainTx>();
+        foreach (var addr in plan.Query)
+        {
+            all.AddRange(symbol switch
+            {
+                "BTC" => await _history.GetBitcoinAsync(addr, plan.Own),
+                "LTC" => await _history.GetLitecoinAsync(addr, plan.Own),
+                _ => await _history.GetBitcoinCashAsync(addr, plan.Own),
+            });
+        }
+        return all;
+    }
+
+    /// <summary>One history source that fails is one coin without rows, never the whole list.</summary>
+    private static async Task<IReadOnlyList<ChainTx>> QuietRead(Task<IReadOnlyList<ChainTx>> read)
+    {
+        try { return await read; }
+        catch { return []; }
     }
 
     /// <summary>Counts history loads; only the newest one clears the loading flag.</summary>

@@ -1684,7 +1684,7 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
         new("BETA", "Phobia beta — the wallet works again, end to end",
-            "Coins read again on Tor and off it, and every screen got the attention it was missing.\n\nCONNECTION\n• “Tor only” now starts Tor by itself. Before, it was remembered but Tor was not, and every balance read “unknown” after a restart.\n• A Tor left behind by an earlier run no longer stops Tor from starting, and a second copy of the wallet takes the next free port.\n• Servers that stopped answering were replaced: Ethereum, Polygon, Fantom and the other EVM networks, Bitcoin, Dogecoin, Zcash, prices, TRON tokens.\n\nYOUR MONEY FIRST\n• Your assets list shows what you hold, biggest first; coins at zero fold behind one button.\n• An imported phrase is searched at the paths MetaMask, Ledger Live, Phantom, Solflare, TronLink and older Bitcoin wallets use. What is found stays out of your assets unless you switch it on (Settings → Wallets).\n• Optional: every wallet\u2019s balance and the total in the wallet switcher.\n\nMARKET\n• A real exchange chart: candles, a volume band, the price axis on the right with the last price tagged, a crosshair on both axes and the hovered candle\u2019s open, high, low and close. Candle mode drew no candles before.\n• Charts and 24-hour stats fall back to KuCoin and Bybit when Binance refuses.\n\nACTIVITY\n• Every event has its own icon, the list is in time order with Today / Yesterday headers, and transfers show what they are worth.\n\nSECURITY\n• The password is asked again before every send (on by default).\n• One button in the Security Center turns on every recommended protection.\n\nStellar, Cosmos, NEAR, Nano and Decred have their own logos now.",
+            "Coins read again on Tor and off it, and every screen got the attention it was missing.\n\nCONNECTION\n• “Tor only” now starts Tor by itself. Before, it was remembered but Tor was not, and every balance read “unknown” after a restart.\n• A Tor left behind by an earlier run no longer stops Tor from starting, and a second copy of the wallet takes the next free port.\n• Servers that stopped answering were replaced: Ethereum, Polygon, Fantom and the other EVM networks, Bitcoin, Dogecoin, Zcash, prices, TRON tokens.\n\nYOUR MONEY FIRST\n• Your assets list shows what you hold, biggest first; coins at zero fold behind one button.\n• An imported phrase is searched at the paths MetaMask, Ledger Live, Phantom, Solflare, TronLink and older Bitcoin wallets use. What is found stays out of your assets unless you switch it on (Settings → Wallets).\n• Optional: every wallet\u2019s balance and the total in the wallet switcher.\n\nMARKET\n• A real exchange chart: candles, a volume band, the price axis on the right with the last price tagged, a crosshair on both axes and the hovered candle\u2019s open, high, low and close. Candle mode drew no candles before.\n• Charts and 24-hour stats fall back to KuCoin and Bybit when Binance refuses.\n\nACTIVITY\n• Every event has its own icon, the list is in time order with Today / Yesterday headers, and transfers show what they are worth.\n\nSECURITY\n• The password is asked again before every send (on by default).\n• One button in the Security Center turns on every recommended protection.\n\nStellar, Cosmos, NEAR, Nano and Decred have their own logos now.\n\nWALLETS, MARKET AND HISTORY\n• Switching wallets keeps working: the Switch buttons no longer stay grey after the first switch.\n• Every wallet’s balance (Settings → Wallets) shows each wallet and the total, read in the background; a wallet not read yet shows “—”.\n• Market lists blockchains and tokens apart — Uniswap and USDT are tokens on a network, not blockchains.\n• History for Dogecoin, Zcash, Nano and Decred, and every coin’s history now loads at once.",
             "2026-10-01", "v410beta"),
         new("4.10", "Umbrella is now Phobia",
             "Same wallet, new name and a new look.\n\n" +
@@ -3562,6 +3562,7 @@ public partial class MainViewModel : ViewModelBase
     public void LockVault()
     {
         _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
+        _otherTotalsCts?.Cancel();   // and the other wallets' balances stop being read
         PickUnlockTagline();   // a new line on the lock screen each time
         ToastVisible = false;   // a notice about this wallet (or the one being opened) never outlives the lock
         _refreshCts?.Cancel();
@@ -3656,9 +3657,10 @@ public partial class MainViewModel : ViewModelBase
             string? total = null;
             if (ShowAllWalletTotals)
             {
+                // A wallet not read yet says so ("—") instead of claiming $0.
                 var usd = WalletTotalUsd(w.Id, w.Id == activeId);
-                sum += usd;
-                total = Fx.Money(usd);
+                sum += usd ?? 0;
+                total = usd is { } known ? Fx.Money(known) : "—";
             }
             Wallets.Add(new WalletListItemViewModel(w.Id, WalletDisplayName(w.Label), w.Id == activeId, w.IsLegacy, w.Color, total));
         }
@@ -3744,7 +3746,11 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Switch to another wallet. With one common password, the target is unlocked seamlessly;
     /// if it happens to use a different password, we fall back to the unlock screen.</summary>
-    [RelayCommand]
+    /// <remarks>Concurrent executions allowed: the toolkit otherwise disables the command — every
+    /// Switch button in the app — until the method returns, and the method ends with the new wallet's
+    /// balance refresh, which over Tor can take a minute. The user could switch once and then not again.
+    /// <see cref="_switchingWallet"/> still refuses a second switch while a vault is being opened.</remarks>
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task SwitchWalletAsync(string? id)
     {
         if (string.IsNullOrWhiteSpace(id) || id == _registry.Active?.Id || _switchingWallet) return;
@@ -3766,7 +3772,11 @@ public partial class MainViewModel : ViewModelBase
             _switchingWallet = false;
         }
 
-        if (opened) await RefreshLiveDataAsync();
+        if (opened)
+        {
+            _ = RefreshOtherWalletTotalsAsync();
+            await RefreshLiveDataAsync();
+        }
     }
 
     /// <summary>True while a switch is opening the next vault: a second click (or Ctrl+Shift+W held
@@ -4539,18 +4549,20 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.Save();
             OnPropertyChanged();
             RefreshWalletList();
+            if (value) _ = RefreshOtherWalletTotalsAsync(force: true);
+            else _otherTotalsCts?.Cancel();
         }
     }
 
     /// <summary>A wallet's total in USD: the open one from what is on screen, any other from its last
-    /// refresh, priced with today's prices where the market knows the coin.</summary>
-    private double WalletTotalUsd(string walletId, bool active)
+    /// read, priced with today's prices where the market knows the coin. Null for a wallet never read.</summary>
+    private double? WalletTotalUsd(string walletId, bool active)
     {
         if (active) return Holdings.Sum(h => h.Value);
-        var prices = Market.Where(m => m.HasPrice).GroupBy(m => m.Symbol, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().Price, StringComparer.OrdinalIgnoreCase);
-        return _balanceStore.Load(walletId)
-            .Sum(e => e.Amount * (prices.TryGetValue(e.Symbol, out var p) ? p : e.Price));
+        var entries = _balanceStore.Load(walletId);
+        if (entries.Count == 0) return null;
+        var prices = MarketPriceBook();
+        return entries.Sum(e => e.Amount * (prices.TryGetValue(e.Symbol, out var p) ? p : e.Price));
     }
 
     /// <summary>Persist the current balances/prices so the next unlock/switch shows them instantly.</summary>
@@ -4765,6 +4777,7 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();
             RecalcBalance();
             SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
+            _ = RefreshOtherWalletTotalsAsync();   // the other wallets' figures, when that option is on
             MaybeDiscoverAutomatically(); // once per wallet: money at other wallets' paths
 
             // NFTs last, and deliberately AFTER the balance total is final and cached: they are display

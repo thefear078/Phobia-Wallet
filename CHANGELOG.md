@@ -8,9 +8,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [4.10.0-beta.1] — Beta 1 (a GitHub pre-release; installed beta copies update to newer betas by themselves) — Umbrella is now Phobia; Monero seeds in every language
 
-This version is not published. It goes out first as a **beta** (a GitHub pre-release, which installed
-copies never update to on their own), once every coin reads and sends on an ordinary connection and the
-new design is finished.
+Published as a **beta**: a GitHub pre-release. A 4.9.0 copy does not update to it by itself (download it
+from the release page); a beta copy updates to newer betas, and then to the full release, by itself.
+
+### Wallets, Market and history
+
+- **Switching wallets no longer stops working after the first switch.** The switch ended with the new
+  wallet's balance refresh, and while a command runs its buttons are disabled — every Switch button in
+  the app stayed grey for as long as that refresh took, over Tor a minute or more.
+- **"Every wallet's balance" works.** The figures were only in the switcher's pop-up, and a wallet the
+  wallet had never read showed $0. Each wallet now shows its balance in Settings → Wallets too, with the
+  total of all of them; a wallet that is not open is read in the background — at the addresses it
+  remembered, or, for one never opened on this device, at addresses derived with the password in use
+  (the phrase is dropped again straight away). A wallet not read yet shows "—", never a made-up zero.
+- **Market lists blockchains and tokens apart.** Bitcoin, Ethereum, Solana, TON, BNB Chain, Polygon… are
+  networks with their own coin; USDT, USDC, Chainlink and Uniswap are tokens — contracts that live on one.
+  Each token says which networks carry it, and every EVM network says it shares the 0x address. The
+  price, change and holding columns now line up whatever the length of a coin's network line.
+- **History for Dogecoin, Zcash, Nano and Decred**, each from the server its balance already comes from:
+  BlockCypher across Dogecoin's used addresses, Blockchair then 3xpl for Zcash, the Nano node, dcrdata.
+  A Dogecoin or Decred payment with change shows what actually left the wallet, not the whole input.
+- **History loads all coins at once.** One after another, the list waited for every explorer's
+  round-trip in turn; now it waits for the slowest one.
 
 ### The wallet reads its coins again — on Tor and off it
 

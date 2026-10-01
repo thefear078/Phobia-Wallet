@@ -66,6 +66,70 @@
         </Grid>
       </Button>
     </DataTemplate>
+    <!-- One coin in the Market list: shared by the Blockchains and the Tokens sections. -->
+    <DataTemplate x:Key="MarketCoinRow" x:DataType="vm:MarketRowViewModel">
+      <Button Classes="row" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0"
+              AutomationProperties.Name="{Binding Name}"
+              Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+              CommandParameter="{Binding}">
+        <Button.IsVisible>
+          <MultiBinding Converter="{StaticResource MarketFilter}">
+            <Binding Path="Symbol"/>
+            <Binding Path="Name"/>
+            <Binding Path="#RootWindow.((vm:MainViewModel)DataContext).MarketQuery"/>
+            <Binding Path="IsToken"/>
+            <Binding Path="Tag" RelativeSource="{RelativeSource AncestorType=ItemsControl}"/>
+          </MultiBinding>
+        </Button.IsVisible>
+        <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Height="58">
+          <!-- Fixed widths on the right, the coin in what is left: every row's price, change and
+               holding sit in the same place, whatever the length of its network line (star columns
+               sized themselves to each row's text and the prices zig-zagged down the list). -->
+          <DockPanel Margin="16,0">
+            <TextBlock DockPanel.Dock="Right" Width="170" FontSize="11.5" Text="{Binding Accepts}"
+                       Foreground="{Binding AcceptsColor}" TextAlignment="Right"
+                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Accepts}" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Right" Classes="mono" Text="{Binding ChangeLabel}"
+                       Foreground="{Binding ChangeColor}" Width="86" TextAlignment="Right" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Right" Classes="mono" Width="120" Text="{Binding PriceLabel}"
+                       TextAlignment="Right" VerticalAlignment="Center"/>
+            <!-- Inline sparkline at the selected window: every coin gets a chart, not just the selected one. -->
+            <Canvas DockPanel.Dock="Right" Width="110" Height="30" VerticalAlignment="Center" Margin="10,0">
+              <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
+                    StrokeThickness="5" Opacity="0.14" StrokeLineCap="Round" StrokeJoin="Round"
+                    IsVisible="{Binding HasSpark}"/>
+              <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
+                    StrokeThickness="1.7" StrokeLineCap="Round" StrokeJoin="Round"
+                    IsVisible="{Binding HasSpark}"/>
+            </Canvas>
+            <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+              <!-- Watchlist star. Nested in the row button on purpose: starring a coin
+                   must not also open its chart, so it carries its own command. -->
+              <Button Classes="ghost" Padding="6,2" MinHeight="0" VerticalAlignment="Center"
+                      AutomationProperties.Name="{Binding [market.watchHint], Source={x:Static app:Loc.Instance}}"
+                      ToolTip.Tip="{Binding [market.watchHint], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).ToggleWatchCommand}"
+                      CommandParameter="{Binding Symbol}">
+                <TextBlock Text="{Binding WatchGlyph}" Foreground="{Binding WatchColor}" FontSize="14"/>
+              </Button>
+              <Border Grid.Column="1" Width="32" Height="32" CornerRadius="16" Background="{Binding BadgeBg}" ClipToBounds="True">
+                <Panel>
+                  <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="16" FontWeight="Bold"
+                             Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+                </Panel>
+              </Border>
+              <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding NetworkLabel}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NetworkLabel}"/>
+              </StackPanel>
+            </Grid>
+          </DockPanel>
+        </Border>
+      </Button>
+    </DataTemplate>
     <!-- The wallet switcher: every wallet one click away, from the sidebar, the top bar or the bottom
          tab. Shared, so all three show the same list; an item's Click closes it (code-behind). -->
     <Flyout x:Key="WalletSwitcherFlyout" Placement="BottomEdgeAlignedLeft" ShowMode="Transient">
@@ -2610,80 +2674,38 @@
 
                 <Border Classes="hairline">
                   <StackPanel>
-                    <Grid ColumnDefinitions="1.7*,Auto,1*,Auto,1.2*" Height="34" Background="{DynamicResource UmCard}">
-                      <TextBlock Classes="eyebrow" Text="{Binding [col.coin], Source={x:Static app:Loc.Instance}}" Margin="16,0,0,0" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="1" Classes="eyebrow" Text="{Binding ChartRange}" Width="110" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="2" Classes="eyebrow" Text="{Binding [col.price], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="3" Classes="eyebrow" Text="{Binding [col.24h], Source={x:Static app:Loc.Instance}}" Width="86" TextAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="4" Classes="eyebrow" Text="{Binding [col.thisWallet], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Right" Margin="0,0,16,0" VerticalAlignment="Center"/>
-                    </Grid>
-                    <ItemsControl ItemsSource="{Binding Market}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:MarketRowViewModel">
-                          <Button Classes="row" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0"
-                                  AutomationProperties.Name="{Binding Name}"
-                                  Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
-                                  CommandParameter="{Binding}">
-                            <Button.IsVisible>
-                              <MultiBinding Converter="{StaticResource MarketFilter}">
-                                <Binding Path="Symbol"/>
-                                <Binding Path="Name"/>
-                                <Binding Path="#RootWindow.((vm:MainViewModel)DataContext).MarketQuery"/>
-                              </MultiBinding>
-                            </Button.IsVisible>
-                            <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Height="58">
-                              <Grid ColumnDefinitions="1.7*,Auto,1*,Auto,1.2*" Margin="16,0">
-                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                  <!-- Watchlist star. Nested in the row button on purpose: starring a coin
-                                       must not also open its chart, so it carries its own command. -->
-                                  <Button Classes="ghost" Padding="6,2" MinHeight="0" VerticalAlignment="Center"
-                                          AutomationProperties.Name="{Binding [market.watchHint], Source={x:Static app:Loc.Instance}}"
-                                          ToolTip.Tip="{Binding [market.watchHint], Source={x:Static app:Loc.Instance}}"
-                                          Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).ToggleWatchCommand}"
-                                          CommandParameter="{Binding Symbol}">
-                                    <TextBlock Text="{Binding WatchGlyph}" Foreground="{Binding WatchColor}" FontSize="14"/>
-                                  </Button>
-                                  <Border Width="32" Height="32" CornerRadius="16" Background="{Binding BadgeBg}" ClipToBounds="True">
-                                    <Panel>
-                                      <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="16" FontWeight="Bold"
-                                                 Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
-                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                      <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
-                                    </Panel>
-                                  </Border>
-                                  <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}"/>
-                                    <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding NetworkLabel}"
-                                               TextTrimming="CharacterEllipsis"/>
-                                  </StackPanel>
-                                </StackPanel>
-                                <!-- Inline sparkline at the selected window: every coin gets a chart, not just the selected one. -->
-                                <Canvas Grid.Column="1" Width="110" Height="30" VerticalAlignment="Center" Margin="10,0">
-                                  <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
-                                        StrokeThickness="5" Opacity="0.14" StrokeLineCap="Round" StrokeJoin="Round"
-                                        IsVisible="{Binding HasSpark}"/>
-                                  <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
-                                        StrokeThickness="1.7" StrokeLineCap="Round" StrokeJoin="Round"
-                                        IsVisible="{Binding HasSpark}"/>
-                                </Canvas>
-                                <TextBlock Grid.Column="2" Classes="mono" Text="{Binding PriceLabel}"
-                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="3" Classes="mono" Text="{Binding ChangeLabel}"
-                                           Foreground="{Binding ChangeColor}" Width="86" TextAlignment="Right"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="4" FontSize="11.5" Text="{Binding Accepts}"
-                                           Foreground="{Binding AcceptsColor}" Margin="12,0,0,0"
-                                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Accepts}"
-                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                              </Grid>
-                            </Border>
-                          </Button>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <Border Height="34" Background="{DynamicResource UmCard}">
+                      <DockPanel Margin="16,0">
+                        <TextBlock DockPanel.Dock="Right" Width="170" Classes="eyebrow" Text="{Binding [col.thisWallet], Source={x:Static app:Loc.Instance}}" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock DockPanel.Dock="Right" Width="86" Classes="eyebrow" Text="{Binding [col.24h], Source={x:Static app:Loc.Instance}}" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock DockPanel.Dock="Right" Width="120" Classes="eyebrow" Text="{Binding [col.price], Source={x:Static app:Loc.Instance}}" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock DockPanel.Dock="Right" Width="110" Margin="10,0" Classes="eyebrow" Text="{Binding ChartRange}" TextAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBlock Classes="eyebrow" Text="{Binding [col.coin], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+                      </DockPanel>
+                    </Border>
+                    <Border Padding="16,12,16,8" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0">
+                      <StackPanel Spacing="2">
+                        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmAccentBright}"
+                                   Text="{Binding [market.chainsTitle], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                                   Text="{Binding [market.chainsHint], Source={x:Static app:Loc.Instance}}"/>
+                      </StackPanel>
+                    </Border>
+                    <ItemsControl ItemsSource="{Binding Market}" Tag="chains"
+                                  ItemTemplate="{StaticResource MarketCoinRow}"/>
+                    <Border Padding="16,12,16,8" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0">
+                      <StackPanel Spacing="2">
+                        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmAccentBright}"
+                                   Text="{Binding [market.tokensTitle], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                                   Text="{Binding [market.tokensHint], Source={x:Static app:Loc.Instance}}"/>
+                      </StackPanel>
+                    </Border>
+                    <ItemsControl ItemsSource="{Binding Market}" Tag="tokens"
+                                  ItemTemplate="{StaticResource MarketCoinRow}"/>
                   </StackPanel>
                 </Border>
-                <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
+                <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left"
                            Text="{Binding [market.footer], Source={x:Static app:Loc.Instance}}"/>
               </StackPanel>
 
@@ -3439,12 +3461,16 @@
                     <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap" MaxWidth="640"
                                Text="{Binding [settings.walletsHint], Source={x:Static app:Loc.Instance}}"/>
 
+                    <!-- Every wallet together, when that option is on. -->
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Classes="mono" Foreground="{DynamicResource UmAccentBright}"
+                               Text="{Binding AllWalletsTotalLabel}" IsVisible="{Binding ShowAllWalletTotals}"/>
+
                     <!-- The wallet list. -->
                     <ItemsControl ItemsSource="{Binding Wallets}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:WalletListItemViewModel">
                           <Border Background="{DynamicResource UmCardAlt}" CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
                               <Border Width="38" Height="38" CornerRadius="10" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Center"
                                       BorderThickness="2" BorderBrush="{Binding ColorBrush}">
                                 <TextBlock Text="{Binding Badge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UmAccentBright}"
@@ -3455,11 +3481,13 @@
                                 <TextBlock Text="{Binding StatusLabel}" FontSize="10.5"
                                            Foreground="{DynamicResource UmTextMuted}"/>
                               </StackPanel>
-                              <Button Grid.Column="2" Classes="chip" Content="{Binding [settings.walletSwitch], Source={x:Static app:Loc.Instance}}"
+                              <TextBlock Grid.Column="2" Classes="mono" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                                         Text="{Binding TotalLabel}" IsVisible="{Binding HasTotal}"/>
+                              <Button Grid.Column="3" Classes="chip" Content="{Binding [settings.walletSwitch], Source={x:Static app:Loc.Instance}}"
                                       IsVisible="{Binding !IsActive}" VerticalAlignment="Center"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SwitchWalletCommand}"
                                       CommandParameter="{Binding Id}"/>
-                              <Button Grid.Column="3" Classes="ghost" Content="{Binding [settings.walletRemove], Source={x:Static app:Loc.Instance}}"
+                              <Button Grid.Column="4" Classes="ghost" Content="{Binding [settings.walletRemove], Source={x:Static app:Loc.Instance}}"
                                       IsVisible="{Binding CanRemove}" VerticalAlignment="Center"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveWalletCommand}"
                                       CommandParameter="{Binding Id}"/>

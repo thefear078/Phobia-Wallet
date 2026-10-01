@@ -32,8 +32,9 @@ public static class ChainCatalog
             new ChainInfo(
                 ChainId.Doge, "DOGE", "Dogecoin", ChainSupportLevel.Supported, "BIP44", "m/44'/3'/0'/0/{index}",
                 // Send is a real UTXO spend (UTXOs from Bitcore, then BlockCypher; fee from BlockCypher;
-                // broadcast through either); the same proven spender signs it as BTC/LTC.
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: true,
+                // broadcast through either); the same proven spender signs it as BTC/LTC. History from
+                // BlockCypher across the used addresses, netted per transaction (CoinHistoryClient).
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger — use Tor and a fresh address per receive to reduce linking."),
             new ChainInfo(
@@ -78,11 +79,11 @@ public static class ChainCatalog
             // Zcash: shielded (z-addr) sending and receiving is a different scheme the wallet does not
             // derive, so the privacy note says so plainly rather than implying Zcash's shielded privacy.
             // Sends a v4 (Sapling) transparent transaction signed with the ZIP-243 digest, pinned to
-            // Zcash's own sighash vectors (ZcashSigHashTests), with the ZIP-317 fee. HasHistory stays
-            // off until that path is wired and tested.
+            // Zcash's own sighash vectors (ZcashSigHashTests), with the ZIP-317 fee. History from the
+            // balance's own sources (Blockchair, then 3xpl), pinned by CoinHistoryTests.
             new ChainInfo(
                 ChainId.Zec, "ZEC", "Zcash", ChainSupportLevel.Supported, "BIP44 · transparent", "m/44'/133'/0'/0/{index}",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Transparent address — this is Zcash's PUBLIC ledger, not a shielded z-address. Use Tor and a fresh address per receive."),
             // XRP Ledger — receive and balance (roadmap N.4). BIP44 coin type 144, secp256k1, the same
@@ -138,7 +139,7 @@ public static class ChainCatalog
             // wallet that signs pockets it, and the balance counts it so the money is never hidden.
             new ChainInfo(
                 ChainId.Nano, "XNO", "Nano", ChainSupportLevel.Supported, "SLIP-0010 · ed25519-blake2b", "m/44'/165'/0'",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. Incoming XNO stays \"receivable\" until a signed receive block pockets it; this wallet shows it in the balance but cannot sign Nano blocks yet — restore the phrase in Nault or a Ledger to move it."),
             // Decred — receive and balance. BIP44 m/44'/42'/0'/0/0 (Trust Wallet, Ledger, Exodus); a
@@ -149,7 +150,7 @@ public static class ChainCatalog
             // (dcrwallet / Decrediton) uses a different seed scheme and will NOT show this account.
             new ChainInfo(
                 ChainId.Dcr, "DCR", "Decred", ChainSupportLevel.Supported, "BIP44 · secp256k1 · BLAKE-256", "m/44'/42'/0'/0/{index}",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. This is the BIP44 account Trust Wallet, Ledger and Exodus use — Decred's own wallet (Decrediton) derives differently and will not show it. Sending is not available here yet."),
         ];
