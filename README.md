@@ -31,7 +31,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download](https://github.com/thefear078/UmbrellaWallet/releases/latest)** ·
+**[⬇ Download Beta 1](https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.10.0-beta.1)** ·
 [Verify your download](#verify-what-you-downloaded) ·
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
@@ -225,16 +225,19 @@ network delivers to your own address. Nobody holds your funds in between.
 
 <img src="docs/assets/logo-phobia.png" width="64" align="left" alt="" hspace="14"/>
 
-Builds are published on the [releases page](https://github.com/thefear078/UmbrellaWallet/releases/latest).
+The current build is **Beta 1** — its [release page](https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.10.0-beta.1) has every file below. It is a
+pre-release, so GitHub’s “Latest” label on the right still points at 4.9.0; older builds are on the
+[releases page](https://github.com/thefear078/UmbrellaWallet/releases).
 This is the icon you will see once it is installed.
 
 <br clear="left"/>
 
 | | |
 |---|---|
-| **Windows installer** | `PhobiaWallet-Setup-4.10.0-beta.1.exe` |
-| **Windows portable** | `PhobiaWallet-4.10.0-beta.1-win-x64-portable.exe` — one file, no install, leaves nothing behind |
-| **Linux** | `PhobiaWallet-4.10.0-beta.1-linux-x64.tar.gz` |
+| **Windows installer** | [`PhobiaWallet-Setup-4.10.0-beta.1.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Setup-4.10.0-beta.1.exe) |
+| **Windows portable** | [`PhobiaWallet-4.10.0-beta.1-win-x64-portable.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-4.10.0-beta.1-win-x64-portable.exe) — one file, no install, leaves nothing behind |
+| **Linux** | [`PhobiaWallet-4.10.0-beta.1-linux-x64.tar.gz`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-4.10.0-beta.1-linux-x64.tar.gz) |
+| **Checksums** | [`SHA256SUMS-4.10.0-beta.1.txt`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/SHA256SUMS-4.10.0-beta.1.txt) |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
