@@ -1,10 +1,23 @@
 using System.Buffers.Binary;
 using System.Numerics;
+using System.Globalization;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Org.BouncyCastle.Crypto.Digests;
 using Umbrella.Wallet.Core.Derivation;
 
 namespace Umbrella.Wallet.Core.Chains;
+
+/// <summary>What a node says an account is: the block to build on, the balance (raw), the representative.</summary>
+public sealed record NanoAccountState(byte[] Frontier, BigInteger Balance, string Representative);
+
+/// <summary>A block sent to the account that it has not pocketed yet.</summary>
+public sealed record NanoReceivable(byte[] Hash, BigInteger Amount);
+
+/// <summary>A signed state block, ready for <c>process</c>.</summary>
+public sealed record NanoStateBlock(
+    string Account, byte[] Previous, string Representative, BigInteger Balance, byte[] Link,
+    byte[] Signature, ulong Work, byte[] Hash);
 
 /// <summary>
 /// Nano state blocks: the hash, the signature and the proof of work — the three things a send or a
@@ -136,6 +149,129 @@ public static class NanoBlocks
 
         ct.ThrowIfCancellationRequested();
         return found;
+    }
+
+    // --- Talking to a node ------------------------------------------------------------------------
+
+    /// <summary><c>account_info</c> with the representative: the frontier to build on, the balance, and
+    /// the representative a new block keeps.</summary>
+    public static object AccountInfoRequest(string account) =>
+        new { action = "account_info", account, representative = "true" };
+
+    /// <summary>The account's state, or null when the node does not know the account (never opened) or
+    /// the answer is malformed. <paramref name="unopened"/> tells the two apart.</summary>
+    public static NanoAccountState? ParseAccountInfo(JsonElement root, out bool unopened)
+    {
+        unopened = false;
+        if (root.ValueKind != JsonValueKind.Object) return null;
+        if (root.TryGetProperty("error", out var error))
+        {
+            unopened = error.ValueKind == JsonValueKind.String &&
+                       string.Equals(error.GetString(), "Account not found", StringComparison.OrdinalIgnoreCase);
+            return null;
+        }
+
+        var frontier = HexField(root, "frontier");
+        var representative = root.TryGetProperty("representative", out var r) && r.ValueKind == JsonValueKind.String
+            ? r.GetString() : null;
+        if (frontier is null || representative is null || NanoAccounts.TryDecode(representative) is null) return null;
+        if (!root.TryGetProperty("balance", out var b) || b.ValueKind != JsonValueKind.String ||
+            !BigInteger.TryParse(b.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out var balance))
+            return null;
+        return new NanoAccountState(frontier, balance, representative);
+    }
+
+    /// <summary><c>receivable</c>: blocks sent to the account and not pocketed, with their amounts.</summary>
+    public static object ReceivableRequest(string account, int count = 20) =>
+        new { action = "receivable", account, count = count.ToString(CultureInfo.InvariantCulture), threshold = "1" };
+
+    /// <summary>The receivable blocks, largest first. Both answer shapes are read: hash → amount, and
+    /// hash → { amount, source }. A node that still says "pending" is read the same way.</summary>
+    public static IReadOnlyList<NanoReceivable> ParseReceivable(JsonElement root)
+    {
+        var list = new List<NanoReceivable>();
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("blocks", out var blocks) ||
+            blocks.ValueKind != JsonValueKind.Object)
+            return list;   // "blocks": "" is how a node says none
+
+        foreach (var entry in blocks.EnumerateObject())
+        {
+            if (entry.Name.Length != 64) continue;
+            byte[] hash;
+            try { hash = Convert.FromHexString(entry.Name); }
+            catch (FormatException) { continue; }
+
+            var amountText = entry.Value.ValueKind switch
+            {
+                JsonValueKind.String => entry.Value.GetString(),
+                JsonValueKind.Object when entry.Value.TryGetProperty("amount", out var a) && a.ValueKind == JsonValueKind.String
+                    => a.GetString(),
+                _ => null,
+            };
+            if (BigInteger.TryParse(amountText, NumberStyles.None, CultureInfo.InvariantCulture, out var amount) && amount > 0)
+                list.Add(new NanoReceivable(hash, amount));
+        }
+
+        return list.OrderByDescending(r => r.Amount).ToList();
+    }
+
+    /// <summary><c>process</c> for a signed block, in the JSON form a node accepts.</summary>
+    public static object ProcessRequest(NanoStateBlock block, string subtype) => new
+    {
+        action = "process",
+        json_block = "true",
+        subtype,
+        block = new
+        {
+            type = "state",
+            account = block.Account,
+            previous = Convert.ToHexString(block.Previous),
+            representative = block.Representative,
+            balance = block.Balance.ToString(CultureInfo.InvariantCulture),
+            link = Convert.ToHexString(block.Link),
+            signature = Convert.ToHexString(block.Signature),
+            work = WorkHex(block.Work),
+        },
+    };
+
+    /// <summary>The hash a node returns for a block it took, or null with its error.</summary>
+    public static string? ParseProcessed(JsonElement root, out string? error)
+    {
+        error = null;
+        if (root.ValueKind != JsonValueKind.Object) { error = "unreadable answer"; return null; }
+        if (root.TryGetProperty("error", out var e)) { error = e.ValueKind == JsonValueKind.String ? e.GetString() : e.GetRawText(); return null; }
+        return root.TryGetProperty("hash", out var h) && h.ValueKind == JsonValueKind.String && h.GetString()!.Length == 64
+            ? h.GetString()
+            : null;
+    }
+
+    /// <summary>
+    /// A signed block, work attached. <paramref name="previous"/> is all zeros for an account's first
+    /// (open) block; its work root is then the account's own key.
+    /// </summary>
+    public static NanoStateBlock Build(
+        byte[] privateKey, byte[] previous, string representative, BigInteger balance, byte[] link, ulong work)
+    {
+        var publicKey = NanoAccounts.PublicKey(privateKey);
+        var rep = NanoAccounts.TryDecode(representative)
+                  ?? throw new ArgumentException("Not a Nano address.", nameof(representative));
+        var hash = Hash(publicKey, previous, rep, balance, link);
+        return new NanoStateBlock(
+            NanoAccounts.Address(publicKey), previous, NanoAccounts.Normalize(representative)!, balance, link,
+            Sign(privateKey, hash), work, hash);
+    }
+
+    /// <summary>The root a block's work is computed over: previous, or the account key when there is none.</summary>
+    public static byte[] WorkRoot(byte[] previous, byte[] accountPublicKey) =>
+        previous.All(b => b == 0) ? accountPublicKey : previous;
+
+    private static byte[]? HexField(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var p) || p.ValueKind != JsonValueKind.String) return null;
+        var text = p.GetString();
+        if (text is null || text.Length != 64) return null;
+        try { return Convert.FromHexString(text); }
+        catch (FormatException) { return null; }
     }
 
     /// <summary>A work nonce as the node prints it: 16 lower-case hex digits, big-endian.</summary>

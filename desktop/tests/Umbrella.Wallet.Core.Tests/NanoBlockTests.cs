@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json;
 using Umbrella.Wallet.Core.Chains;
 
 namespace Umbrella.Wallet.Core.Tests;
@@ -116,6 +117,99 @@ public sealed class NanoBlockTests
         Assert.Equal(NanoBlocks.WorkValue(nonce, root), NanoBlocks.FastWorkValue(nonce,
             BitConverter.ToUInt64(root, 0), BitConverter.ToUInt64(root, 8),
             BitConverter.ToUInt64(root, 16), BitConverter.ToUInt64(root, 24)));
+    }
+
+    [Fact]
+    public void Account_info_is_read_from_a_real_answer_and_an_unopened_account_is_told_apart()
+    {
+        // rpc.nano.to, 2026-10-01, trimmed.
+        using var doc = JsonDocument.Parse("""
+            {"frontier":"6D7FC58CAC10E970E71FE266D6648B4DF563040037B4EB6BA45C28596CF515E1","open_block":"B0FF30C2FB292BC4B36C84C146D8319F91AF409B50BC6222BCE367F89C7B83C0",
+             "balance":"310784522967173701685653362791790","block_count":"3223",
+             "representative":"nano_1x7biz69cem95oo7gxkrw6kzhfywq4x5dupw4z1bdzkb74dk9kpxwzjbdhhs"}
+            """);
+        var state = NanoBlocks.ParseAccountInfo(doc.RootElement, out var unopened);
+        Assert.NotNull(state);
+        Assert.False(unopened);
+        Assert.Equal("6D7FC58CAC10E970E71FE266D6648B4DF563040037B4EB6BA45C28596CF515E1", Convert.ToHexString(state!.Frontier));
+        Assert.Equal(BigInteger.Parse("310784522967173701685653362791790"), state.Balance);
+
+        using var missing = JsonDocument.Parse("""{"error":"Account not found"}""");
+        Assert.Null(NanoBlocks.ParseAccountInfo(missing.RootElement, out unopened));
+        Assert.True(unopened);
+
+        using var broken = JsonDocument.Parse("""{"error":"Unable to parse JSON"}""");
+        Assert.Null(NanoBlocks.ParseAccountInfo(broken.RootElement, out unopened));
+        Assert.False(unopened);   // a failure is not "this account is new"
+    }
+
+    [Fact]
+    public void Receivable_blocks_are_read_in_both_shapes_largest_first()
+    {
+        using var plain = JsonDocument.Parse("""
+            {"blocks":{"09D14E78A25308DE01747FB1632FB5FF449EF0B247B736FDA6DDE5183B83C8E5":"1",
+                       "14A74E9FD3CDF965E63DAD153E55D31F8777E97E5C1091153EAEDED0CBA47145":"100000000000000000000000"}}
+            """);
+        var rows = NanoBlocks.ParseReceivable(plain.RootElement);
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(BigInteger.Parse("100000000000000000000000"), rows[0].Amount);
+
+        using var withSource = JsonDocument.Parse("""
+            {"blocks":{"14A74E9FD3CDF965E63DAD153E55D31F8777E97E5C1091153EAEDED0CBA47145":{"amount":"7","source":"nano_1natrium1o3z5519ifou7xii8crpxpk8y65qmkih8e8bpsjri651oza8imdd"}}}
+            """);
+        Assert.Equal(new BigInteger(7), Assert.Single(NanoBlocks.ParseReceivable(withSource.RootElement)).Amount);
+
+        using var none = JsonDocument.Parse("""{"blocks":""}""");
+        Assert.Empty(NanoBlocks.ParseReceivable(none.RootElement));
+    }
+
+    [Fact]
+    public void A_built_block_is_signed_over_its_own_hash_and_serialised_as_a_node_expects()
+    {
+        var link = NanoAccounts.TryDecode(LinkAsAccount)!;
+        var block = NanoBlocks.Build(Hex(PrivateKey), Hex(Previous),
+            "nano_1stofnrxuz3cai7ze75o174bpm7scwj9jn3nxsn8ntzg784jf1gzn1jjdkou", BigInteger.Parse("3618869000000000000000000000000"),
+            link, NanoBlocks.ParseWork(Work));
+
+        Assert.Equal(Account, block.Account);
+        Assert.Equal(NanoBlocks.Hash(NanoAccounts.TryDecode(Account)!, Hex(Previous),
+            NanoAccounts.TryDecode("nano_1stofnrxuz3cai7ze75o174bpm7scwj9jn3nxsn8ntzg784jf1gzn1jjdkou")!,
+            BigInteger.Parse("3618869000000000000000000000000"), link), block.Hash);
+        Assert.Equal(NanoBlocks.Sign(Hex(PrivateKey), block.Hash), block.Signature);
+
+        var json = JsonSerializer.Serialize(NanoBlocks.ProcessRequest(block, "send"));
+        using var doc = JsonDocument.Parse(json);
+        var b = doc.RootElement.GetProperty("block");
+        Assert.Equal("process", doc.RootElement.GetProperty("action").GetString());
+        Assert.Equal("send", doc.RootElement.GetProperty("subtype").GetString());
+        Assert.Equal("state", b.GetProperty("type").GetString());
+        Assert.Equal(Previous, b.GetProperty("previous").GetString());
+        Assert.Equal("3618869000000000000000000000000", b.GetProperty("balance").GetString());
+        Assert.Equal(Link, b.GetProperty("link").GetString());
+        Assert.Equal(Work, b.GetProperty("work").GetString());
+        Assert.Equal(128, b.GetProperty("signature").GetString()!.Length);
+    }
+
+    [Fact]
+    public void An_accounts_first_block_is_worked_over_its_own_key()
+    {
+        var key = new byte[32];
+        key[0] = 7;
+        Assert.Same(key, NanoBlocks.WorkRoot(new byte[32], key));
+        var previous = Hex(Previous);
+        Assert.Same(previous, NanoBlocks.WorkRoot(previous, key));
+    }
+
+    [Fact]
+    public void A_processed_answer_gives_the_hash_or_the_nodes_reason()
+    {
+        using var ok = JsonDocument.Parse("""{"hash":"6D7FC58CAC10E970E71FE266D6648B4DF563040037B4EB6BA45C28596CF515E1"}""");
+        Assert.Equal("6D7FC58CAC10E970E71FE266D6648B4DF563040037B4EB6BA45C28596CF515E1", NanoBlocks.ParseProcessed(ok.RootElement, out var none));
+        Assert.Null(none);
+
+        using var refused = JsonDocument.Parse("""{"error":"Fork"}""");
+        Assert.Null(NanoBlocks.ParseProcessed(refused.RootElement, out var why));
+        Assert.Equal("Fork", why);
     }
 
     [Fact]
