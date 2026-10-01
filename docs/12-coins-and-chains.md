@@ -503,8 +503,8 @@ threat model names each one as an open gap rather than implying it away.
 | 15 | Monero | XMR | ✅ Working | Send, receive, balance, history, private |
 | 16 | Litecoin | LTC | ✅ Stable | Send, receive, balance, history |
 | 17 | Bitcoin Cash | BCH | ✅ Working | Send, receive, balance, history, fresh address per receive |
-| 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance, fresh address per receive |
-| 19 | Zcash | ZEC | ✅ Working | Send, receive, balance — transparent only |
+| 18 | Dogecoin | DOGE | ✅ Working | Send, receive, balance, history, fresh address per receive |
+| 19 | Zcash | ZEC | ✅ Working | Send, receive, balance, history — transparent only |
 | 20 | Linea | ETH | ✅ Working | Send, receive, balance, ERC-20 |
 | 21 | zkSync Era | ETH | ✅ Full | Receive, balance and send |
 | 22 | XRP Ledger | XRP | ✅ Full | Receive, balance and send (destination tag) |
@@ -512,5 +512,5 @@ threat model names each one as an open gap rather than implying it away.
 | 24 | Cosmos | ATOM | ✅ Full | Receive, available balance and send (memo) |
 | 25 | Near | NEAR | ✅ Full | Receive, balance and send from the implicit account |
 | 26 | Polkadot | DOT | ✅ Full | Receive, balance (Asset Hub + relay), send from Asset Hub |
-| 27 | Nano | XNO | ⚠️ Partial | Receive and balance (incl. receivable); no send yet |
-| 28 | Decred | DCR | ⚠️ Partial | Receive and balance; no send yet |
+| 27 | Nano | XNO | ⚠️ Partial | Receive, balance (incl. receivable) and history; no send yet |
+| 28 | Decred | DCR | ⚠️ Partial | Receive, balance and history; no send yet |
