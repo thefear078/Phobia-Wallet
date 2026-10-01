@@ -114,16 +114,35 @@ Monero runs the real `monero-wallet-rpc` locally over loopback, so its balance i
 machine because no explorer can compute it for you.
 
 **Tor is bundled, not assumed.**
-One switch. The wallet starts its own Tor client on port 9250 — separate from a Tor Browser you may
-already be running — and routes every balance lookup, price fetch and broadcast through it. There is
-also a kill-switch: when it's on, a request that cannot go through Tor does not go at all.
+One switch. The wallet starts its own Tor client on port 9250 (or the next free port) — separate from
+a Tor Browser you may already be running — and routes every balance lookup, price fetch and broadcast
+through it. There is also a kill-switch: when it's on, a request that cannot go through Tor does not go
+at all, and the wallet brings Tor up by itself on launch so that never leaves you offline.
 
 **The Security Center tells you the truth, not a promise.**
 It reads live settings and reports what is *actually* protecting the wallet right now. If Tor is off,
-it says your IP is visible to every explorer you use. It will not flatter you.
+it says your IP is visible to every explorer you use. It will not flatter you — and one button turns on
+every protection it scores. Every send asks for your password again before anything is signed.
 
 <div align="center">
 <img src="docs/assets/screenshot-security-v410.png" width="80%" alt="Security Center"/>
+</div>
+
+**A market you can actually read.**
+The coin chart is an exchange chart: candles or a line, a volume band, the price axis on the right with
+the last price tagged, a crosshair on both axes and the hovered candle's open, high, low and close —
+with KuCoin and Bybit behind Binance, so it still draws over Tor.
+
+<div align="center">
+<img src="docs/assets/screenshot-market-v410.png" width="80%" alt="Market chart with candles"/>
+</div>
+
+**Activity you can scan.**
+Every event has its own icon, the list runs newest first under Today / Yesterday headings, and every
+transfer shows what it is worth.
+
+<div align="center">
+<img src="docs/assets/screenshot-activity-v410.png" width="80%" alt="Activity"/>
 </div>
 
 **You choose which server sees your addresses.**

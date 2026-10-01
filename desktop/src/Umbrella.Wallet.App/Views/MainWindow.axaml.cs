@@ -337,7 +337,8 @@ public partial class MainWindow : Window
     private void OnChartPointerMoved(object? sender, PointerEventArgs e)
     {
         if (DataContext is not MainViewModel vm || sender is not Control canvas) return;
-        vm.UpdateCrosshair(e.GetPosition(canvas).X);
+        var at = e.GetPosition(canvas);
+        vm.UpdateCrosshair(at.X, at.Y);
     }
 
     private void OnChartPointerExited(object? sender, PointerEventArgs e)

@@ -793,6 +793,48 @@ public partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>Lock the vault the moment the window is minimized. Persisted; the window reads it.</summary>
+    /// <summary>Settings: the password is asked again before every send (see <see cref="UiSettings.RequirePasswordForSend"/>).</summary>
+    public bool RequirePasswordForSend
+    {
+        get => _uiSettings.RequirePasswordForSend;
+        set
+        {
+            if (_uiSettings.RequirePasswordForSend == value) return;
+            _uiSettings.RequirePasswordForSend = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            if (IsUnlocked) PushActivity("Security", "Send password", value ? "on" : "off", "changed", "now");
+            RefreshSecurityChecks();
+        }
+    }
+
+    /// <summary>The password typed on the Send review. Cleared as soon as it has been checked.</summary>
+    [ObservableProperty] private string _sendConfirmPassword = string.Empty;
+
+    /// <summary>
+    /// One click for every protection this wallet recommends and the user can switch on: auto-lock, lock
+    /// on minimize, clipboard wiping, the send password, Tor and the Tor-only kill-switch, and no
+    /// third-party market data. Nothing that needs the user's own input (a duress password, a backup)
+    /// is pretended to be done — those stay as rows with their own buttons.
+    /// </summary>
+    [RelayCommand]
+    private void EnableRecommendedSecurity()
+    {
+        if (_uiSettings.AutoLockMinutes == 0) AutoLockChoice = "5 minutes";
+        LockOnMinimize = true;
+        if (_uiSettings.ClipboardAutoClearSeconds == 0) ClipboardClearChoice = "45 seconds";
+        RequirePasswordForSend = true;
+        RichMarketData = false;
+        if (!TorEnabled && !CustomProxyEnabled)
+        {
+            TorEnabled = true;
+            if (StartTorAutomatically) _ = ApplyTorAsync();   // the test suite stays offline
+        }
+        TorOnly = true;
+        RefreshSecurityChecks();
+        ShowToast(Loc.Instance["sec.allOnDone"], isError: false);
+    }
+
     public bool LockOnMinimize
     {
         get => _uiSettings.LockOnMinimize;
@@ -1377,7 +1419,9 @@ public partial class MainViewModel : ViewModelBase
         }
 
         // Every other start computes the chip as a side effect (Tor starting, a proxy applied); a plain
-        // direct start did not, and the chip sat blank until something changed.
+        // direct start did not, and the chip sat blank until something changed. The status line it
+        // reads starts in the wallet's language too (the field's initial text is English).
+        if (!TorEnabled && !CustomProxyEnabled) TorStatus = Loc.Instance["torstat.direct"];
         RefreshConnectionChip();
 
         Fx.Symbol = Fx.SymbolFor(_uiSettings.Currency); // right symbol immediately; rate loads next
@@ -1587,6 +1631,9 @@ public partial class MainViewModel : ViewModelBase
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
+        new("BETA", "Phobia beta — the wallet works again, end to end",
+            "Coins read again on Tor and off it, and every screen got the attention it was missing.\n\nCONNECTION\n• “Tor only” now starts Tor by itself. Before, it was remembered but Tor was not, and every balance read “unknown” after a restart.\n• A Tor left behind by an earlier run no longer stops Tor from starting, and a second copy of the wallet takes the next free port.\n• Servers that stopped answering were replaced: Ethereum, Polygon, Fantom and the other EVM networks, Bitcoin, Dogecoin, Zcash, prices, TRON tokens.\n\nYOUR MONEY FIRST\n• Your assets list shows what you hold, biggest first; coins at zero fold behind one button.\n• An imported phrase is searched at the paths MetaMask, Ledger Live, Phantom, Solflare, TronLink and older Bitcoin wallets use. What is found stays out of your assets unless you switch it on (Settings → Wallets).\n• Optional: every wallet\u2019s balance and the total in the wallet switcher.\n\nMARKET\n• A real exchange chart: candles, a volume band, the price axis on the right with the last price tagged, a crosshair on both axes and the hovered candle\u2019s open, high, low and close. Candle mode drew no candles before.\n• Charts and 24-hour stats fall back to KuCoin and Bybit when Binance refuses.\n\nACTIVITY\n• Every event has its own icon, the list is in time order with Today / Yesterday headers, and transfers show what they are worth.\n\nSECURITY\n• The password is asked again before every send (on by default).\n• One button in the Security Center turns on every recommended protection.\n\nStellar, Cosmos, NEAR, Nano and Decred have their own logos now.",
+            "2026-10-01", "v410beta"),
         new("4.10", "Umbrella is now Phobia",
             "Same wallet, new name and a new look.\n\n" +
             "• Nothing about your money changes. Your recovery phrase, your addresses and your encrypted vault are exactly where they were, and every setting carries over.\n" +
@@ -3550,10 +3597,19 @@ public partial class MainViewModel : ViewModelBase
     {
         Wallets.Clear();
         var activeId = _registry.Active?.Id;
+        double sum = 0;
         foreach (var w in _registry.Wallets)
         {
-            Wallets.Add(new WalletListItemViewModel(w.Id, WalletDisplayName(w.Label), w.Id == activeId, w.IsLegacy, w.Color));
+            string? total = null;
+            if (ShowAllWalletTotals)
+            {
+                var usd = WalletTotalUsd(w.Id, w.Id == activeId);
+                sum += usd;
+                total = Fx.Money(usd);
+            }
+            Wallets.Add(new WalletListItemViewModel(w.Id, WalletDisplayName(w.Label), w.Id == activeId, w.IsLegacy, w.Color, total));
         }
+        AllWalletsTotalLabel = ShowAllWalletTotals ? string.Format(Loc.Instance["wallets.allTotal"], Fx.Money(sum)) : string.Empty;
         OnPropertyChanged(nameof(ActiveWalletLabel));
         OnPropertyChanged(nameof(SendBalancesFromLabel));
         OnPropertyChanged(nameof(HasMultipleWallets));
@@ -4410,6 +4466,34 @@ public partial class MainViewModel : ViewModelBase
         if (touched) { RefreshHoldings(); RecalcBalance(); }
     }
 
+    /// <summary>"All wallets: $X" over the switcher list, when every wallet's balance is shown.</summary>
+    [ObservableProperty] private string _allWalletsTotalLabel = string.Empty;
+
+    /// <summary>Settings switch: every wallet's balance (as of its last refresh) in the wallet switcher.</summary>
+    public bool ShowAllWalletTotals
+    {
+        get => _uiSettings.ShowAllWalletTotals;
+        set
+        {
+            if (_uiSettings.ShowAllWalletTotals == value) return;
+            _uiSettings.ShowAllWalletTotals = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            RefreshWalletList();
+        }
+    }
+
+    /// <summary>A wallet's total in USD: the open one from what is on screen, any other from its last
+    /// refresh, priced with today's prices where the market knows the coin.</summary>
+    private double WalletTotalUsd(string walletId, bool active)
+    {
+        if (active) return Holdings.Sum(h => h.Value);
+        var prices = Market.Where(m => m.HasPrice).GroupBy(m => m.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Price, StringComparer.OrdinalIgnoreCase);
+        return _balanceStore.Load(walletId)
+            .Sum(e => e.Amount * (prices.TryGetValue(e.Symbol, out var p) ? p : e.Price));
+    }
+
     /// <summary>Persist the current balances/prices so the next unlock/switch shows them instantly.</summary>
     private void SaveBalanceCache()
     {
@@ -4417,6 +4501,7 @@ public partial class MainViewModel : ViewModelBase
             .Where(a => a.Amount > 0 || a.Price > 0)
             .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h, a.Chain));
         _balanceStore.Save(ActiveWalletCacheKey, entries);
+        if (ShowAllWalletTotals) RefreshWalletList();   // the open wallet's figure in the switcher
     }
 
     [RelayCommand]
@@ -4593,13 +4678,15 @@ public partial class MainViewModel : ViewModelBase
                 }
 
                 // A watched TRON address can hold any TRC-20 tokens — show them all, not just USDT.
+                // A found account's tokens carry its name, so three "Tether USD" rows say whose they are.
+                var owner = FoundOwner(watch.Address);
                 if (IsTronLike(watch.Chain))
                 {
-                    await AddTronTokenRowsAsync(watch.Address, "Watch", prices, ct);
+                    await AddTronTokenRowsAsync(watch.Address, "Watch", prices, ct, owner);
                 }
                 else if (chain.Value == ChainId.Eth)
                 {
-                    await AddEthTokenRowsAsync(watch.Address, "Watch", prices, ct);
+                    await AddEthTokenRowsAsync(watch.Address, "Watch", prices, ct, owner);
                 }
             }
 
@@ -4643,15 +4730,15 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     private async Task AddTronTokenRowsAsync(
         string address, string status,
-        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
+        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct, string? owner = null) =>
         AddTokenRows(await _balances.GetTronTokensAsync(address, ct),
-            address, status, prices, marker: "TRC20 on TRON", chain: "TRON", suffix: "TRC20", ct: ct);
+            address, status, prices, marker: "TRC20 on TRON", chain: "TRON", suffix: owner ?? "TRC20", ct: ct);
 
     private async Task AddEthTokenRowsAsync(
         string address, string status,
-        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct) =>
+        IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct, string? owner = null) =>
         AddTokenRows(await _balances.GetEthTokensAsync(address, ct),
-            address, status, prices, marker: "ERC20 on Ethereum", chain: "Ethereum", suffix: "ERC20", ct: ct);
+            address, status, prices, marker: "ERC20 on Ethereum", chain: "Ethereum", suffix: owner ?? "ERC20", ct: ct);
 
     /// <summary>Adds/refreshes a Holdings row for every Jetton at a TON address. Read-only: this build
     /// reads jetton balances but does not send them, which the row's status says plainly.</summary>

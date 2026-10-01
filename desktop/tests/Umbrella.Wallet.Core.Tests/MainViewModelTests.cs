@@ -39,6 +39,27 @@ public sealed class MainViewModelTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(vm.ConnectionChipLabel));
     }
 
+    /// <summary>One click turns on every protection the Security Center scores — the send password
+    /// among them — so the score can reach the top the way privacy already could.</summary>
+    [Fact]
+    public async Task RecommendedProtectionTurnsOnEveryScoredProtection()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        vm.LockOnMinimize = false;
+        vm.RequirePasswordForSend = false;
+        vm.EnableRecommendedSecurityCommand.Execute(null);
+
+        Assert.True(vm.RequirePasswordForSend);
+        Assert.True(vm.LockOnMinimize);
+        Assert.Equal(vm.SecurityScoreTotal, vm.SecurityScoreDone);
+        TestDataIsolation.RestoreBaselineSettings();
+    }
+
     [Fact]
     public async Task CreateWallet_ShowsA24WordPhrase_AndOpensTheWorkspace()
     {

@@ -97,9 +97,13 @@ public sealed class ActivityLabelConverter : IValueConverter
 {
     public static readonly ActivityLabelConverter Instance = new();
 
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        Translate(value?.ToString());
+
+    /// <summary>The activity word in the wallet's language ("unlocked" → "розблоковано"); anything
+    /// without an entry (a ticker, an address) as it is.</summary>
+    public static string Translate(string? key)
     {
-        var key = value?.ToString();
         if (string.IsNullOrEmpty(key)) return string.Empty;
 
         var slug = "activity.opt." + key.ToLowerInvariant()
@@ -127,6 +131,31 @@ public sealed class BoolToWeightConverter : IValueConverter
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is true ? Avalonia.Media.FontWeight.SemiBold : Avalonia.Media.FontWeight.Normal;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// One end of a chart guide line, from a single coordinate: a horizontal line at a given y spans the
+/// plot (x 10 → 790), a vertical line at a given x spans price area and volume band (y 14 → 272).
+/// Lets the crosshair and last-price lines bind to the one number the view model computes.
+/// </summary>
+public sealed class ChartLinePointConverter : IValueConverter
+{
+    public string Kind { get; set; } = "HStart";
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var v = value is double d ? d : 0;
+        return Kind switch
+        {
+            "HStart" => new Avalonia.Point(10, v),
+            "HEnd" => new Avalonia.Point(790, v),
+            "VStart" => new Avalonia.Point(v, 14),
+            _ => new Avalonia.Point(v, 272),
+        };
+    }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();

@@ -44,6 +44,7 @@ public partial class MainViewModel
     private void LoadFoundAccounts()
     {
         _foundAccounts = ReadFound(ActiveWalletCacheKey)?.Accounts ?? [];
+        OnPropertyChanged(nameof(HasFoundAccounts));
         DiscoveryStatus = _foundAccounts.Count > 0
             ? string.Format(Loc.Instance["found.some"], _foundAccounts.Count)
             : string.Empty;
@@ -76,9 +77,47 @@ public partial class MainViewModel
         }
     }
 
-    /// <summary>The found accounts as watch targets for the balance refresh.</summary>
+    /// <summary>The found accounts as watch targets for the balance refresh — only when the user chose
+    /// to see them; by default the assets are this wallet's own accounts.</summary>
     private IEnumerable<WatchAddress> FoundWatchTargets() =>
-        _foundAccounts.Select(f => new WatchAddress(f.Chain, f.Address, FoundLabel(f)));
+        ShowFoundAccounts ? _foundAccounts.Select(f => new WatchAddress(f.Chain, f.Address, FoundLabel(f))) : [];
+
+    /// <summary>The account a found address is, for naming its tokens ("TronLink, account 3").</summary>
+    private string? FoundOwner(string address)
+    {
+        var found = _foundAccounts.FirstOrDefault(f => f.Address.Equals(address, StringComparison.OrdinalIgnoreCase));
+        if (found is null) return null;
+        var label = FoundLabel(found);
+        var cut = label.IndexOf(" · ", StringComparison.Ordinal);
+        return cut >= 0 ? label[(cut + 3)..] : label;
+    }
+
+    public bool HasFoundAccounts => _foundAccounts.Count > 0;
+
+    /// <summary>Settings switch: show the found accounts in the assets (view-only).</summary>
+    public bool ShowFoundAccounts
+    {
+        get => _uiSettings.ShowFoundAccounts;
+        set
+        {
+            if (_uiSettings.ShowFoundAccounts == value) return;
+            _uiSettings.ShowFoundAccounts = value;
+            _uiSettings.Save();
+            OnPropertyChanged();
+            if (value)
+            {
+                if (IsUnlocked) _ = RefreshLiveDataAsync();
+                return;
+            }
+
+            // Off: take their rows (the coin and any tokens at those addresses) out right away.
+            var addresses = _foundAccounts.Select(f => f.Address).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in Accounts.Where(a => addresses.Contains(a.Address)).ToList()) Accounts.Remove(row);
+            RefreshHoldings();
+            RecalcBalance();
+            SaveBalanceCache();
+        }
+    }
 
     /// <summary>"Ethereum · MetaMask, account 2" in the wallet's language.</summary>
     private static string FoundLabel(FoundAccountEntry f)
@@ -170,6 +209,7 @@ public partial class MainViewModel
             var complete = unanswered <= candidates.Count / 4;
             WriteFound(walletId, new FoundAccountsFile(complete, found));
             _foundAccounts = found;
+            OnPropertyChanged(nameof(HasFoundAccounts));
 
             DiscoveryStatus = found.Count > 0
                 ? string.Format(Loc.Instance["found.some"], found.Count)
@@ -177,7 +217,7 @@ public partial class MainViewModel
             if (found.Count > 0)
             {
                 ShowToast(DiscoveryStatus, isError: false);
-                _ = RefreshLiveDataAsync();
+                if (ShowFoundAccounts) _ = RefreshLiveDataAsync();
             }
             else if (userAsked)
             {

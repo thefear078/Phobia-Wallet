@@ -125,6 +125,10 @@ public partial class MainViewModel
             LockOnMinimize ? L["sec.minimizeOnBody"] : L["sec.minimizeOffBody"],
             LockOnMinimize, L["sec.openSettings"], "Settings");
 
+        Scored("🔑", L["sec.sendPw"],
+            RequirePasswordForSend ? L["sec.sendPwOnBody"] : L["sec.sendPwOffBody"],
+            RequirePasswordForSend, L["sec.openSettings"], "Settings");
+
         var clipSeconds = ClipboardAutoClearSeconds;
         Scored("📋", L["sec.clip"],
             clipSeconds > 0

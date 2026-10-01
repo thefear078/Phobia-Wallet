@@ -79,6 +79,32 @@ new design is finished.
   second Tor exit at once), and a Tor-only wallet tries a failed Tor start again by itself.
 - The connection chip was blank on a plain direct start; it says DIRECT now.
 
+### Market, Activity and Security, made for watching your money
+
+- **A real exchange chart.** The coin chart is laid out like Kraken's: the price axis on the right
+  with the last price tagged on it and a dashed line across, a volume band of its own under the price
+  area, a crosshair on both axes (price at the pointer's height, time underneath) and the hovered
+  candle's open, high, low, close, change and volume along the top. Candle mode drew **no candles at
+  all** before — the candle and volume layers had no size, so nothing they drew was rendered.
+- **Activity in time order, with an icon for every event.** The local events (unlocks, settings) were
+  listed before the chain's transfers, so a September unlock sat above an October payment; the feed is
+  now newest-first across both, under Today / Yesterday / date headings. Received, sent, swap, the
+  vault, Tor, the network, the duress password, keys and connections each have their own icon and
+  colour; transfers show what they are worth today. "Recent transactions" on Portfolio lists transfers
+  — it listed every event, unlocks included. The leftover English ("clearnet blocked", "IPv6 only",
+  "Monero node"…) is translated.
+- **Security on a par with privacy.** The password is asked again before every send (on by default;
+  Settings → Security), checked by opening this wallet's vault with it — a duress password does not
+  confirm a send from the real wallet. It is scored in the Security Center, and one button there,
+  "Turn on recommended protection", switches on every protection the wallet scores.
+- **Your assets are this wallet's.** Accounts found at other apps' paths stay out of the assets until
+  you switch them on (Settings → Wallets → Show found accounts); when shown, their tokens say whose
+  they are ("Tether USD · TronLink, account 3"). Every wallet's balance and the total can be shown in
+  the wallet switcher — an extra, off by default.
+- **Logos for Stellar, Cosmos, NEAR, Nano and Decred**, in the supplied icon pack's rounded-square
+  style (Nano and Decred from the pack itself; sources in `brand/coin-icons/`).
+- In-app News has a note for this beta.
+
 ### Umbrella is now Phobia — a new name and a new look
 
 - **The wallet is called Phobia Wallet.** Same code, same keys, same vault: nothing about anyone's money

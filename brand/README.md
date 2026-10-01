@@ -26,6 +26,18 @@ listings and posts. The trademark rules are in [TRADEMARK_POLICY.md](../TRADEMAR
 
 Type: Segoe UI Variable (Display for headings), Inter on Linux. Headings semibold, no serifs.
 
+## Coin icons
+
+The wallet's main coin logos are rounded squares with a vertical gradient, a ring highlight and a white
+logomark with a soft shadow — the construction of the supplied icon pack. The logos the wallet had no
+artwork for are in `coin-icons/` as SVG: **Nano** and **Decred** from the pack itself, and **Stellar**,
+**NEAR** and **Cosmos** built the same way (the pack's frame paths, the coin's own logomark). They are
+rendered to the 192 × 192 PNGs in `desktop/src/Umbrella.Wallet.App/Assets/coins/`.
+
+| Nano | Decred | NEAR | Stellar | Cosmos |
+|---|---|---|---|---|
+| <img src="../desktop/src/Umbrella.Wallet.App/Assets/coins/XNO.png" width="64"/> | <img src="../desktop/src/Umbrella.Wallet.App/Assets/coins/DCR.png" width="64"/> | <img src="../desktop/src/Umbrella.Wallet.App/Assets/coins/NEAR.png" width="64"/> | <img src="../desktop/src/Umbrella.Wallet.App/Assets/coins/XLM.png" width="64"/> | <img src="../desktop/src/Umbrella.Wallet.App/Assets/coins/ATOM.png" width="64"/> |
+
 ## Posters
 
 Portrait 1080 × 1350 (`phobia-poster-<lang>.png`) and landscape 1600 × 900 (`phobia-post-<lang>.png`), in

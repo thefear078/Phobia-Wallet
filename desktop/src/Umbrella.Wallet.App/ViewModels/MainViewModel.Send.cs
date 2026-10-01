@@ -1121,6 +1121,38 @@ public partial class MainViewModel
             return;
         }
 
+        // The password again, when asked for: the vault is opened with it and must give back THIS
+        // wallet's phrase — a duress password opens the decoy and does not confirm a send from the real
+        // wallet, nor the other way round. Nothing is signed before this passes.
+        if (RequirePasswordForSend)
+        {
+            var typed = SendConfirmPassword ?? string.Empty;
+            SendConfirmPassword = string.Empty;
+            if (typed.Length == 0)
+            {
+                SendError = Loc.Instance["send.passwordNeeded"];
+                return;
+            }
+
+            string opened;
+            try
+            {
+                StatusMessage = Loc.Instance["send.passwordChecking"];
+                opened = await _vault.UnlockAsync(typed);
+            }
+            catch
+            {
+                SendError = Loc.Instance["send.passwordWrong"];
+                return;
+            }
+
+            if (!string.Equals(opened.Trim(), _unlockedMnemonic.Trim(), StringComparison.Ordinal))
+            {
+                SendError = Loc.Instance["send.passwordWrong"];
+                return;
+            }
+        }
+
         await RunBusyAsync(async () =>
         {
             StatusMessage = Loc.Instance["status.signingBroadcast"];

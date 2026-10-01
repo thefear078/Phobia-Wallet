@@ -60,8 +60,11 @@ public partial class MainViewModel
     /// so real transactions surface there too, not just in-app actions.</summary>
     private void RebuildRecentActivity()
     {
+        // "Recent transactions" lists transfers. It listed every event, so a wallet that had just been
+        // unlocked twice showed two "Security · unlocked" rows under that heading and no money at all.
         RecentActivity.Clear();
-        foreach (var row in MergedActivity().Take(5)) RecentActivity.Add(row);
+        foreach (var row in Decorate(MergedActivity().Where(r => r.IsTransaction).Take(5), dayHeaders: false))
+            RecentActivity.Add(row);
         OnPropertyChanged(nameof(HasRecentActivity));
     }
 
@@ -155,15 +158,63 @@ public partial class MainViewModel
     private IEnumerable<ActivityRowViewModel> MergedActivity()
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var merged = new List<ActivityRowViewModel>();
         foreach (var row in Activity)
         {
             if (row.Explorer is { Length: > 0 } ex) seen.Add(ex);
-            yield return row;
+            merged.Add(row);
         }
         foreach (var row in _onChainRows)
         {
             if (row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
-            yield return row;
+            merged.Add(row);
+        }
+
+        // Newest first across BOTH sources. The local events were listed first and the chain's after
+        // them, so a September unlock sat above an October transfer. A row with no timestamp (written
+        // before timestamps existed) keeps its place at the end.
+        return merged
+            .Select((row, i) => (row, i))
+            .OrderByDescending(x => x.row.UnixMs > 0)
+            .ThenByDescending(x => x.row.UnixMs)
+            .ThenBy(x => x.i)
+            .Select(x => x.row)
+            .ToList();
+    }
+
+    /// <summary>
+    /// The rows as shown: a transfer gets "≈ $x" from today's price, and with <paramref name="dayHeaders"/>
+    /// the first event of each day carries "Today" / "Yesterday" / its date.
+    /// </summary>
+    private IEnumerable<ActivityRowViewModel> Decorate(IEnumerable<ActivityRowViewModel> rows, bool dayHeaders)
+    {
+        var prices = Accounts.Where(a => a.Price > 0)
+            .GroupBy(a => a.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Price, StringComparer.OrdinalIgnoreCase);
+        DateTime? lastDay = null;
+        foreach (var row in rows)
+        {
+            string? fiat = null;
+            if (row.IsTransaction && prices.TryGetValue(row.Asset, out var price) &&
+                decimal.TryParse(row.Amount.TrimStart('+', '-'), System.Globalization.NumberStyles.AllowDecimalPoint,
+                    System.Globalization.CultureInfo.InvariantCulture, out var amount) && amount > 0 &&
+                (double)amount * price >= 0.01)   // dust would only read "≈ $0.00"
+                fiat = "≈ " + Fx.Money((double)amount * price);
+
+            string? header = null;
+            if (dayHeaders && row.UnixMs > 0)
+            {
+                var day = DateTimeOffset.FromUnixTimeMilliseconds(row.UnixMs).LocalDateTime.Date;
+                if (day != lastDay)
+                {
+                    header = day == DateTime.Today ? Loc.Instance["activity.today"]
+                        : day == DateTime.Today.AddDays(-1) ? Loc.Instance["activity.yesterday"]
+                        : day.ToString(day.Year == DateTime.Today.Year ? "d MMMM" : "d MMMM yyyy", Fx.Culture);
+                    lastDay = day;
+                }
+            }
+
+            yield return fiat is null && header is null ? row : row with { FiatLabel = fiat, DayHeader = header };
         }
     }
 
@@ -198,16 +249,12 @@ public partial class MainViewModel
         };
 
         FilteredActivity.Clear();
-        foreach (var row in MergedActivity())
-        {
-            if (ActivityFilter != "All" && row.Category != ActivityFilter) continue;
-            if (ActivityAssetFilter != "All" &&
-                !string.Equals(row.Asset, ActivityAssetFilter, StringComparison.OrdinalIgnoreCase)) continue;
-            if (ActivityStatusFilter != "All" &&
-                !string.Equals(row.Status, ActivityStatusFilter, StringComparison.OrdinalIgnoreCase)) continue;
-            if (cutoff > 0 && row.UnixMs > 0 && row.UnixMs < cutoff) continue;
-            FilteredActivity.Add(row);
-        }
+        var matching = MergedActivity().Where(row =>
+            (ActivityFilter == "All" || row.Category == ActivityFilter) &&
+            (ActivityAssetFilter == "All" || string.Equals(row.Asset, ActivityAssetFilter, StringComparison.OrdinalIgnoreCase)) &&
+            (ActivityStatusFilter == "All" || string.Equals(row.Status, ActivityStatusFilter, StringComparison.OrdinalIgnoreCase)) &&
+            !(cutoff > 0 && row.UnixMs > 0 && row.UnixMs < cutoff));
+        foreach (var row in Decorate(matching, dayHeaders: true)) FilteredActivity.Add(row);
         OnPropertyChanged(nameof(HasFilteredActivity));
     }
 

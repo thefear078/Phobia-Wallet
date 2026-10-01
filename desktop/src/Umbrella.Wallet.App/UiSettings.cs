@@ -30,6 +30,18 @@ public sealed class UiSettings
     /// <summary>Stickers shown at all (off by default: Phobia's look is clean); they loop only while
     /// the master AnimationsEnabled above is on.</summary>
     public bool StickersEnabled { get; set; } = false;
+
+    /// <summary>Show the accounts a wallet's phrase holds at OTHER apps' paths (found by the scan) in its
+    /// assets. Off: the assets are this wallet's own accounts only — the found ones looked like another
+    /// wallet's money mixed in.</summary>
+    public bool ShowFoundAccounts { get; set; } = false;
+
+    /// <summary>Ask for the wallet password again before a send is signed. On by default: an unlocked
+    /// wallet left on a desk could otherwise be emptied by anyone who sat down at it.</summary>
+    public bool RequirePasswordForSend { get; set; } = true;
+
+    /// <summary>Show every wallet's balance (as of its last refresh) and their sum in the wallet switcher.</summary>
+    public bool ShowAllWalletTotals { get; set; } = false;
     /// <summary>Crystals floating slowly up behind the page. On by default; gated by AnimationsEnabled.</summary>
     public bool FloatingCrystals { get; set; } = true;
 
