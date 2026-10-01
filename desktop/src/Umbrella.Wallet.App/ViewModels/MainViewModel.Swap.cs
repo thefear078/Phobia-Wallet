@@ -178,26 +178,26 @@ public partial class MainViewModel
         SwapWarning = string.Empty;
         InvalidateSwap();
 
-        if (_unlockedMnemonic is null) { SwapError = "Unlock the wallet first."; return; }
+        if (_unlockedMnemonic is null) { SwapError = Loc.Instance["swap.err.unlock"]; return; }
         var from = (SwapFromSymbol ?? "").ToUpperInvariant();
         var to = (SwapToSymbol ?? "").ToUpperInvariant();
-        if (from == to) { SwapError = "Choose two different assets."; return; }
+        if (from == to) { SwapError = Loc.Instance["swap.err.same"]; return; }
         // Same reason as the send field: a comma decimal must not be read as a group separator.
         if (!AmountInput.TryParsePositive(SwapAmount, out var amount))
         {
-            SwapError = "Enter a valid amount.";
+            SwapError = Loc.Instance["swap.err.amount"];
             return;
         }
 
         var toChain = SwapChainId(to);
-        if (toChain is null) { SwapError = $"Cannot receive {to}."; return; }
+        if (toChain is null) { SwapError = string.Format(Loc.Instance["swap.err.cannotReceive"], to); return; }
         var destination = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, toChain.Value).Address;
 
         SwapBusy = true;
         try
         {
             var (quote, error) = await _thorchain.GetQuoteAsync(from, to, amount, destination);
-            if (quote is null) { SwapError = error ?? "Could not get a quote."; return; }
+            if (quote is null) { SwapError = error ?? Loc.Instance["swap.err.noQuote"]; return; }
 
             _swapQuote = quote;
             SwapExpectedOut = $"{Fmt(quote.ExpectedOut)} {to}";
@@ -205,12 +205,14 @@ public partial class MainViewModel
             var toPrice = Market.FirstOrDefault(m => string.Equals(m.Symbol, to, StringComparison.OrdinalIgnoreCase))?.Price ?? 0;
             var feeFiat = toPrice > 0 ? $" ≈ {Fx.Money((double)quote.TotalFee * toPrice)}" : string.Empty;
             SwapFeeText = $"{Fmt(quote.TotalFee)} {to}{feeFiat} · {quote.TotalBps / 100.0:0.##}%";
-            SwapEtaText = quote.EtaSeconds >= 60 ? $"~{quote.EtaSeconds / 60} min" : $"~{quote.EtaSeconds} s";
+            SwapEtaText = quote.EtaSeconds >= 60
+                ? $"~{quote.EtaSeconds / 60} {Loc.Instance["unit.min"]}"
+                : $"~{quote.EtaSeconds} {Loc.Instance["unit.sec"]}";
             SwapDestination = Shorten(destination);
             var mins = Math.Max(0, (int)(quote.Expiry - DateTimeOffset.UtcNow).TotalMinutes);
-            SwapExpiryText = $"quote valid ~{mins} min";
+            SwapExpiryText = string.Format(Loc.Instance["swap.quoteValid"], mins, Loc.Instance["unit.min"]);
             SwapWarning = quote.BelowMinimum
-                ? $"Below the recommended minimum (~{Fmt(quote.RecommendedMinIn)} {from}) — the rate will be poor and the swap may refund."
+                ? string.Format(Loc.Instance["swap.belowMin"], Fmt(quote.RecommendedMinIn), from)
                 : string.Empty;
             HasSwapQuote = true;
         }
@@ -224,15 +226,15 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task ConfirmSwapAsync()
     {
-        if (_unlockedMnemonic is null || _swapQuote is null) { SwapError = "Get a quote first."; return; }
+        if (_unlockedMnemonic is null || _swapQuote is null) { SwapError = Loc.Instance["swap.err.quoteFirst"]; return; }
         var shown = _swapQuote;
         var from = shown.FromSymbol;
         var to = shown.ToSymbol;
 
-        if (!ThorchainSwapClient.SendableFrom.Contains(from)) { SwapError = $"Swapping from {from} isn't supported yet."; return; }
+        if (!ThorchainSwapClient.SendableFrom.Contains(from)) { SwapError = string.Format(Loc.Instance["swap.err.fromUnsupported"], from); return; }
         var fromChain = SwapChainId(from);
         var toChain = SwapChainId(to);
-        if (fromChain is null || toChain is null) { SwapError = "Unsupported asset."; return; }
+        if (fromChain is null || toChain is null) { SwapError = Loc.Instance["swap.err.unsupported"]; return; }
 
         await RunBusyAsync(async () =>
         {
@@ -243,15 +245,15 @@ public partial class MainViewModel
             // stale inbound address or memo would send the deposit into the void.
             var destination = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, toChain.Value).Address;
             var (fresh, error) = await _thorchain.GetQuoteAsync(from, to, shown.AmountIn, destination);
-            if (fresh is null) { SwapError = error ?? "Could not refresh the quote."; return; }
-            if (fresh.IsExpired) { SwapError = "The quote expired — get a new one."; return; }
+            if (fresh is null) { SwapError = error ?? Loc.Instance["swap.err.refresh"]; return; }
+            if (fresh.IsExpired) { SwapError = Loc.Instance["swap.err.expired"]; return; }
 
             // Refuse if the rate moved materially against the user since they saw it (>3%).
             if (fresh.ExpectedOut < shown.ExpectedOut * 0.97m)
             {
                 _swapQuote = fresh;
                 SwapExpectedOut = $"{Fmt(fresh.ExpectedOut)} {to}";
-                SwapError = "The rate moved against you — review the updated quote and confirm again.";
+                SwapError = Loc.Instance["swap.err.moved"];
                 StatusMessage = Loc.Instance["status.swapRateChanged"];
                 return;
             }
@@ -276,7 +278,7 @@ public partial class MainViewModel
                     : new System.Numerics.BigInteger(DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds());
                 var (eq, eErr) = await _ethSender.PrepareSwapAsync(
                     fromAddr, fresh.Router!, fresh.InboundAddress, shown.AmountIn, fresh.Memo, expiry);
-                if (eq is null) { SwapError = eErr ?? "Could not build the ETH swap."; return; }
+                if (eq is null) { SwapError = eErr ?? Loc.Instance["swap.err.ethBuild"]; return; }
 
                 var priv = _deriver.DeriveEthereumPrivateKey(_unlockedMnemonic!);
                 try
@@ -303,7 +305,7 @@ public partial class MainViewModel
                     scan = await _utxoScanner.ScanAsync(_unlockedMnemonic!, fromChain.Value, UtxoExplorerFor(from), fl);
                     if (!scan.Partial) _utxoScans[from] = scan;
                 }
-                if (scan.Partial) { SwapError = "Balance isn’t fully synced yet — try again in a moment."; return; }
+                if (scan.Partial) { SwapError = Loc.Instance["swap.err.syncing"]; return; }
 
                 // THORChain returns the BCH inbound vault as a bare CashAddr (no "bitcoincash:" scheme);
                 // NBitcoin's BCash parser needs the prefix, so restore it before we build the deposit.
@@ -318,7 +320,7 @@ public partial class MainViewModel
                     from, scan.Utxos, fromAddr, inbound, shown.AmountIn, memo: fresh.Memo);
                 if (quote is null || plan is null || request is null)
                 {
-                    SwapError = prepErr ?? "Could not build the swap deposit."; return;
+                    SwapError = prepErr ?? Loc.Instance["swap.err.deposit"]; return;
                 }
 
                 bool depositUnclear;
@@ -332,7 +334,7 @@ public partial class MainViewModel
             if (ok && txid is not null)
             {
                 var track = ThorchainSwapClient.TrackUrl(txid);
-                SwapSuccess = $"Swap sent ✓  {txid}\nTHORChain will deliver ~{Fmt(fresh.ExpectedOut)} {to} to your wallet.\nTrack: {track}";
+                SwapSuccess = string.Format(Loc.Instance["swap.sent"], txid, Fmt(fresh.ExpectedOut), to, track);
                 StatusMessage = Loc.Instance["status.swapBroadcast"];
                 InvalidateSwap();
                 SwapAmount = string.Empty;
@@ -341,7 +343,7 @@ public partial class MainViewModel
             }
             else
             {
-                SwapError = sendErr ?? "Broadcast failed.";
+                SwapError = sendErr ?? Loc.Instance["swap.err.broadcast"];
                 StatusMessage = Loc.Instance["status.swapFailed"];
             }
         });
