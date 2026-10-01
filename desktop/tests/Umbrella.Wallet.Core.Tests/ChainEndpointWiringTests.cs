@@ -23,7 +23,7 @@ public sealed class ChainEndpointWiringTests : IDisposable
     [Fact]
     public void With_no_choice_the_esplora_explorer_uses_the_shipped_default()
     {
-        Assert.Equal("https://blockstream.info/api", EsploraUtxoExplorer.BaseUrlFor("BTC"));
+        Assert.Equal("https://mempool.space/api", EsploraUtxoExplorer.BaseUrlFor("BTC"));
         Assert.Equal("https://litecoinspace.org/api", EsploraUtxoExplorer.BaseUrlFor("LTC"));
     }
 

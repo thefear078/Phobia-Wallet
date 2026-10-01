@@ -57,6 +57,11 @@ public sealed class UiSettings
     /// (fail-closed), so a dropped or disabled Tor can never silently de-anonymise you.</summary>
     public bool TorOnlyMode { get; set; } = false;
 
+    /// <summary>Whether the user switched the bundled Tor on. Remembered, so the wallet starts it again on
+    /// the next launch — before, Tor was off after every restart while the Tor-only kill-switch stayed on,
+    /// and every request was refused until somebody found the switch.</summary>
+    public bool TorEnabled { get; set; }
+
     /// <summary>Route all traffic through a user-supplied SOCKS5 proxy instead of the bundled Tor.</summary>
     public bool CustomProxyEnabled { get; set; } = false;
     /// <summary>The user's SOCKS5 proxy, e.g. "socks5://127.0.0.1:9050" (host:port also accepted).</summary>

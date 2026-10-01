@@ -6,7 +6,47 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
-## [4.10.0] — 2026-09-30 — Umbrella is now Phobia; Monero seeds in every language
+## [4.10.0] — not released yet: ships first as a beta — Umbrella is now Phobia; Monero seeds in every language
+
+This version is not published. It goes out first as a **beta** (a GitHub pre-release, which installed
+copies never update to on their own), once every coin reads and sends on an ordinary connection and the
+new design is finished.
+
+### The wallet reads its coins again — on Tor and off it
+
+- **"Tor only" no longer cuts the wallet off after a restart.** The setting was remembered but Tor itself
+  was not: on the next launch every request was blocked, waiting for a Tor that nothing started, and every
+  balance read "unknown". Turning Tor on is now remembered, and a Tor-only wallet starts Tor on launch.
+- **A Tor left behind no longer stops Tor from starting.** The wallet's Tor always uses the same port
+  and folder, so a Tor that outlived its wallet (a crash, a forced close, an update) made every new start
+  fail with "Tor exited before it finished bootstrapping". The wallet now ends a leftover copy of its own
+  Tor before starting one — never a Tor Browser or system Tor — and Tor itself now exits within seconds
+  of the wallet going away. When Tor does stop early, the message gives Tor's own reason.
+- **The connection chip says what is happening**: "Connecting…" while Tor starts, and "No route" when the
+  IP mode is pinned to IPv6 (or IPv4) on a computer that has none — with a warning under that setting.
+- **Bitcoin answers in seconds again.** It reads from mempool.space, then mempool.ninja, then Blockstream,
+  which had been answering "too many requests" for whole sessions (mempool.emzy.de stopped answering and
+  was dropped). A server that refuses is now asked last, for five minutes, by every coin that uses it —
+  before, each of a scan's addresses waited on it first, and a new wallet's Bitcoin scan took four minutes.
+- **Prices when Binance refuses** (it turns away many Tor exits): KuCoin, then CoinGecko, then Bybit for
+  whatever is still missing. A Tor-only wallet priced two coins out of twenty-seven.
+- **Ethereum and five EVM networks had lost their servers.** Cloudflare's Ethereum gateway answers
+  "Internal error" to every balance read, and Ankr — the fallback for Ethereum, BSC, Polygon, Avalanche,
+  Fantom, Arbitrum and Optimism — now wants an API key; polygon-rpc.com and rpc.ftm.tools want one too, so
+  Polygon and Fantom read nothing at all. Each network now has two or three keyless servers that answer
+  (PublicNode, dRPC, 1RPC and the networks' own), for balances and sending alike.
+- **Dogecoin no longer runs out of requests.** Its only explorer, BlockCypher, allows 200 requests an hour
+  and one wallet scan takes about forty, so after a few refreshes Dogecoin read "unknown" until the hour
+  was up. BitPay's Bitcore now reads it first, with BlockCypher behind it; a send that BlockCypher
+  refuses is relayed through Bitcore. A Dogecoin server chosen in Settings is still the only one asked.
+- **Bitcoin and Litecoin history fall back like their balances do.** History asked one server only, so
+  over Tor the Activity screen could show no Bitcoin at all while the balance read fine.
+- **Zcash balance when Blockchair refuses** (it blacklists busy IP addresses for a day — Tor exits too):
+  read from 3xpl instead. Sending ZEC still needs Blockchair's list of coins; when it refuses, Send says
+  so and nothing is broadcast.
+- Balances refresh in the background every two minutes rather than every minute (prices still every
+  minute); unlocking, switching wallets and sending refresh at once, as before. The free explorers this
+  wallet reads rate-limit hard, and a refused read is a balance nobody can see.
 
 ### Umbrella is now Phobia — a new name and a new look
 

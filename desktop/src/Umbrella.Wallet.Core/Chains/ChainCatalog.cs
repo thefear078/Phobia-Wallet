@@ -31,8 +31,8 @@ public static class ChainCatalog
                 PrivacyNote: "Public ledger — use Tor and a fresh address per receive to reduce linking."),
             new ChainInfo(
                 ChainId.Doge, "DOGE", "Dogecoin", ChainSupportLevel.Supported, "BIP44", "m/44'/3'/0'/0/{index}",
-                // Send is a real UTXO spend over BlockCypher (UTXOs, fee, broadcast); the same proven
-                // spender signs it as BTC/LTC. Newly enabled — verify with a small amount before trusting.
+                // Send is a real UTXO spend (UTXOs from Bitcore, then BlockCypher; fee from BlockCypher;
+                // broadcast through either); the same proven spender signs it as BTC/LTC.
                 CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger — use Tor and a fresh address per receive to reduce linking."),

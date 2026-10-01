@@ -177,6 +177,40 @@ public static class PublicHttp
         try { old.Dispose(); } catch { /* ignore */ }
     }
 
+    /// <summary>
+    /// True when this machine has an address of the family the IP mode pins direct connections to — a
+    /// public IPv6 address (2000::/3) or any IPv4 address that is not loopback or link-local. Read from
+    /// the local network interfaces only: nothing is sent anywhere to find out. "IPv6 only" on a machine
+    /// without IPv6 made every request fail with nothing on screen saying why.
+    /// </summary>
+    public static bool CanUse(IpMode mode)
+    {
+        if (mode == IpMode.Auto) return true;
+        try
+        {
+            foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                if (nic.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+                foreach (var unicast in nic.GetIPProperties().UnicastAddresses)
+                {
+                    var a = unicast.Address;
+                    if (mode == IpMode.V6Only && a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6
+                        && !a.IsIPv6LinkLocal && !a.IsIPv6SiteLocal && (a.GetAddressBytes()[0] & 0xE0) == 0x20)
+                        return true;
+                    if (mode == IpMode.V4Only && a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                        && !System.Net.IPAddress.IsLoopback(a) && !(a.GetAddressBytes() is [169, 254, ..]))
+                        return true;
+                }
+            }
+            return false;
+        }
+        catch
+        {
+            return true;   // cannot tell: do not cry wolf
+        }
+    }
+
     /// <summary>Parses "auto" / "ipv4" / "ipv6" (case-insensitive) into an <see cref="IpMode"/>.</summary>
     public static IpMode ParseIpMode(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
     {
@@ -303,9 +337,13 @@ public sealed class PublicChainBalanceClient
 
     private static readonly string[] EthRpcs =
     [
-        "https://cloudflare-eth.com",
-        "https://rpc.ankr.com/eth",
+        // Checked October 2026: Cloudflare's gateway was answering "Internal error" to every balance
+        // read and Ankr now requires an API key, which left Ethereum one server deep. Cloudflare stays
+        // last in case it recovers.
+        "https://ethereum-rpc.publicnode.com",
         "https://eth.drpc.org",
+        "https://1rpc.io/eth",
+        "https://cloudflare-eth.com",
     ];
 
     public async Task<ChainBalance?> GetBalanceAsync(
@@ -327,7 +365,7 @@ public sealed class PublicChainBalanceClient
                 ChainId.Btc => await GetBtcAsync(address, cancellationToken),
                 ChainId.Ltc => await GetEsploraAsync(
                     "https://litecoinspace.org/api", ChainId.Ltc, address, "LTC", 8, cancellationToken),
-                ChainId.Doge => await GetBlockcypherAsync("doge", ChainId.Doge, address, "DOGE", 8, cancellationToken),
+                ChainId.Doge => await GetDogeAsync(address, cancellationToken),
                 ChainId.Bch => await GetHaskoinAsync("bch", ChainId.Bch, "BCH", address, cancellationToken),
                 ChainId.Zec => await GetZecAsync(address, cancellationToken),
                 ChainId.Eth => await GetEthAsync(address, cancellationToken),
@@ -633,7 +671,7 @@ public sealed class PublicChainBalanceClient
     private static async Task<ChainBalance?> GetBtcAsync(string address, CancellationToken ct)
     {
         using var res = await Http.GetAsync(
-            $"https://blockstream.info/api/address/{Uri.EscapeDataString(address)}", ct);
+            $"{EsploraUtxoExplorer.BaseUrlFor("BTC")}/address/{Uri.EscapeDataString(address)}", ct);
         if (!res.IsSuccessStatusCode) return null;
         using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
         var funded = doc.RootElement.GetProperty("chain_stats").GetProperty("funded_txo_sum").GetInt64();
@@ -690,9 +728,52 @@ public sealed class PublicChainBalanceClient
         if (SlowSourceCache.TryGetValue(key, out var cached) && DateTimeOffset.UtcNow - cached.At < SlowSourceReuse)
             return cached.Balance;
 
-        var fresh = await GetBlockchairAsync("zcash", ChainId.Zec, "ZEC", address, address, ct);
+        // Blockchair blacklists a busy IP (430) — and Tor exits, which many people share, are busy IPs:
+        // a Tor-only wallet could not read ZEC at all. 3xpl answers the same question as a fallback.
+        ChainBalance? fresh = null;
+        try { fresh = await GetBlockchairAsync("zcash", ChainId.Zec, "ZEC", address, address, ct); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { /* try the fallback */ }
+        fresh ??= await Get3xplZecAsync(address, ct);
         if (fresh is not null) SlowSourceCache[key] = (DateTimeOffset.UtcNow, fresh);
         return fresh;
+    }
+
+    /// <summary>A transparent ZEC balance from 3xpl's keyless API: <c>data.balances["zcash-main"].zcash.balance</c>,
+    /// in zatoshi as a string.</summary>
+    private static async Task<ChainBalance?> Get3xplZecAsync(string address, CancellationToken ct)
+    {
+        try
+        {
+            using var res = await Http.GetAsync(
+                $"https://sandbox-api.3xpl.com/zcash/address/{Uri.EscapeDataString(address)}?data=address,balances", ct);
+            if (!res.IsSuccessStatusCode) return null;
+            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            return Parse3xplZec(doc.RootElement, address);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Parses 3xpl's address answer. An address it has never seen answers <c>"zcash-main": []</c>,
+    /// which is a real zero; a missing "data" (an error, a rate limit) is no answer at all.</summary>
+    public static ChainBalance? Parse3xplZec(JsonElement root, string address)
+    {
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object ||
+            !data.TryGetProperty("balances", out var balances))
+            return null;
+        if (balances.ValueKind == JsonValueKind.Object &&
+            balances.TryGetProperty("zcash-main", out var main) && main.ValueKind == JsonValueKind.Object &&
+            main.TryGetProperty("zcash", out var zec) && zec.ValueKind == JsonValueKind.Object &&
+            zec.TryGetProperty("balance", out var bal) &&
+            decimal.TryParse(bal.ValueKind == JsonValueKind.String ? bal.GetString() : bal.GetRawText(),
+                NumberStyles.Integer, CultureInfo.InvariantCulture, out var zatoshi))
+            return new ChainBalance(ChainId.Zec, address, zatoshi / 100_000_000m, "ZEC");
+        return new ChainBalance(ChainId.Zec, address, 0m, "ZEC");
     }
 
     /// <summary>How long an answer from a strictly rate-limited free source is reused before asking again.</summary>
@@ -723,6 +804,33 @@ public sealed class PublicChainBalanceClient
             return new ChainBalance(chain, reportAddress, sats / 100_000_000m, symbol);
         }
         return null;
+    }
+
+    /// <summary>Dogecoin: BlockCypher (200 requests an hour), then Bitcore when it has had enough.</summary>
+    private static async Task<ChainBalance?> GetDogeAsync(string address, CancellationToken ct)
+    {
+        ChainBalance? balance = null;
+        try { balance = await GetBlockcypherAsync("doge", ChainId.Doge, address, "DOGE", 8, ct); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { /* the fallback below */ }
+        if (balance is not null) return balance;
+
+        try
+        {
+            using var res = await Http.GetAsync(
+                $"{BitcoreUtxoExplorer.BaseFor("DOGE")}/address/{Uri.EscapeDataString(address)}/balance", ct);
+            if (!res.IsSuccessStatusCode) return null;
+            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            // "balance" is confirmed + unconfirmed, in koinu (1e-8 DOGE) — what BlockCypher's "balance" is too.
+            return doc.RootElement.TryGetProperty("balance", out var b) && b.TryGetInt64(out var koinu)
+                ? new ChainBalance(ChainId.Doge, address, koinu / 100_000_000m, "DOGE")
+                : null;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            return null;
+        }
     }
 
     private static async Task<ChainBalance?> GetBlockcypherAsync(
@@ -778,13 +886,13 @@ public sealed class PublicChainBalanceClient
     // whose fee model matches the chain, which is a much higher bar.
     private static readonly (string Symbol, string Network, bool CanSend, string[] Rpcs)[] EvmSideChains =
     [
-        ("BNB",   "BSC",        true,  ["https://bsc-dataseed.binance.org", "https://bsc-dataseed1.defibit.io", "https://rpc.ankr.com/bsc"]),
-        ("MATIC", "Polygon",    true,  ["https://polygon-rpc.com", "https://rpc.ankr.com/polygon"]),
-        ("AVAX",  "Avalanche",  true,  ["https://api.avax.network/ext/bc/C/rpc", "https://rpc.ankr.com/avalanche"]),
-        ("FTM",   "Fantom",     true,  ["https://rpc.ftm.tools", "https://rpc.ankr.com/fantom"]),
+        ("BNB",   "BSC",        true,  ["https://bsc-dataseed.binance.org", "https://bsc-dataseed1.defibit.io", "https://bsc-rpc.publicnode.com"]),
+        ("MATIC", "Polygon",    true,  ["https://polygon.drpc.org", "https://1rpc.io/matic", "https://polygon-bor-rpc.publicnode.com"]),
+        ("AVAX",  "Avalanche",  true,  ["https://api.avax.network/ext/bc/C/rpc", "https://avalanche-c-chain-rpc.publicnode.com"]),
+        ("FTM",   "Fantom",     true,  ["https://rpcapi.fantom.network", "https://fantom.drpc.org", "https://1rpc.io/ftm"]),
         ("CRO",   "Cronos",     true,  ["https://evm.cronos.org", "https://cronos-evm-rpc.publicnode.com"]),
-        ("ETH",   "Arbitrum",   true,  ["https://arb1.arbitrum.io/rpc", "https://rpc.ankr.com/arbitrum"]),
-        ("ETH",   "Optimism",   true,  ["https://mainnet.optimism.io", "https://rpc.ankr.com/optimism"]),
+        ("ETH",   "Arbitrum",   true,  ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com"]),
+        ("ETH",   "Optimism",   true,  ["https://mainnet.optimism.io", "https://optimism-rpc.publicnode.com"]),
         ("ETH",   "Base",       true,  ["https://mainnet.base.org", "https://base.publicnode.com"]),
         // Linea is EVM-equivalent: EIP-155 signing and the same 21,000 intrinsic gas as mainnet, so
         // the existing signer covers it unchanged and sending is enabled alongside the balance.
@@ -1722,10 +1830,28 @@ public sealed class PublicMarketRatesClient
         var map = new Dictionary<string, (decimal Usd, decimal Change24h)>(
             await TryBinanceAsync(list, cancellationToken), StringComparer.OrdinalIgnoreCase);
 
+        // Binance refuses many Tor exits outright (403) and some countries. KuCoin answers every coin
+        // in one request (it learns nothing about which ones you hold), so it fills the gap first.
         var missing = list.Where(s => !map.ContainsKey(s)).ToList();
         if (missing.Count > 0)
         {
+            foreach (var kv in await TryKuCoinAsync(missing, cancellationToken))
+                map[kv.Key] = kv.Value;
+        }
+
+        missing = list.Where(s => !map.ContainsKey(s)).ToList();
+        if (missing.Count > 0)
+        {
             foreach (var kv in await TryCoinGeckoAsync(missing, cancellationToken))
+                map[kv.Key] = kv.Value;
+        }
+
+        // Whatever is still unpriced (TON is listed nowhere above when CoinGecko is rate-limited), one
+        // Bybit ticker each — a handful of requests at most.
+        missing = list.Where(s => !map.ContainsKey(s) && BinancePairs.ContainsKey(s)).ToList();
+        if (missing.Count > 0 && missing.Count <= 6)
+        {
+            foreach (var kv in await TryBybitAsync(missing, cancellationToken))
                 map[kv.Key] = kv.Value;
         }
 
@@ -1803,6 +1929,90 @@ public sealed class PublicMarketRatesClient
         {
             return empty;
         }
+    }
+
+    /// <summary>KuCoin's every-pair ticker (one request, ~100 KB), read for the USDT pairs asked about.
+    /// changeRate is a fraction; the wallet shows percent.</summary>
+    private static async Task<Dictionary<string, (decimal, decimal)>> TryKuCoinAsync(
+        List<string> list,
+        CancellationToken ct)
+    {
+        var map = new Dictionary<string, (decimal, decimal)>(StringComparer.OrdinalIgnoreCase);
+        var wanted = list.Where(s => !s.Equals("USDT", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(s => $"{KuCoinBase(s)}-USDT", s => s, StringComparer.OrdinalIgnoreCase);
+        if (wanted.Count == 0) return map;
+
+        try
+        {
+            using var res = await Http.GetAsync("https://api.kucoin.com/api/v1/market/allTickers", ct);
+            if (!res.IsSuccessStatusCode) return map;
+            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            if (!doc.RootElement.TryGetProperty("data", out var data) || !data.TryGetProperty("ticker", out var tickers))
+                return map;
+
+            foreach (var t in tickers.EnumerateArray())
+            {
+                var pair = t.TryGetProperty("symbol", out var s) ? s.GetString() : null;
+                if (pair is null || !wanted.TryGetValue(pair, out var symbol)) continue;
+                if (!TryDec(t, "last", out var last) || last <= 0) continue;
+                TryDec(t, "changeRate", out var rate);
+                map[symbol] = (last, rate * 100m);
+            }
+        }
+        catch
+        {
+            // The next source fills what is still missing.
+        }
+
+        return map;
+    }
+
+    /// <summary>KuCoin's ticker for a coin where it differs from the wallet's.</summary>
+    private static string KuCoinBase(string symbol) => symbol.ToUpperInvariant() switch
+    {
+        "MATIC" => "POL",
+        _ => symbol.ToUpperInvariant(),
+    };
+
+    /// <summary>One Bybit spot ticker per coin; price24hPcnt is a fraction.</summary>
+    private static async Task<Dictionary<string, (decimal, decimal)>> TryBybitAsync(
+        List<string> list,
+        CancellationToken ct)
+    {
+        var map = new Dictionary<string, (decimal, decimal)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var symbol in list)
+        {
+            if (!BinancePairs.TryGetValue(symbol, out var pair)) continue;
+            try
+            {
+                using var res = await Http.GetAsync(
+                    $"https://api.bybit.com/v5/market/tickers?category=spot&symbol={Uri.EscapeDataString(pair)}", ct);
+                if (!res.IsSuccessStatusCode) continue;
+                using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                if (!doc.RootElement.TryGetProperty("result", out var result) ||
+                    !result.TryGetProperty("list", out var rows)) continue;
+                foreach (var row in rows.EnumerateArray())
+                {
+                    if (!TryDec(row, "lastPrice", out var last) || last <= 0) continue;
+                    TryDec(row, "price24hPcnt", out var pct);
+                    map[symbol] = (last, pct * 100m);
+                    break;
+                }
+            }
+            catch
+            {
+                // Leave it unpriced; the row says so.
+            }
+        }
+
+        return map;
+    }
+
+    private static bool TryDec(JsonElement e, string name, out decimal value)
+    {
+        value = 0m;
+        return e.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.String &&
+               decimal.TryParse(p.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out value);
     }
 
     private static async Task<Dictionary<string, (decimal, decimal)>> TryBinanceAsync(

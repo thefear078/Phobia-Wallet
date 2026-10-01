@@ -72,6 +72,42 @@ public static class ExplorerHttp
         }
     }
 
+    // --- Which servers are refusing right now ---------------------------------------------------------
+
+    private static readonly ConcurrentDictionary<string, DateTimeOffset> Benched = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>How long a server that said "too many requests" or did not answer is left alone, unless
+    /// it said for how long itself.</summary>
+    public static readonly TimeSpan BenchFor = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Records that <paramref name="url"/>'s server refused (429/5xx) or did not answer in time, so every
+    /// explorer asks its other servers first for a while. Without this each request — six at a time in a
+    /// scan, and again on every refresh — went to the refusing server first and waited on it: a fresh
+    /// wallet's Bitcoin scan took over four minutes while mempool.space answered in 40 ms.
+    /// </summary>
+    public static void Bench(string url, TimeSpan? retryAfter = null)
+    {
+        var host = HostOf(url);
+        var until = DateTimeOffset.UtcNow + (retryAfter is { } r && r > TimeSpan.Zero && r < TimeSpan.FromHours(1) ? r : BenchFor);
+        Benched.AddOrUpdate(host, until, (_, old) => old > until ? old : until);
+    }
+
+    /// <summary>True while the server behind <paramref name="url"/> is benched.</summary>
+    public static bool IsBenched(string url) =>
+        Benched.TryGetValue(HostOf(url), out var until) && until > DateTimeOffset.UtcNow;
+
+    /// <summary>Clears every bench (tests, and a change of route such as switching Tor on).</summary>
+    public static void ForgetBenches() => Benched.Clear();
+
+    /// <summary>The servers in the order to ask them: the ones not benched first, each group in its
+    /// original order — so the user's or the shipped preference still decides among healthy servers.</summary>
+    public static IReadOnlyList<string> HealthyFirst(IReadOnlyList<string> urls) =>
+        urls.Where(u => !IsBenched(u)).Concat(urls.Where(IsBenched)).ToList();
+
+    private static string HostOf(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : url;
+
     /// <summary>Answers that mean "not now" rather than "no".</summary>
     public static bool IsTransient(HttpStatusCode status) =>
         status == HttpStatusCode.TooManyRequests || (int)status >= 500;

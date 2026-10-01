@@ -36,7 +36,7 @@ public sealed class EsploraUtxoExplorer : IUtxoExplorer
     /// <summary>What this build ships with, before any choice of the user's.</summary>
     public static string DefaultBaseUrlFor(string symbol) => symbol.ToUpperInvariant() switch
     {
-        "BTC" => "https://blockstream.info/api",
+        "BTC" => "https://mempool.space/api",
         "LTC" => "https://litecoinspace.org/api",
         _ => throw new NotSupportedException($"No Esplora explorer for {symbol}."),
     };
@@ -53,6 +53,17 @@ public sealed class EsploraUtxoExplorer : IUtxoExplorer
     /// somebody else is the behaviour the whole endpoint picker exists to end; if their server is
     /// down, the scan reports "unknown" and they can decide, exactly as with a chosen Monero node.
     /// </summary>
+    /// <summary>The servers <see cref="For"/> asks for a chain, in order — only the user's own when
+    /// they chose one. History reads use the same list, so it falls back exactly as balances do.</summary>
+    public static IReadOnlyList<string> BasesFor(string symbol)
+    {
+        if (ChainEndpoints.OverrideFor(symbol) is { } chosen) return [chosen];
+        var bases = new List<string> { DefaultBaseUrlFor(symbol) };
+        if (ChainEndpoints.Known.TryGetValue(symbol, out var known))
+            bases.AddRange(known.Select(k => k.BaseUrl));
+        return bases.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
     public static EsploraUtxoExplorer For(string symbol)
     {
         if (ChainEndpoints.OverrideFor(symbol) is { } chosen) return new EsploraUtxoExplorer(chosen);
@@ -86,14 +97,17 @@ public sealed class EsploraUtxoExplorer : IUtxoExplorer
         for (var round = 1; round <= Rounds; round++)
         {
             var anyTransient = false;
-            for (var attempt = 0; attempt < _bases.Count; attempt++)
+            // The last server that answered first, then the rest with any that are refusing right now
+            // (shared across every explorer and scan) at the back.
+            var order = ExplorerHttp.HealthyFirst(
+                Enumerable.Range(0, _bases.Count).Select(i => _bases[(_preferred + i) % _bases.Count]).ToList());
+            foreach (var host in order)
             {
                 ct.ThrowIfCancellationRequested();
-                var index = (_preferred + attempt) % _bases.Count;
                 try
                 {
-                    var result = await request(_bases[index]);
-                    _preferred = index;   // stay here for the rest of this scan
+                    var result = await request(host);
+                    _preferred = Math.Max(0, _bases.ToList().IndexOf(host));   // stay here for the rest of this scan
                     return result;
                 }
                 // Only the caller's cancel stops here. A server that timed out is reported by
@@ -103,7 +117,10 @@ public sealed class EsploraUtxoExplorer : IUtxoExplorer
                 catch (Exception ex)
                 {
                     last = ex;
-                    anyTransient |= ExplorerHttp.IsTransient(ex);
+                    var transient = ExplorerHttp.IsTransient(ex);
+                    anyTransient |= transient;
+                    // A server saying "not now" (or not answering) is asked last for a while.
+                    if (transient && _bases.Count > 1) ExplorerHttp.Bench(host);
                 }
             }
 

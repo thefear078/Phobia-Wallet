@@ -70,6 +70,8 @@ internal static class TestDataIsolation
     /// </summary>
     internal static void GoOffline()
     {
+        // The baseline is Tor-only, which in the app starts Tor on launch; here it must stay a wall.
+        Umbrella.Wallet.App.ViewModels.MainViewModel.StartTorAutomatically = false;
         PublicHttp.SetProxy(null);
         PublicHttp.SetRequireProxy(true);
         PointEveryChainAtNothing();

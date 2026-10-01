@@ -162,7 +162,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | BTC | ✅ | ✅ | ✅ | ✅ | coin control; restored Taproot (`m/86'`) found and spent — receive stays SegWit |
 | LTC | ✅ | ✅ | ✅ | ✅ | |
 | BCH | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
-| DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
+| DOGE | ✅ | ✅ | ✅ | ❌ | HD scan since 4.7; Bitcore then BlockCypher (4.10). History is not read yet — the app says so on Activity |
 | ETH | ✅ | ✅ | ✅ | ✅ | any held ERC-20 (N.1) |
 | Arb / Base / OP / Linea | ✅ | ✅ | ✅ | 🟡 | |
 | zkSync Era | ✅ | ✅ | ✅ | 🟡 | gas from the chain's own estimate |

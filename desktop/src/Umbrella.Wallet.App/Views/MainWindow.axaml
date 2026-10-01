@@ -4204,6 +4204,8 @@
                                Text="{Binding [settings.ipModeHint], Source={x:Static app:Loc.Instance}}"/>
                     <ComboBox ItemsSource="{Binding IpModeOptions}" SelectedItem="{Binding IpModeChoice}"
                               HorizontalAlignment="Stretch"/>
+                    <TextBlock IsVisible="{Binding HasIpModeWarning}" Text="{Binding IpModeWarning}" FontSize="12"
+                               Foreground="#E09A9A" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
                     <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
 

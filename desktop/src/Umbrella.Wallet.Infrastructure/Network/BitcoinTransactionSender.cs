@@ -72,7 +72,8 @@ public sealed class BitcoinTransactionSender
 
     public static string ExplorerFor(string symbol) => symbol.ToUpperInvariant() switch
     {
-        "BTC" => "https://blockstream.info/api",
+        // The same server the balance was read from — the user's choice, or mempool.space.
+        "BTC" => EsploraUtxoExplorer.BaseUrlFor("BTC"),
         "LTC" => "https://litecoinspace.org/api",
         // Dogecoin has no Esplora instance; BlockCypher supplies fee + broadcast (and UTXOs elsewhere).
         "DOGE" => "https://api.blockcypher.com/v1/doge/main",
@@ -365,10 +366,29 @@ public sealed class BitcoinTransactionSender
             }
             else if (IsBlockCypher(symbol))
             {
-                using var content = new StringContent($"{{\"tx\":\"{hex}\"}}", Encoding.UTF8, "application/json");
-                using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/txs/push", content, ct);
-                httpOk = res.IsSuccessStatusCode;
-                body = (await res.Content.ReadAsStringAsync(ct)).Trim();
+                var refused = false;
+                try
+                {
+                    using var content = new StringContent($"{{\"tx\":\"{hex}\"}}", Encoding.UTF8, "application/json");
+                    using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/txs/push", content, ct);
+                    httpOk = res.IsSuccessStatusCode;
+                    body = (await res.Content.ReadAsStringAsync(ct)).Trim();
+                    refused = (int)res.StatusCode == 429 || (int)res.StatusCode >= 500;
+                }
+                catch (Exception) when (!ct.IsCancellationRequested)
+                {
+                    (httpOk, body, refused) = (false, "", true);
+                }
+
+                // BlockCypher's free tier runs out ("Limits reached", 429) — the same signed bytes then go
+                // through BitPay's Bitcore. Sending one transaction twice is harmless: it has one txid.
+                if (refused && Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor(symbol) is null)
+                {
+                    using var content = new StringContent($"{{\"rawTx\":\"{hex}\"}}", Encoding.UTF8, "application/json");
+                    using var res = await Http.PostAsync($"{BitcoreUtxoExplorer.BaseFor(symbol)}/tx/send", content, ct);
+                    httpOk = res.IsSuccessStatusCode;
+                    body = (await res.Content.ReadAsStringAsync(ct)).Trim();
+                }
             }
             else
             {
@@ -412,6 +432,12 @@ public sealed class BitcoinTransactionSender
                 if (IsHaskoin(symbol)) url = $"{ExplorerFor(symbol)}/transaction/{txid}";
                 using var res = await Http.GetAsync(url, ct);
                 if (res.IsSuccessStatusCode) return (true, txid, null, false);
+                // BlockCypher out of requests is not "not there": ask Bitcore too.
+                if (IsBlockCypher(symbol) && Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor(symbol) is null)
+                {
+                    using var alt = await Http.GetAsync($"{BitcoreUtxoExplorer.BaseFor(symbol)}/tx/{txid}", ct);
+                    if (alt.IsSuccessStatusCode) return (true, txid, null, false);
+                }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

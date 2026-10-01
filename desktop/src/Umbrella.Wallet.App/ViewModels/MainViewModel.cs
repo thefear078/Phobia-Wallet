@@ -194,10 +194,38 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Recomputes the chip from the same live signals the send gate reads, so the two can
     /// never tell different stories.</summary>
+    /// <summary>True while the bundled Tor is starting up — requests wait for it rather than failing.</summary>
+    [ObservableProperty] private bool _torStarting;
+
+    partial void OnTorStartingChanged(bool value) => RefreshConnectionChip();
+
+    /// <summary>Set when the IP mode pins direct connections to a family this PC does not have.</summary>
+    public string IpModeWarning =>
+        CustomProxyEnabled || TorEnabled || PublicHttp.CanUse(PublicHttp.ParseIpMode(_uiSettings.IpMode))
+            ? string.Empty
+            : Loc.Instance[PublicHttp.ParseIpMode(_uiSettings.IpMode) == PublicHttp.IpMode.V6Only
+                ? "conn.noIpv6Hint" : "conn.noIpv4Hint"];
+
+    public bool HasIpModeWarning => IpModeWarning.Length > 0;
+
     public void RefreshConnectionChip()
     {
         var state = Umbrella.Wallet.Core.Safety.ConnectionStatus.Evaluate(CurrentTransportState());
         var L = Loc.Instance;
+        OnPropertyChanged(nameof(IpModeWarning));
+        OnPropertyChanged(nameof(HasIpModeWarning));
+
+        if (TorStarting && state.Route is Umbrella.Wallet.Core.Safety.ConnectionRoute.Blocked or Umbrella.Wallet.Core.Safety.ConnectionRoute.Direct)
+        {
+            (ConnectionChipLabel, ConnectionChipColor, ConnectionChipTooltip) = (L["conn.connecting"], "#E7CA83", L["conn.connectingHint"]);
+            return;
+        }
+
+        if (state.Route == Umbrella.Wallet.Core.Safety.ConnectionRoute.Direct && HasIpModeWarning)
+        {
+            (ConnectionChipLabel, ConnectionChipColor, ConnectionChipTooltip) = (L["conn.noRoute"], "#E09A9A", IpModeWarning);
+            return;
+        }
 
         // A route the user did not ask for is a warning, not a status line.
         var warn = state.TorExpectedButNotUsed;
@@ -596,8 +624,12 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(ShowSendClearnetNote));
             if (IsUnlocked) PushActivity("Security", "Tor-only", value ? "on" : "off",
                 value ? "clearnet blocked" : "clearnet allowed", "now");
-            // Turning it on with Tor still off means everything is blocked until Tor connects — nudge.
-            if (value && !TorEnabled) TorEnabled = true;
+            // Turning it on with Tor still off would block everything until Tor connects — so start Tor.
+            if (value && !TorEnabled && !CustomProxyEnabled)
+            {
+                TorEnabled = true;
+                if (StartTorAutomatically) _ = ApplyTorAsync();
+            }
             RefreshPrivateSendPlan();
             RefreshMoneroNodeStatus();
             _ = RefreshMarketAsync();
@@ -729,6 +761,7 @@ public partial class MainViewModel : ViewModelBase
             var code = value switch { "IPv4 only" => "ipv4", "IPv6 only" => "ipv6", _ => "auto" };
             if (_uiSettings.IpMode == code) return;
             _uiSettings.IpMode = code;
+            Avalonia.Threading.Dispatcher.UIThread.Post(RefreshConnectionChip);
             _uiSettings.Save();
             OnPropertyChanged();
             PublicHttp.SetIpPreference(PublicHttp.ParseIpMode(code));
@@ -1324,6 +1357,14 @@ public partial class MainViewModel : ViewModelBase
             ProxyStatusColor = "#8FCB9B";
         }
 
+        // Tor comes back on by itself when it was on last time, or when the Tor-only kill-switch is armed
+        // (without Tor it would refuse every request). Until it is up the chip says "connecting".
+        if (StartTorAutomatically && (_uiSettings.TorEnabled || _uiSettings.TorOnlyMode) && EffectiveCustomProxy() is null)
+        {
+            TorEnabled = true;
+            _ = ApplyTorAsync();
+        }
+
         Fx.Symbol = Fx.SymbolFor(_uiSettings.Currency); // right symbol immediately; rate loads next
         _ = LoadWatchAddressesAsync();
         _ = ApplyCurrencyAsync(); // fetches the USD→currency rate, then refreshes market/holdings
@@ -1337,6 +1378,15 @@ public partial class MainViewModel : ViewModelBase
     /// Market and balances refresh themselves on a timer — the user asked for no manual button.
     /// Market prices are public, so they update even while locked; balances only when unlocked.
     /// </summary>
+    private int _autoRefreshTicks;
+
+    /// <summary>
+    /// Whether Tor-only mode brings Tor up by itself — on launch and when the switch is turned on. Off
+    /// only for the test suite, which runs Tor-only precisely so that every request is refused and
+    /// nothing goes online.
+    /// </summary>
+    public static bool StartTorAutomatically { get; set; } = true;
+
     private void StartAutoRefresh()
     {
         try
@@ -1348,7 +1398,10 @@ public partial class MainViewModel : ViewModelBase
             _autoRefreshTimer.Tick += async (_, _) =>
             {
                 await RefreshMarketAsync();
-                if (IsUnlocked && !PendingPhraseBackup)
+                // Balances every other tick. The free explorers this wallet reads rate-limit hard — one
+                // IP-blacklisted this machine for a day — and a refused read is a balance the user cannot
+                // see. Every action that changes a balance (unlock, switch, send) refreshes at once anyway.
+                if (IsUnlocked && !PendingPhraseBackup && (++_autoRefreshTicks % 2 == 0))
                 {
                     await RefreshLiveDataAsync();
                 }
@@ -1965,7 +2018,7 @@ public partial class MainViewModel : ViewModelBase
         string.Join(", ", ChainCatalog.Planned.Select(c => c.Symbol));
 
     public string NetworkLabel =>
-        "Public RPC / explorers, no API keys: cloudflare-eth.com, blockstream.info, " +
+        "Public RPC / explorers, no API keys: cloudflare-eth.com, mempool.space, " +
         "litecoinspace.org, blockcypher.com, tronscanapi.com";
     public string BalanceDisplayMain => IsBalanceHidden ? "•••••••" : TotalBalanceMain;
     /// <summary>The cents, with the locale's own decimal separator — a hardcoded "." put a US point in
@@ -3161,6 +3214,13 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ApplyTorAsync()
     {
+        // Remember what was asked for (not what a failed start falls back to), for the next launch.
+        if (_uiSettings.TorEnabled != TorEnabled)
+        {
+            _uiSettings.TorEnabled = TorEnabled;
+            _uiSettings.Save();
+        }
+
         if (!TorEnabled)
         {
             _tor.Stop();
@@ -3195,8 +3255,19 @@ public partial class MainViewModel : ViewModelBase
 
         TorStatusColor = "#8B909A";
         TorStatus = "Starting bundled Tor…";
+        TorStarting = true;
+        RefreshConnectionChip();
         var progress = new Progress<string>(message => TorStatus = message);
-        var (ok, resultMessage) = await _tor.StartAsync(progress);
+        bool ok;
+        string resultMessage;
+        try
+        {
+            (ok, resultMessage) = await _tor.StartAsync(progress);
+        }
+        finally
+        {
+            TorStarting = false;
+        }
         if (!ok)
         {
             TorStatus = resultMessage;
@@ -3213,6 +3284,7 @@ public partial class MainViewModel : ViewModelBase
         TorStatusColor = "#8FCB9B";
         if (IsUnlocked) PushActivity("Security", "Tor", "on", "IP hidden from explorers", "now");
         OnPropertyChanged(nameof(TorOnlyStatus));
+        if (IsUnlocked) _ = RefreshLiveDataAsync();
         _ = RefreshMarketAsync();
         if (IsUnlocked) _ = RefreshLiveDataAsync();
     }
@@ -5815,13 +5887,13 @@ public partial class MainViewModel : ViewModelBase
         _ => null,
     };
 
-    /// <summary>The right UTXO explorer for a chain: BlockCypher for Dogecoin, Haskoin for Bitcoin Cash
+    /// <summary>The right UTXO explorer for a chain: Bitcore then BlockCypher for Dogecoin, Haskoin for Bitcoin Cash
     /// (neither has an Esplora instance; BCH's Blockchair also rate-limits), Esplora (Blockstream /
     /// litecoinspace) for BTC and LTC.</summary>
     private static Umbrella.Wallet.Core.Utxo.IUtxoExplorer UtxoExplorerFor(string symbol) =>
         symbol.Trim().ToUpperInvariant() switch
         {
-            "DOGE" => BlockCypherUtxoExplorer.For(symbol),
+            "DOGE" => FailoverUtxoExplorer.ForDogecoin(),
             "BCH" => HaskoinUtxoExplorer.For(symbol),
             _ => EsploraUtxoExplorer.For(symbol),
         };

@@ -1230,7 +1230,7 @@ public partial class MainViewModel
                     _lastUtxoScan.Remove(spentSymbol);
                     var explorer = _sendSymbol switch
                     {
-                        "BTC" => $"blockstream.info/tx/{txid}",
+                        "BTC" => $"mempool.space/tx/{txid}",
                         "DOGE" => $"live.blockcypher.com/doge/tx/{txid}",
                         "BCH" => $"blockchair.com/bitcoin-cash/transaction/{txid}",
                         _ => $"litecoinspace.org/tx/{txid}",

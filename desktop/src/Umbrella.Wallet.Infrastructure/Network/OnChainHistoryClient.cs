@@ -54,19 +54,54 @@ public sealed class OnChainHistoryClient
     /// </summary>
     public async Task<IReadOnlyList<ChainTx>> GetEsploraAsync(
         string apiBase, string address, IReadOnlySet<string> own, string symbol, string explorerTxBase,
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        await TryEsploraAsync(apiBase, address, own, symbol, explorerTxBase, ct) ?? [];
+
+    /// <summary>
+    /// The same read across every server the balance scan would ask (<see cref="EsploraUtxoExplorer.BasesFor"/>),
+    /// the ones refusing right now last. Bitcoin history read one server only: over Tor mempool.space
+    /// often refuses, and the Activity screen showed no Bitcoin at all while the balance — which falls
+    /// back — was read fine.
+    /// </summary>
+    private async Task<IReadOnlyList<ChainTx>> GetEsploraAnyAsync(
+        string symbol, string address, IReadOnlySet<string> own, string explorerTxBase, CancellationToken ct)
+    {
+        var bases = EsploraUtxoExplorer.BasesFor(symbol);
+        foreach (var apiBase in ExplorerHttp.HealthyFirst(bases))
+        {
+            var txs = await TryEsploraAsync(apiBase, address, own, symbol, explorerTxBase, ct, bench: bases.Count > 1);
+            if (txs is not null) return txs;
+        }
+
+        return [];
+    }
+
+    /// <summary>One server's answer, or null when it gave none (refused, failed, timed out).</summary>
+    private static async Task<IReadOnlyList<ChainTx>?> TryEsploraAsync(
+        string apiBase, string address, IReadOnlySet<string> own, string symbol, string explorerTxBase,
+        CancellationToken ct, bool bench = false)
     {
         try
         {
             var url = $"{apiBase}/address/{Uri.EscapeDataString(address)}/txs";
             using var res = await Http.GetAsync(url, ct);
-            if (!res.IsSuccessStatusCode) return [];
+            if (!res.IsSuccessStatusCode)
+            {
+                if (bench && ((int)res.StatusCode == 429 || (int)res.StatusCode >= 500)) ExplorerHttp.Bench(apiBase);
+                return null;
+            }
+
             var json = await res.Content.ReadAsStringAsync(ct);
             return ParseEsplora(json, own, symbol, explorerTxBase);
         }
-        catch
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             return [];
+        }
+        catch
+        {
+            if (bench) ExplorerHttp.Bench(apiBase);
+            return null;
         }
     }
 
@@ -91,19 +126,20 @@ public sealed class OnChainHistoryClient
         }
     }
 
-    /// <summary>Confirmed Bitcoin transactions, via Blockstream's keyless API.</summary>
+    /// <summary>Confirmed Bitcoin transactions, from the same Esplora server the balance is read from (the
+    /// user's choice, or mempool.space).</summary>
     public Task<IReadOnlyList<ChainTx>> GetBitcoinAsync(string address, CancellationToken ct = default) =>
-        GetEsploraAsync("https://blockstream.info/api", address, "BTC", "https://blockstream.info/tx/", ct);
+        GetBitcoinAsync(address, new HashSet<string>(StringComparer.Ordinal) { address }, ct);
 
     public Task<IReadOnlyList<ChainTx>> GetBitcoinAsync(string address, IReadOnlySet<string> own, CancellationToken ct = default) =>
-        GetEsploraAsync("https://blockstream.info/api", address, own, "BTC", "https://blockstream.info/tx/", ct);
+        GetEsploraAnyAsync("BTC", address, own, "https://mempool.space/tx/", ct);
 
     /// <summary>Confirmed Litecoin transactions, via litecoinspace (same Esplora API).</summary>
     public Task<IReadOnlyList<ChainTx>> GetLitecoinAsync(string address, CancellationToken ct = default) =>
-        GetEsploraAsync("https://litecoinspace.org/api", address, "LTC", "https://litecoinspace.org/tx/", ct);
+        GetLitecoinAsync(address, new HashSet<string>(StringComparer.Ordinal) { address }, ct);
 
     public Task<IReadOnlyList<ChainTx>> GetLitecoinAsync(string address, IReadOnlySet<string> own, CancellationToken ct = default) =>
-        GetEsploraAsync("https://litecoinspace.org/api", address, own, "LTC", "https://litecoinspace.org/tx/", ct);
+        GetEsploraAnyAsync("LTC", address, own, "https://litecoinspace.org/tx/", ct);
 
     /// <summary>
     /// Bitcoin Cash transactions, via Haskoin's keyless <c>transactions/full</c> API — the same explorer

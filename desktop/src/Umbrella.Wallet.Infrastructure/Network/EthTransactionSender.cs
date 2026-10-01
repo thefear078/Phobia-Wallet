@@ -47,9 +47,13 @@ public sealed class EthTransactionSender
 
     private static readonly string[] Rpcs =
     [
-        "https://cloudflare-eth.com",
-        "https://rpc.ankr.com/eth",
+        // Checked October 2026: Cloudflare's gateway was answering "Internal error" to every balance
+        // read and Ankr now requires an API key, which left Ethereum one server deep. Cloudflare stays
+        // last in case it recovers.
+        "https://ethereum-rpc.publicnode.com",
         "https://eth.drpc.org",
+        "https://1rpc.io/eth",
+        "https://cloudflare-eth.com",
     ];
 
     /// <summary>The EVM networks a native send is supported on (same 0x address, EIP-155 signing).</summary>
@@ -58,13 +62,13 @@ public sealed class EthTransactionSender
         {
             ["ETH"] = new("ETH", "Ethereum", 1, "etherscan.io/tx/", Rpcs),
             ["BNB"] = new("BNB", "BSC", 56, "bscscan.com/tx/",
-                ["https://bsc-dataseed.binance.org", "https://bsc-dataseed1.defibit.io", "https://rpc.ankr.com/bsc"]),
+                ["https://bsc-dataseed.binance.org", "https://bsc-dataseed1.defibit.io", "https://bsc-rpc.publicnode.com"]),
             ["MATIC"] = new("MATIC", "Polygon", 137, "polygonscan.com/tx/",
-                ["https://polygon-rpc.com", "https://rpc.ankr.com/polygon"]),
+                ["https://polygon.drpc.org", "https://1rpc.io/matic", "https://polygon-bor-rpc.publicnode.com"]),
             ["AVAX"] = new("AVAX", "Avalanche", 43114, "snowtrace.io/tx/",
-                ["https://api.avax.network/ext/bc/C/rpc", "https://rpc.ankr.com/avalanche"]),
+                ["https://api.avax.network/ext/bc/C/rpc", "https://avalanche-c-chain-rpc.publicnode.com"]),
             ["FTM"] = new("FTM", "Fantom", 250, "ftmscan.com/tx/",
-                ["https://rpc.ftm.tools", "https://rpc.ankr.com/fantom"]),
+                ["https://rpcapi.fantom.network", "https://fantom.drpc.org", "https://1rpc.io/ftm"]),
             ["CRO"] = new("CRO", "Cronos", 25, "cronoscan.com/tx/",
                 ["https://evm.cronos.org", "https://cronos-evm-rpc.publicnode.com"]),
             // Ethereum L2 rollups. Their native coin IS ETH (not a separate token), and they share the
@@ -72,11 +76,11 @@ public sealed class EthTransactionSender
             // chain id and explorer differ. Keyed by the network (ARB/BASE/OP), never by "ETH", so the
             // Ethereum-mainnet entry above is untouched. Signing is identical EIP-155 with the chain id.
             ["ARB"] = new("ETH", "Arbitrum One", 42161, "arbiscan.io/tx/",
-                ["https://arb1.arbitrum.io/rpc", "https://rpc.ankr.com/arbitrum"]),
+                ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com"]),
             ["BASE"] = new("ETH", "Base", 8453, "basescan.org/tx/",
                 ["https://mainnet.base.org", "https://base.publicnode.com"]),
             ["OP"] = new("ETH", "Optimism", 10, "optimistic.etherscan.io/tx/",
-                ["https://mainnet.optimism.io", "https://rpc.ankr.com/optimism"]),
+                ["https://mainnet.optimism.io", "https://optimism-rpc.publicnode.com"]),
             // Linea is EVM-equivalent: the same EIP-155 signing and the same 21,000 intrinsic gas for a
             // native transfer, so the signer pinned to the official EIP-155 vector covers it with only
             // the chain id changing. Newly enabled — verify with a small amount before trusting it.

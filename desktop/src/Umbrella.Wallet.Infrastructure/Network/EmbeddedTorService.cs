@@ -65,7 +65,13 @@ public sealed class EmbeddedTorService : IDisposable
         }
 
         Stop();
+        // A Tor this wallet left behind — a crash, a forced close, an older version that had no way to
+        // tie Tor to the wallet — still holds the port and the data folder, and a new one then exits at
+        // once. That was "Tor exited before it finished bootstrapping" on every launch, which for a
+        // Tor-only wallet means no balance, no price, nothing.
+        StopLeftoverTor();
         BootstrapPercent = 0;
+        _lastLogProblem = null;
 
         var torDir = Path.GetDirectoryName(TorExecutablePath)!;
         Directory.CreateDirectory(DataDirectory);
@@ -84,6 +90,11 @@ public sealed class EmbeddedTorService : IDisposable
         };
         startInfo.ArgumentList.Add("-f");
         startInfo.ArgumentList.Add(torrcPath);
+        // Tor exits by itself (within seconds) once this process is gone, so a wallet that dies without
+        // reaching Stop() — killed, crashed, closed by an update — leaves no Tor behind. The same option
+        // Tor Browser uses for its own Tor.
+        startInfo.ArgumentList.Add("__OwningControllerProcess");
+        startInfo.ArgumentList.Add(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         var bootstrapped = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
@@ -91,6 +102,8 @@ public sealed class EmbeddedTorService : IDisposable
         process.OutputDataReceived += (_, e) =>
         {
             if (string.IsNullOrWhiteSpace(e.Data)) return;
+            if (e.Data.Contains("[err]", StringComparison.Ordinal) || e.Data.Contains("[warn]", StringComparison.Ordinal))
+                _lastLogProblem = e.Data;
             var percent = ParseBootstrap(e.Data);
             if (percent.HasValue) _lastBootstrapPercent = percent.Value;
             if (percent is not null)
@@ -138,7 +151,8 @@ public sealed class EmbeddedTorService : IDisposable
         if (!bootstrapped.Task.Result)
         {
             Stop();
-            return (false, "Tor exited before it finished bootstrapping.");
+            return (false, "Tor exited before it finished bootstrapping" +
+                           (ProblemFromLog(_lastLogProblem) is { } why ? $": {why}" : "."));
         }
 
         return (true, $"Tor ready · SOCKS5 on 127.0.0.1:{SocksPort}");
@@ -170,11 +184,90 @@ public sealed class EmbeddedTorService : IDisposable
         }
     }
 
+    /// <summary>The last warning or error Tor logged, to say why it stopped.</summary>
+    private volatile string? _lastLogProblem;
+
+    private static string PidFilePath => Path.Combine(DataDirectory, "tor.pid");
+
+    /// <summary>
+    /// Ends a Tor this wallet started earlier and did not stop: the one named in its pid file, and —
+    /// for a Tor from a version that wrote no pid file — any running copy of this wallet's own bundled
+    /// tor.exe. A Tor the user runs themselves (Tor Browser, a system Tor) is a different program file
+    /// and is never touched.
+    /// </summary>
+    private static void StopLeftoverTor()
+    {
+        var leftovers = new List<Process>();
+        try
+        {
+            if (File.Exists(PidFilePath) &&
+                int.TryParse(File.ReadAllText(PidFilePath).Trim(), out var pid) && pid != Environment.ProcessId)
+            {
+                var p = Process.GetProcessById(pid);
+                if (p.ProcessName.Equals("tor", StringComparison.OrdinalIgnoreCase)) leftovers.Add(p);
+                else p.Dispose();
+            }
+        }
+        catch
+        {
+            // No such process any more — nothing to stop.
+        }
+
+        foreach (var p in Process.GetProcessesByName("tor"))
+        {
+            if (leftovers.Any(l => l.Id == p.Id)) { p.Dispose(); continue; }
+            try
+            {
+                if (string.Equals(p.MainModule?.FileName, TorExecutablePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    leftovers.Add(p);
+                    continue;
+                }
+            }
+            catch
+            {
+                // Another user's process, or one that just exited.
+            }
+
+            p.Dispose();
+        }
+
+        foreach (var p in leftovers)
+        {
+            try
+            {
+                if (!p.HasExited)
+                {
+                    p.Kill(entireProcessTree: true);
+                    p.WaitForExit(5000);
+                }
+            }
+            catch
+            {
+                // Best effort; if it survives, the start below reports why it could not run.
+            }
+            finally
+            {
+                p.Dispose();
+            }
+        }
+    }
+
+    /// <summary>Tor's own words for why it could not run, without the timestamp and log level.</summary>
+    public static string? ProblemFromLog(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return null;
+        var end = line.IndexOf("] ", StringComparison.Ordinal);
+        var text = (end >= 0 ? line[(end + 2)..] : line).Trim();
+        return text.Length > 160 ? text[..160] + "…" : text;
+    }
+
     private static string BuildTorrc(string torDir)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"SocksPort 127.0.0.1:{SocksPort}");
         sb.AppendLine($"DataDirectory {DataDirectory}");
+        sb.AppendLine($"PidFile {PidFilePath}");
         // GeoIP files ship alongside tor.exe; without them Tor still runs but logs warnings.
         var geoip = Path.Combine(torDir, "geoip");
         var geoip6 = Path.Combine(torDir, "geoip6");
