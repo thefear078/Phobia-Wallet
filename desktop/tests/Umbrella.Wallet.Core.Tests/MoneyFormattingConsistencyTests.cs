@@ -84,13 +84,15 @@ public sealed class MoneyFormattingConsistencyTests : IDisposable
     }
 
     [Fact]
-    public void Sub_unit_prices_keep_six_decimals_so_cheap_coins_still_read()
+    public void Sub_unit_prices_show_four_significant_digits_so_cheap_coins_still_read()
     {
         Fx.SetLanguage("en");
         Fx.Rate = 1m;
         Fx.Symbol = "$";
 
-        Assert.Equal("$0.083960", Fx.Price(0.08396));
+        Assert.Equal("$0.08396", Fx.Price(0.08396));
+        Assert.Equal("$0.2486", Fx.Price(0.2486));
+        Assert.Equal("$0.00001234", Fx.Price(0.00001234));
         Assert.Equal("$52.35", Fx.Price(52.35));
     }
 

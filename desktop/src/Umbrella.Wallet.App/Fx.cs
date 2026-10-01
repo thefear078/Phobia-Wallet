@@ -78,10 +78,20 @@ public static class Fx
     public static string Money(double usd) =>
         Symbol + ((decimal)usd * Rate).ToString("N2", Culture);
 
-    /// <summary>A converted price: 2 decimals at/above 1 unit, 6 below, so sub-cent coins still read.</summary>
+    /// <summary>A converted price: 2 decimals at/above 1 unit; below it, four significant digits
+    /// ("0,2486", "0,08396", "0,00001234") — a fixed six decimals read "0,248600" and hid the cheap
+    /// coins' real precision behind zeros.</summary>
     public static string Price(double usd)
     {
         var v = (decimal)usd * Rate;
-        return Symbol + v.ToString(v >= 1 ? "N2" : "N6", Culture);
+        return Symbol + v.ToString("N" + PriceDecimals(v), Culture);
+    }
+
+    /// <summary>Decimals for a price: 2 from one unit up, else enough for four significant digits (max 10).</summary>
+    public static int PriceDecimals(decimal v)
+    {
+        if (v >= 1 || v <= 0) return 2;
+        var leadingZeros = (int)Math.Floor(-Math.Log10((double)v));
+        return Math.Min(10, Math.Max(4, leadingZeros + 4));
     }
 }

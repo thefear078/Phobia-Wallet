@@ -81,6 +81,28 @@ public partial class MainViewModel
     /// wrong coin. So the selection is matched back by key, and only falls back to the first entry
     /// when the asset it pointed at genuinely went away.
     /// </summary>
+    /// <summary>True once the user chose a Send asset themselves; from then on it is never changed for them.</summary>
+    private bool _sendAssetPickedByUser;
+
+    /// <summary>Set while the wallet itself moves the selection, so that is not mistaken for the user's pick.</summary>
+    private bool _choosingSendAsset;
+
+    /// <summary>The offered asset with the largest value held (or amount, when nothing is priced).</summary>
+    private SendOption? BiggestHolding()
+    {
+        SendOption? best = null;
+        var bestScore = 0d;
+        foreach (var option in SendableAssetOptions)
+        {
+            var account = AccountForSendKey(option.Symbol);
+            if (account is null || account.Balance == BalanceRead.Unknown || account.Amount <= 0) continue;
+            var score = account.Price > 0 ? account.Amount * account.Price : account.Amount * 1e-9;
+            if (score > bestScore) (best, bestScore) = (option, score);
+        }
+
+        return best;
+    }
+
     private void RebuildSendableAssets()
     {
         var previouslySelected = SelectedSendAsset?.Symbol;
@@ -116,18 +138,26 @@ public partial class MainViewModel
             })
             .ToList();
 
-        SyncInPlace(SendableAssetOptions, [.. SendableAssets, .. tokens]);
+        SyncInPlace(SendableAssetOptions, [.. SendableAssets.Select(o => LocalizedNetwork("sendnet.", o)), .. tokens]);
 
         var restored = previouslySelected is null
             ? null
             : SendableAssetOptions.FirstOrDefault(
                 o => o.Symbol.Equals(previouslySelected, StringComparison.OrdinalIgnoreCase));
 
+        // Until the user picks an asset, Send opens on the one they hold the most of — it used to open on
+        // Ethereum at 0 ETH for a wallet whose money was all USDT and XRP.
+        if (!_sendAssetPickedByUser && BiggestHolding() is { } biggest) restored = biggest;
+
         // The same object as before whenever the asset is still offered, so this is not a change and
         // nothing about the Send screen resets. Clearing and refilling the list used to happen on every
         // one-minute refresh; the picker lost its selection each time and could wipe a review in progress.
         if (!ReferenceEquals(SelectedSendAsset, restored ?? SendableAssetOptions.FirstOrDefault()))
-            SelectedSendAsset = restored ?? SendableAssetOptions.FirstOrDefault();
+        {
+            _choosingSendAsset = true;
+            try { SelectedSendAsset = restored ?? SendableAssetOptions.FirstOrDefault(); }
+            finally { _choosingSendAsset = false; }
+        }
 
         RefreshSendOptionBalances();
     }

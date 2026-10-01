@@ -574,6 +574,27 @@ public sealed record ActivityRowViewModel(
     string? TxId = null,
     string? Note = null)
 {
+    /// <summary>
+    /// The amount as shown: at most eight significant digits after the leading zeros, in the wallet's
+    /// number format. Explorers answer in base units, so an Ethereum receipt read
+    /// "+0.000009698659261008". <see cref="Amount"/> keeps every digit for the CSV export; a row whose
+    /// amount is a word ("unlocked") passes through untouched.
+    /// </summary>
+    public string AmountShort => ShortAmount(Amount);
+
+    public static string ShortAmount(string amount)
+    {
+        if (string.IsNullOrWhiteSpace(amount)) return amount;
+        var sign = amount[0] is '+' or '-' ? amount[..1] : string.Empty;
+        if (!decimal.TryParse(amount.AsSpan(sign.Length), System.Globalization.NumberStyles.AllowDecimalPoint,
+                System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return amount;
+        var decimals = value >= 1 ? 6 : Math.Min(12, (int)Math.Floor(-Math.Log10((double)value)) + 8);
+        if (value == 0) decimals = 0;
+        var rounded = Math.Round(value, Math.Max(0, decimals), MidpointRounding.AwayFromZero);
+        return sign + rounded.ToString("#,0." + new string('#', Math.Max(0, decimals)), Umbrella.Wallet.App.Fx.Culture);
+    }
+
     /// <summary>This row is a real on-chain transaction the user can attach a private note to.</summary>
     public bool CanHaveNote => !string.IsNullOrWhiteSpace(TxId) && IsTransaction;
 
@@ -722,8 +743,12 @@ public sealed record MarketRowViewModel(
     public string ChangeColor =>
         !HasPrice ? "#8A9099" : Change24h > 0 ? "#8FCB9B" : Change24h < 0 ? "#E09A9A" : "#8A9099";
 
-    public string Accepts => IsSupported ? "Accepted · address ready" : "Not yet · adapter pending";
-    public string AcceptsColor => IsSupported ? "#8FCB9B" : "#8A9099";
+    /// <summary>What this wallet holds of the coin ("2,1974 SOL · $258,19"), set by the view model from
+    /// the read balances; null when nothing is held.</summary>
+    public string? Held { get; init; }
+
+    public string Accepts => Held ?? Umbrella.Wallet.App.Loc.Instance[IsSupported ? "market.canReceive" : "market.notYet"];
+    public string AcceptsColor => Held is not null ? "#E8E8EE" : IsSupported ? "#8FCB9B" : "#8A9099";
 
     /// <summary>Inline sparkline drawn in every row, so no coin is left without a chart.</summary>
     public System.Collections.Generic.List<Avalonia.Point> Spark { get; init; } = new();

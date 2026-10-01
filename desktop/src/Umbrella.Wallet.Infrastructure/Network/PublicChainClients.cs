@@ -1565,18 +1565,66 @@ public sealed class PublicMarketRatesClient
     /// and no extra tracking, and it rides the same Tor/proxy route.</summary>
     public async Task<MarketStats?> GetMarketStatsAsync(string symbol, CancellationToken ct = default)
     {
-        if (!BinancePairs.TryGetValue(symbol, out var pair)) return null;
+        var upper = symbol.ToUpperInvariant();
+        var pair = BinancePairs.GetValueOrDefault(upper);
+        if (pair is not null)
+        {
+            try
+            {
+                var url = $"https://api.binance.com/api/v3/ticker/24hr?symbol={pair}";
+                using var res = await Http.GetAsync(url, ct);
+                if (res.IsSuccessStatusCode)
+                {
+                    using var doc = await JsonDocument.ParseAsync(
+                        await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                    var root = doc.RootElement;
+                    decimal High = Dec(root, "highPrice"), Low = Dec(root, "lowPrice"), Vol = Dec(root, "quoteVolume");
+                    if (High > 0) return new MarketStats(High, Low, Vol);
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch
+            {
+                // the fallbacks below
+            }
+        }
+
+        // Binance refuses many Tor exits: KuCoin's 24h stats, then Bybit's ticker.
         try
         {
-            var url = $"https://api.binance.com/api/v3/ticker/24hr?symbol={pair}";
-            using var res = await Http.GetAsync(url, ct);
-            if (!res.IsSuccessStatusCode) return null;
-            using var doc = await JsonDocument.ParseAsync(
-                await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-            var root = doc.RootElement;
-            decimal High = Dec(root, "highPrice"), Low = Dec(root, "lowPrice"), Vol = Dec(root, "quoteVolume");
-            return new MarketStats(High, Low, Vol);
+            using var res = await Http.GetAsync($"https://api.kucoin.com/api/v1/market/stats?symbol={KuCoinBase(upper)}-USDT", ct);
+            if (res.IsSuccessStatusCode)
+            {
+                using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                if (doc.RootElement.TryGetProperty("data", out var d) && d.ValueKind == JsonValueKind.Object &&
+                    Dec(d, "high") is > 0 and var high)
+                    return new MarketStats(high, Dec(d, "low"), Dec(d, "volValue"));
+            }
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            // Bybit next
+        }
+
+        try
+        {
+            using var res = await Http.GetAsync(
+                $"https://api.bybit.com/v5/market/tickers?category=spot&symbol={Uri.EscapeDataString(pair ?? upper + "USDT")}", ct);
+            if (!res.IsSuccessStatusCode) return null;
+            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            if (doc.RootElement.TryGetProperty("result", out var result) && result.TryGetProperty("list", out var rows))
+            {
+                foreach (var row in rows.EnumerateArray())
+                {
+                    if (Dec(row, "highPrice24h") is > 0 and var high)
+                        return new MarketStats(high, Dec(row, "lowPrice24h"), Dec(row, "turnover24h"));
+                }
+            }
+
+            return null;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch
         {
             return null;
@@ -1635,113 +1683,173 @@ public sealed class PublicMarketRatesClient
     ///
     /// Binance klines are the primary source: they go down to one-minute candles, so a 1H chart is
     /// actually 60 real points rather than the handful of daily closes the old sparkline drew.
-    /// CoinGecko is the fallback for coins with no Binance USDT pair (e.g. XMR on some regions).
+    /// The closes of <see cref="GetCandlesAsync"/>, so the line and the candles always come from the same source.
     /// </summary>
     public async Task<IReadOnlyList<double>> GetPriceSeriesAsync(
         string symbol, string range, CancellationToken cancellationToken = default)
     {
-        var (interval, limit, days) = range.ToUpperInvariant() switch
-        {
-            "1H" => ("1m", 60, "1"),
-            "24H" => ("15m", 96, "1"),
-            "7D" => ("2h", 84, "7"),
-            "30D" => ("8h", 90, "30"),
-            _ => ("1d", 365, "365"),
-        };
-
-        var pair = BinancePairs.GetValueOrDefault(symbol.ToUpperInvariant());
-        if (pair is not null)
-        {
-            try
-            {
-                var url = $"https://api.binance.com/api/v3/klines?symbol={pair}&interval={interval}&limit={limit}";
-                using var res = await Http.GetAsync(url, cancellationToken);
-                if (res.IsSuccessStatusCode)
-                {
-                    using var doc = await JsonDocument.ParseAsync(
-                        await res.Content.ReadAsStreamAsync(cancellationToken),
-                        cancellationToken: cancellationToken);
-
-                    var candles = new List<double>();
-                    foreach (var candle in doc.RootElement.EnumerateArray())
-                    {
-                        // [openTime, open, high, low, close, ...] — close is index 4.
-                        if (candle.GetArrayLength() > 4 &&
-                            double.TryParse(candle[4].GetString(), NumberStyles.Any,
-                                CultureInfo.InvariantCulture, out var close))
-                        {
-                            candles.Add(close);
-                        }
-                    }
-
-                    if (candles.Count > 1) return candles;
-                }
-            }
-            catch
-            {
-                // fall through to CoinGecko
-            }
-        }
-
-        return await GetGeckoSeriesAsync(symbol, days, cancellationToken);
+        var candles = await GetCandlesAsync(symbol, range, cancellationToken);
+        return candles.Select(c => c.Close).ToList();
     }
 
-    /// <summary>Real OHLC candles for a coin/window from Binance klines, for the candlestick chart.
-    /// Falls back to degenerate candles (O=H=L=C) from the CoinGecko close series when there is no
-    /// Binance pair, so the chart still renders (as thin marks) rather than going blank.</summary>
+    /// <summary>The candle size and count for a chart window, in each source's own words.</summary>
+    private static (string Binance, int Limit, string Days, string KuCoin, int Seconds, string Bybit, int BybitSeconds)
+        Resolution(string range) => range.ToUpperInvariant() switch
+    {
+        "1H" => ("1m", 60, "1", "1min", 60, "1", 60),
+        "24H" => ("15m", 96, "1", "15min", 900, "15", 900),
+        "7D" => ("2h", 84, "7", "2hour", 7200, "120", 7200),
+        // Bybit has no 8-hour candle; 12-hour ones cover the same thirty days.
+        "30D" => ("8h", 90, "30", "8hour", 28800, "720", 43200),
+        _ => ("1d", 365, "365", "1day", 86400, "D", 86400),
+    };
+
+    /// <summary>
+    /// Real OHLC candles for a coin and window: Binance, then KuCoin, then Bybit, then CoinGecko's close
+    /// series as flat candles. Binance alone refused many Tor exits outright (403) and CoinGecko
+    /// rate-limits within a few requests, so a Tor-only wallet opened a coin onto an empty chart.
+    /// </summary>
     public async Task<IReadOnlyList<PriceCandle>> GetCandlesAsync(
         string symbol, string range, CancellationToken cancellationToken = default)
     {
-        var (interval, limit, days) = range.ToUpperInvariant() switch
-        {
-            "1H" => ("1m", 60, "1"),
-            "24H" => ("15m", 96, "1"),
-            "7D" => ("2h", 84, "7"),
-            "30D" => ("8h", 90, "30"),
-            _ => ("1d", 365, "365"),
-        };
+        var r = Resolution(range);
+        var upper = symbol.ToUpperInvariant();
+        var pair = BinancePairs.GetValueOrDefault(upper);
 
-        var pair = BinancePairs.GetValueOrDefault(symbol.ToUpperInvariant());
         if (pair is not null)
         {
-            try
-            {
-                var url = $"https://api.binance.com/api/v3/klines?symbol={pair}&interval={interval}&limit={limit}";
-                using var res = await Http.GetAsync(url, cancellationToken);
-                if (res.IsSuccessStatusCode)
-                {
-                    using var doc = await JsonDocument.ParseAsync(
-                        await res.Content.ReadAsStreamAsync(cancellationToken),
-                        cancellationToken: cancellationToken);
-
-                    var candles = new List<PriceCandle>();
-                    foreach (var k in doc.RootElement.EnumerateArray())
-                    {
-                        // [openTime, open(1), high(2), low(3), close(4), volume(5), closeTime(6), quoteVolume(7), ...]
-                        if (k.GetArrayLength() > 4 &&
-                            double.TryParse(k[1].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var o) &&
-                            double.TryParse(k[2].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var h) &&
-                            double.TryParse(k[3].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var l) &&
-                            double.TryParse(k[4].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var c))
-                        {
-                            double vol = 0;
-                            if (k.GetArrayLength() > 7)
-                                double.TryParse(k[7].GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out vol);
-                            candles.Add(new PriceCandle(o, h, l, c, vol));
-                        }
-                    }
-
-                    if (candles.Count > 1) return candles;
-                }
-            }
-            catch
-            {
-                // fall through to CoinGecko
-            }
+            var binance = await TryBinanceCandlesAsync(pair, r.Binance, r.Limit, cancellationToken);
+            if (binance.Count > 1) return binance;
         }
 
-        var series = await GetGeckoSeriesAsync(symbol, days, cancellationToken);
+        var kucoin = await TryKuCoinCandlesAsync(upper, r.KuCoin, r.Seconds, r.Limit, cancellationToken);
+        if (kucoin.Count > 1) return kucoin;
+
+        var bybit = await TryBybitCandlesAsync(pair ?? upper + "USDT", r.Bybit,
+            Math.Clamp(r.Limit * r.Seconds / r.BybitSeconds, 2, 1000), cancellationToken);
+        if (bybit.Count > 1) return bybit;
+
+        var series = await GetGeckoSeriesAsync(upper, r.Days, cancellationToken);
         return series.Select(c => new PriceCandle(c, c, c, c)).ToList();
+    }
+
+    private static async Task<IReadOnlyList<PriceCandle>> TryBinanceCandlesAsync(
+        string pair, string interval, int limit, CancellationToken ct)
+    {
+        try
+        {
+            var url = $"https://api.binance.com/api/v3/klines?symbol={pair}&interval={interval}&limit={limit}";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return [];
+            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            return ParseBinanceCandles(doc.RootElement);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Binance klines: [openTime, open, high, low, close, volume, closeTime, quoteVolume, ...], oldest first.</summary>
+    public static IReadOnlyList<PriceCandle> ParseBinanceCandles(JsonElement root)
+    {
+        var candles = new List<PriceCandle>();
+        if (root.ValueKind != JsonValueKind.Array) return candles;
+        foreach (var k in root.EnumerateArray())
+        {
+            if (k.ValueKind != JsonValueKind.Array || k.GetArrayLength() <= 4) continue;
+            if (!D(k[1], out var o) || !D(k[2], out var h) || !D(k[3], out var l) || !D(k[4], out var c)) continue;
+            double vol = 0;
+            if (k.GetArrayLength() > 7) D(k[7], out vol);
+            candles.Add(new PriceCandle(o, h, l, c, vol));
+        }
+
+        return candles;
+    }
+
+    private static async Task<IReadOnlyList<PriceCandle>> TryKuCoinCandlesAsync(
+        string symbol, string type, int seconds, int limit, CancellationToken ct)
+    {
+        try
+        {
+            var end = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var start = end - (long)seconds * limit;
+            var url = $"https://api.kucoin.com/api/v1/market/candles?type={type}&symbol={KuCoinBase(symbol)}-USDT&startAt={start}&endAt={end}";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return [];
+            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            return doc.RootElement.TryGetProperty("data", out var data) ? ParseKuCoinCandles(data) : [];
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>KuCoin candles: [time, open, CLOSE, HIGH, LOW, volume, turnover], newest first.</summary>
+    public static IReadOnlyList<PriceCandle> ParseKuCoinCandles(JsonElement data)
+    {
+        var candles = new List<PriceCandle>();
+        if (data.ValueKind != JsonValueKind.Array) return candles;
+        foreach (var k in data.EnumerateArray())
+        {
+            if (k.ValueKind != JsonValueKind.Array || k.GetArrayLength() < 5) continue;
+            if (!D(k[1], out var o) || !D(k[2], out var c) || !D(k[3], out var h) || !D(k[4], out var l)) continue;
+            double vol = 0;
+            if (k.GetArrayLength() > 6) D(k[6], out vol);
+            candles.Add(new PriceCandle(o, h, l, c, vol));
+        }
+
+        candles.Reverse();
+        return candles;
+    }
+
+    private static async Task<IReadOnlyList<PriceCandle>> TryBybitCandlesAsync(
+        string pair, string interval, int limit, CancellationToken ct)
+    {
+        try
+        {
+            var url = $"https://api.bybit.com/v5/market/kline?category=spot&symbol={Uri.EscapeDataString(pair)}&interval={interval}&limit={limit}";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return [];
+            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            return doc.RootElement.TryGetProperty("result", out var result) && result.TryGetProperty("list", out var list)
+                ? ParseBybitCandles(list)
+                : [];
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Bybit klines: [start, open, high, low, close, volume, turnover], newest first.</summary>
+    public static IReadOnlyList<PriceCandle> ParseBybitCandles(JsonElement list)
+    {
+        var candles = new List<PriceCandle>();
+        if (list.ValueKind != JsonValueKind.Array) return candles;
+        foreach (var k in list.EnumerateArray())
+        {
+            if (k.ValueKind != JsonValueKind.Array || k.GetArrayLength() < 5) continue;
+            if (!D(k[1], out var o) || !D(k[2], out var h) || !D(k[3], out var l) || !D(k[4], out var c)) continue;
+            double vol = 0;
+            if (k.GetArrayLength() > 6) D(k[6], out vol);
+            candles.Add(new PriceCandle(o, h, l, c, vol));
+        }
+
+        candles.Reverse();
+        return candles;
+    }
+
+    private static bool D(JsonElement e, out double value)
+    {
+        value = 0;
+        return e.ValueKind == JsonValueKind.String
+            ? double.TryParse(e.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out value)
+            : e.ValueKind == JsonValueKind.Number && e.TryGetDouble(out value);
     }
 
     private async Task<IReadOnlyList<double>> GetGeckoSeriesAsync(

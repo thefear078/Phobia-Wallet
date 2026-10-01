@@ -1155,6 +1155,9 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string _selectedMarketChangeColor = "#8A9099";
     [ObservableProperty] private bool _hasChart;
     [ObservableProperty] private bool _isChartLoading;
+
+    /// <summary>Said inside the chart when no price source answered — an empty grid looked broken.</summary>
+    [ObservableProperty] private string? _chartUnavailableText;
     [ObservableProperty] private System.Collections.Generic.List<Avalonia.Point> _chartPoints = new();
 
     /// <summary>Whether the open chart is up over its window — drives the up/down market sticker.</summary>
@@ -1249,7 +1252,15 @@ public partial class MainViewModel : ViewModelBase
     // --- Multi-wallet (Binance-style) ---------------------------------------
     /// <summary>Every wallet on this PC, for the switcher. Each is an independent encrypted vault.</summary>
     public ObservableCollection<WalletListItemViewModel> Wallets { get; } = [];
-    public string ActiveWalletLabel => _registry.Active?.Label ?? "Main wallet";
+    public string ActiveWalletLabel => WalletDisplayName(_registry.Active?.Label);
+
+    /// <summary>
+    /// A wallet's name as shown. The first wallet is stored as "Main wallet" (the registry never rewrites
+    /// it), which read in English in every language; shown, it is the translated name. A name the user
+    /// typed is shown exactly as typed.
+    /// </summary>
+    public static string WalletDisplayName(string? label) =>
+        string.IsNullOrWhiteSpace(label) || label == "Main wallet" ? Loc.Instance["wallet.mainName"] : label;
 
     /// <summary>Whose balances the Send picker shows — the active wallet's, by name.</summary>
     public string SendBalancesFromLabel => string.Format(Loc.Instance["send.balancesFrom"], ActiveWalletLabel);
@@ -1504,10 +1515,13 @@ public partial class MainViewModel : ViewModelBase
             {
                 var mid = AprMidpoint(o.Apr);
                 var estYear = h.Value * mid / 100.0;
-                hold = $"{Loc.Instance["staking.youHold"]} {h.Amount:0.####} {o.Symbol} · ~{FormatCompactMoney(estYear)}/yr";
+                hold = $"{Loc.Instance["staking.youHold"]} {h.Amount.ToString("0.####", Fx.Culture)} {o.Symbol} · " +
+                       string.Format(Loc.Instance["staking.perYear"], FormatCompactMoney(estYear));
             }
             else hold = "";
-            return new StakingRowViewModel(o.Symbol, o.Name, o.Apr, o.Method, hold, has);
+            var methodKey = "staking.method." + o.Symbol;
+            var method = Loc.Instance[methodKey];
+            return new StakingRowViewModel(o.Symbol, o.Name, o.Apr, method == methodKey ? o.Method : method, hold, has);
         })
         .OrderByDescending(r => r.HasHolding)
         .ToList();
@@ -1912,7 +1926,7 @@ public partial class MainViewModel : ViewModelBase
         new("BTC", "Bitcoin", "Bitcoin network · native SegWit"),
         new("LTC", "Litecoin", "Litecoin network · native SegWit"),
         new("BCH", "Bitcoin Cash", "Bitcoin Cash network · CashAddr"),
-        new("DOGE", "Dogecoin", "Dogecoin network · UTXO spend (BlockCypher)"),
+        new("DOGE", "Dogecoin", "Dogecoin network"),
         new("ZEC", "Zcash", "Zcash network · transparent t1… only, not shielded"),
         new("SOL", "Solana", "Solana network"),
         new("TON", "Toncoin", "TON network · wallet v4R2"),
@@ -1939,8 +1953,8 @@ public partial class MainViewModel : ViewModelBase
         new("ZKSYNC", "zkSync Era", "zkSync Era · native ETH (same 0x address)", "ETH"),
     ];
 
-    /// <summary>Networks a watch-only address can be added for.</summary>
-    public IReadOnlyList<SendOption> WatchableNetworks { get; } =
+    /// <summary>Networks a watch-only address can be added for, their lines in the wallet's language.</summary>
+    public IReadOnlyList<SendOption> WatchableNetworks { get; } = LocalizedNetworks("watchnet.",
     [
         new("ETH", "Ethereum", "Ethereum network (ERC-20)"),
         new("BTC", "Bitcoin", "Bitcoin network"),
@@ -1948,7 +1962,19 @@ public partial class MainViewModel : ViewModelBase
         new("DOGE", "Dogecoin", "Dogecoin network"),
         new("TRC20", "TRON / USDT", "TRON network — also reads USDT (TRC-20)"),
         new("SOL", "Solana", "Solana network"),
-    ];
+    ]);
+
+    /// <summary>Copies of <paramref name="options"/> whose network line is the translation under
+    /// <paramref name="prefix"/> + symbol — the English given in the list when there is none.</summary>
+    private static IReadOnlyList<SendOption> LocalizedNetworks(string prefix, IReadOnlyList<SendOption> options) =>
+        options.Select(o => LocalizedNetwork(prefix, o)).ToList();
+
+    private static SendOption LocalizedNetwork(string prefix, SendOption o)
+    {
+        var key = prefix + o.Symbol.ToUpperInvariant();
+        var text = Loc.Instance[key];
+        return new SendOption(o.Symbol, o.Name, text == key ? o.Network : text, o.Ticker);
+    }
 
     public string VaultLocation => _vault.VaultPath;
     public bool IsPortfolio => ActiveSection == "Portfolio";
@@ -2075,6 +2101,7 @@ public partial class MainViewModel : ViewModelBase
     // The pickers drive the underlying chain strings, so nothing downstream has to change.
     partial void OnSelectedSendAssetChanged(SendOption? value)
     {
+        if (!_choosingSendAsset && value is not null) _sendAssetPickedByUser = true;
         if (value is not null)
         {
             SendChain = value.Symbol;
@@ -3229,8 +3256,8 @@ public partial class MainViewModel : ViewModelBase
             PublicHttp.SetProxy(fallback);
             RefreshConnectionChip();
             TorStatus = fallback is null
-                ? "Direct connection · traffic is NOT anonymised"
-                : $"Off · using your custom proxy ({fallback})";
+                ? Loc.Instance["torstat.direct"]
+                : string.Format(Loc.Instance["torstat.proxy"], fallback);
             TorStatusColor = "#E7CA83";
             if (IsUnlocked) PushActivity("Security", "Tor", "off", "direct connection", "now");
             OnPropertyChanged(nameof(TorOnlyStatus)); // Tor-only + Tor off = clearnet now blocked
@@ -3247,17 +3274,18 @@ public partial class MainViewModel : ViewModelBase
 
         if (!EmbeddedTorService.IsBundlePresent)
         {
-            TorStatus = "Bundled Tor is missing from this build.";
+            TorStatus = Loc.Instance["torstat.missing"];
             TorStatusColor = "#E09A9A";
             TorEnabled = false;
             return;
         }
 
         TorStatusColor = "#8B909A";
-        TorStatus = "Starting bundled Tor…";
+        TorStatus = Loc.Instance["torstat.starting"];
         TorStarting = true;
         RefreshConnectionChip();
-        var progress = new Progress<string>(message => TorStatus = message);
+        var progress = new Progress<string>(message =>
+            TorStatus = TorPercent(message) is { } pct ? string.Format(Loc.Instance["torstat.progress"], pct) : message);
         bool ok;
         string resultMessage;
         try
@@ -3270,23 +3298,47 @@ public partial class MainViewModel : ViewModelBase
         }
         if (!ok)
         {
-            TorStatus = resultMessage;
+            TorStatus = string.Format(Loc.Instance["torstat.failed"], resultMessage);
             TorStatusColor = "#E09A9A";
             TorEnabled = false;
             PublicHttp.SetProxy(null);
             RefreshConnectionChip();
+            // Tor-only with no Tor is a wallet that can read nothing, so it tries again by itself — a
+            // network that was down a moment ago is the usual reason — a few times, further apart.
+            if (TorOnly && StartTorAutomatically && _torRetries < 5) _ = RetryTorLaterAsync(++_torRetries);
             return;
         }
 
+        _torRetries = 0;
         PublicHttp.SetProxy(_tor.ProxyUri);
         RefreshConnectionChip();
-        TorStatus = $"{resultMessage} · your IP is hidden from explorers";
+        TorStatus = Loc.Instance["torstat.ready"];
         TorStatusColor = "#8FCB9B";
         if (IsUnlocked) PushActivity("Security", "Tor", "on", "IP hidden from explorers", "now");
         OnPropertyChanged(nameof(TorOnlyStatus));
-        if (IsUnlocked) _ = RefreshLiveDataAsync();
         _ = RefreshMarketAsync();
         if (IsUnlocked) _ = RefreshLiveDataAsync();
+    }
+
+    /// <summary>Failed Tor starts in a row this session (reset when one succeeds).</summary>
+    private int _torRetries;
+
+    private async Task RetryTorLaterAsync(int attempt)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(Math.Min(300, 20 * attempt * attempt)));
+        if (!TorOnly || TorEnabled || CustomProxyEnabled) return;
+        TorEnabled = true;
+        await ApplyTorAsync();
+    }
+
+    /// <summary>The percentage in the Tor service's "Tor bootstrapping… N%" progress line.</summary>
+    private static int? TorPercent(string message)
+    {
+        var end = message.LastIndexOf('%');
+        if (end <= 0) return null;
+        var start = end - 1;
+        while (start >= 0 && char.IsDigit(message[start])) start--;
+        return int.TryParse(message.AsSpan(start + 1, end - start - 1), out var pct) ? pct : null;
     }
 
     /// <summary>Stops the bundled Tor process — called when the window closes.</summary>
@@ -3495,7 +3547,7 @@ public partial class MainViewModel : ViewModelBase
         var activeId = _registry.Active?.Id;
         foreach (var w in _registry.Wallets)
         {
-            Wallets.Add(new WalletListItemViewModel(w.Id, w.Label, w.Id == activeId, w.IsLegacy, w.Color));
+            Wallets.Add(new WalletListItemViewModel(w.Id, WalletDisplayName(w.Label), w.Id == activeId, w.IsLegacy, w.Color));
         }
         OnPropertyChanged(nameof(ActiveWalletLabel));
         OnPropertyChanged(nameof(SendBalancesFromLabel));
@@ -3641,7 +3693,7 @@ public partial class MainViewModel : ViewModelBase
         var epoch = _lockEpoch;
         if (targetVault.Exists && !string.IsNullOrEmpty(pw))
         {
-            ShowToast(string.Format(Loc.Instance["status.openingWallet"], target.Label), isError: false);
+            ShowToast(string.Format(Loc.Instance["status.openingWallet"], WalletDisplayName(target.Label)), isError: false);
             try
             {
                 mnemonic = await targetVault.UnlockAsync(pw);
@@ -4067,6 +4119,33 @@ public partial class MainViewModel : ViewModelBase
         ApplyWatchlist();
     }
 
+    /// <summary>
+    /// Fills each Market row's "this wallet" cell with what is held of that coin — every row used to say
+    /// "Accepted · address ready", in English, whatever the wallet held. Only rows whose text changes are
+    /// replaced, so a refresh does not redraw the whole list.
+    /// </summary>
+    private void ApplyMarketHoldings()
+    {
+        var held = Accounts
+            .Where(a => a.Balance != BalanceRead.Unknown && a.Amount > 0 && !a.IsSuspectedSpam)
+            .GroupBy(a => a.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => (Amount: g.Sum(a => a.Amount), Value: g.Sum(a => a.Amount * a.Price)),
+                StringComparer.OrdinalIgnoreCase);
+
+        for (var i = 0; i < Market.Count; i++)
+        {
+            var row = Market[i];
+            string? text = null;
+            if (held.TryGetValue(row.Symbol, out var h))
+            {
+                var amount = ((decimal)h.Amount).ToString(h.Amount >= 1000 ? "N2" : "0.######", Fx.Culture);
+                text = h.Value > 0 ? $"{amount} {row.Symbol} · {Fx.Money(h.Value)}" : $"{amount} {row.Symbol}";
+            }
+
+            if (row.Held != text) Market[i] = row with { Held = text };
+        }
+    }
+
     private void SaveMarketCache() =>
         _marketCache.Save(Market.Where(m => m.Price > 0).Select(m => new MarketCache.Entry(m.Symbol, m.Price, m.Change24h)));
 
@@ -4081,7 +4160,7 @@ public partial class MainViewModel : ViewModelBase
             var prices = await _rates.GetUsdPricesAsync(symbols, CancellationToken.None);
             if (prices.Count == 0)
             {
-                MarketStatus = "Market feed unreachable — prices unavailable, wallet still works offline";
+                MarketStatus = Loc.Instance["market.unreachable"];
                 return;
             }
 
@@ -4114,14 +4193,15 @@ public partial class MainViewModel : ViewModelBase
                 };
             }
 
-            MarketStatus = $"Live · {prices.Count} coins · updated {DateTime.Now:HH:mm:ss}";
+            MarketStatus = string.Format(Loc.Instance["market.live"], prices.Count, DateTime.Now.ToString("HH:mm", Fx.Culture));
             SaveMarketCache();
             ApplyWatchlist();
+            ApplyMarketHoldings();
             _ = LoadSparklinesAsync();
         }
         catch (Exception ex)
         {
-            MarketStatus = $"Market feed failed: {ex.Message}";
+            MarketStatus = Loc.Instance["market.unreachable"];
         }
     }
 
@@ -4148,6 +4228,7 @@ public partial class MainViewModel : ViewModelBase
         SelectedMarketChangeColor = row.ChangeColor;
         HasChart = true;
         IsChartLoading = true;
+        ChartUnavailableText = null;
         ChartPoints = new System.Collections.Generic.List<Avalonia.Point>();
         HasChartEnd = false;
 
@@ -4156,13 +4237,11 @@ public partial class MainViewModel : ViewModelBase
             var candles = await _rates.GetCandlesAsync(row.Symbol, ChartRange, CancellationToken.None);
             BuildDetailChart(candles);
             if (ChartPoints.Count == 0)
-            {
-                MarketStatus = $"No chart data for {row.Symbol} right now";
-            }
+                ChartUnavailableText = string.Format(Loc.Instance["market.noChart"], row.Symbol);
         }
-        catch (Exception ex)
+        catch
         {
-            MarketStatus = $"Chart failed: {ex.Message}";
+            ChartUnavailableText = string.Format(Loc.Instance["market.noChart"], row.Symbol);
         }
         finally
         {
@@ -4465,7 +4544,8 @@ public partial class MainViewModel : ViewModelBase
             // the wait grow with the number of watched addresses (each up to the 20s client timeout).
             // Only the network phase is parallel; the rows are still applied one at a time on the UI
             // thread, so Accounts is never mutated from two places at once.
-            var watchTargets = WatchAddresses.ToList()
+            // The phrase's accounts at other wallets' paths ride along as watch rows (see Discovery).
+            var watchTargets = WatchAddresses.ToList().Concat(FoundWatchTargets())
                 .Select(w => (Watch: w, Chain: ParseChain(w.Chain)))
                 .Where(x => x.Chain is not null)
                 .ToList();
@@ -4521,6 +4601,7 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();
             RecalcBalance();
             SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
+            MaybeDiscoverAutomatically(); // once per wallet: money at other wallets' paths
 
             // NFTs last, and deliberately AFTER the balance total is final and cached: they are display
             // detail, not money, so they must never delay the number the user actually came to see.
@@ -5437,6 +5518,7 @@ public partial class MainViewModel : ViewModelBase
         // read once the wallet is unlocked.
         _ = LoadExchangesAsync(mnemonic);
         DeriveAccounts(mnemonic);
+        LoadFoundAccounts(); // money this phrase holds at other wallets' paths, from its last scan
         OnPropertyChanged(nameof(SignMsgAddress)); // the Ethereum address the sign-message tool uses
         SignMsgSignature = string.Empty;
         SignMsgInput = string.Empty;
@@ -5569,6 +5651,28 @@ public partial class MainViewModel : ViewModelBase
             chain.DerivationScheme ?? "Desktop adapter pending",
             0, 0, chain.Name, 0);
 
+    /// <summary>How many coins at a confirmed zero are folded away (see <see cref="RefreshHoldings"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEmptyHoldings), nameof(EmptyHoldingsToggleText))]
+    private int _emptyHoldingsCount;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmptyHoldingsToggleText))]
+    private bool _showEmptyHoldings;
+
+    public bool HasEmptyHoldings => EmptyHoldingsCount > 0;
+
+    public string EmptyHoldingsToggleText => ShowEmptyHoldings
+        ? Loc.Instance["home.hideEmpty"]
+        : string.Format(Loc.Instance["home.showEmpty"], EmptyHoldingsCount);
+
+    [RelayCommand]
+    private void ToggleEmptyHoldings()
+    {
+        ShowEmptyHoldings = !ShowEmptyHoldings;
+        RefreshHoldings();
+    }
+
     private void RefreshHoldings()
     {
         Holdings.Clear();
@@ -5601,6 +5705,16 @@ public partial class MainViewModel : ViewModelBase
         SpamTokenCount = visible.Count(a => a.IsSuspectedSpam);
         if (!ShowSpamTokens) visible = visible.Where(a => !a.IsSuspectedSpam).ToList();
 
+        // Coins at a confirmed zero fold behind one button once anything is held, so the list is the
+        // money first. A balance nobody could read stays in view — it may well not be zero (P0.6) — and
+        // a search or network filter shows everything it matches.
+        var filtering = !string.IsNullOrWhiteSpace(SearchQuery) ||
+                        !string.Equals(ChainFilter, "All", StringComparison.OrdinalIgnoreCase);
+        static bool IsEmpty(WalletAccountViewModel a) => a.Amount <= 0 && a.Balance != BalanceRead.Unknown;
+        var anyHeld = visible.Any(a => !IsEmpty(a));
+        EmptyHoldingsCount = !filtering && anyHeld ? visible.Count(IsEmpty) : 0;
+        if (EmptyHoldingsCount > 0 && !ShowEmptyHoldings) visible = visible.Where(a => !IsEmpty(a)).ToList();
+
         // An unread balance contributes no value to the total — a row whose amount nobody could
         // confirm must not be priced as if it were zero, nor as if it were known (P0.6).
         var built = visible.Select(a => new HoldingRowViewModel(
@@ -5609,6 +5723,7 @@ public partial class MainViewModel : ViewModelBase
             a.Change24h, a.Address, a.SupportStatus, a.Balance, a.UnreadNote));
         foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
             Holdings.Add(h);
+        ApplyMarketHoldings();
 
         // A token that arrived becomes sendable; one spent to zero drops off (roadmap N.1).
         RebuildSendableAssets();

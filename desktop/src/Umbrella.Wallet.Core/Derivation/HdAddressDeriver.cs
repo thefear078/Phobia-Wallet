@@ -701,6 +701,96 @@ public sealed class HdAddressDeriver
         return address;
     }
 
+    /// <summary>
+    /// Addresses this phrase has at paths OTHER wallets use, for finding money that an imported phrase
+    /// holds somewhere this wallet does not look: MetaMask's and Ledger Live's further Ethereum
+    /// accounts, TronLink's further TRON accounts, Phantom's further Solana accounts and Solflare's old
+    /// three-level path, and the legacy (BIP44) and nested SegWit (BIP49) Bitcoin and Litecoin addresses
+    /// older wallets made — plus a second BIP84 Bitcoin account. Read-only: nothing here signs.
+    /// <para>
+    /// Every entry says where the path comes from (<see cref="AlternativeAccount.Origin"/> and
+    /// <see cref="AlternativeAccount.Account"/>), so the wallet can tell the user which app's account
+    /// it found the money at.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<AlternativeAccount> DeriveAlternativeAccounts(string mnemonic, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
+        var master = parsed.DeriveExtKey(passphrase);
+        var list = new List<AlternativeAccount>();
+
+        // Ethereum (and every EVM network on the same 0x address).
+        for (uint i = 1; i <= 4; i++)
+            list.Add(Secp(ChainId.Eth, master, $"44'/60'/0'/0/{i}", "metamask", i + 1));
+        for (uint i = 1; i <= 4; i++)
+            list.Add(Secp(ChainId.Eth, master, $"44'/60'/{i}'/0/0", "ledgerLive", i + 1));
+
+        // TRON: further addresses on the standard account, then further accounts.
+        for (uint i = 1; i <= 2; i++)
+            list.Add(Secp(ChainId.Tron, master, $"44'/195'/0'/0/{i}", "tronAccount", i + 1));
+        list.Add(Secp(ChainId.Tron, master, "44'/195'/1'/0/0", "tronAccount", 4));
+
+        // Solana: Solflare's old path, and Phantom's accounts 2-5.
+        var seed = parsed.DeriveSeed(passphrase);
+        list.Add(Ed(seed, [44, 501, 0], "solflareOld", 1));
+        list.Add(Ed(seed, [44, 501], "solanaCli", 1));
+        for (uint i = 1; i <= 4; i++)
+            list.Add(Ed(seed, [44, 501, i, 0], "phantom", i + 1));
+        CryptographicOperations.ZeroMemory(seed);
+
+        // Bitcoin and Litecoin: older address types, the first few receive addresses of each.
+        foreach (var (chain, coin, network) in new[]
+                 {
+                     (ChainId.Btc, 0, Network.Main),
+                     (ChainId.Ltc, 2, Litecoin.Instance.Mainnet),
+                 })
+        {
+            for (uint i = 0; i < 3; i++)
+                list.Add(Utxo(chain, master, network, $"44'/{coin}'/0'/0/{i}", ScriptPubKeyType.Legacy, "legacy", i + 1));
+            for (uint i = 0; i < 3; i++)
+                list.Add(Utxo(chain, master, network, $"49'/{coin}'/0'/0/{i}", ScriptPubKeyType.SegwitP2SH, "nestedSegwit", i + 1));
+        }
+        list.Add(Utxo(ChainId.Btc, master, Network.Main, "84'/0'/1'/0/0", ScriptPubKeyType.Segwit, "secondAccount", 2));
+
+        return list;
+
+        static AlternativeAccount Secp(ChainId chain, ExtKey master, string path, string origin, uint account)
+        {
+            var key = master.Derive(new KeyPath(path));
+            var bytes = GetSecp256k1AddressBytes(key.PrivateKey.PubKey);
+            string address;
+            if (chain == ChainId.Tron)
+            {
+                var payload = new byte[21];
+                payload[0] = 0x41;
+                Buffer.BlockCopy(bytes, 0, payload, 1, 20);
+                address = EncodeBase58Check(payload);
+            }
+            else
+            {
+                address = AddressUtil.Current.ConvertToChecksumAddress("0x" + Encoders.Hex.EncodeData(bytes));
+            }
+
+            return new AlternativeAccount(chain, "m/" + path, address, origin, account);
+        }
+
+        static AlternativeAccount Ed(byte[] seed, uint[] path, string origin, uint account)
+        {
+            var priv = Slip10Ed25519.DerivePrivateKey(seed, path);
+            var address = Encoders.Base58.EncodeData(Slip10Ed25519.PublicKey(priv));
+            CryptographicOperations.ZeroMemory(priv);
+            return new AlternativeAccount(ChainId.Sol, "m/" + string.Join('/', path.Select(p => p + "'")), address, origin, account);
+        }
+
+        static AlternativeAccount Utxo(ChainId chain, ExtKey master, Network network, string path,
+            ScriptPubKeyType type, string origin, uint account)
+        {
+            var key = master.Derive(new KeyPath(path));
+            return new AlternativeAccount(chain, "m/" + path, key.PrivateKey.PubKey.GetAddress(type, network).ToString(), origin, account);
+        }
+    }
+
     private static string EncodeBase58Check(byte[] payload)
     {
         var checksum = DoubleSha256(payload);
@@ -716,3 +806,12 @@ public sealed class HdAddressDeriver
         return SHA256.HashData(first);
     }
 }
+
+/// <summary>
+/// One address an imported phrase has at a path another wallet uses (see
+/// <see cref="HdAddressDeriver.DeriveAlternativeAccounts"/>). <paramref name="Origin"/> names the kind
+/// of path ("metamask", "ledgerLive", "phantom", "legacy"…) and <paramref name="Account"/> its number
+/// as that app counts it, so the user can be told where the money was found.
+/// </summary>
+public sealed record AlternativeAccount(ChainId Chain, string Path, string Address, string Origin, uint Account);
+

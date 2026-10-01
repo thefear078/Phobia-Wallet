@@ -54,7 +54,7 @@ public static class BalanceReadout
     public static string AmountText(double amount, BalanceRead state, string symbol) =>
         state == BalanceRead.Unknown
             ? $"— {symbol}"
-            : $"{amount.ToString("N6", System.Globalization.CultureInfo.InvariantCulture)} {symbol}";
+            : $"{amount.ToString("N6", Fx.Culture)} {symbol}";   // in the wallet's own number format
 
     /// <summary>Only a live or cached reading may contribute to the portfolio total.</summary>
     public static bool CountsTowardsTotal(BalanceRead state) => state != BalanceRead.Unknown;

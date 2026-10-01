@@ -1044,10 +1044,11 @@
 
                   <!-- Holdings as clean rows (no column-header table): coin mark + name/ticker on the left,
                        fiat value over the coin amount on the right, and a tinted 24h pill. The whole row
-                       opens that coin's asset page. Rows scroll inside a fixed height so the list never
-                       eats the page. -->
+                       opens that coin's asset page. Coins at zero fold behind the button under the list, so
+                       the page scrolls with the money first — a fixed-height box with a hidden scroll bar
+                       cut the list at five rows and hid what was below. -->
                   <Border Classes="card" Padding="6">
-                    <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
                       <ItemsControl ItemsSource="{Binding Holdings}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:HoldingRowViewModel">
@@ -1098,7 +1099,10 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
-                    </ScrollViewer>
+                      <Button Classes="ghost" HorizontalAlignment="Center" Margin="0,6,0,4" Padding="14,7" FontSize="12"
+                              Content="{Binding EmptyHoldingsToggleText}" Command="{Binding ToggleEmptyHoldingsCommand}"
+                              IsVisible="{Binding HasEmptyHoldings}"/>
+                    </StackPanel>
                   </Border>
                   </StackPanel>
                   <!-- Recent transactions: the five newest events from the merged feed (local and on-chain). -->
@@ -1133,7 +1137,7 @@
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="1">
                                   <TextBlock Classes="mono" FontSize="12.5" FontWeight="SemiBold" HorizontalAlignment="Right"
-                                             Foreground="{Binding KindColor}" Text="{Binding Amount, Converter={StaticResource ActivityLabel}}"/>
+                                             Foreground="{Binding KindColor}" Text="{Binding AmountShort, Converter={StaticResource ActivityLabel}}"/>
                                   <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Right"
                                              Text="{Binding When, Converter={StaticResource ActivityLabel}}"/>
                                 </StackPanel>
@@ -1776,11 +1780,13 @@
                            Text="{Binding [swap.desc], Source={x:Static app:Loc.Instance}}"/>
 
                 <!-- Honest coverage note: which chains the non-custodial route reaches, and what to do
-                     for the rest, so "why can't I swap X?" is answered on the screen itself. -->
-                <Border Background="{DynamicResource UmCardAlt}" CornerRadius="10" Padding="12,9">
+                     for the rest, so "why can't I swap X?" is answered on the screen itself. Folded: open,
+                     it repeated most of the paragraph above it. -->
+                <Expander Header="{Binding [swap.coverageTitle], Source={x:Static app:Loc.Instance}}"
+                          HorizontalAlignment="Stretch" Background="{DynamicResource UmCardAlt}" CornerRadius="10">
                   <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
                              Text="{Binding [swap.coverage], Source={x:Static app:Loc.Instance}}"/>
-                </Border>
+                </Expander>
 
                 <!-- Step 1 · pair & amount. A DEX-style stacked "You pay → You receive" widget with a
                      circular flip button straddling the two panels, like Uniswap. -->
@@ -2323,6 +2329,10 @@
                         <TextBlock Text="{Binding [chart.loading], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextMuted}" FontSize="12"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    IsVisible="{Binding IsChartLoading}"/>
+                        <TextBlock Text="{Binding ChartUnavailableText}" Foreground="{DynamicResource UmTextMuted}" FontSize="12.5"
+                                   TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420" ZIndex="2"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding ChartUnavailableText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                         <!-- Grid positions are constants (always five levels, five ticks), so the
                              lines and labels are placed directly rather than through an
                              ItemsControl, which does not position generated Canvas children.
@@ -2836,7 +2846,7 @@
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-10.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" Margin="2,0,0,4"
-                           Text="{Binding [activity.desc], Source={x:Static app:Loc.Instance}}"/>
+                           TextWrapping="Wrap" Text="{Binding [activity.desc], Source={x:Static app:Loc.Instance}}"/>
 
                 <!-- Coins whose history this build does not read (roadmap P1.10). Without this an
                      empty feed reads as "nothing happened" when it means "nobody asked" — the same
@@ -2974,7 +2984,7 @@
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                             <TextBlock Grid.Column="2" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
                                        Text="{Binding Counterparty, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Grid.Column="3" Classes="mono" Text="{Binding Amount, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}"
+                            <TextBlock Grid.Column="3" Classes="mono" Text="{Binding AmountShort, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}"
                                        Margin="12,0" VerticalAlignment="Center"/>
                             <!-- Confirmation-status pill (money movements only) + Retry on a failed send. -->
                             <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" Margin="0,0,8,0" VerticalAlignment="Center">
@@ -3134,7 +3144,7 @@
                           <TextBlock Text="{Binding Kind, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
                                      Text="{Binding Counterparty, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                          <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Amount, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}"
+                          <TextBlock Grid.Column="2" Classes="mono" Text="{Binding AmountShort, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}"
                                      Margin="12,0" VerticalAlignment="Center"/>
                           <TextBlock Grid.Column="3" Foreground="{DynamicResource UmTextDim}" FontSize="11"
                                      Text="{Binding When, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center"/>
@@ -3374,6 +3384,24 @@
                       <Button Classes="chip" Content="✕" Command="{Binding SetWalletColorCommand}" CommandParameter="clear"
                               AutomationProperties.Name="{Binding [common.clear], Source={x:Static app:Loc.Instance}}"/>
                     </StackPanel>
+
+                    <!-- Money this phrase holds at other wallets' paths (MetaMask accounts, Phantom,
+                         legacy Bitcoin…): scanned once per wallet by itself, and again from here. -->
+                    <Border Background="{DynamicResource UmCardAlt}" CornerRadius="10" Padding="12,10">
+                      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                        <StackPanel Spacing="3">
+                          <TextBlock Text="{Binding [found.title], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
+                          <TextBlock Text="{Binding [found.hint], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
+                                     Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="ghost" VerticalAlignment="Center" Margin="12,0,0,0"
+                                Content="{Binding [found.scan], Source={x:Static app:Loc.Instance}}"
+                                Command="{Binding DiscoverOtherPathsCommand}" IsEnabled="{Binding !IsDiscovering}"/>
+                        <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource UmAccentBright}" Text="{Binding DiscoveryStatus}"
+                                   IsVisible="{Binding DiscoveryStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                      </Grid>
+                    </Border>
 
                     <!-- Single-coin / selected-coin wallets: pick which coins this wallet shows. -->
                     <TextBlock Text="{Binding [settings.walletCoins], Source={x:Static app:Loc.Instance}}"

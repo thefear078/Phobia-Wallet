@@ -5,7 +5,7 @@ namespace Umbrella.Wallet.Core.Tests;
 
 /// <summary>
 /// Pins the Holdings ordering: value descending, 24h change descending, name A→Z, and an unknown /
-/// "Default" sort leaves the catalog order untouched (stable).
+/// "Default" sort puts held coins first by value and keeps the catalog order for the rest (stable).
 /// </summary>
 public sealed class HoldingsSorterTests
 {
@@ -42,11 +42,19 @@ public sealed class HoldingsSorterTests
     }
 
     [Fact]
-    public void Default_and_unknown_keep_the_catalog_order()
+    public void Default_puts_what_you_hold_first_and_keeps_the_catalog_order_for_the_rest()
     {
-        var input = Sample.Select(r => r.Symbol).ToArray();
-        Assert.Equal(input, HoldingsSorter.Order(Sample, HoldingsSorter.Default).Select(r => r.Symbol).ToArray());
-        Assert.Equal(input, HoldingsSorter.Order(Sample, "whatever").Select(r => r.Symbol).ToArray());
-        Assert.Equal(input, HoldingsSorter.Order(Sample, null).Select(r => r.Symbol).ToArray());
+        HoldingRowViewModel[] rows =
+        [
+            Row("BTC", value: 0, change: 0),
+            Row("ETH", value: 0, change: 0),
+            Row("USDT", value: 8000, change: 0),
+            Row("LTC", value: 0, change: 0),
+            Row("XRP", value: 3000, change: 0),
+        ];
+        var expected = new[] { "USDT", "XRP", "BTC", "ETH", "LTC" };
+        Assert.Equal(expected, HoldingsSorter.Order(rows, HoldingsSorter.Default).Select(r => r.Symbol).ToArray());
+        Assert.Equal(expected, HoldingsSorter.Order(rows, "whatever").Select(r => r.Symbol).ToArray());
+        Assert.Equal(expected, HoldingsSorter.Order(rows, null).Select(r => r.Symbol).ToArray());
     }
 }
