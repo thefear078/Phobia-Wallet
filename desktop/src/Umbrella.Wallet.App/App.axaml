@@ -694,6 +694,44 @@
             <Setter Property="Background" Value="{DynamicResource UmCard}" />
         </Style>
 
+        <!-- A quiet fold-out (Swap's "which coins"): the card colour, not the toolkit's black header. -->
+        <Style Selector="Expander.soft /template/ ToggleButton#ExpanderHeader">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextSoft}" />
+            <Setter Property="CornerRadius" Value="12" />
+        </Style>
+        <Style Selector="Expander.soft /template/ ToggleButton#ExpanderHeader:pointerover /template/ Border#ToggleButtonBackground">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+        </Style>
+        <Style Selector="Expander.soft /template/ Border#ExpanderContent">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}" />
+        </Style>
+
+        <!-- A field that sits inside its own rounded container (Swap's "you pay", the palette search):
+             no box of its own in ANY state. The focus style above painted the card colour into the
+             template's border, which drew a dark rectangle inside the rounded container. -->
+        <Style Selector="TextBox.bare">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="TextBox.bare /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.bare:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox.bare:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
         <!-- ===== Keyboard focus (accessibility, §8) =====
              A control reached by Tab gets a clear accent outline so keyboard users can always see
              where they are. :focus-visible fires only for keyboard focus, so clicking with the mouse

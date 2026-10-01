@@ -21,7 +21,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Security](https://github.com/thefear078/UmbrellaWallet/actions/workflows/security.yml/badge.svg)
 ![Release](https://img.shields.io/github/v/release/thefear078/UmbrellaWallet?label=release)
 ![License](https://img.shields.io/badge/license-MIT-4B3F86)
-![Version](https://img.shields.io/badge/version-4.10.0-2F6BEF)
+![Version](https://img.shields.io/badge/version-4.10.0--beta.1-2F6BEF)
 ![Tests](https://img.shields.io/badge/tests-1190%2B%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
 
@@ -179,11 +179,11 @@ twinkling across it, a sweep of light over the balance card. **21 themes**
 share that design in their own colours — the glow behind the page, the mountains and both logos take the
 theme's hue — and the gold that was Umbrella's default is still there as **Honey gold**:
 
-| Honey gold · light on black | Kraken · abyssal violet |
+| Honey gold · light on black | Uniswap · hot pink |
 |---|---|
-| <img src="docs/assets/theme-gold-v410.png" alt="Honey gold theme"/> | <img src="docs/assets/theme-kraken-v410.png" alt="Kraken theme"/> |
-| **Void · electric OLED** | **Matrix · phosphor terminal** |
-| <img src="docs/assets/theme-void-v410.png" alt="Void theme"/> | <img src="docs/assets/theme-matrix-v410.png" alt="Matrix theme"/> |
+| <img src="docs/assets/theme-gold-v410.png" alt="Honey gold theme"/> | <img src="docs/assets/theme-uniswap-v410.png" alt="Uniswap theme"/> |
+| **Void · electric OLED** | **Navy · the classic blue** |
+| <img src="docs/assets/theme-void-v410.png" alt="Void theme"/> | <img src="docs/assets/theme-navy-v410.png" alt="Navy theme"/> |
 
 ## Coins
 
@@ -232,9 +232,9 @@ This is the icon you will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | `PhobiaWallet-Setup-4.10.0.exe` |
-| **Windows portable** | `PhobiaWallet-4.10.0-win-x64-portable.exe` — one file, no install, leaves nothing behind |
-| **Linux** | `PhobiaWallet-4.10.0-linux-x64.tar.gz` |
+| **Windows installer** | `PhobiaWallet-Setup-4.10.0-beta.1.exe` |
+| **Windows portable** | `PhobiaWallet-4.10.0-beta.1-win-x64-portable.exe` — one file, no install, leaves nothing behind |
+| **Linux** | `PhobiaWallet-4.10.0-beta.1-linux-x64.tar.gz` |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
@@ -245,12 +245,12 @@ Every release ships `SHA256SUMS-<version>.txt`. Check it before you run anything
 
 ```bash
 # Linux / macOS — run in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-4.10.0.txt
+sha256sum -c SHA256SUMS-4.10.0-beta.1.txt
 ```
 
 ```powershell
 # Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\PhobiaWallet-Setup-4.10.0.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-4.10.0-beta.1.exe -Algorithm SHA256
 ```
 
 If the hash does not match, do not run it. Better still, [build it yourself](docs/building.md) — the

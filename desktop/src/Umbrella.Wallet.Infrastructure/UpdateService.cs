@@ -26,9 +26,49 @@ public enum InstallKind
 /// <summary>One file attached to a release, with the SHA-256 GitHub computed for it.</summary>
 public sealed record ReleaseAsset(string Name, string Url, long Size, string? Sha256);
 
+/// <summary>
+/// A release version as the project tags it: three numbers and, for a beta, a pre-release label —
+/// <c>4.10.0</c>, <c>4.10.0-beta.1</c>. Ordered by Semantic Versioning: the numbers first; at equal
+/// numbers a pre-release comes BEFORE the release (4.10.0-beta.2 &lt; 4.10.0); labels compare
+/// part by part, numeric parts as numbers (beta.10 &gt; beta.9).
+/// </summary>
+public readonly record struct ReleaseVersion(int Major, int Minor, int Patch, string Pre = "")
+    : IComparable<ReleaseVersion>
+{
+    public bool IsPrerelease => Pre.Length > 0;
+
+    /// <summary>"4.10.0-beta.1" — the form release files are named with.</summary>
+    public override string ToString() => IsPrerelease ? $"{Major}.{Minor}.{Patch}-{Pre}" : $"{Major}.{Minor}.{Patch}";
+
+    public int CompareTo(ReleaseVersion other)
+    {
+        var c = Major.CompareTo(other.Major);
+        if (c == 0) c = Minor.CompareTo(other.Minor);
+        if (c == 0) c = Patch.CompareTo(other.Patch);
+        if (c != 0) return c;
+        if (!IsPrerelease || !other.IsPrerelease) return IsPrerelease == other.IsPrerelease ? 0 : IsPrerelease ? -1 : 1;
+
+        var a = Pre.Split('.');
+        var b = other.Pre.Split('.');
+        for (var i = 0; i < Math.Min(a.Length, b.Length); i++)
+        {
+            var an = int.TryParse(a[i], out var ai);
+            var bn = int.TryParse(b[i], out var bi);
+            c = an && bn ? ai.CompareTo(bi) : an ? -1 : bn ? 1 : string.CompareOrdinal(a[i], b[i]);
+            if (c != 0) return c;
+        }
+        return a.Length.CompareTo(b.Length);
+    }
+
+    public static bool operator >(ReleaseVersion l, ReleaseVersion r) => l.CompareTo(r) > 0;
+    public static bool operator <(ReleaseVersion l, ReleaseVersion r) => l.CompareTo(r) < 0;
+    public static bool operator >=(ReleaseVersion l, ReleaseVersion r) => l.CompareTo(r) >= 0;
+    public static bool operator <=(ReleaseVersion l, ReleaseVersion r) => l.CompareTo(r) <= 0;
+}
+
 /// <summary>A published release: its version, what changed, and its files.</summary>
 public sealed record ReleaseInfo(
-    Version Version, string Tag, string Notes, DateTimeOffset? Published, IReadOnlyList<ReleaseAsset> Assets);
+    ReleaseVersion Version, string Tag, string Notes, DateTimeOffset? Published, IReadOnlyList<ReleaseAsset> Assets);
 
 /// <summary>What a check found.</summary>
 public sealed record UpdateCheckResult(bool Available, ReleaseInfo? Release, string? Error);
@@ -59,6 +99,10 @@ public static class UpdateService
 {
     public const string ReleasesUrl = "https://github.com/thefear078/UmbrellaWallet/releases";
     private const string LatestApi = "https://api.github.com/repos/thefear078/UmbrellaWallet/releases/latest";
+
+    /// <summary>The newest releases including pre-releases — what a beta copy reads, since "latest"
+    /// on GitHub never names a pre-release.</summary>
+    private const string RecentApi = "https://api.github.com/repos/thefear078/UmbrellaWallet/releases?per_page=20";
     private const string LatestPage = "https://github.com/thefear078/UmbrellaWallet/releases/latest";
     private const string DownloadPrefix = "https://github.com/thefear078/UmbrellaWallet/releases/download/";
 
@@ -88,6 +132,26 @@ public static class UpdateService
     {
         if (!TryParseVersion(current, out var running))
             return new UpdateCheckResult(false, null, "Could not read this app's own version.");
+
+        // A beta reads the beta channel: every recent release, pre-releases included, the newest wins —
+        // so a beta moves to the next beta, and to the full release once it is out. A full release
+        // never sees a pre-release.
+        if (running.IsPrerelease)
+        {
+            try
+            {
+                using var res = await Http.GetAsync(RecentApi, ct);
+                if (res.IsSuccessStatusCode)
+                {
+                    var newest = NewestRelease(await res.Content.ReadAsStringAsync(ct), includePrereleases: true);
+                    if (newest is not null) return new UpdateCheckResult(newest.Version > running, newest, null);
+                }
+            }
+            catch (Exception) when (!ct.IsCancellationRequested)
+            {
+                // the stable check below still runs
+            }
+        }
 
         string? apiError = null;
         try
@@ -127,11 +191,33 @@ public static class UpdateService
         }
     }
 
+    /// <summary>The newest usable release in a GitHub list answer (<c>/releases</c>), pre-releases
+    /// included only when asked for. Drafts never.</summary>
+    public static ReleaseInfo? NewestRelease(string json, bool includePrereleases)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return null;
+            ReleaseInfo? best = null;
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                var release = ParseRelease(item.GetRawText(), includePrereleases);
+                if (release is not null && (best is null || release.Version > best.Version)) best = release;
+            }
+            return best;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>
-    /// The release in a GitHub API answer, or null when it is not a usable one. A draft or a pre-release
-    /// is never offered: those are not what the project told people to install.
+    /// The release in a GitHub API answer, or null when it is not a usable one. A draft is never offered;
+    /// a pre-release only to a copy on the beta channel (<paramref name="allowPrerelease"/>).
     /// </summary>
-    public static ReleaseInfo? ParseRelease(string json)
+    public static ReleaseInfo? ParseRelease(string json, bool allowPrerelease = false)
     {
         try
         {
@@ -139,7 +225,7 @@ public static class UpdateService
             var root = doc.RootElement;
             if (root.ValueKind != JsonValueKind.Object) return null;
             if (root.TryGetProperty("draft", out var draft) && draft.ValueKind == JsonValueKind.True) return null;
-            if (root.TryGetProperty("prerelease", out var pre) && pre.ValueKind == JsonValueKind.True) return null;
+            if (!allowPrerelease && root.TryGetProperty("prerelease", out var pre) && pre.ValueKind == JsonValueKind.True) return null;
             if (!root.TryGetProperty("tag_name", out var tagEl) || tagEl.GetString() is not { Length: > 0 } tag) return null;
             if (!TryParseVersion(tag, out var version)) return null;
 
@@ -173,14 +259,24 @@ public static class UpdateService
         }
     }
 
-    /// <summary>"v4.9.0" or "4.9.0" as a version with exactly three parts; anything else is refused.</summary>
-    public static bool TryParseVersion(string? text, out Version version)
+    /// <summary>"v4.9.0", "4.9.0" or "4.10.0-beta.1": exactly three numbers, optionally a pre-release
+    /// label of letters, digits, dots and hyphens; anything else is refused.</summary>
+    public static bool TryParseVersion(string? text, out ReleaseVersion version)
     {
-        version = new Version(0, 0, 0);
+        version = default;
         var t = (text ?? string.Empty).Trim();
         if (t.StartsWith('v') || t.StartsWith('V')) t = t[1..];
-        if (!Version.TryParse(t, out var v) || v.Build < 0 || v.Revision >= 0) return false;
-        version = v;
+        var plus = t.IndexOf('+');   // build metadata ("+sha") never orders anything
+        if (plus >= 0) t = t[..plus];
+        var dash = t.IndexOf('-');
+        var core = dash >= 0 ? t[..dash] : t;
+        var pre = dash >= 0 ? t[(dash + 1)..] : string.Empty;
+        if (dash >= 0 && (pre.Length == 0 || !pre.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-'))) return false;
+        var parts = core.Split('.');
+        if (parts.Length != 3) return false;
+        if (!int.TryParse(parts[0], out var major) || !int.TryParse(parts[1], out var minor) ||
+            !int.TryParse(parts[2], out var patch) || major < 0 || minor < 0 || patch < 0) return false;
+        version = new ReleaseVersion(major, minor, patch, pre);
         return true;
     }
 
@@ -213,15 +309,15 @@ public static class UpdateService
     }
 
     /// <summary>The exact file name the release process gives the asset for this kind of install.</summary>
-    public static string AssetNameFor(InstallKind kind, Version version) => NameFor("PhobiaWallet", kind, version);
+    public static string AssetNameFor(InstallKind kind, ReleaseVersion version) => NameFor("PhobiaWallet", kind, version);
 
     /// <summary>The same file under its name from before the rename (releases from 4.10.0 attach both;
     /// earlier ones only this).</summary>
-    public static string LegacyAssetNameFor(InstallKind kind, Version version) => NameFor("UmbrellaWallet", kind, version);
+    public static string LegacyAssetNameFor(InstallKind kind, ReleaseVersion version) => NameFor("UmbrellaWallet", kind, version);
 
-    private static string NameFor(string product, InstallKind kind, Version version)
+    private static string NameFor(string product, InstallKind kind, ReleaseVersion version)
     {
-        var v = $"{version.Major}.{version.Minor}.{version.Build}";
+        var v = version.ToString();
         return kind switch
         {
             InstallKind.WindowsPortable => $"{product}-{v}-win-x64-portable.exe",
@@ -231,8 +327,7 @@ public static class UpdateService
     }
 
     /// <summary>The checksum manifest's name for a version.</summary>
-    public static string SumsNameFor(Version version) =>
-        $"SHA256SUMS-{version.Major}.{version.Minor}.{version.Build}.txt";
+    public static string SumsNameFor(ReleaseVersion version) => $"SHA256SUMS-{version}.txt";
 
     /// <summary>The download URL for a file of a release — only ever this project's own.</summary>
     public static string DownloadUrl(ReleaseInfo release, string fileName) =>

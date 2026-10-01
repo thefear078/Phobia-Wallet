@@ -806,6 +806,71 @@ public sealed class PublicChainBalanceClient
         return null;
     }
 
+    /// <summary>
+    /// USDT and USDC on the EVM networks besides Ethereum, at the wallet's one 0x address. Ethereum's own
+    /// tokens come from the token indexer; these networks have none keyless, so each balance is a
+    /// <c>balanceOf</c> call to the contract. Every contract and its decimals were checked on its own
+    /// chain (symbol() and decimals()) when it was added — a wrong decimals value is an amount wrong by
+    /// powers of ten. <see cref="ChainKey"/> is the network's key in <see cref="EthTransactionSender.Chains"/>,
+    /// which is how a send reaches the right network.
+    /// </summary>
+    public sealed record EvmToken(string Symbol, string Name, string ChainKey, string Contract, int Decimals)
+    {
+        /// <summary>The network's name as every other row says it ("Polygon", "BSC", "Arbitrum One").</summary>
+        public string Network => EthTransactionSender.Chains[ChainKey].Name;
+    }
+
+    public static IReadOnlyList<EvmToken> EvmStablecoins { get; } =
+    [
+        new("USDT", "Tether USD", "BNB", "0x55d398326f99059fF775485246999027B3197955", 18),
+        new("USDT", "Tether USD", "MATIC", "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", 6),
+        new("USDT", "Tether USD", "ARB", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", 6),
+        new("USDT", "Tether USD", "OP", "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", 6),
+        new("USDT", "Tether USD", "AVAX", "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", 6),
+        new("USDC", "USD Coin", "BNB", "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", 18),
+        new("USDC", "USD Coin", "MATIC", "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", 6),
+        new("USDC", "USD Coin", "ARB", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", 6),
+        new("USDC", "USD Coin", "OP", "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", 6),
+        new("USDC", "USD Coin", "BASE", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6),
+        new("USDC", "USD Coin", "AVAX", "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", 6),
+    ];
+
+    /// <summary>Each token's balance at <paramref name="address"/>; null where the network gave no answer
+    /// (which the caller must not read as zero).</summary>
+    public async Task<IReadOnlyList<(EvmToken Token, decimal? Amount)>> GetEvmStablecoinsAsync(
+        string address, CancellationToken ct = default)
+    {
+        if (address.Length != 42 || !address.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) return [];
+        var data = "0x70a08231" + address[2..].ToLowerInvariant().PadLeft(64, '0');
+        var reads = await Task.WhenAll(EvmStablecoins.Select(async token =>
+        {
+            foreach (var rpc in EthTransactionSender.Chains[token.ChainKey].Rpcs)
+            {
+                try
+                {
+                    var payload = new
+                    {
+                        jsonrpc = "2.0", id = 1, method = "eth_call",
+                        @params = new object[] { new { to = token.Contract, data }, "latest" },
+                    };
+                    using var res = await Http.PostAsJsonAsync(rpc, payload, ct);
+                    if (!res.IsSuccessStatusCode) continue;
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                    if (!doc.RootElement.TryGetProperty("result", out var r) || r.GetString() is not { Length: > 2 } hex) continue;
+                    var raw = System.Numerics.BigInteger.Parse("0" + hex[2..], NumberStyles.HexNumber);
+                    return (token, (decimal?)((decimal)raw / (decimal)System.Numerics.BigInteger.Pow(10, token.Decimals)));
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch
+                {
+                    // the next server
+                }
+            }
+            return (token, (decimal?)null);
+        }));
+        return reads;
+    }
+
     /// <summary>Dogecoin: BlockCypher (200 requests an hour), then Bitcore when it has had enough.</summary>
     private static async Task<ChainBalance?> GetDogeAsync(string address, CancellationToken ct)
     {

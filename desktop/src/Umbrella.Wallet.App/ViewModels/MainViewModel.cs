@@ -403,6 +403,8 @@ public partial class MainViewModel : ViewModelBase
             if (Theming.Current == value || !Theming.IsKnown(value)) return;
             Theming.Apply(value);
             _uiSettings.Theme = value;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => { RebuildRecentActivity(); RebuildFilteredActivity(); },
+                Avalonia.Threading.DispatcherPriority.Background);
             _uiSettings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(ThemeSwatches));
@@ -793,6 +795,21 @@ public partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>Lock the vault the moment the window is minimized. Persisted; the window reads it.</summary>
+    /// <summary>The lock screen's line — one of several in Phobia's voice, a new one each time it locks.</summary>
+    [ObservableProperty] private string _unlockTagline = string.Empty;
+
+    private const int UnlockTaglineCount = 8;
+    private int _lastTagline = -1;
+
+    /// <summary>Picks the next lock-screen line, never the same one twice in a row.</summary>
+    public void PickUnlockTagline()
+    {
+        int n;
+        do { n = Random.Shared.Next(1, UnlockTaglineCount + 1); } while (n == _lastTagline && UnlockTaglineCount > 1);
+        _lastTagline = n;
+        UnlockTagline = Loc.Instance[$"unlock.tag{n}"];
+    }
+
     /// <summary>Settings: the password is asked again before every send (see <see cref="UiSettings.RequirePasswordForSend"/>).</summary>
     public bool RequirePasswordForSend
     {
@@ -1066,14 +1083,47 @@ public partial class MainViewModel : ViewModelBase
     private readonly DeveloperFeeConfig _devFee = DeveloperFeeConfig.Load();
 
     /// <summary>Version shown in the status bar — read from the assembly so it never drifts from the csproj.</summary>
-    public string AppVersionLabel =>
-        $"Phobia Wallet v{CurrentVersion} · the fear";
+    public string AppVersionLabel => $"Phobia Wallet {VersionDisplay} · the fear";
 
-    /// <summary>Just the version, for the sidebar's foot.</summary>
-    public string AppVersionShort => $"v{CurrentVersion}";
+    /// <summary>Just the version, for the sidebar's foot: "Beta 1" on a beta, "v4.10.0" on a release.</summary>
+    public string AppVersionShort => VersionDisplay;
 
-    private static string CurrentVersion =>
-        typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.8.0";
+    /// <summary>"Beta 1" for 4.10.0-beta.1, "v4.10.0" for a full release.</summary>
+    private static string VersionDisplay
+    {
+        get
+        {
+            if (!UpdateService.TryParseVersion(CurrentVersion, out var v) || !v.IsPrerelease) return $"v{CurrentVersion}";
+            var parts = v.Pre.Split('.');
+            var name = parts[0].ToLowerInvariant() switch
+            {
+                "beta" => "Beta",
+                "rc" => "RC",
+                "alpha" => "Alpha",
+                _ => parts[0],
+            };
+            return parts.Length > 1 ? $"{name} {parts[1]}" : name;
+        }
+    }
+
+    /// <summary>The full version with any pre-release label ("4.10.0-beta.1"), from the informational
+    /// version the build stamps (without its "+commit" suffix).</summary>
+    private static string CurrentVersion
+    {
+        get
+        {
+            var info = typeof(MainViewModel).Assembly
+                .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(info))
+            {
+                var plus = info.IndexOf('+');
+                return plus >= 0 ? info[..plus] : info;
+            }
+            return typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.8.0";
+        }
+    }
 
     // ETH send flow: quote → explicit confirm → broadcast result.
     [ObservableProperty] private bool _hasSendQuote;
@@ -1417,6 +1467,8 @@ public partial class MainViewModel : ViewModelBase
             TorEnabled = true;
             _ = ApplyTorAsync();
         }
+
+        PickUnlockTagline();
 
         // Every other start computes the chip as a side effect (Tor starting, a proxy applied); a plain
         // direct start did not, and the chip sat blank until something changed. The status line it
@@ -3510,6 +3562,7 @@ public partial class MainViewModel : ViewModelBase
     public void LockVault()
     {
         _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
+        PickUnlockTagline();   // a new line on the lock screen each time
         ToastVisible = false;   // a notice about this wallet (or the one being opened) never outlives the lock
         _refreshCts?.Cancel();
         if (_unlockedMnemonic is not null)
@@ -4369,18 +4422,22 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     private async Task LoadSparklinesAsync(bool force = false)
     {
-        foreach (var row in Market.ToList())
+        // Four at a time, each row drawn the moment its series arrives. They were fetched one after
+        // another with a pause between, so 27 coins took well over seven seconds before the network
+        // time; Binance, KuCoin and Bybit answer bursts of four without complaint.
+        using var gate = new SemaphoreSlim(4);
+        var range = ChartRange;
+        await Task.WhenAll(Market.ToList().Where(r => force || !r.HasSpark).Select(async row =>
         {
-            if (row.HasSpark && !force) continue;
+            await gate.WaitAsync();
             try
             {
                 // Real candles at the selected window, not a fixed 7-day daily series.
-                var series = await _rates.GetPriceSeriesAsync(
-                    row.Symbol, ChartRange, CancellationToken.None);
-                if (series.Count < 2) continue;
-                RememberSeries(ChartRange, row.Symbol, series);   // the balance chart reuses it
+                var series = await _rates.GetPriceSeriesAsync(row.Symbol, range, CancellationToken.None);
+                if (series.Count < 2) return;
+                RememberSeries(range, row.Symbol, series);   // the balance chart reuses it
                 var idx = Market.ToList().FindIndex(m => m.Symbol == row.Symbol);
-                if (idx < 0) continue;
+                if (idx < 0) return;
                 Market[idx] = Market[idx] with
                 {
                     Spark = BuildChartPoints(series, SparkWidth, SparkHeight),
@@ -4390,9 +4447,11 @@ public partial class MainViewModel : ViewModelBase
             {
                 // a missing sparkline is cosmetic — never break the market list over it
             }
-
-            await Task.Delay(250);
-        }
+            finally
+            {
+                gate.Release();
+            }
+        }));
 
         // The market list just fetched this window's history; the balance chart can draw from it,
         // and the holdings rows draw the same lines.
@@ -4592,45 +4651,56 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();
             RecalcBalance();
 
-            // BTC/LTC: scan every derived address (external + internal) and aggregate — the balance
-            // the wallet shows is exactly the set it can find and spend.
-            await RefreshUtxoWalletsAsync(prices, ct);
+            // Everything below is network-bound and independent, so it runs AT ONCE rather than one
+            // step after another (the Bitcoin-family address scan alone can take many seconds, and the
+            // token reads used to wait for it). Each part updates the list and the total the moment
+            // it answers, so the screen fills in progressively instead of all at the end. Every
+            // continuation runs on the UI thread, so the account list is never written from two
+            // threads; the cancellation token still drops answers for a wallet no longer open.
+            var steps = new List<Task>
+            {
+                // BTC/LTC/BCH/DOGE/ZEC: scan every derived address (external + internal) and
+                // aggregate — the balance shown is exactly the set the wallet can find and spend.
+                RefreshUtxoWalletsAsync(prices, ct),
+            };
 
-            // Every TRC-20 token on our OWN derived TRON account — not just USDT. Reward tokens,
-            // other stablecoins and any TRC-20 asset now appear next to the native coins, which is
-            // what most "my TRON balance is missing" reports actually are.
+            // Every TRC-20 token on our OWN derived TRON account — not just USDT.
             var tronAccount = Accounts.FirstOrDefault(a => a.Symbol == "TRX" && a.SupportStatus == "Ready");
             if (tronAccount is not null && IsRealAddress(tronAccount.Address))
-            {
-                await AddTronTokenRowsAsync(tronAccount.Address, "Ready", prices, ct);
-            }
+                steps.Add(AddTronTokenRowsAsync(tronAccount.Address, "Ready", prices, ct));
 
-            // Same for ERC-20 tokens on our OWN Ethereum account — any token, not just native ETH —
-            // plus the native coins of the major EVM side-chains (BNB, MATIC, AVAX) at the same address.
+            // ERC-20 tokens on our OWN Ethereum account, the native coins of the EVM side-chains, and
+            // USDT/USDC on the other EVM networks — all at the same 0x address.
             var ethAccount = Accounts.FirstOrDefault(a => a.Symbol == "ETH" && a.SupportStatus == "Ready");
             if (ethAccount is not null && IsRealAddress(ethAccount.Address))
             {
-                await AddEthTokenRowsAsync(ethAccount.Address, "Ready", prices, ct);
-                await AddEvmSideRowsAsync(ethAccount.Address, prices, ct);
+                steps.Add(AddEthTokenRowsAsync(ethAccount.Address, "Ready", prices, ct));
+                steps.Add(AddEvmSideRowsAsync(ethAccount.Address, prices, ct));
+                steps.Add(AddEvmStablecoinRowsAsync(ethAccount.Address, prices, ct));
             }
 
-            // Jettons on our OWN TON account. USD-tether on TON is how a great many people hold
-            // dollars on Telegram's chain, and until now the wallet showed the native TON and nothing
-            // else — so that balance simply was not there.
-            // SPL tokens at the wallet's Solana address (roadmap N.3). Tokens of the original token
-            // program can be sent; Token-2022 ones stay receive-only (their rows say so).
+            // SPL tokens at the wallet's Solana address (roadmap N.3).
             var solAccount = Accounts.FirstOrDefault(a => a.Symbol == "SOL" && a.SupportStatus == "Ready");
             if (solAccount is not null && IsRealAddress(solAccount.Address))
-                await AddSolTokenRowsAsync(solAccount.Address, "Receive only", prices, ct);
+                steps.Add(AddSolTokenRowsAsync(solAccount.Address, "Receive only", prices, ct));
 
+            // Jettons on our OWN TON account (USD-tether on TON among them).
             var tonAccount = Accounts.FirstOrDefault(a => a.Symbol == "TON" && a.SupportStatus == "Ready");
             if (tonAccount is not null && IsRealAddress(tonAccount.Address))
+                steps.Add(AddTonJettonRowsAsync(tonAccount.Address, "Receive only", prices, ct));
+
+            async Task ShowWhenDone(Task step)
             {
-                // Jettons are sendable now (roadmap N.3), but only when the wallet knows their
-                // jetton-wallet contract; AddTokenRows marks each row accordingly, so a token it
-                // cannot send still says "Receive only" rather than promising one.
-                await AddTonJettonRowsAsync(tonAccount.Address, "Receive only", prices, ct);
+                try { await step; }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch { /* one source failing must not stop the others; its rows say what they know */ }
+                if (ct.IsCancellationRequested) return;
+                RefreshHoldings();
+                RecalcBalance();
             }
+
+            await Task.WhenAll(steps.Select(ShowWhenDone));
+            ct.ThrowIfCancellationRequested();
 
             // Watch-only. The balance calls run CONCURRENTLY — awaiting them one address at a time made
             // the wait grow with the number of watched addresses (each up to the 20s client timeout).
@@ -4801,6 +4871,38 @@ public partial class MainViewModel : ViewModelBase
             Accounts.Add(new WalletAccountViewModel(
                 symbol, $"{symbol} · {network}", canSend ? "Ready" : "Receive only", address, EvmSideDerivation,
                 (double)usd, (double)amount.Value, network, (double)change, Balance: BalanceRead.Live));
+        }
+    }
+
+    /// <summary>
+    /// USDT and USDC on BSC, Polygon, Arbitrum, Optimism, Base and Avalanche at the wallet's 0x address —
+    /// sendable on their own network. A network that did not answer keeps its last row, marked as such.
+    /// </summary>
+    private async Task AddEvmStablecoinRowsAsync(
+        string address, IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices, CancellationToken ct)
+    {
+        var reads = await _balances.GetEvmStablecoinsAsync(address, ct);
+        ct.ThrowIfCancellationRequested();
+        foreach (var (token, amount) in reads)
+        {
+            var marker = $"ERC20 on {token.Network}";
+            var previous = Accounts.FirstOrDefault(a => a.Derivation == marker &&
+                a.Contract.Equals(token.Contract, StringComparison.OrdinalIgnoreCase));
+            if (amount is null)
+            {
+                if (previous is { Balance: BalanceRead.Live })
+                    Accounts[Accounts.IndexOf(previous)] = previous with { Balance = BalanceRead.Cached };
+                continue;
+            }
+
+            if (previous is not null) Accounts.Remove(previous);
+            if (amount <= 0m) continue;
+
+            var usd = prices.TryGetValue(token.Symbol, out var p) ? (double)p.Usd : 1.0;
+            Accounts.Add(new WalletAccountViewModel(
+                token.Symbol, $"{token.Name} · {token.Network}", "Ready", address, marker,
+                usd, (double)amount.Value, token.Network, 0, Balance: BalanceRead.Live,
+                Contract: token.Contract, TokenDecimals: token.Decimals));
         }
     }
 
@@ -5145,9 +5247,73 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Points the QR/address at an account. Opens on the base receive address (#0); on the
     /// full-HD chains (BTC/LTC) the user can then rotate to a fresh address — safe now that the wallet
     /// discovers and spends across every issued index, so funds on #1+ are found and spendable.</summary>
+    /// <summary>The networks a stablecoin can be received on in this wallet, and the account whose
+    /// address it arrives at there (the same 0x address on every EVM network).</summary>
+    private static readonly Dictionary<string, (string Network, string BaseSymbol)[]> TokenReceiveNetworks =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["USDT"] =
+            [
+                ("TRON", "TRX"), ("Ethereum", "ETH"), ("BSC", "ETH"), ("Polygon", "ETH"),
+                ("Arbitrum One", "ETH"), ("Optimism", "ETH"), ("Avalanche", "ETH"), ("Solana", "SOL"), ("TON", "TON"),
+            ],
+            ["USDC"] =
+            [
+                ("Ethereum", "ETH"), ("BSC", "ETH"), ("Polygon", "ETH"), ("Arbitrum One", "ETH"),
+                ("Optimism", "ETH"), ("Base", "ETH"), ("Avalanche", "ETH"), ("Solana", "SOL"),
+            ],
+        };
+
+    /// <summary>Chips under a stablecoin on Receive: the network it should arrive on.</summary>
+    public ObservableCollection<NetworkChip> ReceiveTokenNetworks { get; } = [];
+
+    private void MarkActiveReceiveNetwork()
+    {
+        for (var i = 0; i < ReceiveTokenNetworks.Count; i++)
+        {
+            var chip = ReceiveTokenNetworks[i];
+            var active = chip.Name == ReceiveTokenNetwork;
+            if (chip.IsActive != active) ReceiveTokenNetworks[i] = chip with { IsActive = active };
+        }
+    }
+
+    [ObservableProperty] private string _receiveTokenNetwork = string.Empty;
+
+    public bool HasReceiveTokenNetworks => ReceiveTokenNetworks.Count > 0;
+
+    /// <summary>Points Receive at the chosen network's address for the stablecoin on screen, and says
+    /// that network by name — USDT sent over any other network does not arrive.</summary>
+    [RelayCommand]
+    private void SelectReceiveTokenNetwork(string? network)
+    {
+        var symbol = SelectedReceiveSymbol;
+        if (network is null || !TokenReceiveNetworks.TryGetValue(symbol, out var options)) return;
+        var option = options.FirstOrDefault(o => o.Network == network);
+        if (option.Network is null) return;
+        var baseAccount = Accounts.FirstOrDefault(a => a.Symbol == option.BaseSymbol && a.SupportStatus == "Ready"
+                                                       && IsRealAddress(a.Address));
+        if (baseAccount is null) return;
+        ReceiveTokenNetwork = network;
+        MarkActiveReceiveNetwork();
+        SelectedReceiveAddress = baseAccount.Address;
+        SelectedReceiveNetwork = string.Format(Loc.Instance["receive.onNetwork"], symbol, network);
+        ReceiveQr = BuildQr(BuildReceivePayload(baseAccount.Address));
+    }
+
     private bool SetReceiveTarget(WalletAccountViewModel? account)
     {
         if (account is null || !IsRealAddress(account.Address)) return false;
+        ReceiveTokenNetworks.Clear();
+        ReceiveTokenNetwork = string.Empty;
+        if (TokenReceiveNetworks.TryGetValue(account.Symbol, out var tokenNetworks))
+        {
+            foreach (var (network, _) in tokenNetworks) ReceiveTokenNetworks.Add(new NetworkChip(network, false));
+            ReceiveTokenNetwork = tokenNetworks.Any(n => n.Network.Equals(account.Chain, StringComparison.OrdinalIgnoreCase))
+                ? tokenNetworks.First(n => n.Network.Equals(account.Chain, StringComparison.OrdinalIgnoreCase)).Network
+                : tokenNetworks[0].Network;
+            MarkActiveReceiveNetwork();
+        }
+        OnPropertyChanged(nameof(HasReceiveTokenNetworks));
         ReceiveAmount = string.Empty;     // a fresh target starts with no requested amount
         ReceiveFiatAmount = string.Empty; // ...and no carried-over USD entry from the previous asset
         ShowReceiveAdvanced = false;      // collapse developer detail on every new target
@@ -5767,6 +5933,60 @@ public partial class MainViewModel : ViewModelBase
         RefreshHoldings();
     }
 
+    /// <summary>
+    /// One row per coin, whatever networks it sits on: USDT on TRON, Ethereum and Polygon is one "Tether"
+    /// row with the total, the networks named under it; ETH on Ethereum and on the rollups is one ETH row.
+    /// Only this wallet's own accounts are combined — a watched address, an exchange balance or a
+    /// suspected airdrop keeps its own row — and the asset page lists each network separately.
+    /// </summary>
+    public static List<HoldingRowViewModel> AggregateAcrossNetworks(List<HoldingRowViewModel> rows)
+    {
+        static bool Own(HoldingRowViewModel h) => h.SupportStatus is "Ready" or "Receive only";
+        var result = new List<HoldingRowViewModel>();
+        var done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in rows)
+        {
+            if (!Own(row)) { result.Add(row); continue; }
+            if (!done.Add(row.Symbol)) continue;
+            var group = rows.Where(h => Own(h) && h.Symbol.Equals(row.Symbol, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (group.Count == 1)
+            {
+                // A token or a coin on a rollup named "Tether USD · TRC20" / "ETH · zkSync Era": the coin's
+                // name, with the network under it like every other row — the network is where it sits,
+                // not part of what it is.
+                var parts = row.Name.Split(" · ");
+                if (parts.Length > 1)
+                {
+                    var single = parts[0].Equals(row.Symbol, StringComparison.OrdinalIgnoreCase)
+                        ? ChainCatalog.All.FirstOrDefault(c => c.Symbol == row.Symbol)?.Name ?? parts[0]
+                        : parts[0];
+                    result.Add(row with { Name = single, Networks = row.Chain });
+                }
+                else
+                {
+                    result.Add(row);
+                }
+                continue;
+            }
+
+            var state = group.Any(h => h.Balance == BalanceRead.Unknown) ? BalanceRead.Unknown
+                : group.Any(h => h.Balance == BalanceRead.Cached) ? BalanceRead.Cached : BalanceRead.Live;
+            var networks = string.Join(" · ", group.Select(h => h.Chain).Distinct(StringComparer.OrdinalIgnoreCase));
+            var name = row.Name.Split(" · ")[0];
+            if (name.Equals(row.Symbol, StringComparison.OrdinalIgnoreCase))
+                name = ChainCatalog.All.FirstOrDefault(c => c.Symbol == row.Symbol)?.Name ?? name;
+            result.Add(new HoldingRowViewModel(
+                row.Symbol, name, row.Chain, row.Price,
+                group.Sum(h => h.Amount), group.Sum(h => h.Value), row.Change24h, row.Address, row.SupportStatus,
+                state, group.Select(h => h.UnreadNote).FirstOrDefault(n => n.Length > 0) ?? string.Empty)
+            {
+                Networks = networks,
+            });
+        }
+
+        return result;
+    }
+
     private void RefreshHoldings()
     {
         Holdings.Clear();
@@ -5815,12 +6035,16 @@ public partial class MainViewModel : ViewModelBase
             a.Symbol, a.Name, a.Chain, a.Price, a.Amount,
             a.Balance == BalanceRead.Unknown ? 0 : a.Price * a.Amount,
             a.Change24h, a.Address, a.SupportStatus, a.Balance, a.UnreadNote));
+        built = AggregateAcrossNetworks(built.ToList());
+
         var sparks = Market.Where(m => m.HasSpark)
             .GroupBy(m => m.Symbol, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Spark, StringComparer.OrdinalIgnoreCase);
         foreach (var h in HoldingsSorter.Order(built, HoldingsSort))
             Holdings.Add(sparks.TryGetValue(h.Symbol, out var spark) ? h with { Spark = spark } : h);
         ApplyMarketHoldings();
+        OnPropertyChanged(nameof(SwapFromBalanceLabel));   // the Swap screen's "balance" line
+        OnPropertyChanged(nameof(SwapWalletLabel));
 
         // A token that arrived becomes sendable; one spent to zero drops off (roadmap N.1).
         RebuildSendableAssets();

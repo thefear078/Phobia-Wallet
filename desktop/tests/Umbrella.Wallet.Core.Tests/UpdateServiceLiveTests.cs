@@ -28,7 +28,7 @@ public sealed class UpdateServiceLiveTests
         Assert.NotNull(older.Release);
 
         var v = older.Release.Version;
-        var same = await UpdateService.CheckAsync($"{v.Major}.{v.Minor}.{v.Build}");
+        var same = await UpdateService.CheckAsync(v.ToString());
         Assert.Null(same.Error);
         Assert.False(same.Available);
     }

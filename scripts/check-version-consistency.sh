@@ -36,7 +36,8 @@ if grep -qE '^#define AppVersion "' desktop/installer/phobia.iss; then
 else
   echo "  ok  installer takes its version from the build (desktop/installer/phobia.iss)"
 fi
-require "README version badge"      "README.md"                                                   "version-${VERSION}-"
+# shields.io escapes a hyphen as "--" (4.10.0-beta.1 → version-4.10.0--beta.1-).
+require "README version badge"      "README.md"                                                   "version-${VERSION//-/--}-"
 require "README installer link"     "README.md"                                                   "PhobiaWallet-Setup-${VERSION}.exe"
 require "README portable link"      "README.md"                                                   "PhobiaWallet-${VERSION}-win-x64-portable.exe"
 require "README linux link"         "README.md"                                                   "PhobiaWallet-${VERSION}-linux-x64.tar.gz"

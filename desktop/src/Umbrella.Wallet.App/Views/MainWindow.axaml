@@ -34,6 +34,7 @@
     <app:ToastGlyphConverter x:Key="ToastGlyph" />
     <app:ChangeWashConverter x:Key="ChangeWash" />
     <app:ActivityLabelConverter x:Key="ActivityLabel" />
+    <app:ThemeBrushConverter x:Key="ThemeBrush" />
     <app:ChartLinePointConverter x:Key="HLineStart" Kind="HStart" />
     <app:ChartLinePointConverter x:Key="HLineEnd" Kind="HEnd" />
     <app:ChartLinePointConverter x:Key="VLineStart" Kind="VStart" />
@@ -423,8 +424,9 @@
             <!-- Normal unlock -->
             <StackPanel IsVisible="{Binding !IsResettingPassword}" Spacing="0">
               <TextBlock Classes="serif" FontSize="28" Text="{Binding [onboard.unlock], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center" Margin="0,22,0,0"/>
+              <!-- A line that changes with every lock, in Phobia's voice — the screen people see most. -->
               <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"
-                         Text="{Binding [unlock.subtitle], Source={x:Static app:Loc.Instance}}"/>
+                         FontStyle="Italic" Text="{Binding UnlockTagline}"/>
               <!-- Enter submits the unlock, so a returning user never has to reach for the mouse. -->
               <TextBox Text="{Binding Password}" PasswordChar="●" Margin="0,22,0,0"
                        Watermark="{Binding [unlock.pw], Source={x:Static app:Loc.Instance}}">
@@ -438,12 +440,7 @@
                    addresses. Folded behind "Advanced" so somebody watching the unlock screen does
                    not learn the option exists — the machinery was already wired through the deriver,
                    scanner and spender; only this field was missing. -->
-              <Button Classes="ghost" FontSize="11.5" Padding="8,4" MinHeight="0" Margin="0,10,0,0"
-                      HorizontalAlignment="Center"
-                      Content="{Binding [unlock.advanced], Source={x:Static app:Loc.Instance}}"
-                      Command="{Binding ToggleUnlockAdvancedCommand}"/>
-
-              <StackPanel IsVisible="{Binding ShowUnlockAdvanced}" Spacing="6" Margin="0,8,0,0">
+              <StackPanel IsVisible="{Binding ShowUnlockAdvanced}" Spacing="6" Margin="0,12,0,0">
                 <TextBox Text="{Binding UnlockPassphrase}" PasswordChar="●"
                          Watermark="{Binding [unlock.passphrase], Source={x:Static app:Loc.Instance}}">
                   <TextBox.KeyBindings>
@@ -462,8 +459,17 @@
               <Button Classes="primary" Content="{Binding [unlock.btn], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
                       HorizontalContentAlignment="Center" Margin="0,16,0,0"
                       IsEnabled="{Binding !IsBusy}" Command="{Binding UnlockCommand}"/>
-              <Button Classes="ghost" Content="{Binding [unlock.forgot], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center" Margin="0,12,0,0"
-                      FontSize="12" Command="{Binding BeginPasswordResetCommand}"/>
+              <!-- The two quiet options, side by side under the button, the same small size. -->
+              <UniformGrid Columns="2" HorizontalAlignment="Center" Margin="0,14,0,0" ColumnSpacing="10">
+                <Button Classes="ghost" FontSize="11.5" Padding="12,5" MinHeight="0" MinWidth="150"
+                        HorizontalContentAlignment="Center"
+                        Content="{Binding [unlock.advanced], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding ToggleUnlockAdvancedCommand}"/>
+                <Button Classes="ghost" FontSize="11.5" Padding="12,5" MinHeight="0" MinWidth="150"
+                        HorizontalContentAlignment="Center"
+                        Content="{Binding [unlock.forgot], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding BeginPasswordResetCommand}"/>
+              </UniformGrid>
             </StackPanel>
 
             <!-- Forgot-password: restore this wallet from its recovery phrase + a new password -->
@@ -1081,7 +1087,8 @@
                                 <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="2" ClipToBounds="True">
                                   <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14.5" TextTrimming="CharacterEllipsis"/>
                                   <StackPanel Orientation="Horizontal" Spacing="7">
-                                    <TextBlock Text="{Binding Symbol}" FontSize="12" Foreground="{DynamicResource UmTextMuted}"/>
+                                    <TextBlock Text="{Binding SymbolLine}" FontSize="12" Foreground="{DynamicResource UmTextMuted}"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="260"/>
                                     <Border Background="{Binding ChangeColor, Converter={StaticResource ChangeWash}}"
                                             CornerRadius="999" Padding="6,1" VerticalAlignment="Center">
                                       <TextBlock Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}" FontSize="10.5" FontWeight="SemiBold"/>
@@ -1141,10 +1148,16 @@
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:ActivityRowViewModel">
                               <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,7" ColumnSpacing="12">
-                                <Border Width="36" Height="36" CornerRadius="18" Background="{Binding IconWash}" VerticalAlignment="Center">
-                                  <Path Data="{Binding IconGeometry}" Stroke="{Binding IconColor}" StrokeThickness="1.9"
-                                        StrokeLineCap="Round" StrokeJoin="Round" Width="16" Height="16" Stretch="Uniform"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Border Width="36" Height="36" CornerRadius="18" VerticalAlignment="Center" BorderThickness="1"
+                                        Background="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=wash}"
+                                        BorderBrush="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=ring}">
+                                  <!-- Drawn in a fixed 24×24 box so every glyph sits dead centre. -->
+                                  <Viewbox Width="17" Height="17" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                      <Path Data="{Binding IconGeometry}" StrokeThickness="1.9" StrokeLineCap="Round" StrokeJoin="Round"
+                                            Stroke="{Binding IconColor, Converter={StaticResource ThemeBrush}}"/>
+                                    </Canvas>
+                                  </Viewbox>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1" ClipToBounds="True">
                                   <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
@@ -1804,8 +1817,8 @@
                 <!-- Honest coverage note: which chains the non-custodial route reaches, and what to do
                      for the rest, so "why can't I swap X?" is answered on the screen itself. Folded: open,
                      it repeated most of the paragraph above it. -->
-                <Expander Header="{Binding [swap.coverageTitle], Source={x:Static app:Loc.Instance}}"
-                          HorizontalAlignment="Stretch" Background="{DynamicResource UmCardAlt}" CornerRadius="10">
+                <Expander Header="{Binding [swap.coverageTitle], Source={x:Static app:Loc.Instance}}" Classes="soft"
+                          HorizontalAlignment="Stretch" Background="{DynamicResource UmCardAlt}" CornerRadius="12">
                   <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
                              Text="{Binding [swap.coverage], Source={x:Static app:Loc.Instance}}"/>
                 </Expander>
@@ -1824,7 +1837,16 @@
                           <StackPanel Spacing="6" VerticalAlignment="Center">
                             <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
                                        Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
-                            <TextBox Text="{Binding SwapAmount}" Watermark="0.0" BorderThickness="0" Padding="0"
+                            <!-- Which wallet pays, and what it holds of this coin (click: use it all). -->
+                            <Button Classes="ghost" Padding="0" MinHeight="0" HorizontalAlignment="Left" Background="Transparent"
+                                    BorderThickness="0" Command="{Binding SwapUseBalanceCommand}"
+                                    IsVisible="{Binding SwapFromBalanceLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                              <StackPanel Spacing="1">
+                                <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapWalletLabel}"/>
+                                <TextBlock FontSize="11.5" Classes="mono" Foreground="{DynamicResource UmAccentBright}" Text="{Binding SwapFromBalanceLabel}"/>
+                              </StackPanel>
+                            </Button>
+                            <TextBox Classes="bare" Text="{Binding SwapAmount}" Watermark="0.0" BorderThickness="0" Padding="0"
                                      MinHeight="0" Background="Transparent" FontSize="26" FontWeight="SemiBold"/>
                           </StackPanel>
                           <ComboBox Grid.Column="1" MinWidth="118" VerticalAlignment="Center"
@@ -3016,10 +3038,16 @@
                                 BorderThickness="1" CornerRadius="14" MinHeight="62" Padding="14,10">
                           <StackPanel Spacing="5">
                           <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" VerticalAlignment="Center">
-                            <Border Width="40" Height="40" CornerRadius="20" Background="{Binding IconWash}" VerticalAlignment="Center" Margin="0,0,14,0">
-                              <Path Data="{Binding IconGeometry}" Stroke="{Binding IconColor}" StrokeThickness="1.9"
-                                    StrokeLineCap="Round" StrokeJoin="Round" Width="17" Height="17" Stretch="Uniform"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Border Width="40" Height="40" CornerRadius="20" VerticalAlignment="Center" Margin="0,0,14,0" BorderThickness="1"
+                                    Background="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=wash}"
+                                    BorderBrush="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=ring}">
+                              <!-- Drawn in a fixed 24×24 box so every glyph sits dead centre. -->
+                              <Viewbox Width="19" Height="19" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                  <Path Data="{Binding IconGeometry}" StrokeThickness="1.9" StrokeLineCap="Round" StrokeJoin="Round"
+                                        Stroke="{Binding IconColor, Converter={StaticResource ThemeBrush}}"/>
+                                </Canvas>
+                              </Viewbox>
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" ClipToBounds="True">
                               <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
@@ -3123,6 +3151,29 @@
                                  Text="{Binding AssetStatusLabel}"/>
                     </Border>
                   </Grid>
+                </Border>
+
+                <!-- The same coin on each network it sits on (one combined holding above). -->
+                <Border Classes="card" Padding="20,14" IsVisible="{Binding HasAssetNetworks}">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                               Text="{Binding [asset.byNetwork], Source={x:Static app:Loc.Instance}}"/>
+                    <ItemsControl ItemsSource="{Binding AssetNetworks}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AssetNetworkRow">
+                          <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4">
+                            <TextBlock Text="{Binding Network}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                                       Text="{Binding Amount}" Margin="0,0,16,0" VerticalAlignment="Center"
+                                       IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).AreValuesVisible}"/>
+                            <TextBlock Grid.Column="2" Classes="mono" FontSize="12.5" FontWeight="SemiBold"
+                                       Text="{Binding Value}" VerticalAlignment="Center"
+                                       IsVisible="{Binding #RootWindow.((vm:MainViewModel)DataContext).AreValuesVisible}"/>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
                 </Border>
 
                 <!-- Actions. Each is offered only where this build can really do it. -->
@@ -4865,7 +4916,7 @@
           <Grid RowDefinitions="Auto,Auto,*">
             <Grid ColumnDefinitions="Auto,*" Margin="18,15">
               <TextBlock Text="⌕" FontSize="18" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
-              <TextBox Grid.Column="1" x:Name="PaletteSearch" Margin="10,0,0,0" BorderThickness="0" MinHeight="0"
+              <TextBox Grid.Column="1" x:Name="PaletteSearch" Classes="bare" Margin="10,0,0,0" BorderThickness="0" MinHeight="0"
                        Background="Transparent" Text="{Binding CommandQuery}"
                        Watermark="{Binding [palette.search], Source={x:Static app:Loc.Instance}}">
                 <!-- Keyboard-only operation: ↑/↓ walk the results (they wrap), Enter runs the
@@ -4937,6 +4988,20 @@
                       AutomationProperties.Name="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
                       Command="{Binding CloseQrPopupCommand}"/>
             </Grid>
+
+            <!-- A stablecoin lives on many networks: pick the one it will arrive on. -->
+            <ItemsControl ItemsSource="{Binding ReceiveTokenNetworks}" IsVisible="{Binding HasReceiveTokenNetworks}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NetworkChip">
+                  <Button Classes="chip" Classes.active="{Binding IsActive}" Margin="0,0,6,6" Content="{Binding Name}"
+                          Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SelectReceiveTokenNetworkCommand}"
+                          CommandParameter="{Binding Name}"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <!-- Token-network warning: USDT/USDC are contracts on one specific chain; a transfer over any
                  other network is unrecoverable, so say it plainly right on the receive screen. -->

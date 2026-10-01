@@ -62,6 +62,12 @@ public partial class MainViewModel
     /// <summary>The movements that touched this asset — the same rows as Transactions, narrowed.</summary>
     public ObservableCollection<ActivityRowViewModel> AssetActivity { get; } = [];
 
+    /// <summary>The coin on each network it is held on (Tether: TRON, Ethereum, Polygon…), so the one
+    /// combined holding can still be read network by network.</summary>
+    public ObservableCollection<AssetNetworkRow> AssetNetworks { get; } = [];
+
+    public bool HasAssetNetworks => AssetNetworks.Count > 1;
+
     public bool HasAssetActivity => AssetActivity.Count > 0;
 
     /// <summary>
@@ -87,6 +93,16 @@ public partial class MainViewModel
         var priceRow = market.FirstOrDefault(m => string.Equals(m.Symbol, sym, StringComparison.OrdinalIgnoreCase));
 
         AssetSymbol = sym;
+        AssetNetworks.Clear();
+        foreach (var a in accounts.Where(a => string.Equals(a.Symbol, sym, StringComparison.OrdinalIgnoreCase) &&
+                                              a.SupportStatus is "Ready" or "Receive only" && !a.IsSuspectedSpam &&
+                                              a.Amount > 0))
+        {
+            AssetNetworks.Add(new AssetNetworkRow(a.Chain,
+                BalanceReadout.AmountText(a.Amount, a.Balance, a.Symbol),
+                a.Balance == BalanceRead.Unknown ? "—" : Fx.Money(a.Amount * a.Price)));
+        }
+        OnPropertyChanged(nameof(HasAssetNetworks));
         AssetName = holding?.Name ?? account?.Name ?? priceRow?.Name ?? sym;
         AssetNetwork = holding?.NetworkLabel ?? account?.NetworkLabel ?? CoinNetworks.For(sym, sym);
         AssetAddress = account?.Address ?? string.Empty;

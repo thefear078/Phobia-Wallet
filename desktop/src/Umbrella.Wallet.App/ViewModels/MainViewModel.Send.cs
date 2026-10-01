@@ -1066,8 +1066,10 @@ public partial class MainViewModel
                 return;
             }
 
+            // The network the token lives on: Ethereum, or the one an EVMTOKEN key names (the fee is that
+            // network's native coin — BNB, POL, ETH on a rollup — at the same 0x address).
             var (quote, error) = await _ethSender.PrepareTokenAsync(
-                from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals);
+                from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals, EvmChainForSendKey(sendKey));
 
             if (quote is null)
             {

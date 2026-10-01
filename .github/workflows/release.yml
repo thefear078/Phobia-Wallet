@@ -45,7 +45,8 @@ jobs:
         run: |
           choco install innosetup -y --no-progress
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DAppVersion=$(Get-Content VERSION)" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/phobia.iss
+          $ver = (Get-Content VERSION).Trim()
+          & $iscc "/DAppVersion=$ver" "/DAppNumericVersion=$($ver.Split('-')[0])" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/phobia.iss
           # The README links to a single portable EXE, not an archive. Producing a zip here meant the
           # download link on the front page 404'd on every release until somebody uploaded the exe by
           # hand - which the checksum job below would then reject as a stray artifact.
@@ -59,6 +60,7 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
             dist/PhobiaWallet-Setup-${{ steps.v.outputs.version }}.exe
             dist/PhobiaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe
@@ -93,6 +95,7 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
             PhobiaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
             UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
@@ -166,6 +169,7 @@ jobs:
       - name: Attach checksums to release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: SHA256SUMS-${{ steps.v.outputs.version }}.txt
 
       # Roadmap R.3. A checksum proves a download matches the manifest on the release page. It says

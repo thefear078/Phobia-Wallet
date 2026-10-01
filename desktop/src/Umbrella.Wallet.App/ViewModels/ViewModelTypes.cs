@@ -294,6 +294,12 @@ public sealed record WalletListItemViewModel(
         HasColor ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Color!)) : null;
 }
 
+/// <summary>A network chip (Receive's "which network"), lit when chosen.</summary>
+public sealed record NetworkChip(string Name, bool IsActive);
+
+/// <summary>One network a coin is held on, on the coin's own page.</summary>
+public sealed record AssetNetworkRow(string Network, string Amount, string Value);
+
 public sealed record HoldingRowViewModel(
     string Symbol,
     string Name,
@@ -311,6 +317,14 @@ public sealed record HoldingRowViewModel(
     /// <summary>Why an unread balance is unread, when that is known (see WalletAccountViewModel).</summary>
     string UnreadNote = "")
 {
+    /// <summary>The networks this coin is held on, when it is held on more than one ("TRON · Polygon").</summary>
+    public string? Networks { get; init; }
+
+    public bool HasNetworks => !string.IsNullOrEmpty(Networks);
+
+    /// <summary>Under the coin's name: the ticker, and the networks when there are several.</summary>
+    public string SymbolLine => HasNetworks ? $"{Symbol} · {Networks}" : Symbol;
+
     public string PriceLabel => Fx.Price(Price);
     public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
     public string ValueLabel => Balance == BalanceRead.Unknown ? "—" : Fx.Money(Value);
@@ -651,24 +665,21 @@ public sealed record ActivityRowViewModel(
         _ => OtherGlyph,
     };
 
-    /// <summary>The icon's colour, by what kind of event it is.</summary>
+    /// <summary>The icon's colour, from the CURRENT theme: money in is the theme's gain colour, money
+    /// out a soft red, everything the wallet itself did its accent; settings stay neutral. A theme
+    /// resource key or a literal colour — <see cref="Umbrella.Wallet.App.ThemeBrushConverter"/> reads both.</summary>
     public string IconColor => Kind switch
     {
-        "Received" => "#8FCB9B",
-        "Sent" => "#E09A9A",
-        "Swap" => "#A99BFF",
-        "Connected" => "#7FB6E8",
-        "Security" => "#E7CA83",
-        _ => "#A0A6B0",
+        "Received" => "UmPos",
+        "Sent" => "#E58A8A",
+        "Settings" => "UmTextDim",
+        _ => "UmAccentBright",
     };
-
-    /// <summary>The icon disc: the same colour, faint.</summary>
-    public string IconWash => "#24" + IconColor[1..];
 
     private static readonly Avalonia.Media.Geometry LockGlyph = Avalonia.Media.StreamGeometry.Parse(
         "M8 11 V8 C8 5.8 9.8 4 12 4 C14.2 4 16 5.8 16 8 V11 M6 11 H18 V20 H6 Z M12 14.5 V16.5");
     private static readonly Avalonia.Media.Geometry OnionGlyph = Avalonia.Media.StreamGeometry.Parse(
-        "M12 4 C7.5 8 6.5 15 12 20 C17.5 15 16.5 8 12 4 Z M12 8.5 C9.8 11 9.8 15 12 17 C14.2 15 14.2 11 12 8.5 Z M12 4 V2.5");
+        "M12 3.5 C7.5 7.5 6.5 15 12 20.5 C17.5 15 16.5 7.5 12 3.5 Z M12 8.5 C9.8 11 9.8 15 12 17 C14.2 15 14.2 11 12 8.5 Z");
     private static readonly Avalonia.Media.Geometry GlobeGlyph = Avalonia.Media.StreamGeometry.Parse(
         "M12 3.5 C16.7 3.5 20.5 7.3 20.5 12 C20.5 16.7 16.7 20.5 12 20.5 C7.3 20.5 3.5 16.7 3.5 12 C3.5 7.3 7.3 3.5 12 3.5 Z M3.5 12 H20.5 M12 3.5 C9 7 9 17 12 20.5 M12 3.5 C15 7 15 17 12 20.5");
     private static readonly Avalonia.Media.Geometry ShieldGlyph = Avalonia.Media.StreamGeometry.Parse(
@@ -701,7 +712,7 @@ public sealed record ActivityRowViewModel(
         _ => OtherGlyph,
     };
 
-    private static readonly Avalonia.Media.Geometry ReceivedGlyph = Avalonia.Media.StreamGeometry.Parse("M12 5 V17 M6 11 L12 17 L18 11");
+    private static readonly Avalonia.Media.Geometry ReceivedGlyph = Avalonia.Media.StreamGeometry.Parse("M12 6 V18 M6 12 L12 18 L18 12");
     private static readonly Avalonia.Media.Geometry SentGlyph = Avalonia.Media.StreamGeometry.Parse("M7 17 L17 7 M9 7 H17 V15");
     private static readonly Avalonia.Media.Geometry SwapGlyph = Avalonia.Media.StreamGeometry.Parse("M6 8 H17 L14 5 M18 16 H7 L10 19");
     private static readonly Avalonia.Media.Geometry OtherGlyph = Avalonia.Media.StreamGeometry.Parse("M12 7 V13 M12 16.5 V17");

@@ -137,6 +137,43 @@ public sealed class BoolToWeightConverter : IValueConverter
 }
 
 /// <summary>
+/// A brush from a theme resource key ("UmAccentBright") or a literal colour ("#E58A8A"); with the
+/// parameter "wash", the same colour faint, for an icon's disc. Lets data pick a THEMED colour.
+/// </summary>
+public sealed class ThemeBrushConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var key = value as string ?? string.Empty;
+        Avalonia.Media.Color color;
+        if (key.StartsWith('#'))
+        {
+            color = Avalonia.Media.Color.Parse(key);
+        }
+        else if (Avalonia.Application.Current?.Resources.TryGetResource(key, null, out var res) == true &&
+                 res is Avalonia.Media.ISolidColorBrush solid)
+        {
+            color = solid.Color;
+        }
+        else
+        {
+            color = Avalonia.Media.Colors.Gray;
+        }
+
+        var alpha = (parameter as string) switch
+        {
+            "wash" => (byte)0x26,
+            "ring" => (byte)0x4D,
+            _ => color.A,
+        };
+        return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromArgb(alpha, color.R, color.G, color.B));
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
 /// One end of a chart guide line, from a single coordinate: a horizontal line at a given y spans the
 /// plot (x 10 → 790), a vertical line at a given x spans price area and volume band (y 14 → 272).
 /// Lets the crosshair and last-price lines bind to the one number the view model computes.

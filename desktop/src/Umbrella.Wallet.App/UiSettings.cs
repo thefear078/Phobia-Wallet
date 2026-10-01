@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Linq;
 using Umbrella.Wallet.Infrastructure;
 
 namespace Umbrella.Wallet.App;
@@ -43,7 +44,7 @@ public sealed class UiSettings
     /// <summary>Show every wallet's balance (as of its last refresh) and their sum in the wallet switcher.</summary>
     public bool ShowAllWalletTotals { get; set; } = false;
     /// <summary>Crystals floating slowly up behind the page. On by default; gated by AnimationsEnabled.</summary>
-    public bool FloatingCrystals { get; set; } = true;
+    public bool FloatingCrystals { get; set; } = false;
 
     /// <summary>Tiny facets of light that twinkle across the page. On by default; gated by AnimationsEnabled.</summary>
     public bool CrystalGlints { get; set; } = true;
@@ -147,7 +148,15 @@ public sealed class UiSettings
             // it, so a Ukrainian/Russian/… user isn't dropped into English with no setting to restore.
             if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage(), BrandVersion = CurrentBrandVersion };
             var settings = JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(Path)) ?? new UiSettings();
-            if (MoveToPhobia(settings)) settings.Save();
+            var changed = MoveToPhobia(settings);
+            // A theme that was retired (Matrix, Abyss, Kraken, Solarized, Bitcoin, Monero, WhiteBit) falls
+            // back to the default on every load — not only during a migration the file may have passed.
+            if (!Theming.Themes.Any(x => x.Id == settings.Theme))
+            {
+                settings.Theme = Theming.DefaultTheme;
+                changed = true;
+            }
+            if (changed) settings.Save();
             return settings;
         }
         catch
@@ -166,13 +175,18 @@ public sealed class UiSettings
         if (settings.BrandVersion >= CurrentBrandVersion) return false;
         // Only a file from before Phobia can be sitting on the old default; after that, gold was a choice.
         if (settings.BrandVersion < 1 && settings.Theme == "umbrella") settings.Theme = Theming.DefaultTheme;
-        settings.StickersEnabled = false;
+        // Stickers became opt-in with Phobia's clean look (version 2); a choice made after that stands.
+        if (settings.BrandVersion < 2) settings.StickersEnabled = false;
+        // The floating crystals read as stray pixels on the page, not as decoration (version 3): off
+        // once for everybody, still one switch away in Settings → Appearance.
+        if (settings.BrandVersion < 3) settings.FloatingCrystals = false;
         settings.BrandVersion = CurrentBrandVersion;
         return true;
     }
 
-    /// <summary>1 = the first Phobia build (blue); 2 = Phobia's violet, clean look.</summary>
-    public const int CurrentBrandVersion = 2;
+    /// <summary>1 = the first Phobia build (blue); 2 = Phobia's violet, clean look; 3 = the beta
+    /// (floating crystals off).</summary>
+    public const int CurrentBrandVersion = 3;
 
     /// <summary>The OS UI language if Phobia ships a translation for it, otherwise English.</summary>
     // A fresh install always starts in English; the user can switch language in Settings, and that

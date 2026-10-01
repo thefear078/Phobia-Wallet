@@ -70,7 +70,7 @@ if ($SkipInstaller) {
 } else {
   # Pass the version the build actually produced. The .iss used to carry its own literal that had to
   # be updated by hand, and it drifted — a 4.6.0 build shipped as "UmbrellaWallet-Setup-4.5.0.exe".
-  & $Iscc "/DAppVersion=$version" $iss
+  & $Iscc "/DAppVersion=$version" "/DAppNumericVersion=$($version.Split('-')[0])" $iss
   $setup = Join-Path $OutRoot ("PhobiaWallet-Setup-{0}.exe" -f $version)
   if (-not (Test-Path $setup)) {
     throw "Installer was expected at '$setup' but is not there — the .iss version and the build disagree."

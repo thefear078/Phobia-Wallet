@@ -136,9 +136,6 @@ public sealed class ThemingTests
         // as "up" and just looks like more chrome.
         foreach (var theme in Theming.Themes)
         {
-            // Matrix is the deliberate exception: a phosphor terminal is meant to be one colour.
-            if (theme.Id == "matrix") continue;
-
             var p = Theming.PaletteOf(theme.Id)!;
             var accent = Color.Parse(p["UmAccentBright"]);
             var pos = Color.Parse(p["UmPos"]);
@@ -188,6 +185,13 @@ public sealed class ThemingTests
         var nord = new UiSettings { Theme = "nord", BrandVersion = 0 };
         Assert.True(UiSettings.MoveToPhobia(nord));
         Assert.Equal("nord", nord.Theme);
+
+        // The beta switches the floating crystals off once, and leaves stickers chosen since version 2.
+        var v2 = new UiSettings { Theme = "uniswap", BrandVersion = 2, StickersEnabled = true, FloatingCrystals = true };
+        Assert.True(UiSettings.MoveToPhobia(v2));
+        Assert.False(v2.FloatingCrystals);
+        Assert.True(v2.StickersEnabled);
+        Assert.Equal("uniswap", v2.Theme);
     }
 
     [Fact]

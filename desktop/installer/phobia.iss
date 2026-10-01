@@ -23,6 +23,10 @@
 ; The fallback reads it out of the published exe, so compiling the .iss directly still names the
 ; installer after the binary it actually contains rather than after a stale literal. Defined AFTER
 ; SourceDir because it reads the exe from there.
+#ifndef AppNumericVersion
+  ; The numeric part (4.10.0 of 4.10.0-beta.1): Windows file versions are numbers only.
+  #define AppNumericVersion GetVersionNumbersString(SourceDir + "\" + AppExe)
+#endif
 #ifndef AppVersion
   #define AppVersion GetVersionNumbersString(SourceDir + "\" + AppExe)
 #endif
@@ -45,7 +49,7 @@ AppContact={#AppUrl}
 AppComments=Self-custody, non-custodial crypto wallet. Your keys are generated and encrypted on this device and never leave it.
 VersionInfoDescription={#AppName} — self-custody crypto wallet
 VersionInfoProductName={#AppName}
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#AppNumericVersion}
 VersionInfoCompany={#AppPublisher}
 DefaultDirName={autopf}\Phobia Wallet
 DefaultGroupName=Phobia Wallet

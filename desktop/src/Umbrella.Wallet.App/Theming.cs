@@ -32,20 +32,13 @@ public static class Theming
         new("signal", "Ember · crimson editorial"),
         new("black", "Void · electric OLED"),
         new("sunset", "Sunset · dusk gradient"),
-        new("matrix", "Matrix · phosphor terminal"),
-        new("ocean", "Abyss · deep sea"),
-        new("kraken", "Kraken · abyssal violet"),
         new("nord", "Nord · arctic frost"),
         new("dracula", "Dracula · midnight dev"),
-        new("solarized", "Solarized · warm slate"),
-        new("bitcoin", "Bitcoin · signal orange"),
         new("ethereum", "Ethereum · periwinkle"),
         new("solana", "Solana · neon gradient"),
-        new("monero", "Monero · furnace orange"),
         new("uniswap", "Uniswap · hot pink"),
         new("binance", "Binance · gold"),
         new("telegram", "Telegram · sky"),
-        new("whitebit", "WhiteBit · lime"),
     ];
 
     /// <summary>Order matters only for readability; every theme must define every key.</summary>
@@ -130,16 +123,6 @@ public static class Theming
             "#FFFFFF", "#C9D2D4", "#93A0A3", "#6E7A7D", "#34D399",
             "#FFFFFF", "#E8F6F8", "#000000",
         ],
-        // Matrix — phosphor green on dead black, the terminal/CRT mood. The accent IS the text colour
-        // family here, which is what makes it feel like a screen rather than an app.
-        ["matrix"] =
-        [
-            "#000000", "#030603", "#061006", "#040B04", "#0A1A0A", "#0F2810",
-            "#0B1A0B", "#143214", "#1D4A1E",
-            "#16A34A", "#00FF41", "#5CFF7A", "#062A0E", "#04200A",
-            "#D6FFD9", "#9FE8A8", "#6FB877", "#528A58", "#00FF41",
-            "#D6FFD9", "#FFFFFF", "#000000",
-        ],
         ["sunset"] =
         [
             "#1A0E14", "#221219", "#2B1720", "#26141C", "#3A1F2B", "#4A2836",
@@ -157,16 +140,6 @@ public static class Theming
             "#D6006B", "#FF007A", "#FF4D9E", "#3A0B22", "#2E091B",
             "#F5F6F7", "#CBD0D4", "#8D9499", "#727980", "#21C77A",
             "#F5F6F7", "#FFFFFF", "#0D0E0E",
-        ],
-        // Abyss — sunless-zone water: the base goes almost black-blue, and the positive is a
-        // bioluminescent aqua rather than a leaf green.
-        ["ocean"] =
-        [
-            "#02070C", "#051019", "#091A26", "#06141E", "#0F2A3A", "#14394E",
-            "#0D2331", "#193A4F", "#245069",
-            "#1E7FA8", "#38C6E0", "#57DAF2", "#0E3547", "#0B2B3A",
-            "#E6F4FA", "#B6D0DC", "#7C96A2", "#647C86", "#43F5C0",
-            "#E6F4FA", "#FFFFFF", "#02070C",
         ],
         // Binance — signature black + gold (#F0B90B), with Binance's OWN up-green (#0ECB81) rather
         // than a generic mint, so gains look the way they do on the exchange itself.
@@ -187,35 +160,6 @@ public static class Theming
             "#EAF3FA", "#B9CFDD", "#7E96A6", "#647B8A", "#4DCD5E",
             "#EAF3FA", "#FFFFFF", "#0E1621",
         ],
-        // WhiteBit — its bright green (#22C55E).
-        ["whitebit"] =
-        [
-            "#08100C", "#0C1712", "#101F17", "#0D1B14", "#163021", "#1E402B",
-            "#153024", "#22452F", "#2E5C3E",
-            "#159550", "#22C55E", "#3BE07A", "#0F3A24", "#0C2E1D",
-            "#EBFBF1", "#C0DECB", "#86A692", "#6E8677", "#5BF0A0",
-            "#EBFBF1", "#FFFFFF", "#08100C",
-        ],
-        // Bitcoin — the orange (#F7931A) on warm near-black.
-        ["bitcoin"] =
-        [
-            "#0D0A06", "#16110A", "#1D160D", "#18120A", "#2A2012", "#3A2C18",
-            "#241C12", "#3A2D1D", "#4E3C27",
-            "#C0700A", "#F7931A", "#FFAE42", "#3A2A0C", "#2E2109",
-            "#FBF3EA", "#E2CFB8", "#AD9578", "#8E7C64", "#6FD08C",
-            "#FBF3EA", "#FFFFFF", "#0D0A06",
-        ],
-        // Kraken — the brand violet (#7132F5), but the theme is built to earn the NAME: an abyssal
-        // indigo base, as if lit from below, with a bioluminescent teal for gains. Previously it was
-        // the brand violet on a generic dark card, which is where "just a purple theme" came from.
-        ["kraken"] =
-        [
-            "#06050D", "#0B0916", "#100C1E", "#0D091A", "#1D1531", "#291D45",
-            "#1B1533", "#2C224F", "#3F2F6B",
-            "#5A28D0", "#7132F5", "#9256FF", "#201441", "#180E30",
-            "#EFEBFB", "#CFC6EC", "#978BBC", "#7B70A0", "#2DE0A6",
-            "#EFEBFB", "#FFFFFF", "#06050D",
-        ],
         // Solana — the brand IS a gradient, so this theme paints the page as one (see
         // GradientBackground) and uses Solana's own #14F195 green for gains.
         ["solana"] =
@@ -234,26 +178,6 @@ public static class Theming
             "#4C63C7", "#627EEA", "#8098FF", "#182046", "#121936",
             "#F2F4FB", "#CBD1E4", "#939BB4", "#737B94", "#5BD6A0",
             "#F2F4FB", "#FFFFFF", "#06070C",
-        ],
-        // Monero — the #FF6600 furnace orange on a warm smoke-grey base, the darkest and most
-        // "industrial" of the warm themes (deliberately grittier than Bitcoin's polished orange).
-        ["monero"] =
-        [
-            "#0B0908", "#14100D", "#1A1512", "#16110E", "#261E18", "#332821",
-            "#221A15", "#33281F", "#46372B",
-            "#CC5200", "#FF6600", "#FF8533", "#3A1A06", "#2D1405",
-            "#F7F2ED", "#DCCFC2", "#A89887", "#86786A", "#5FD08A",
-            "#F7F2ED", "#FFFFFF", "#0B0908",
-        ],
-        // Solarized Dark — the real base03/base02 teal-slate with the #268BD2 blue and #859900 olive
-        // green. The only theme whose base is a colour rather than a near-black, which is the point.
-        ["solarized"] =
-        [
-            "#002028", "#002B36", "#073642", "#05303B", "#0C4351", "#10505F",
-            "#0A3B48", "#0F4C5B", "#16606F",
-            "#1F6FA8", "#268BD2", "#4BA3E3", "#052F42", "#042634",
-            "#FDF6E3", "#C3CDCB", "#93A1A1", "#7A8A8A", "#859900",
-            "#FDF6E3", "#FFFFFF", "#002028",
         ],
         // Nord — the arctic palette: cool slate greys, frost-blue accent.
         ["nord"] =

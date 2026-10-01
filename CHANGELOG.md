@@ -6,7 +6,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
-## [4.10.0] — not released yet: ships first as a beta — Umbrella is now Phobia; Monero seeds in every language
+## [4.10.0-beta.1] — Beta 1 (a GitHub pre-release; installed beta copies update to newer betas by themselves) — Umbrella is now Phobia; Monero seeds in every language
 
 This version is not published. It goes out first as a **beta** (a GitHub pre-release, which installed
 copies never update to on their own), once every coin reads and sends on an ordinary connection and the
@@ -78,6 +78,40 @@ new design is finished.
 - **Tor takes the next free port** when 9250 is in use (two copies of the wallet side by side made the
   second Tor exit at once), and a Tor-only wallet tries a failed Tor start again by itself.
 - The connection chip was blank on a plain direct start; it says DIRECT now.
+
+### A coin is one coin, on every network it lives on
+
+- **USDT is one asset, not "TRC-20".** Tether on TRON, Ethereum, BSC, Polygon, Arbitrum, Optimism and
+  Avalanche shows as ONE row with the total and the networks named under it ("USDT · TRON · Polygon");
+  its page lists each network. The same holds for USDC and for ETH on Ethereum and the rollups. A token
+  on a single network shows as the coin too ("Tether USD", "USDT · TRON").
+- **USDT and USDC are read on BSC, Polygon, Arbitrum, Optimism, Base and Avalanche** (a `balanceOf` call
+  to each contract — every contract and its decimals checked on its own chain) and **sent on their own
+  network**, the fee paid in that network's coin.
+- **Receive USDT or USDC on the network you choose**: chips for each network switch the address and the
+  QR, and the warning names that network.
+- **Swap says where the money comes from**: the wallet, its balance of the coin (click it to swap it all),
+  and a quote that arrives by itself as you type, with the fee's value in your currency.
+
+### Beta
+
+- **The app is a beta now** ("Beta 1" where the version was). **Check for updates follows the beta
+  channel**: a beta reads every recent release, pre-releases included, and installs the newest — the
+  next beta, then the full release. A full release never sees a pre-release. Versions are ordered as
+  Semantic Versioning orders them (4.10.0-beta.2 < 4.10.0). The release workflow publishes a version
+  with a suffix as a GitHub pre-release; the installer takes the numeric part for the file version.
+- **Faster**: the Bitcoin-family scan and every token read (TRON, Ethereum, the EVM networks, Solana,
+  TON) run at once instead of one after another, and the list and total update as each one answers;
+  the market's price lines load four at a time instead of one by one with a pause between.
+- **Lock screen**: a line in Phobia's voice that changes every time it locks, instead of the
+  explanation about the seed; "Advanced" and "Forgot password?" side by side, the same small size.
+- **Icons**: activity icons are drawn in a fixed box (no more off-centre glyphs) in the theme's own
+  colours.
+- **Fields**: a field inside its own rounded container (Swap's amount) no longer draws a dark box of its
+  own when focused.
+- **Themes retired**: Bitcoin, Matrix, Abyss, Kraken, Solarized, Monero and WhiteBit. A wallet on one of
+  them moves to Phobia.
+- **Floating crystals are off** (they read as stray pixels); Settings → Appearance turns them back on.
 
 ### Market, Activity and Security, made for watching your money
 

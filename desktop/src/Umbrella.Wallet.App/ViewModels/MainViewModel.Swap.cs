@@ -61,9 +61,62 @@ public partial class MainViewModel
     {
         RebuildSwapToOptions();
         InvalidateSwap();
+        OnPropertyChanged(nameof(SwapFromBalanceLabel));
+        ScheduleSwapQuote();
     }
-    partial void OnSwapToSymbolChanged(string value) => InvalidateSwap();
-    partial void OnSwapAmountChanged(string value) => InvalidateSwap();
+    partial void OnSwapToSymbolChanged(string value) { InvalidateSwap(); ScheduleSwapQuote(); }
+    partial void OnSwapAmountChanged(string value) { InvalidateSwap(); ScheduleSwapQuote(); }
+
+    /// <summary>"From wallet «Main wallet»" — the swap is paid from the open wallet, said on the screen.</summary>
+    public string SwapWalletLabel => string.Format(Loc.Instance["swap.fromWallet"], ActiveWalletLabel);
+
+    /// <summary>What the open wallet holds of the coin being paid with, and its value — or a dash when
+    /// that balance has not been read (never a zero standing in for "unknown").</summary>
+    public string SwapFromBalanceLabel
+    {
+        get
+        {
+            var account = AccountForSendKey((SwapFromSymbol ?? string.Empty).ToUpperInvariant());
+            if (account is null) return string.Empty;
+            if (account.Balance == BalanceRead.Unknown) return string.Format(Loc.Instance["swap.balance"], $"— {account.Symbol}");
+            var amount = ((decimal)account.Amount).ToString("#,0.########", Fx.Culture);
+            var fiat = account.Price > 0 && account.Amount > 0 ? $" ≈ {Fx.Money(account.Amount * account.Price)}" : string.Empty;
+            return string.Format(Loc.Instance["swap.balance"], $"{amount} {account.Symbol}{fiat}");
+        }
+    }
+
+    /// <summary>Puts the whole balance of the paying coin into the amount (the quote then shows what it
+    /// buys; the network fee is still taken when the swap is sent, so the review says what is left).</summary>
+    [RelayCommand]
+    private void SwapUseBalance()
+    {
+        var account = AccountForSendKey((SwapFromSymbol ?? string.Empty).ToUpperInvariant());
+        if (account is null || account.Balance == BalanceRead.Unknown || account.Amount <= 0) return;
+        SwapAmount = ((decimal)account.Amount).ToString("0.########", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private CancellationTokenSource? _swapQuoteDelay;
+
+    /// <summary>
+    /// Asks for a quote by itself shortly after the pair or amount stops changing, so the rate, what
+    /// arrives and the fee are on screen without a button press. Only with a valid amount, and never
+    /// while one is already being fetched.
+    /// </summary>
+    private void ScheduleSwapQuote()
+    {
+        _swapQuoteDelay?.Cancel();
+        if (_unlockedMnemonic is null || !AmountInput.TryParsePositive(SwapAmount, out _)) return;
+        var cts = _swapQuoteDelay = new CancellationTokenSource();
+        _ = Task.Delay(700, cts.Token).ContinueWith(t =>
+        {
+            if (t.IsCanceled) return;
+            Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+            {
+                if (cts.IsCancellationRequested || SwapBusy || HasSwapQuote) return;
+                await GetSwapQuoteAsync();
+            });
+        }, TaskScheduler.Default);
+    }
 
     /// <summary>Swaps the From and To coins — the ⇅ button between them, like every DEX swap widget.
     /// Only flips when the current "To" is a valid "From" (some receive-only coins can't be paid from).</summary>
@@ -149,7 +202,9 @@ public partial class MainViewModel
             _swapQuote = quote;
             SwapExpectedOut = $"{Fmt(quote.ExpectedOut)} {to}";
             SwapRateText = $"1 {from} ≈ {Fmt(quote.ExpectedOut / amount)} {to}";
-            SwapFeeText = $"{Fmt(quote.TotalFee)} {to} · {quote.TotalBps / 100.0:0.##}%";
+            var toPrice = Market.FirstOrDefault(m => string.Equals(m.Symbol, to, StringComparison.OrdinalIgnoreCase))?.Price ?? 0;
+            var feeFiat = toPrice > 0 ? $" ≈ {Fx.Money((double)quote.TotalFee * toPrice)}" : string.Empty;
+            SwapFeeText = $"{Fmt(quote.TotalFee)} {to}{feeFiat} · {quote.TotalBps / 100.0:0.##}%";
             SwapEtaText = quote.EtaSeconds >= 60 ? $"~{quote.EtaSeconds / 60} min" : $"~{quote.EtaSeconds} s";
             SwapDestination = Shorten(destination);
             var mins = Math.Max(0, (int)(quote.Expiry - DateTimeOffset.UtcNow).TotalMinutes);
