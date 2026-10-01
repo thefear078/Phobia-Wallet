@@ -1,6 +1,6 @@
 # Development workflow
 
-How to work on Umbrella Wallet **without losing the roadmap or the philosophy**.
+How to work on Phobia Wallet **without losing the roadmap or the philosophy**.
 
 Legal / store docs (TOS, Privacy Policy, App Store notes, geo) are **already in the repo** and stay
 as sources of truth — you do not need to rewrite them while shipping coins. Focus engineering on

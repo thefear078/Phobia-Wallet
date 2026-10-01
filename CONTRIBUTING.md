@@ -1,6 +1,6 @@
-# Contributing to Umbrella Wallet
+# Contributing to Phobia Wallet
 
-Thank you. Umbrella is MIT-licensed source for a non-custodial desktop wallet by **the fear**
+Thank you. Phobia is MIT-licensed source for a non-custodial desktop wallet by **the fear**
 (thefear078). Contributions that improve fund safety, privacy honesty, and auditability are welcome.
 
 Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
@@ -9,7 +9,7 @@ Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 - **Code:** [MIT](LICENSE) — you may fork, patch, and redistribute under MIT terms.
 - **Brand:** [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md) — do **not** ship a look-alike named
-  “Umbrella Wallet” / “the fear”. Rebrand derivatives; see [docs/forking.md](docs/forking.md).
+  “Phobia Wallet” / “the fear”. Rebrand derivatives; see [docs/forking.md](docs/forking.md).
 - Background: [LICENSE_CHANGE.md](LICENSE_CHANGE.md).
 
 ## What we welcome

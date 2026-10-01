@@ -39,7 +39,7 @@ recognise, and treat the machine as suspect before the wallet.
 That is an unsolicited airdrop. Anyone can send a token to any address; it arriving means nothing
 about you. Their name is the attack — it lures you to a site that asks for your seed phrase.
 
-Umbrella folds them away and tells you how many. **Never open a site named in a token, and never enter
+Phobia folds them away and tells you how many. **Never open a site named in a token, and never enter
 your 24 words anywhere.**
 
 They are hidden, not deleted — one click shows them. A token with a real market price is never
@@ -91,14 +91,14 @@ all, instead of quietly falling back to a direct connection.
 
 **"The app icon is blank in Search or on the desktop."**
 Usually a shortcut whose icon path points at a file that does not exist, or a stale Windows icon
-cache. Point the shortcut's icon at `Umbrella.exe` itself and refresh the cache:
+cache. Point the shortcut's icon at `Phobia.exe` itself (`Umbrella.exe` before 4.10.0) and refresh the cache:
 
 ```powershell
 ie4uinit.exe -show
 ```
 
 **"It says an old version after I updated."**
-If you updated by copying files, you may have replaced the DLLs but left the old `Umbrella.exe`. Use
+If you updated by copying files, you may have replaced the DLLs but left an old exe (`Phobia.exe`, or `Umbrella.exe` from before 4.10.0). Use
 the installer, or re-copy the whole publish folder.
 
 **"I forgot my vault password."**

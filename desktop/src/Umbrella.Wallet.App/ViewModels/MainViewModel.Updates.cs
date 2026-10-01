@@ -339,7 +339,7 @@ public partial class MainViewModel
         StatusMessage = Loc.Instance["status.downloadLinkCopied"];
     }
 
-    private static string VersionText(Version v) => $"{v.Major}.{v.Minor}.{v.Build}";
+    private static string VersionText(ReleaseVersion v) => v.ToString();
 
     /// <summary>Release notes are markdown and can be long; the banner's details show the start of them.</summary>
     private static string TrimNotes(string notes)

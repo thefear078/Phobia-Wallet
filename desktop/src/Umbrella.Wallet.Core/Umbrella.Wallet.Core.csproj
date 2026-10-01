@@ -14,4 +14,9 @@
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Monero's 25-word seed wordlists, byte-for-byte from src/mnemonics (hashes pinned by MoneroMnemonicTests). -->
+    <EmbeddedResource Include="Seed\MoneroWordlists.json" LogicalName="Umbrella.Wallet.Core.Seed.MoneroWordlists.json" />
+  </ItemGroup>
+
 </Project>

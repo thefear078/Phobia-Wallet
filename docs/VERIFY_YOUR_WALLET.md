@@ -2,7 +2,7 @@
 
 Every number this wallet shows you comes from the same program that tells you your money is safe.
 That is not a reason to distrust it. It is the reason this page exists: each check below asks
-somebody who is **not** Umbrella the same question, so the answer stops depending on us being honest.
+somebody who is **not** Phobia the same question, so the answer stops depending on us being honest.
 
 None of it requires trusting this document either — every command is one you run yourself, and every
 result is something you can see.
@@ -71,13 +71,13 @@ Settings → Privacy, watch its connections:
 
 ```powershell
 Get-NetTCPConnection -State Established |
-  Where-Object OwningProcess -eq (Get-Process Umbrella).Id |
+  Where-Object OwningProcess -eq (Get-Process Phobia).Id |
   Select-Object RemoteAddress, RemotePort
 ```
 
 ```bash
 # Linux
-ss -tnp | grep Umbrella
+ss -tnp | grep Phobia
 ```
 
 With Tor-only on, every remote endpoint should be loopback (`127.0.0.1:9250`). Anything else going
@@ -95,7 +95,7 @@ cannot pass for the wrong reason.
 Every release carries `SHA256SUMS-<version>.txt`. Verify what you downloaded before you run it:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\UmbrellaWallet-Setup-4.8.2.exe
+Get-FileHash -Algorithm SHA256 .\PhobiaWallet-Setup-4.10.0.exe
 ```
 
 ```bash
@@ -115,7 +115,7 @@ page there** — somebody who can replace the artifacts can replace the manifest
 release from the next one on also carries a build attestation:
 
 ```bash
-gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
 ```
 
 That checks against a public transparency log — not against us — that these exact bytes came out of

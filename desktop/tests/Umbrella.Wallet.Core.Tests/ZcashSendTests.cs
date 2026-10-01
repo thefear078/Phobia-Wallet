@@ -290,6 +290,34 @@ public class ZcashSendTests
         Assert.Equal(12_500_000UL, plan.Inputs[0].Zatoshi);
     }
 
+    /// <summary>
+    /// The balance fallback for when Blockchair blacklists the IP (it does, for days, and for Tor exits
+    /// too). 3xpl's answer for a funded address, an address it has never seen (an empty array, not an
+    /// object), and a refusal — which must stay "unknown", never become a zero.
+    /// </summary>
+    [Fact]
+    public void ThreexplBalanceIsReadAndARefusalIsNotAZero()
+    {
+        const string funded = """
+            {"data":{"address":{"address":"t1XVXWCvpMgBvUaed4XDqWtgQgJSu1Ghz7F"},
+              "balances":{"zcash-main":{"zcash":{"balance":"125000000","events":27}}}},
+             "context":{"code":200}}
+            """;
+        const string unseen = """
+            {"data":{"address":{"balances":{"zcash-main":0}},"balances":{"zcash-main":[]}},"context":{"code":200}}
+            """;
+        const string refused = """
+            {"data":"`limit` param can only be one of these: 1, 10, 100, 1000","context":{"code":400}}
+            """;
+
+        using (var doc = JsonDocument.Parse(funded))
+            Assert.Equal(1.25m, PublicChainBalanceClient.Parse3xplZec(doc.RootElement, Address)!.NativeAmount);
+        using (var doc = JsonDocument.Parse(unseen))
+            Assert.Equal(0m, PublicChainBalanceClient.Parse3xplZec(doc.RootElement, Address)!.NativeAmount);
+        using (var doc = JsonDocument.Parse(refused))
+            Assert.Null(PublicChainBalanceClient.Parse3xplZec(doc.RootElement, Address));
+    }
+
     [Fact]
     public void ExplorerErrorIsReportedInItsOwnWords()
     {

@@ -30,6 +30,36 @@ public sealed class MainViewModelTests : IDisposable
         return new(new EncryptedFileSeedVault(Path.Combine(_directory, "vault.json")));
     }
 
+    /// <summary>The connection chip is computed at start, whatever the route — a plain start with
+    /// nothing to switch on left it blank.</summary>
+    [Fact]
+    public void TheConnectionChipSaysSomethingFromTheStart()
+    {
+        var vm = NewViewModel();
+        Assert.False(string.IsNullOrWhiteSpace(vm.ConnectionChipLabel));
+    }
+
+    /// <summary>One click turns on every protection the Security Center scores — the send password
+    /// among them — so the score can reach the top the way privacy already could.</summary>
+    [Fact]
+    public async Task RecommendedProtectionTurnsOnEveryScoredProtection()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        vm.LockOnMinimize = false;
+        vm.RequirePasswordForSend = false;
+        vm.EnableRecommendedSecurityCommand.Execute(null);
+
+        Assert.True(vm.RequirePasswordForSend);
+        Assert.True(vm.LockOnMinimize);
+        Assert.Equal(vm.SecurityScoreTotal, vm.SecurityScoreDone);
+        TestDataIsolation.RestoreBaselineSettings();
+    }
+
     [Fact]
     public async Task CreateWallet_ShowsA24WordPhrase_AndOpensTheWorkspace()
     {
@@ -433,6 +463,68 @@ public sealed class MainViewModelTests : IDisposable
     }
 
     /// <summary>
+    /// Reported 2026-10-01: "I switched between wallets and then could not any more". The command ended
+    /// with the new wallet's balance refresh, and the toolkit disables a running command — every Switch
+    /// button with it — until it returns, which over Tor took a minute or more.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_SwitchingStaysAvailableWhileTheNextWalletLoads()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var mainId = vm.Wallets.Single(w => w.IsActive).Id;
+
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var savingsId = vm.Wallets.Single(w => w.IsActive).Id;
+
+        var switching = vm.SwitchWalletCommand.ExecuteAsync(mainId);
+        Assert.True(vm.SwitchWalletCommand.CanExecute(savingsId));
+        await switching;
+
+        Assert.Equal("Main wallet", vm.ActiveWalletLabel);
+        await vm.SwitchWalletCommand.ExecuteAsync(savingsId);   // and again: the second switch is not swallowed
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+    }
+
+    /// <summary>
+    /// Reported 2026-10-01: "I turned on every wallet's balance and it does nothing". The figures were
+    /// only in the switcher flyout, and a wallet without a remembered balance showed $0. Every wallet now
+    /// has a figure — or "—" until it has been read, never a made-up zero.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_EveryWalletHasAFigureWhenTotalsAreOn()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        try
+        {
+            vm.ShowAllWalletTotals = true;
+            Assert.Equal(2, vm.Wallets.Count);
+            Assert.All(vm.Wallets, w => Assert.True(w.HasTotal));
+            Assert.NotEmpty(vm.AllWalletsTotalLabel);
+        }
+        finally
+        {
+            vm.ShowAllWalletTotals = false;   // a shared setting: never left on for the next test
+        }
+        Assert.All(vm.Wallets, w => Assert.False(w.HasTotal));
+    }
+
+    /// <summary>
     /// A new wallet's recovery phrase is on screen until "I've written it down". Switching away would
     /// lock it and clear the phrase before it was ever confirmed — so neither the switcher, the shortcut
     /// nor the palette may do it.
@@ -585,6 +677,74 @@ public sealed class MainViewModelTests : IDisposable
         Assert.Contains(vm.Accounts, a =>
             a.Symbol == "TON" && a.Address == "UQCLhuuBbuTzBY7oDkmYAF8vhnB7c2f0XDDWUflQUvHdLYFm");
         Assert.DoesNotContain(vm.Accounts, a => a.Symbol == "BTC"); // TON-only, no BIP39 chains
+    }
+
+    /// <summary>The report: a Monero seed in Chinese characters was refused. It now imports as a Monero-only
+    /// wallet holding exactly the account the Monero wallets show, and survives a lock and unlock.</summary>
+    [Fact]
+    public async Task Import_ChineseMoneroSeed_CreatesMoneroOnlyWallet_WithCorrectAddress()
+    {
+        const string address = "468Dewci4TPfs7TATZ2nf4F1mKAEMp6RraG37wiSU4uT5nAbBwGz5LaB9GWHG23o6ANFJ1Q9cBYk5dRqWNNkmFN4Qx3RqBD";
+        var vm = NewViewModel();
+
+        vm.GoToImportCommand.Execute(null);
+        vm.ImportPhrase = "遭牲本点司司仲吉虎只绝生指纯伟破夫惊群楚祥旋暗骨伟";   // pasted as one run, no spaces
+        Assert.True(vm.IsImportPhraseMonero);                                   // the "scan from" field appears
+        vm.ImportMoneroHeight = "2024-03-01";
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+
+        Assert.Empty(vm.FormError);
+        Assert.True(vm.IsUnlocked);
+        var xmr = Assert.Single(vm.Accounts);
+        Assert.Equal("XMR", xmr.Symbol);
+        Assert.Equal(address, xmr.Address);
+        // Kept with the wallet (the single-vault registry sits beside its vault), for when the Monero
+        // service is first switched on — possibly in a later session.
+        var registry = new WalletRegistry(
+            Path.Combine(_directory, "wallets.json"), Path.Combine(_directory, "vault.json"),
+            id => Path.Combine(_directory, "wallets", id + ".vault.json"));
+        Assert.Equal(
+            Umbrella.Wallet.Core.Chains.MoneroRestoreHeight.ForDate(new DateTimeOffset(2024, 3, 1, 0, 0, 0, TimeSpan.Zero)),
+            registry.Active?.MoneroScanFrom);
+
+        vm.LockVault();
+        vm.Password = GoodPassword;
+        await vm.UnlockCommand.ExecuteAsync(null);
+        Assert.Equal(address, Assert.Single(vm.Accounts).Address);
+    }
+
+    [Fact]
+    public async Task Import_MoneroSeedWithATypo_SaysTheChecksumCaughtIt()
+    {
+        var vm = NewViewModel();
+        vm.GoToImportCommand.Execute(null);
+        // The last word of the English vector swapped for another real Monero word.
+        vm.ImportPhrase = "adjust mugged vaults atlas nasty mews damp toenail suddenly toxic possible framed succeed fuzzy " +
+                          "return demonstrate nucleus album noises peculiar virtual rowboat inorganic jester abbey";
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsUnlocked);
+        Assert.Equal(Umbrella.Wallet.App.Loc.Instance["import.xmrChecksum"], vm.FormError);
+    }
+
+    [Fact]
+    public async Task Import_MoneroSeed_RefusesAScanStartThatIsNotAHeightOrADate()
+    {
+        var vm = NewViewModel();
+        vm.GoToImportCommand.Execute(null);
+        vm.ImportPhrase = "adjust mugged vaults atlas nasty mews damp toenail suddenly toxic possible framed succeed fuzzy " +
+                          "return demonstrate nucleus album noises peculiar virtual rowboat inorganic jester fuzzy";
+        vm.ImportMoneroHeight = "last spring";
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.ImportWalletCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsUnlocked);
+        Assert.Equal(Umbrella.Wallet.App.Loc.Instance["import.xmrHeightBad"], vm.FormError);
     }
 
     [Fact]

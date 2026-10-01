@@ -35,7 +35,7 @@ public sealed class ThemingTests
     [Fact]
     public void Every_palette_defines_every_colour_and_all_of_them_parse()
     {
-        var expected = Theming.PaletteOf("umbrella")!.Keys.OrderBy(k => k).ToList();
+        var expected = Theming.PaletteOf(Theming.DefaultTheme)!.Keys.OrderBy(k => k).ToList();
 
         foreach (var theme in Theming.Themes)
         {
@@ -136,9 +136,6 @@ public sealed class ThemingTests
         // as "up" and just looks like more chrome.
         foreach (var theme in Theming.Themes)
         {
-            // Matrix is the deliberate exception: a phosphor terminal is meant to be one colour.
-            if (theme.Id == "matrix") continue;
-
             var p = Theming.PaletteOf(theme.Id)!;
             var accent = Color.Parse(p["UmAccentBright"]);
             var pos = Color.Parse(p["UmPos"]);
@@ -150,14 +147,51 @@ public sealed class ThemingTests
     }
 
     [Fact]
-    public void The_default_is_gold_and_the_old_navy_is_still_offered()
+    public void The_default_is_Phobia_violet_and_the_gold_is_still_offered()
     {
-        // The default theme became gold light on black; everyone who liked the original look can
-        // still pick it.
+        // The wallet became Phobia and its look violet; the gold that was the default is still there for
+        // everyone who picks it (under its old id, so a saved choice keeps working).
+        Assert.Equal("phobia", Theming.DefaultTheme);
+        Assert.Equal(Theming.DefaultTheme, Theming.Themes[0].Id);
+        var blue = Color.Parse(Theming.PaletteOf("phobia")!["UmAccentBright"]);
+        Assert.True(blue.B > 0xC0 && blue.B > blue.R + 0x80, $"the default accent is not violet-blue: {blue}");
         var gold = Color.Parse(Theming.PaletteOf("umbrella")!["UmAccentBright"]);
-        Assert.True(gold.R > 0xE0 && gold.G > 0xB0 && gold.B < 0x70, $"the default accent is not gold: {gold}");
+        Assert.True(gold.R > 0xE0 && gold.G > 0xB0 && gold.B < 0x70, $"the gold theme is not gold: {gold}");
         Assert.True(Theming.IsKnown("navy"));
-        Assert.Equal("umbrella", Theming.Current);
+    }
+
+    [Fact]
+    public void A_settings_file_on_the_old_gold_default_moves_to_blue_once()
+    {
+        var old = new UiSettings { Theme = "umbrella", BrandVersion = 0, StickersEnabled = true };
+        Assert.True(UiSettings.MoveToPhobia(old));
+        Assert.Equal("phobia", old.Theme);
+        Assert.False(old.StickersEnabled);   // Phobia's look is clean: stickers become an opt-in
+
+        // Picked gold and stickers again afterwards: kept.
+        old.Theme = "umbrella";
+        old.StickersEnabled = true;
+        Assert.False(UiSettings.MoveToPhobia(old));
+        Assert.Equal("umbrella", old.Theme);
+        Assert.True(old.StickersEnabled);
+
+        // Someone on the first Phobia build who then picked gold keeps it; only stickers go.
+        var beta = new UiSettings { Theme = "umbrella", BrandVersion = 1, StickersEnabled = true };
+        Assert.True(UiSettings.MoveToPhobia(beta));
+        Assert.Equal("umbrella", beta.Theme);
+        Assert.False(beta.StickersEnabled);
+
+        // Someone who had chosen another theme keeps it.
+        var nord = new UiSettings { Theme = "nord", BrandVersion = 0 };
+        Assert.True(UiSettings.MoveToPhobia(nord));
+        Assert.Equal("nord", nord.Theme);
+
+        // The beta switches the floating crystals off once, and leaves stickers chosen since version 2.
+        var v2 = new UiSettings { Theme = "uniswap", BrandVersion = 2, StickersEnabled = true, FloatingCrystals = true };
+        Assert.True(UiSettings.MoveToPhobia(v2));
+        Assert.False(v2.FloatingCrystals);
+        Assert.True(v2.StickersEnabled);
+        Assert.Equal("uniswap", v2.Theme);
     }
 
     [Fact]

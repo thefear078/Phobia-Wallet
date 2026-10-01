@@ -60,8 +60,11 @@ public partial class MainViewModel
     /// so real transactions surface there too, not just in-app actions.</summary>
     private void RebuildRecentActivity()
     {
+        // "Recent transactions" lists transfers. It listed every event, so a wallet that had just been
+        // unlocked twice showed two "Security · unlocked" rows under that heading and no money at all.
         RecentActivity.Clear();
-        foreach (var row in MergedActivity().Take(5)) RecentActivity.Add(row);
+        foreach (var row in Decorate(MergedActivity().Where(r => r.IsTransaction).Take(5), dayHeaders: false))
+            RecentActivity.Add(row);
         OnPropertyChanged(nameof(HasRecentActivity));
     }
 
@@ -155,15 +158,63 @@ public partial class MainViewModel
     private IEnumerable<ActivityRowViewModel> MergedActivity()
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var merged = new List<ActivityRowViewModel>();
         foreach (var row in Activity)
         {
             if (row.Explorer is { Length: > 0 } ex) seen.Add(ex);
-            yield return row;
+            merged.Add(row);
         }
         foreach (var row in _onChainRows)
         {
             if (row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
-            yield return row;
+            merged.Add(row);
+        }
+
+        // Newest first across BOTH sources. The local events were listed first and the chain's after
+        // them, so a September unlock sat above an October transfer. A row with no timestamp (written
+        // before timestamps existed) keeps its place at the end.
+        return merged
+            .Select((row, i) => (row, i))
+            .OrderByDescending(x => x.row.UnixMs > 0)
+            .ThenByDescending(x => x.row.UnixMs)
+            .ThenBy(x => x.i)
+            .Select(x => x.row)
+            .ToList();
+    }
+
+    /// <summary>
+    /// The rows as shown: a transfer gets "≈ $x" from today's price, and with <paramref name="dayHeaders"/>
+    /// the first event of each day carries "Today" / "Yesterday" / its date.
+    /// </summary>
+    private IEnumerable<ActivityRowViewModel> Decorate(IEnumerable<ActivityRowViewModel> rows, bool dayHeaders)
+    {
+        var prices = Accounts.Where(a => a.Price > 0)
+            .GroupBy(a => a.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Price, StringComparer.OrdinalIgnoreCase);
+        DateTime? lastDay = null;
+        foreach (var row in rows)
+        {
+            string? fiat = null;
+            if (row.IsTransaction && prices.TryGetValue(row.Asset, out var price) &&
+                decimal.TryParse(row.Amount.TrimStart('+', '-'), System.Globalization.NumberStyles.AllowDecimalPoint,
+                    System.Globalization.CultureInfo.InvariantCulture, out var amount) && amount > 0 &&
+                (double)amount * price >= 0.01)   // dust would only read "≈ $0.00"
+                fiat = "≈ " + Fx.Money((double)amount * price);
+
+            string? header = null;
+            if (dayHeaders && row.UnixMs > 0)
+            {
+                var day = DateTimeOffset.FromUnixTimeMilliseconds(row.UnixMs).LocalDateTime.Date;
+                if (day != lastDay)
+                {
+                    header = day == DateTime.Today ? Loc.Instance["activity.today"]
+                        : day == DateTime.Today.AddDays(-1) ? Loc.Instance["activity.yesterday"]
+                        : day.ToString(day.Year == DateTime.Today.Year ? "d MMMM" : "d MMMM yyyy", Fx.Culture);
+                    lastDay = day;
+                }
+            }
+
+            yield return fiat is null && header is null ? row : row with { FiatLabel = fiat, DayHeader = header };
         }
     }
 
@@ -198,16 +249,12 @@ public partial class MainViewModel
         };
 
         FilteredActivity.Clear();
-        foreach (var row in MergedActivity())
-        {
-            if (ActivityFilter != "All" && row.Category != ActivityFilter) continue;
-            if (ActivityAssetFilter != "All" &&
-                !string.Equals(row.Asset, ActivityAssetFilter, StringComparison.OrdinalIgnoreCase)) continue;
-            if (ActivityStatusFilter != "All" &&
-                !string.Equals(row.Status, ActivityStatusFilter, StringComparison.OrdinalIgnoreCase)) continue;
-            if (cutoff > 0 && row.UnixMs > 0 && row.UnixMs < cutoff) continue;
-            FilteredActivity.Add(row);
-        }
+        var matching = MergedActivity().Where(row =>
+            (ActivityFilter == "All" || row.Category == ActivityFilter) &&
+            (ActivityAssetFilter == "All" || string.Equals(row.Asset, ActivityAssetFilter, StringComparison.OrdinalIgnoreCase)) &&
+            (ActivityStatusFilter == "All" || string.Equals(row.Status, ActivityStatusFilter, StringComparison.OrdinalIgnoreCase)) &&
+            !(cutoff > 0 && row.UnixMs > 0 && row.UnixMs < cutoff));
+        foreach (var row in Decorate(matching, dayHeaders: true)) FilteredActivity.Add(row);
         OnPropertyChanged(nameof(HasFilteredActivity));
     }
 
@@ -253,18 +300,24 @@ public partial class MainViewModel
         {
             var rows = new List<(long Ts, ActivityRowViewModel Row)>();
             var walletId = _registry.Active?.Id ?? "default";
+            var mnemonic = _unlockedMnemonic!;
 
-            // BTC / LTC / BCH: every address the wallet has used — receive AND change, every branch
-            // (Taproot included) — each transaction judged against the whole set, so change coming back
-            // is netted out of "sent" and a spend funded only by change still appears (roadmap P0.1).
-            // Capped per branch so a huge index never fans out into hundreds of calls.
-            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch) })
+            // Every chain is read at the same time. One after another, the list waited for the SUM of
+            // every explorer's round-trip (a dozen of them, more over Tor); together it waits for the
+            // slowest one.
+            var reads = new List<Task<IReadOnlyList<ChainTx>>>();
+
+            // BTC / LTC / BCH / DOGE: every address the wallet has used — receive AND change, every
+            // branch (Taproot included) — each transaction judged against the whole set, so change
+            // coming back is netted out of "sent" and a spend funded only by change still appears
+            // (roadmap P0.1). Capped per branch so a huge index never fans out into hundreds of calls.
+            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch), ("DOGE", ChainId.Doge) })
             {
                 HistoryAddressPlan plan;
                 try
                 {
                     var floors = _addrIndex.FloorsFor(walletId, sym);
-                    var own = Umbrella.Wallet.Core.Psbt.OwnScripts.For(_deriver, _unlockedMnemonic!, chain, floors);
+                    var own = Umbrella.Wallet.Core.Psbt.OwnScripts.For(_deriver, mnemonic, chain, floors);
                     var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(chain);
                     plan = HistoryAddresses.Plan(own, floors, network);
                 }
@@ -273,70 +326,38 @@ public partial class MainViewModel
                     continue;
                 }
 
-                foreach (var addr in plan.Query)
-                {
-                    var txs = sym switch
-                    {
-                        "BTC" => await _history.GetBitcoinAsync(addr, plan.Own),
-                        "LTC" => await _history.GetLitecoinAsync(addr, plan.Own),
-                        _ => await _history.GetBitcoinCashAsync(addr, plan.Own),
-                    };
-                    foreach (var t in txs) rows.Add((t.UnixMs, ToActivityRow(t)));
-                }
+                // BlockCypher (Dogecoin's source) answers a hundred keyless calls an hour: the first ten
+                // used addresses, not every one.
+                reads.Add(sym == "DOGE"
+                    ? _coinHistory.GetDogecoinAsync(plan.Query.Take(10).ToList())
+                    : ReadUtxoHistoryAsync(sym, plan));
             }
 
-            // ETH / TRON: single-address chains in this wallet.
-            string? tron = null, eth = null;
-            try { tron = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Tron).Address; } catch { }
-            try { eth = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Eth).Address; } catch { }
-
-            if (!string.IsNullOrEmpty(tron))
+            string? AddressOf(ChainId chain)
             {
-                foreach (var t in await _history.GetTronTrc20Async(tron!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-                foreach (var t in await _history.GetTronNativeAsync(tron!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
+                try { return _deriver.DeriveReceiveAddress(mnemonic, chain).Address; }
+                catch { return null; }
             }
 
-            if (!string.IsNullOrEmpty(eth))
-                foreach (var t in await _history.GetEthereumAsync(eth!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // TON: single-address chain (wallet v4R2), history via toncenter.
-            string? ton = null;
-            try { ton = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Ton).Address; } catch { }
-            if (!string.IsNullOrEmpty(ton))
-                foreach (var t in await _history.GetTonAsync(ton!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // ADA: single-address chain, history via Koios (keyless).
-            string? ada = null;
-            try { ada = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Ada).Address; } catch { }
-            if (!string.IsNullOrEmpty(ada))
-                foreach (var t in await _history.GetCardanoAsync(ada!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // SOL: single-address chain, best-effort history via the public Solana RPC.
-            string? sol = null;
-            try { sol = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, ChainId.Sol).Address; } catch { }
-            if (!string.IsNullOrEmpty(sol))
-                foreach (var t in await _history.GetSolanaAsync(sol!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
-
-            // XRP / XLM: single-account chains, read from the same server as their balance.
-            foreach (var (chain, read) in new (ChainId, Func<string, Task<IReadOnlyList<ChainTx>>>)[]
-                     {
-                         (ChainId.Xrp, a => _accountHistory.GetXrpAsync(a)),
-                         (ChainId.Xlm, a => _accountHistory.GetStellarAsync(a)),
-                         (ChainId.Near, a => _accountHistory.GetNearAsync(a)),
-                     })
+            // The single-address chains, each from the server its balance comes from.
+            if (AddressOf(ChainId.Tron) is { Length: > 0 } tron)
             {
-                string? address = null;
-                try { address = _deriver.DeriveReceiveAddress(_unlockedMnemonic!, chain).Address; } catch { }
-                if (string.IsNullOrEmpty(address)) continue;
-                foreach (var t in await read(address!))
-                    rows.Add((t.UnixMs, ToActivityRow(t)));
+                reads.Add(_history.GetTronTrc20Async(tron));
+                reads.Add(_history.GetTronNativeAsync(tron));
             }
+            if (AddressOf(ChainId.Eth) is { Length: > 0 } eth) reads.Add(_history.GetEthereumAsync(eth));
+            if (AddressOf(ChainId.Ton) is { Length: > 0 } ton) reads.Add(_history.GetTonAsync(ton));
+            if (AddressOf(ChainId.Ada) is { Length: > 0 } ada) reads.Add(_history.GetCardanoAsync(ada));
+            if (AddressOf(ChainId.Sol) is { Length: > 0 } sol) reads.Add(_history.GetSolanaAsync(sol));
+            if (AddressOf(ChainId.Xrp) is { Length: > 0 } xrp) reads.Add(_accountHistory.GetXrpAsync(xrp));
+            if (AddressOf(ChainId.Xlm) is { Length: > 0 } xlm) reads.Add(_accountHistory.GetStellarAsync(xlm));
+            if (AddressOf(ChainId.Near) is { Length: > 0 } near) reads.Add(_accountHistory.GetNearAsync(near));
+            if (AddressOf(ChainId.Nano) is { Length: > 0 } nano) reads.Add(_coinHistory.GetNanoAsync(nano));
+            if (AddressOf(ChainId.Dcr) is { Length: > 0 } dcr) reads.Add(_coinHistory.GetDecredAsync([dcr]));
+            if (AddressOf(ChainId.Zec) is { Length: > 0 } zec) reads.Add(_coinHistory.GetZcashAsync(zec));
+
+            foreach (var batch in await Task.WhenAll(reads.Select(QuietRead)))
+                foreach (var t in batch) rows.Add((t.UnixMs, ToActivityRow(t)));
 
             if (epoch != _lockEpoch) return;
 
@@ -365,6 +386,33 @@ public partial class MainViewModel
             if (load == _historyLoad) HistoryLoading = false;
             if (epoch == _lockEpoch) HistorySynced = true;
         }
+    }
+
+    /// <summary>History for Nano, Decred, Dogecoin and transparent Zcash.</summary>
+    private readonly CoinHistoryClient _coinHistory = new();
+
+    /// <summary>A UTXO chain's history, its used addresses one after another: the explorers behind
+    /// these (mempool.space, litecoinspace, Haskoin) turn a burst from one client away.</summary>
+    private async Task<IReadOnlyList<ChainTx>> ReadUtxoHistoryAsync(string symbol, HistoryAddressPlan plan)
+    {
+        var all = new List<ChainTx>();
+        foreach (var addr in plan.Query)
+        {
+            all.AddRange(symbol switch
+            {
+                "BTC" => await _history.GetBitcoinAsync(addr, plan.Own),
+                "LTC" => await _history.GetLitecoinAsync(addr, plan.Own),
+                _ => await _history.GetBitcoinCashAsync(addr, plan.Own),
+            });
+        }
+        return all;
+    }
+
+    /// <summary>One history source that fails is one coin without rows, never the whole list.</summary>
+    private static async Task<IReadOnlyList<ChainTx>> QuietRead(Task<IReadOnlyList<ChainTx>> read)
+    {
+        try { return await read; }
+        catch { return []; }
     }
 
     /// <summary>Counts history loads; only the newest one clears the loading flag.</summary>

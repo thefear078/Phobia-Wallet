@@ -13,8 +13,12 @@ namespace Umbrella.Wallet.Core.Tests;
 /// exactly the same confidence as a genuinely empty address. That is the wallet telling somebody
 /// their money is gone.
 /// </summary>
+// The amount is written in the wallet's own number format, which is process-wide state.
+[Collection(SharedAppStateCollection.Name)]
 public sealed class BalanceReadoutTests
 {
+    public BalanceReadoutTests() => Umbrella.Wallet.App.Fx.SetLanguage("en");
+
     [Fact]
     public void A_failed_read_on_a_row_that_never_had_one_stays_unknown()
     {

@@ -77,6 +77,16 @@ public sealed class MarketFilterConverter : IMultiValueConverter
         var symbol = values[0]?.ToString() ?? string.Empty;
         var name = values[1]?.ToString() ?? string.Empty;
         var query = values[2]?.ToString()?.Trim() ?? string.Empty;
+
+        // The section a row belongs to: "chains" (a network's own coin) or "tokens" (a contract that
+        // lives on someone else's network). A row shows in exactly one of the two lists.
+        var section = parameter as string ?? (values.Count > 4 ? values[4] as string : null);
+        if (values.Count > 3 && values[3] is bool isToken && section is not null)
+        {
+            if (section == "chains" && isToken) return false;
+            if (section == "tokens" && !isToken) return false;
+        }
+
         if (query.Length == 0) return true;
         return symbol.Contains(query, StringComparison.OrdinalIgnoreCase)
             || name.Contains(query, StringComparison.OrdinalIgnoreCase);
@@ -97,9 +107,13 @@ public sealed class ActivityLabelConverter : IValueConverter
 {
     public static readonly ActivityLabelConverter Instance = new();
 
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        Translate(value?.ToString());
+
+    /// <summary>The activity word in the wallet's language ("unlocked" → "розблоковано"); anything
+    /// without an entry (a ticker, an address) as it is.</summary>
+    public static string Translate(string? key)
     {
-        var key = value?.ToString();
         if (string.IsNullOrEmpty(key)) return string.Empty;
 
         var slug = "activity.opt." + key.ToLowerInvariant()
@@ -127,6 +141,68 @@ public sealed class BoolToWeightConverter : IValueConverter
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is true ? Avalonia.Media.FontWeight.SemiBold : Avalonia.Media.FontWeight.Normal;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// A brush from a theme resource key ("UmAccentBright") or a literal colour ("#E58A8A"); with the
+/// parameter "wash", the same colour faint, for an icon's disc. Lets data pick a THEMED colour.
+/// </summary>
+public sealed class ThemeBrushConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var key = value as string ?? string.Empty;
+        Avalonia.Media.Color color;
+        if (key.StartsWith('#'))
+        {
+            color = Avalonia.Media.Color.Parse(key);
+        }
+        else if (Avalonia.Application.Current?.Resources.TryGetResource(key, null, out var res) == true &&
+                 res is Avalonia.Media.ISolidColorBrush solid)
+        {
+            color = solid.Color;
+        }
+        else
+        {
+            color = Avalonia.Media.Colors.Gray;
+        }
+
+        var alpha = (parameter as string) switch
+        {
+            "wash" => (byte)0x26,
+            "ring" => (byte)0x4D,
+            _ => color.A,
+        };
+        return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromArgb(alpha, color.R, color.G, color.B));
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// One end of a chart guide line, from a single coordinate: a horizontal line at a given y spans the
+/// plot (x 10 → 790), a vertical line at a given x spans price area and volume band (y 14 → 272).
+/// Lets the crosshair and last-price lines bind to the one number the view model computes.
+/// </summary>
+public sealed class ChartLinePointConverter : IValueConverter
+{
+    public string Kind { get; set; } = "HStart";
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var v = value is double d ? d : 0;
+        return Kind switch
+        {
+            "HStart" => new Avalonia.Point(10, v),
+            "HEnd" => new Avalonia.Point(790, v),
+            "VStart" => new Avalonia.Point(v, 14),
+            _ => new Avalonia.Point(v, 272),
+        };
+    }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();

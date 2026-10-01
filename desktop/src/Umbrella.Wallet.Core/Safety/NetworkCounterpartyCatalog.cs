@@ -28,20 +28,24 @@ public static class NetworkCounterpartyCatalog
     public static IReadOnlyList<NetworkCounterparty> All { get; } =
     [
         // --- Balances, unspent coins and history. These are handed your addresses. ------------------
-        new("blockstream.info", "Blockstream", CounterpartyPurpose.Balances,
-            CounterpartyContact.Automatic, ChainAndBroadcast, "BTC"),
-        // Offered in the endpoint picker, and used as a fallback when the default is rate-limited —
-        // which means they are contacted for real and belong on this list like everything else.
         new("mempool.space", "mempool.space", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "BTC"),
-        new("mempool.emzy.de", "mempool.emzy.de", CounterpartyPurpose.Balances,
+        // Offered in the endpoint picker, and used as fallbacks when the default is rate-limited —
+        // which means they are contacted for real and belong on this list like everything else.
+        new("mempool.ninja", "mempool.ninja", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "BTC"),
+        new("blockstream.info", "Blockstream", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "BTC"),
         new("litecoinspace.org", "litecoinspace", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "LTC"),
+        new("api.bitcore.io", "BitPay (Bitcore)", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "DOGE"),
         new("api.blockcypher.com", "BlockCypher", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "DOGE"),
         new("api.haskoin.com", "Haskoin", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "BCH"),
+        new("sandbox-api.3xpl.com", "3xpl", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, Chain, "ZEC (when Blockchair refuses)"),
         new("api.blockchair.com", "Blockchair", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "BCH, ZEC"),
         new("api.trongrid.io", "TronGrid (Tron Foundation)", CounterpartyPurpose.Balances,
@@ -99,21 +103,31 @@ public static class NetworkCounterpartyCatalog
             "ERC-20 tokens, NFTs"),
 
         // --- EVM JSON-RPC. Balance reads and broadcasts for Ethereum and everything shaped like it. --
-        new("cloudflare-eth.com", "Cloudflare", CounterpartyPurpose.Balances,
+        new("ethereum-rpc.publicnode.com", "PublicNode (Allnodes)", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ETH"),
-        new("rpc.ankr.com", "Ankr", CounterpartyPurpose.Balances,
-            CounterpartyContact.Automatic, ChainAndBroadcast, "ETH, BSC, Polygon, Avalanche, Fantom, Arbitrum, Optimism"),
         new("eth.drpc.org", "dRPC", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "ETH"),
+        new("1rpc.io", "1RPC (Automata)", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "ETH, Polygon, Fantom"),
+        new("cloudflare-eth.com", "Cloudflare", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ETH"),
         new("bsc-dataseed.binance.org", "Binance", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "BNB"),
         new("bsc-dataseed1.defibit.io", "defibit", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "BNB"),
-        new("polygon-rpc.com", "Polygon", CounterpartyPurpose.Balances,
+        new("bsc-rpc.publicnode.com", "PublicNode", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "BNB"),
+        new("polygon.drpc.org", "dRPC", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "MATIC"),
+        new("polygon-bor-rpc.publicnode.com", "PublicNode", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "MATIC"),
         new("api.avax.network", "Ava Labs", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "AVAX"),
-        new("rpc.ftm.tools", "Fantom", CounterpartyPurpose.Balances,
+        new("avalanche-c-chain-rpc.publicnode.com", "PublicNode", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "AVAX"),
+        new("rpcapi.fantom.network", "Fantom Foundation", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "FTM"),
+        new("fantom.drpc.org", "dRPC", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "FTM"),
         new("evm.cronos.org", "Cronos", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "CRO"),
@@ -121,11 +135,15 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.Automatic, ChainAndBroadcast, "CRO"),
         new("arb1.arbitrum.io", "Offchain Labs", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ETH on Arbitrum"),
+        new("arbitrum-one-rpc.publicnode.com", "PublicNode", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "ETH on Arbitrum"),
         new("mainnet.base.org", "Base", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ETH on Base"),
         new("base.publicnode.com", "PublicNode", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ETH on Base"),
         new("mainnet.optimism.io", "Optimism", CounterpartyPurpose.Balances,
+            CounterpartyContact.Automatic, ChainAndBroadcast, "ETH on Optimism"),
+        new("optimism-rpc.publicnode.com", "PublicNode", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ETH on Optimism"),
         new("rpc.linea.build", "Linea (ConsenSys)", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ETH on Linea"),
@@ -142,6 +160,15 @@ public static class NetworkCounterpartyCatalog
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline
             | CounterpartyLearns.WhichCoinsYouHold),
         new("api.binance.com", "Binance", CounterpartyPurpose.Prices,
+            CounterpartyContact.Automatic,
+            CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline
+            | CounterpartyLearns.WhichCoinsYouHold),
+        // Fallbacks when Binance refuses — it blocks many Tor exits (403), which left a Tor-only wallet
+        // with two prices out of twenty-seven. Asked only for what is still missing.
+        new("api.kucoin.com", "KuCoin", CounterpartyPurpose.Prices,
+            CounterpartyContact.Automatic,
+            CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline),
+        new("api.bybit.com", "Bybit", CounterpartyPurpose.Prices,
             CounterpartyContact.Automatic,
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline
             | CounterpartyLearns.WhichCoinsYouHold),
@@ -162,11 +189,11 @@ public static class NetworkCounterpartyCatalog
         // --- Your own exchange accounts. Nothing is sent unless you connect one. ----------------------
         new("api.binance.com/exchange", "Binance", CounterpartyPurpose.ExchangeAccount,
             CounterpartyContact.OptIn, CounterpartyLearns.YourIpAddress | CounterpartyLearns.YourAccountWithThem),
-        new("api.bybit.com", "Bybit", CounterpartyPurpose.ExchangeAccount,
+        new("api.bybit.com/exchange", "Bybit", CounterpartyPurpose.ExchangeAccount,
             CounterpartyContact.OptIn, CounterpartyLearns.YourIpAddress | CounterpartyLearns.YourAccountWithThem),
         new("api.kraken.com", "Kraken", CounterpartyPurpose.ExchangeAccount,
             CounterpartyContact.OptIn, CounterpartyLearns.YourIpAddress | CounterpartyLearns.YourAccountWithThem),
-        new("api.kucoin.com", "KuCoin", CounterpartyPurpose.ExchangeAccount,
+        new("api.kucoin.com/exchange", "KuCoin", CounterpartyPurpose.ExchangeAccount,
             CounterpartyContact.OptIn, CounterpartyLearns.YourIpAddress | CounterpartyLearns.YourAccountWithThem),
         new("api.gateio.ws", "Gate.io", CounterpartyPurpose.ExchangeAccount,
             CounterpartyContact.OptIn, CounterpartyLearns.YourIpAddress | CounterpartyLearns.YourAccountWithThem),
@@ -226,6 +253,8 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "XMR"),
         new("assethub-polkadot.subscan.io", "Subscan", CounterpartyPurpose.ExplorerLink,
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "DOT"),
+        new("nanolooker.com", "NanoLooker", CounterpartyPurpose.ExplorerLink,
+            CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "XNO"),
     ];
 
     /// <summary>Contacted by the wallet on its own, without being asked. The ones worth reading first.</summary>

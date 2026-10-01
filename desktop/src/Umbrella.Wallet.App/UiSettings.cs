@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Linq;
 using Umbrella.Wallet.Infrastructure;
 
 namespace Umbrella.Wallet.App;
@@ -11,7 +12,15 @@ namespace Umbrella.Wallet.App;
 /// </summary>
 public sealed class UiSettings
 {
-    public string Theme { get; set; } = "umbrella";
+    public string Theme { get; set; } = Theming.DefaultTheme;
+
+    /// <summary>
+    /// Which rebrand this file has seen. 0 = written by Umbrella, whose default theme was gold and whose
+    /// screens carried stickers. The wallet is Phobia now — violet, and clean — so a file from before
+    /// moves to the new default theme (if it was still on the old one) and leaves stickers off, once;
+    /// anyone who then picks gold or turns stickers back on keeps that.
+    /// </summary>
+    public int BrandVersion { get; set; }
     public string Language { get; set; } = "en";
     public string Currency { get; set; } = "USD";
     public string SidebarPosition { get; set; } = "Left";
@@ -19,15 +28,33 @@ public sealed class UiSettings
     /// tab bar, in a phone-sized window. Off = the normal wide desktop layout.</summary>
     public bool MobileMode { get; set; } = false;
     public bool AnimationsEnabled { get; set; } = true;
-    /// <summary>Individual motion toggles (gated by the master AnimationsEnabled above).</summary>
-    public bool RainEnabled { get; set; } = true;
-    public bool StickersEnabled { get; set; } = true;
+    /// <summary>Stickers shown at all (off by default: Phobia's look is clean); they loop only while
+    /// the master AnimationsEnabled above is on.</summary>
+    public bool StickersEnabled { get; set; } = false;
+
+    /// <summary>Show the accounts a wallet's phrase holds at OTHER apps' paths (found by the scan) in its
+    /// assets. Off: the assets are this wallet's own accounts only — the found ones looked like another
+    /// wallet's money mixed in.</summary>
+    public bool ShowFoundAccounts { get; set; } = false;
+
+    /// <summary>Ask for the wallet password again before a send is signed. On by default: an unlocked
+    /// wallet left on a desk could otherwise be emptied by anyone who sat down at it.</summary>
+    public bool RequirePasswordForSend { get; set; } = true;
+
+    /// <summary>Show every wallet's balance (as of its last refresh) and their sum in the wallet switcher.</summary>
+    public bool ShowAllWalletTotals { get; set; } = false;
+    /// <summary>Crystals floating slowly up behind the page. On by default; gated by AnimationsEnabled.</summary>
+    public bool FloatingCrystals { get; set; } = false;
+
+    /// <summary>Tiny facets of light that twinkle across the page. On by default; gated by AnimationsEnabled.</summary>
+    public bool CrystalGlints { get; set; } = true;
+
+    /// <summary>A sweep of light across the balance card now and then. On by default; gated by AnimationsEnabled.</summary>
+    public bool CardShine { get; set; } = true;
+
     /// <summary>Soft drifting "aurora" glow behind the content. Opt-in (off by default) so the default
     /// look stays clean.</summary>
     public bool AuroraEnabled { get; set; } = false;
-    /// <summary>Animated rain footage on the portfolio balance card. On by default; when off the card
-    /// shows a still photo instead — for people who don't want motion. Gated by AnimationsEnabled.</summary>
-    public bool PortfolioVideo { get; set; } = true;
 
     /// <summary>Look for a newer release without being asked (shortly after start, then twice a day).
     /// Goes through the same route as everything else, Tor included. Installing still takes a click.</summary>
@@ -42,6 +69,11 @@ public sealed class UiSettings
     /// <summary>Tor-only kill-switch: when on, the wallet refuses any request that would go to clearnet
     /// (fail-closed), so a dropped or disabled Tor can never silently de-anonymise you.</summary>
     public bool TorOnlyMode { get; set; } = false;
+
+    /// <summary>Whether the user switched the bundled Tor on. Remembered, so the wallet starts it again on
+    /// the next launch — before, Tor was off after every restart while the Tor-only kill-switch stayed on,
+    /// and every request was refused until somebody found the switch.</summary>
+    public bool TorEnabled { get; set; }
 
     /// <summary>Route all traffic through a user-supplied SOCKS5 proxy instead of the bundled Tor.</summary>
     public bool CustomProxyEnabled { get; set; } = false;
@@ -114,8 +146,18 @@ public sealed class UiSettings
         {
             // Fresh install (incl. after a delete + re-download): pick the OS language if we translate
             // it, so a Ukrainian/Russian/… user isn't dropped into English with no setting to restore.
-            if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage() };
-            return JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(Path)) ?? new UiSettings();
+            if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage(), BrandVersion = CurrentBrandVersion };
+            var settings = JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(Path)) ?? new UiSettings();
+            var changed = MoveToPhobia(settings);
+            // A theme that was retired (Matrix, Abyss, Kraken, Solarized, Bitcoin, Monero, WhiteBit) falls
+            // back to the default on every load — not only during a migration the file may have passed.
+            if (!Theming.Themes.Any(x => x.Id == settings.Theme))
+            {
+                settings.Theme = Theming.DefaultTheme;
+                changed = true;
+            }
+            if (changed) settings.Save();
+            return settings;
         }
         catch
         {
@@ -124,7 +166,29 @@ public sealed class UiSettings
         }
     }
 
-    /// <summary>The OS UI language if Umbrella ships a translation for it, otherwise English.</summary>
+    /// <summary>
+    /// The one-time move from Umbrella's gold default to Phobia's blue. Returns true when the file
+    /// changed. Pure apart from the object it is given, so the rule is testable.
+    /// </summary>
+    public static bool MoveToPhobia(UiSettings settings)
+    {
+        if (settings.BrandVersion >= CurrentBrandVersion) return false;
+        // Only a file from before Phobia can be sitting on the old default; after that, gold was a choice.
+        if (settings.BrandVersion < 1 && settings.Theme == "umbrella") settings.Theme = Theming.DefaultTheme;
+        // Stickers became opt-in with Phobia's clean look (version 2); a choice made after that stands.
+        if (settings.BrandVersion < 2) settings.StickersEnabled = false;
+        // The floating crystals read as stray pixels on the page, not as decoration (version 3): off
+        // once for everybody, still one switch away in Settings → Appearance.
+        if (settings.BrandVersion < 3) settings.FloatingCrystals = false;
+        settings.BrandVersion = CurrentBrandVersion;
+        return true;
+    }
+
+    /// <summary>1 = the first Phobia build (blue); 2 = Phobia's violet, clean look; 3 = the beta
+    /// (floating crystals off).</summary>
+    public const int CurrentBrandVersion = 3;
+
+    /// <summary>The OS UI language if Phobia ships a translation for it, otherwise English.</summary>
     // A fresh install always starts in English; the user can switch language in Settings, and that
     // choice is then persisted. (Previously this followed the OS locale, which surprised users on a
     // non-English Windows by opening in a language they hadn't chosen.)

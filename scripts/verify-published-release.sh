@@ -31,7 +31,7 @@ echo "Verifying published release $TAG of $REPO"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-gh release download "$TAG" --repo "$REPO" --dir "$WORK" --pattern "UmbrellaWallet-*"
+gh release download "$TAG" --repo "$REPO" --dir "$WORK" --pattern "PhobiaWallet-*" --pattern "UmbrellaWallet-*"
 gh release download "$TAG" --repo "$REPO" --dir "$WORK" --pattern "SHA256SUMS-*.txt"
 
 cd "$WORK"
@@ -56,7 +56,7 @@ echo "---------------------"
 # Every artifact the release serves must be named in the manifest. A file that is downloadable but
 # unlisted is precisely the one worth substituting.
 unlisted=0
-for f in UmbrellaWallet-*; do
+for f in PhobiaWallet-* UmbrellaWallet-*; do
   [ -e "$f" ] || continue
   if ! grep -Fq " $f" "$manifest" && ! grep -Fq "*$f" "$manifest"; then
     echo "::error::$f is attached to the release but missing from $manifest"

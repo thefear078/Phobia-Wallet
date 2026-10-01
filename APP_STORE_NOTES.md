@@ -15,7 +15,7 @@
 
 | Topic | Use this wording |
 |---|---|
-| Custody | **Umbrella is non-custodial software. Keys never leave your device.** |
+| Custody | **Phobia is non-custodial software. Keys never leave your device.** |
 | Not a bank | **We do not hold funds, manage accounts, or provide banking or money-transmitter services.** |
 | Age | **Users must be 18+ (or age of majority) to use this application.** |
 | Liability | **Lost recovery phrases cannot be recovered by us. Use at your own risk.** |
@@ -47,32 +47,32 @@ Suggested short body (EN) — same spirit as ROADMAP §9.3.
 ## 5. Apple App Store notes (Guideline 3.1.5 — Cryptocurrencies)
 
 **Official source:** [App Store Review Guidelines §3.1.5](https://developer.apple.com/app-store/review/guidelines/#cryptocurrencies)  
-**Umbrella today:** desktop Windows/Linux via GitHub Releases. These notes apply when/if an **iOS** build is submitted (roadmap mobile). Desktop side-load is not App Store distribution.
+**Phobia today:** desktop Windows/Linux via GitHub Releases. These notes apply when/if an **iOS** build is submitted (roadmap mobile). Desktop side-load is not App Store distribution.
 
 ### 5.1. What Apple allows (and our mapping)
 
-| Guideline | Rule (summary) | Umbrella stance |
+| Guideline | Rule (summary) | Phobia stance |
 |-----------|----------------|-----------------|
 | **3.1.5 (i) Wallets** | May facilitate virtual-currency *storage* if published by a developer enrolled as an **organization** (not an individual) | Non-custodial: keys generated and stored **only on device**. No Umbrella-hosted balances. **Requires a legal entity + org Apple Developer account before submission** (see ROADMAP **R.2**). |
 | **3.1.5 (ii) Mining** | No on-device mining | We do not mine. |
-| **3.1.5 (iii) Exchanges** | Crypto exchange / transmission only where licensed for that region | Umbrella is **not** a licensed exchange. Any swap UI must be framed as user-initiated, non-custodial protocol use — **not** “Umbrella exchange”. Geo-limit if counsel requires (see [GEO_BLOCKING.md](GEO_BLOCKING.md)). |
+| **3.1.5 (iii) Exchanges** | Crypto exchange / transmission only where licensed for that region | Phobia is **not** a licensed exchange. Any swap UI must be framed as user-initiated, non-custodial protocol use — **not** “Phobia exchange”. Geo-limit if counsel requires (see [GEO_BLOCKING.md](GEO_BLOCKING.md)). |
 | **3.1.5 (iv) ICOs / crypto-securities** | Restricted to approved financial institutions | We do **not** offer ICOs, futures, or securities trading. |
 | **3.1.5 (v) Task rewards** | No crypto for downloading apps / social spam | We do **not** reward installs or referrals in crypto. |
-| **3.1.1 IAP** | Crypto/wallets must not unlock paid app features outside IAP | Umbrella must not sell “premium unlock” via coin transfers. Optional future tips/sponsors stay outside App Store entitlements (GitHub Sponsors). |
+| **3.1.1 IAP** | Crypto/wallets must not unlock paid app features outside IAP | Phobia must not sell “premium unlock” via coin transfers. Optional future tips/sponsors stay outside App Store entitlements (GitHub Sponsors). |
 
 ### 5.2. Financial model — answers reviewers ask
 
 | Question | Approved answer |
 |----------|-----------------|
-| Who holds the user’s funds? | **Nobody except the user.** Keys never leave the device. Umbrella cannot freeze, reverse, or recover funds. |
-| How does Umbrella make money? | **No cut of transfers.** Optional sponsorship ([GitHub Sponsors](https://github.com/sponsors/thefear078)). Any future in-app service fee (if added) must be disclosed in UI and still non-custodial — see [LICENSE](LICENSE) §3. |
+| Who holds the user’s funds? | **Nobody except the user.** Keys never leave the device. Phobia cannot freeze, reverse, or recover funds. |
+| How does Phobia make money? | **No cut of transfers.** Optional sponsorship ([GitHub Sponsors](https://github.com/sponsors/thefear078)). Any future in-app service fee (if added) must be disclosed in UI and still non-custodial — see [LICENSE](LICENSE) §3. |
 | Is there fiat on-ramp / card buy? | **Not planned** without proper licensing. Do not advertise “buy crypto with card” in the listing. |
-| Are swaps custody? | **No.** If present, swaps are user-signed transactions to third-party protocols; Umbrella never takes possession. |
+| Are swaps custody? | **No.** If present, swaps are user-signed transactions to third-party protocols; Phobia never takes possession. |
 | Demo account for review? | Provide a **test vault / dry-run path** if requested. **Never** ship a backdoor, hardcoded seed, or bypass of Tor/kill-switch for reviewers. |
 
 ### 5.3. Reviewer notes field (paste-ready)
 
-> Umbrella Wallet is non-custodial software. Private keys and recovery phrases are generated and stored only on the user’s device; we cannot access them. We do not provide banking, brokerage, or money-transmitter services. Tor (when enabled) hides the device IP from remote endpoints; it does not make transparent blockchains private. Please see in-app Terms and Privacy Policy links, and the first-run acknowledgement of 18+ / lost-seed risk.
+> Phobia Wallet is non-custodial software. Private keys and recovery phrases are generated and stored only on the user’s device; we cannot access them. We do not provide banking, brokerage, or money-transmitter services. Tor (when enabled) hides the device IP from remote endpoints; it does not make transparent blockchains private. Please see in-app Terms and Privacy Policy links, and the first-run acknowledgement of 18+ / lost-seed risk.
 
 ### 5.4. Pre-submit checklist (Apple)
 
@@ -89,17 +89,17 @@ Suggested short body (EN) — same spirit as ROADMAP §9.3.
 ## 6. Google Play — crypto / financial policy
 
 **Official source:** [Cryptocurrency Exchanges and Software Wallets Policy](https://support.google.com/googleplay/android-developer/answer/16329703) (Play Console Help)  
-**Umbrella today:** desktop-first; Android is planned. Apply these notes before Play submission.
+**Phobia today:** desktop-first; Android is planned. Apply these notes before Play submission.
 
 ### 6.1. Non-custodial vs custodial (critical)
 
 Google’s Cryptocurrency Exchanges and Software Wallets policy targets **exchanges and custodial** software wallets in listed jurisdictions. Google has clarified that **non-custodial wallets are out of scope** of that licensing matrix — *provided the app truly never takes custody of keys or funds*.
 
-Umbrella **must remain non-custodial** in architecture and copy. If a future feature adds custodial behaviour, licensing requirements change overnight.
+Phobia **must remain non-custodial** in architecture and copy. If a future feature adds custodial behaviour, licensing requirements change overnight.
 
 ### 6.2. What we still must do on Play
 
-| Requirement | Umbrella action |
+| Requirement | Phobia action |
 |-------------|-----------------|
 | Verified Play developer / business verification | Complete before production listing |
 | Honest Financial Features declaration | Declare wallet functionality accurately; do **not** claim to be a licensed exchange |
@@ -129,7 +129,7 @@ Umbrella **must remain non-custodial** in architecture and copy. If a future fea
 
 ### 7.1. Signing
 
-| Path | Requirement | Umbrella plan |
+| Path | Requirement | Phobia plan |
 |------|-------------|----------------|
 | GitHub `.exe` / portable | Users see SmartScreen until reputation builds | Ship `SHA256SUMS`; document verify steps in [SECURITY.md](SECURITY.md) |
 | Trusted SmartScreen / enterprise | **OV or EV** code signing certificate | ROADMAP **R.2 / R.6** — order **≥60 days** before relying on Store trust |
@@ -146,7 +146,7 @@ Use §2 wording only. Emphasize:
 
 ### 7.3. Reviewer note (paste-ready)
 
-> Umbrella Wallet for Windows is non-custodial desktop software. Private keys never leave the device. We do not custody funds. Optional Tor hides IP from remote endpoints; transparent chains remain public ledgers. Verify downloads via SHA-256 sums on the GitHub Release.
+> Phobia Wallet for Windows is non-custodial desktop software. Private keys never leave the device. We do not custody funds. Optional Tor hides IP from remote endpoints; transparent chains remain public ledgers. Verify downloads via SHA-256 sums on the GitHub Release.
 
 ### 7.4. Pre-submit checklist (Microsoft)
 

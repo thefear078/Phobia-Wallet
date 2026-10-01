@@ -125,12 +125,12 @@ public static class VaultBackup
         }
         catch
         {
-            return new VaultBackupVerification(false, "That file is not an Umbrella backup.",
+            return new VaultBackupVerification(false, "That file is not a Phobia backup.",
                 Reason: VaultBackupReason.NotABackup);
         }
 
         if (bundle is null || !bundle.TryGetValue("magic", out var magic) || magic != Magic)
-            return new VaultBackupVerification(false, "That file is not an Umbrella backup.",
+            return new VaultBackupVerification(false, "That file is not a Phobia backup.",
                 Reason: VaultBackupReason.NotABackup);
 
         var vaultBytes = VaultBytesFrom(bundle);
@@ -208,13 +208,13 @@ public static class VaultBackup
             }
             catch
             {
-                return (false, "That file is not an Umbrella backup.");
+                return (false, "That file is not a Phobia backup.");
             }
 
             if (bundle is null ||
                 !bundle.TryGetValue("magic", out var magic) || magic != Magic)
             {
-                return (false, "That file is not an Umbrella backup.");
+                return (false, "That file is not a Phobia backup.");
             }
 
             var vaultBytes = VaultBytesFrom(bundle);

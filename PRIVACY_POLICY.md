@@ -1,7 +1,7 @@
 # Privacy Policy (store / public distribution)
 
 **Last updated:** 2026-09-15  
-**Applies to:** Umbrella Wallet app listings and public downloads  
+**Applies to:** Phobia Wallet app listings and public downloads  
 **Publisher:** the fear (thefear078)
 
 This is the **formal privacy policy** for app stores and distributors.  
@@ -11,13 +11,13 @@ For the honest technical breakdown (what each server learns), see **[PRIVACY.md]
 
 ## 1. Who we are
 
-Umbrella Wallet is non-custodial desktop software. There is **no Umbrella account server**, no customer database of users, and no analytics backend operated by us.
+Phobia Wallet is non-custodial desktop software. There is **no Phobia account server**, no customer database of users, and no analytics backend operated by us.
 
 ## 2. Data we collect
 
 **We collect none on our servers.**
 
-| Category | Collected by Umbrella servers? |
+| Category | Collected by Phobia servers? |
 |---|---|
 | Name, email, phone | No — never asked |
 | Account / KYC data | No — no accounts |

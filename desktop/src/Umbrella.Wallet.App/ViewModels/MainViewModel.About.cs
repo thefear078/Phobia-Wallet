@@ -32,9 +32,9 @@ public partial class MainViewModel
         typeof(MainViewModel).Assembly.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company
         ?? "the fear";
 
-    /// <summary>"Umbrella Wallet 4.8.2" — the product name and version as the assembly declares them.</summary>
+    /// <summary>"Phobia Wallet 4.10.0" — the product name and version as the assembly declares them.</summary>
     public string AboutProductLine =>
-        $"{typeof(MainViewModel).Assembly.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "Umbrella Wallet"} {CurrentVersion}";
+        $"{typeof(MainViewModel).Assembly.GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "Phobia Wallet"} {CurrentVersion}";
 
     /// <summary>"A product by the fear" — the maker's mark in words, beside the gold ghost.</summary>
     public string AboutPublisherLine =>

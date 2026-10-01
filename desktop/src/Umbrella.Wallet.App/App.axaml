@@ -2,14 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Umbrella.Wallet.App.App"
              xmlns:local="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
              RequestedThemeVariant="Dark"
-             Name="Umbrella Wallet">
+             Name="Phobia Wallet">
 
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
 
-    <!-- Brand gradients are the same across every palette (they ARE the Umbrella signature), so they
+    <!-- Brand gradients are the same across every palette (they ARE the Phobia signature), so they
          live here as static resources rather than in the per-theme brush set. -->
     <Application.Resources>
         <LinearGradientBrush x:Key="UmSignature" StartPoint="0%,0%" EndPoint="100%,100%">
@@ -29,16 +31,22 @@
             <GradientStop Offset="0.5" Color="#4D8BFF"/>
             <GradientStop Offset="1" Color="#8E72FF"/>
         </LinearGradientBrush>
-        <!-- The mark's fill before a theme is applied (the splash can show first). Theming.Apply
-             replaces it with the chosen theme's accent. -->
+        <!-- The brand's colours before a theme is applied (the splash can show first): Phobia's crystal
+             blue. Theming.Apply replaces them with the chosen theme's. -->
         <LinearGradientBrush x:Key="UmMarkFill" StartPoint="0%,0%" EndPoint="100%,100%">
-            <GradientStop Offset="0" Color="#FFD766"/>
-            <GradientStop Offset="0.45" Color="#F8C846"/>
-            <GradientStop Offset="1" Color="#E3A72F"/>
+            <GradientStop Offset="0" Color="#A6DCFF"/>
+            <GradientStop Offset="0.45" Color="#5AA9FF"/>
+            <GradientStop Offset="1" Color="#316EE5"/>
         </LinearGradientBrush>
-        <Color x:Key="UmGlow">#F8C846</Color>
-        <SolidColorBrush x:Key="UmTileEdge" Color="#99F8C846"/>
-        <BoxShadows x:Key="UmTileGlow">0 0 22 0 #40F8C846</BoxShadows>
+        <Color x:Key="UmGlow">#5B3FE8</Color>
+        <Color x:Key="UmCrystalTint">#00000000</Color>
+        <SolidColorBrush x:Key="UmTileEdge" Color="#665B3FE8"/>
+        <SolidColorBrush x:Key="UmPrimaryFill" Color="#5B3FE8"/>
+        <SolidColorBrush x:Key="UmPrimaryFillHover" Color="#6A50F0"/>
+        <BoxShadows x:Key="UmPrimaryGlow">0 8 24 -10 #905B3FE8</BoxShadows>
+        <SolidColorBrush x:Key="UmCardEdge" Color="#22222E"/>
+        <SolidColorBrush x:Key="UmAccent2" Color="#4E7BFF"/>
+        <BoxShadows x:Key="UmTileGlow">0 0 22 0 #305B3FE8</BoxShadows>
         <!-- Hero balance surface: a muted navy→blue→violet sweep that stays readable under white text. -->
         <LinearGradientBrush x:Key="UmHeroGradient" StartPoint="0%,0%" EndPoint="100%,100%">
             <GradientStop Offset="0" Color="#183A66"/>
@@ -74,8 +82,12 @@
             <Setter Property="Foreground" Value="{DynamicResource UmTextMuted}" />
         </Style>
 
+        <!-- Headings. Once a book serif; Phobia sets them in the same clean sans as everything else,
+             just heavier — bold, quiet, nothing decorative. (The class keeps its old name so every
+             heading in the views follows without being touched.) -->
         <Style Selector="TextBlock.serif">
-            <Setter Property="FontFamily" Value="Georgia, Cambria, Times New Roman, serif" />
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI, AvaloniaSans" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
         <Style Selector="TextBlock.mono">
@@ -235,17 +247,19 @@
              main call-to-action, not just the neutrals — orange on The fear, cyan on Blue, and so on. -->
         <!-- Primary and ghost share one fixed height (46) and vertical padding, so a primary+ghost
              row lines up exactly — the primary is just wider, coloured and bold, never taller. -->
-        <!-- Primary: a single solid brand colour — monotone, prestigious, not a gradient. -->
+        <!-- Primary: the theme's call to action. On Phobia it is cut from the crystal (blue into violet,
+             with a glow of the blue); every other theme keeps its own single solid accent. -->
         <Style Selector="Button.primary">
-            <Setter Property="Background" Value="{DynamicResource UmAccentBright}" />
+            <Setter Property="Background" Value="{DynamicResource UmPrimaryFill}" />
             <Setter Property="Foreground" Value="{DynamicResource UmAccentText}" />
             <Setter Property="Padding" Value="26,13" />
             <Setter Property="MinHeight" Value="50" />
-            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="15" />
-            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="CornerRadius" Value="12" />
         </Style>
         <Style Selector="Button.primary /template/ ContentPresenter">
+            <Setter Property="BoxShadow" Value="{DynamicResource UmPrimaryGlow}" />
             <Setter Property="Transitions">
                 <Transitions>
                     <BrushTransition Property="Background" Duration="0:0:0.12" />
@@ -253,10 +267,13 @@
             </Setter>
         </Style>
         <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource UmAccentHover}" />
+            <Setter Property="Background" Value="{DynamicResource UmPrimaryFillHover}" />
         </Style>
         <Style Selector="Button.primary:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource UmAccentHover}" />
+            <Setter Property="Background" Value="{DynamicResource UmPrimaryFillHover}" />
+        </Style>
+        <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+            <Setter Property="BoxShadow" Value="0 0 0 0 #00000000" />
         </Style>
 
         <!-- Ghost: quiet secondary action. Frosted-glass fill (translucent white over the
@@ -677,6 +694,44 @@
             <Setter Property="Background" Value="{DynamicResource UmCard}" />
         </Style>
 
+        <!-- A quiet fold-out (Swap's "which coins"): the card colour, not the toolkit's black header. -->
+        <Style Selector="Expander.soft /template/ ToggleButton#ExpanderHeader">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextSoft}" />
+            <Setter Property="CornerRadius" Value="12" />
+        </Style>
+        <Style Selector="Expander.soft /template/ ToggleButton#ExpanderHeader:pointerover /template/ Border#ToggleButtonBackground">
+            <Setter Property="Background" Value="{DynamicResource UmHover}" />
+        </Style>
+        <Style Selector="Expander.soft /template/ Border#ExpanderContent">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}" />
+        </Style>
+
+        <!-- A field that sits inside its own rounded container (Swap's "you pay", the palette search):
+             no box of its own in ANY state. The focus style above painted the card colour into the
+             template's border, which drew a dark rectangle inside the rounded container. -->
+        <Style Selector="TextBox.bare">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="TextBox.bare /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.bare:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox.bare:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
         <!-- ===== Keyboard focus (accessibility, §8) =====
              A control reached by Tab gets a clear accent outline so keyboard users can always see
              where they are. :focus-visible fires only for keyboard focus, so clicking with the mouse
@@ -699,7 +754,7 @@
         <!-- The sheen is driven by Color resources (a GradientStop needs a Color, not a Brush),
              so cards follow the theme instead of staying dark on the light palette. -->
         <Style Selector="Border.card">
-            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmCardEdge}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="26" />
             <Setter Property="Padding" Value="24" />
@@ -820,123 +875,13 @@
             </Style.Animations>
         </Style>
 
-        <!-- Ambient "rain" for the fear theme: faint translucent streaks drifting down over the UI.
-             The base class carries the look; a speed class carries the fall animation, so each drop
-             runs exactly one animation. The whole layer is gated by the motion toggle in markup. -->
-        <!-- Kept very faint so it reads as texture behind the content, never as lines crossing text.
-             Fully removable in Settings → Appearance → Animation. -->
-        <Style Selector="Rectangle.raindrop">
-            <Setter Property="Width" Value="1.2" />
-            <Setter Property="Fill" Value="#0AFFFFFF" />
-            <Setter Property="IsHitTestVisible" Value="False" />
-            <Setter Property="RadiusX" Value="1" />
-            <Setter Property="RadiusY" Value="1" />
+        <!-- Stickers are opt-in (Settings → Appearance): without them the window carries the
+             'nostickers' class and every animated sticker is left out, not just stilled. -->
+        <Style Selector="Window.nostickers lottie|Lottie">
+            <Setter Property="IsVisible" Value="False" />
         </Style>
-        <!-- Ten drops, each with a UNIQUE duration and a UNIQUE start height, and NO delay. Unique
-             durations mean the drops drift permanently out of phase and never re-sync, so there is no
-             recurring "wave" (the earlier version used a shared Delay + repeating durations, which read
-             as a periodic pulse the longer it ran). Unique start offsets scatter them from the first
-             frame. End Y is past a maximised window so each drop crosses the whole height smoothly. -->
-        <Style Selector="Rectangle.rd1">
-            <Style.Animations>
-                <Animation Duration="0:0:1.13" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-80" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.80" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.80" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd2">
-            <Style.Animations>
-                <Animation Duration="0:0:1.47" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-300" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.70" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.70" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd3">
-            <Style.Animations>
-                <Animation Duration="0:0:0.91" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-160" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.62" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.62" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd4">
-            <Style.Animations>
-                <Animation Duration="0:0:1.79" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-420" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.85" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.85" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd5">
-            <Style.Animations>
-                <Animation Duration="0:0:1.31" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-240" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.75" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.75" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd6">
-            <Style.Animations>
-                <Animation Duration="0:0:0.83" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-60" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.60" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.60" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd7">
-            <Style.Animations>
-                <Animation Duration="0:0:1.61" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-360" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.82" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.82" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd8">
-            <Style.Animations>
-                <Animation Duration="0:0:1.07" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-120" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.70" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.70" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd9">
-            <Style.Animations>
-                <Animation Duration="0:0:1.93" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-480" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.90" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.90" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-        <Style Selector="Rectangle.rd10">
-            <Style.Animations>
-                <Animation Duration="0:0:1.23" IterationCount="INFINITE" Easing="LinearEasing">
-                    <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-200" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                    <KeyFrame Cue="10%"><Setter Property="Opacity" Value="0.68" /></KeyFrame>
-                    <KeyFrame Cue="90%"><Setter Property="Opacity" Value="0.68" /></KeyFrame>
-                    <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="1340" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
+
+        <!-- ===== Phobia effects (each has its own switch in Settings → Appearance → Animation) ===== -->
 
         <!-- Aurora: two large, very faint radial-glow blobs that drift slowly behind the content.
              Opt-in (Settings → Appearance). Non-interactive; gated by the motion toggle in markup. -->
@@ -1015,7 +960,8 @@
             </Style.Animations>
         </Style>
         <!-- The mark scales up and fades in. -->
-        <!-- The app-icon tile the mark sits in: near-black, a hairline and a glow of the accent. -->
+        <!-- The app-icon tile the mark sits in: the theme's card lifting to its page, a hairline and a
+             glow of the accent. -->
         <Style Selector="Border.brandTile">
             <Setter Property="CornerRadius" Value="14" />
             <Setter Property="BorderThickness" Value="1" />
@@ -1023,8 +969,8 @@
             <Setter Property="BoxShadow" Value="{DynamicResource UmTileGlow}" />
             <Setter Property="Background">
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                    <GradientStop Offset="0" Color="#1A1A1A" />
-                    <GradientStop Offset="1" Color="#070707" />
+                    <GradientStop Offset="0" Color="{DynamicResource UmCardTop}" />
+                    <GradientStop Offset="1" Color="{DynamicResource UmCardBottom}" />
                 </LinearGradientBrush>
             </Setter>
         </Style>

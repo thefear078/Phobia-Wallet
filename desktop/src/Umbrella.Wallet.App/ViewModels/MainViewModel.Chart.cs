@@ -33,10 +33,46 @@ public partial class MainViewModel
     // The grid is always five levels and five ticks, so their pixel positions are constants and
     // the view can place them directly. An ItemsControl over a Canvas does not position its
     // generated containers, which silently dropped the whole grid.
-    private const double PlotLeft = 58;    // room for price labels
-    private const double PlotRight = 860;
-    private const double PlotTop = 10;
-    private const double PlotBottom = 130; // room for time labels below
+    // Exchange layout (Kraken, TradingView): the price axis on the RIGHT, the price area above a
+    // separate volume band, time labels underneath. The canvas is 870×296; the view scales it.
+    private const double PlotLeft = 10;
+    private const double PlotRight = 790;   // the price axis and its tags live to the right of this
+    private const double PlotTop = 14;
+    private const double PlotBottom = 230;  // bottom of the price area
+    private const double VolTop = 240;      // the volume band
+    private const double VolBottom = 272;
+
+    // --- The last price, Kraken-style: a dashed line across the plot and a tag on the axis ---------
+    [ObservableProperty] private double _chartLastPriceY;
+    [ObservableProperty] private double _chartLastPriceTagTop;
+    [ObservableProperty] private string _chartLastPriceLabel = string.Empty;
+
+    // --- Crosshair across BOTH axes: a price tag at the pointer's height, a time tag under it -------
+    [ObservableProperty] private double _crosshairHLineTop;
+    [ObservableProperty] private double _crosshairPriceTagTop;
+    [ObservableProperty] private string _crosshairAxisPrice = string.Empty;
+    [ObservableProperty] private double _crosshairTimeTagLeft;
+
+    // --- The candle under the pointer (the last one when not hovering): O H L C and volume ---------
+    [ObservableProperty] private string _ohlcOpen = string.Empty;
+    [ObservableProperty] private string _ohlcHigh = string.Empty;
+    [ObservableProperty] private string _ohlcLow = string.Empty;
+    [ObservableProperty] private string _ohlcClose = string.Empty;
+    [ObservableProperty] private string _ohlcVolume = string.Empty;
+    [ObservableProperty] private string _ohlcChange = string.Empty;
+    [ObservableProperty] private string _ohlcColor = "#26A69A";
+
+    private void ShowOhlc(PriceCandle c)
+    {
+        OhlcOpen = FormatPrice(c.Open);
+        OhlcHigh = FormatPrice(c.High);
+        OhlcLow = FormatPrice(c.Low);
+        OhlcClose = FormatPrice(c.Close);
+        OhlcVolume = c.Volume > 0 ? FormatCompactMoney(c.Volume) : "—";
+        var pct = c.Open != 0 ? (c.Close - c.Open) / c.Open * 100 : 0;
+        OhlcChange = $"{(pct >= 0 ? "+" : "−")}{Math.Abs(pct).ToString("0.00", Fx.Culture)}%";
+        OhlcColor = c.Close >= c.Open ? "#26A69A" : "#EF5350";
+    }
 
     /// <summary>Closed polygon under the price line, so the chart reads as an area not a wire.</summary>
     [ObservableProperty] private List<Avalonia.Point> _chartArea = [];
@@ -217,18 +253,25 @@ public partial class MainViewModel
         var bars = new List<VolumeBarVm>(candles.Count);
         if (maxVol > 0)
         {
-            const double band = 32; // px of the plot bottom the bars may reach
+            // Their own band under the price area, so they never sit on top of the candles.
+            const double band = VolBottom - VolTop;
             for (var i = 0; i < candles.Count; i++)
             {
                 var c = candles[i];
                 if (c.Volume <= 0) continue;
                 var xc = PlotLeft + plotW * (i + 0.5) / candles.Count;
                 var barH = Math.Max(1.5, c.Volume / maxVol * band);
-                bars.Add(new VolumeBarVm(xc - (w / 2), PlotBottom - barH, w, barH,
-                    c.Close >= c.Open ? "#7026A69A" : "#70EF5350")); // ~44% alpha green/red, clearly visible
+                bars.Add(new VolumeBarVm(xc - (w / 2), VolBottom - barH, w, barH,
+                    c.Close >= c.Open ? "#8026A69A" : "#80EF5350"));
             }
         }
         ChartVolumeBars = bars;
+
+        // The last price: a dashed line across and a tag on the axis, in the window's colour.
+        ChartLastPriceY = Y(candles[^1].Close);
+        ChartLastPriceTagTop = Math.Clamp(ChartLastPriceY - 9, 0, VolTop - 18);
+        ChartLastPriceLabel = FormatPrice(candles[^1].Close);
+        ShowOhlc(candles[^1]);
 
         // Five price levels, top to bottom.
         ChartLevel0 = FormatPrice(max);
@@ -277,7 +320,12 @@ public partial class MainViewModel
 
     /// <summary>Called from the view as the pointer moves over the chart: snaps to the nearest candle
     /// and updates the crosshair line, dot and floating price/time readout.</summary>
-    public void UpdateCrosshair(double canvasX)
+    public void UpdateCrosshair(double canvasX) => UpdateCrosshair(canvasX, double.NaN);
+
+    /// <summary>The crosshair at a pointer position: the nearest candle (dot on its close, its O H L C
+    /// in the readout), a horizontal line at the pointer's height with that height's price on the axis,
+    /// and the candle's time under the plot.</summary>
+    public void UpdateCrosshair(double canvasX, double canvasY)
     {
         var n = _detailCandles.Count;
         if (n < 2) { CrosshairVisible = false; return; }
@@ -300,10 +348,22 @@ public partial class MainViewModel
         CrosshairLabelLeft = Math.Clamp(x - 62, PlotLeft, PlotRight - 124);
         CrosshairPrice = FormatPrice(c.Close);
         CrosshairTime = CrosshairTimeLabel(i, n);
+        CrosshairTimeTagLeft = Math.Clamp(x - 50, PlotLeft, PlotRight - 100);
+
+        // The price at the pointer's height (inside the price area), not just the candle's close.
+        var hy = double.IsNaN(canvasY) ? y : Math.Clamp(canvasY, PlotTop, PlotBottom);
+        CrosshairHLineTop = hy;
+        CrosshairPriceTagTop = Math.Clamp(hy - 9, 0, VolTop - 18);
+        CrosshairAxisPrice = FormatPrice(_chartMax - (hy - PlotTop) / plotH * range);
+        ShowOhlc(c);
         CrosshairVisible = true;
     }
 
-    public void HideCrosshair() => CrosshairVisible = false;
+    public void HideCrosshair()
+    {
+        CrosshairVisible = false;
+        if (_detailCandles.Count > 0) ShowOhlc(_detailCandles[^1]);
+    }
 
     /// <summary>Approximate wall-clock label for a hovered candle: the window is evenly spaced, so
     /// candle i of n maps to now − span·(1 − i/(n−1)).</summary>
@@ -358,7 +418,12 @@ public partial class MainViewModel
     private void ClearMarketQuery() => MarketQuery = string.Empty;
 
     /// <summary>Selected chart window. Changing it reloads every chart at the new resolution.</summary>
-    [ObservableProperty] private string _chartRange = "24H";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ChartCaption))]
+    private string _chartRange = "24H";
+
+    /// <summary>"Ціна за 24H · USD" over the chart — the candles are USD pairs whatever the display currency.</summary>
+    public string ChartCaption => string.Format(Loc.Instance["chart.caption"], ChartRange);
 
     public IReadOnlyList<string> ChartRanges => PublicMarketRatesClient.ChartRanges;
 

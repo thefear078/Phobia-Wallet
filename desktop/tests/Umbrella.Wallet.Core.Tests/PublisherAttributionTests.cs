@@ -38,10 +38,11 @@ public sealed class PublisherAttributionTests
     }
 
     [Fact]
-    public void The_product_is_still_umbrella_wallet()
+    public void The_product_is_phobia_wallet()
     {
+        // Renamed from Umbrella Wallet in 4.10.0; the publisher, the AppId and the data folder stayed.
         var product = App.GetCustomAttribute<AssemblyProductAttribute>()?.Product;
-        Assert.Equal("Umbrella Wallet", product);
+        Assert.Equal("Phobia Wallet", product);
     }
 
     /// <summary>

@@ -11,5 +11,5 @@ labels: ["enhancement"]
 ### Problem
 ### Proposed solution
 ### Alternatives considered
-### Why this fits Umbrella
+### Why this fits Phobia
 <!-- Honesty / non-custody / no telemetry — see MANIFESTO.md -->

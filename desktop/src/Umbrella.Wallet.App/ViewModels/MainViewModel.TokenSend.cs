@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Umbrella.Wallet.Infrastructure.Network;
 
 namespace Umbrella.Wallet.App.ViewModels;
 
@@ -33,6 +34,19 @@ public partial class MainViewModel
     /// it between the two wallets' associated token accounts, derived from the mint.</summary>
     public const string SplSendPrefix = "SPL:";
 
+    /// <summary>An ERC-20 on an EVM network other than Ethereum: "EVMTOKEN:&lt;network key&gt;:&lt;contract&gt;",
+    /// the key being the network's in <see cref="EthTransactionSender.Chains"/> ("MATIC", "BNB", "ARB"…).</summary>
+    public const string EvmTokenSendPrefix = "EVMTOKEN:";
+
+    /// <summary>The network an EVMTOKEN key sends on, or null for any other key.</summary>
+    public static EvmChain? EvmChainForSendKey(string? key)
+    {
+        if (key is null || !key.StartsWith(EvmTokenSendPrefix, StringComparison.OrdinalIgnoreCase)) return null;
+        var rest = key[EvmTokenSendPrefix.Length..];
+        var cut = rest.IndexOf(':');
+        return cut > 0 && EthTransactionSender.Chains.TryGetValue(rest[..cut], out var chain) ? chain : null;
+    }
+
     /// <summary>The contract a picker key refers to, or null when the key is a native coin.</summary>
     public static string? ContractFromSendKey(string? key)
     {
@@ -45,6 +59,12 @@ public partial class MainViewModel
             return key[JettonSendPrefix.Length..];
         if (key.StartsWith(SplSendPrefix, StringComparison.OrdinalIgnoreCase))
             return key[SplSendPrefix.Length..];
+        if (key.StartsWith(EvmTokenSendPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = key[EvmTokenSendPrefix.Length..];
+            var cut = rest.IndexOf(':');
+            return cut > 0 ? rest[(cut + 1)..] : null;
+        }
 
         return null;
     }
@@ -81,6 +101,28 @@ public partial class MainViewModel
     /// wrong coin. So the selection is matched back by key, and only falls back to the first entry
     /// when the asset it pointed at genuinely went away.
     /// </summary>
+    /// <summary>True once the user chose a Send asset themselves; from then on it is never changed for them.</summary>
+    private bool _sendAssetPickedByUser;
+
+    /// <summary>Set while the wallet itself moves the selection, so that is not mistaken for the user's pick.</summary>
+    private bool _choosingSendAsset;
+
+    /// <summary>The offered asset with the largest value held (or amount, when nothing is priced).</summary>
+    private SendOption? BiggestHolding()
+    {
+        SendOption? best = null;
+        var bestScore = 0d;
+        foreach (var option in SendableAssetOptions)
+        {
+            var account = AccountForSendKey(option.Symbol);
+            if (account is null || account.Balance == BalanceRead.Unknown || account.Amount <= 0) continue;
+            var score = account.Price > 0 ? account.Amount * account.Price : account.Amount * 1e-9;
+            if (score > bestScore) (best, bestScore) = (option, score);
+        }
+
+        return best;
+    }
+
     private void RebuildSendableAssets()
     {
         var previouslySelected = SelectedSendAsset?.Symbol;
@@ -109,6 +151,15 @@ public partial class MainViewModel
                 var tron = a.Derivation.StartsWith("TRC20", StringComparison.OrdinalIgnoreCase);
                 var jetton = a.Derivation.StartsWith("Jetton", StringComparison.OrdinalIgnoreCase);
                 var spl = a.Derivation.StartsWith("SPL", StringComparison.OrdinalIgnoreCase);
+
+                // An ERC-20 on another EVM network (USDT on Polygon, USDC on Base…) routes to that network.
+                var evm = PublicChainBalanceClient.EvmStablecoins.FirstOrDefault(t =>
+                    t.Contract.Equals(a.Contract, StringComparison.OrdinalIgnoreCase) &&
+                    t.Network.Equals(a.Chain, StringComparison.OrdinalIgnoreCase));
+                if (evm is not null)
+                    return new SendOption($"{EvmTokenSendPrefix}{evm.ChainKey}:{a.Contract}", a.Name,
+                        string.Format(Loc.Instance["send.evmTokenNetwork"], evm.Network), ticker: a.Symbol);
+
                 var prefix = spl ? SplSendPrefix : jetton ? JettonSendPrefix : tron ? TronTokenSendPrefix : TokenSendPrefix;
                 var network = spl ? "send.splNetwork" : jetton ? "send.jettonNetwork" : tron ? "send.trc20Network" : "send.erc20Network";
 
@@ -116,18 +167,26 @@ public partial class MainViewModel
             })
             .ToList();
 
-        SyncInPlace(SendableAssetOptions, [.. SendableAssets, .. tokens]);
+        SyncInPlace(SendableAssetOptions, [.. SendableAssets.Select(o => LocalizedNetwork("sendnet.", o)), .. tokens]);
 
         var restored = previouslySelected is null
             ? null
             : SendableAssetOptions.FirstOrDefault(
                 o => o.Symbol.Equals(previouslySelected, StringComparison.OrdinalIgnoreCase));
 
+        // Until the user picks an asset, Send opens on the one they hold the most of — it used to open on
+        // Ethereum at 0 ETH for a wallet whose money was all USDT and XRP.
+        if (!_sendAssetPickedByUser && BiggestHolding() is { } biggest) restored = biggest;
+
         // The same object as before whenever the asset is still offered, so this is not a change and
         // nothing about the Send screen resets. Clearing and refilling the list used to happen on every
         // one-minute refresh; the picker lost its selection each time and could wipe a review in progress.
         if (!ReferenceEquals(SelectedSendAsset, restored ?? SendableAssetOptions.FirstOrDefault()))
-            SelectedSendAsset = restored ?? SendableAssetOptions.FirstOrDefault();
+        {
+            _choosingSendAsset = true;
+            try { SelectedSendAsset = restored ?? SendableAssetOptions.FirstOrDefault(); }
+            finally { _choosingSendAsset = false; }
+        }
 
         RefreshSendOptionBalances();
     }
@@ -171,7 +230,15 @@ public partial class MainViewModel
         var contract = ContractFromSendKey(sendKey);
         if (contract is null) return null;
 
+        // On another EVM network the row must be THAT network's: the same contract address can exist
+        // on two chains, and the send must read the balance it is about to move.
+        if (EvmChainForSendKey(sendKey) is { } chain)
+            return Accounts.FirstOrDefault(a => a.IsSpendableToken &&
+                a.Contract.Equals(contract, StringComparison.OrdinalIgnoreCase) &&
+                a.Chain.Equals(chain.Name, StringComparison.OrdinalIgnoreCase));
+
         return Accounts.FirstOrDefault(a =>
-            a.IsSpendableToken && a.Contract.Equals(contract, StringComparison.OrdinalIgnoreCase));
+            a.IsSpendableToken && a.Contract.Equals(contract, StringComparison.OrdinalIgnoreCase) &&
+            !PublicChainBalanceClient.EvmStablecoins.Any(t => t.Network.Equals(a.Chain, StringComparison.OrdinalIgnoreCase)));
     }
 }

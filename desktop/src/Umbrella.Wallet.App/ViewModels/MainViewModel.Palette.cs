@@ -82,8 +82,11 @@ public partial class MainViewModel
         {
             var hint = Loc.Instance["wallets.paletteHint"];
             foreach (var w in _registry.Wallets.Where(w => w.Id != _registry.Active?.Id))
-                if (Match(w.Label) || Match(hint) || Match("wallet"))
-                    CommandResults.Add(new PaletteCommand("⇄", w.Label, hint, "wallet:" + w.Id));
+            {
+                var shown = WalletDisplayName(w.Label);
+                if (Match(shown) || Match(w.Label) || Match(hint) || Match("wallet"))
+                    CommandResults.Add(new PaletteCommand("⇄", shown, hint, "wallet:" + w.Id));
+            }
         }
 
         // Type a ticker/name to jump straight to that coin's chart.

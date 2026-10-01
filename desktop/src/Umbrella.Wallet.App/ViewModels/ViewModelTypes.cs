@@ -124,7 +124,16 @@ public sealed record WalletAccountViewModel(
     };
 
     public bool IsReady => SupportStatus is "Ready" or "Watch" or "Receive only";
-    public string StatusLabel => SupportStatus == "Planned" ? "Not ready" : SupportStatus;
+    /// <summary>The status in the reader's language. SupportStatus itself stays an English token: code
+    /// compares against it.</summary>
+    public string StatusLabel => SupportStatus switch
+    {
+        "Ready" => Loc.Instance["support.ready"],
+        "Receive only" => Loc.Instance["support.receiveOnly"],
+        "Watch" => Loc.Instance["support.watch"],
+        "Planned" => Loc.Instance["support.notReady"],
+        _ => SupportStatus,
+    };
 
     /// <summary>
     /// Which chain this address actually lives on. Sending a coin over the wrong network is one
@@ -268,8 +277,11 @@ public sealed record SettingsShortcut(string Label, string Tab, string Keywords)
 
 /// <summary>One wallet in the multi-wallet switcher.</summary>
 public sealed record WalletListItemViewModel(
-    string Id, string Label, bool IsActive, bool IsLegacy, string? Color = null)
+    string Id, string Label, bool IsActive, bool IsLegacy, string? Color = null, string? TotalLabel = null)
 {
+    /// <summary>The wallet's balance in the switcher, when that option is on.</summary>
+    public bool HasTotal => !string.IsNullOrEmpty(TotalLabel);
+
     public string Badge => IsLegacy ? "MAIN" : Label.Length > 0 ? Label[..1].ToUpperInvariant() : "W";
     public string StatusLabel => IsActive
         ? Umbrella.Wallet.App.Loc.Instance["settings.walletActive"]
@@ -281,6 +293,23 @@ public sealed record WalletListItemViewModel(
     public Avalonia.Media.IBrush? ColorBrush =>
         HasColor ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(Color!)) : null;
 }
+
+/// <summary>Which coins are tokens — contracts on another blockchain — and not a blockchain's own coin.</summary>
+public static class CoinKinds
+{
+    private static readonly HashSet<string> Tokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "USDT", "USDC", "DAI", "LINK", "UNI", "WBTC", "SHIB", "PEPE", "AAVE",
+    };
+
+    public static bool IsToken(string symbol) => Tokens.Contains(symbol);
+}
+
+/// <summary>A network chip (Receive's "which network"), lit when chosen.</summary>
+public sealed record NetworkChip(string Name, bool IsActive);
+
+/// <summary>One network a coin is held on, on the coin's own page.</summary>
+public sealed record AssetNetworkRow(string Network, string Amount, string Value);
 
 public sealed record HoldingRowViewModel(
     string Symbol,
@@ -299,6 +328,14 @@ public sealed record HoldingRowViewModel(
     /// <summary>Why an unread balance is unread, when that is known (see WalletAccountViewModel).</summary>
     string UnreadNote = "")
 {
+    /// <summary>The networks this coin is held on, when it is held on more than one ("TRON · Polygon").</summary>
+    public string? Networks { get; init; }
+
+    public bool HasNetworks => !string.IsNullOrEmpty(Networks);
+
+    /// <summary>Under the coin's name: the ticker, and the networks when there are several.</summary>
+    public string SymbolLine => HasNetworks ? $"{Symbol} · {Networks}" : Symbol;
+
     public string PriceLabel => Fx.Price(Price);
     public string AmountLabel => BalanceReadout.AmountText(Amount, Balance, Symbol);
     public string ValueLabel => Balance == BalanceRead.Unknown ? "—" : Fx.Money(Value);
@@ -321,6 +358,11 @@ public sealed record HoldingRowViewModel(
         $"{(Change24h > 0 ? "▲" : Change24h < 0 ? "▼" : "·")} {Math.Abs(Change24h):0.00}%";
     public string ChangeColor =>
         Change24h > 0 ? "#8FCB9B" : Change24h < 0 ? "#E09A9A" : "#8A9099";
+
+    /// <summary>The coin's price line over the market window, drawn in the row (from the market list).</summary>
+    public System.Collections.Generic.List<Avalonia.Point> Spark { get; init; } = new();
+
+    public bool HasSpark => Spark.Count > 1;
 
     /// <summary>The chain this holding sits on — shown under the coin name.</summary>
     public string NetworkLabel => CoinNetworks.For(Symbol, Chain);
@@ -412,6 +454,11 @@ public static class CoinBadge
         "ZEC" => "#ECB244",
         "LINK" => "#2A5ADA",
         "UNI" => "#FF007A",
+        "XLM" => "#2B2F3A",
+        "ATOM" => "#2E3148",
+        "NEAR" => "#00B07A",
+        "XNO" => "#209CE9",
+        "DCR" => "#2970FF",
         _ => "#6E5FB8",
     };
 
@@ -425,6 +472,9 @@ public static class CoinBadge
         // Zcash shipped as a supported chain with no logo, so it drew a letter glyph next to
         // eleven real brand marks.
         "ZEC",
+        // Stellar, Cosmos, NEAR, Nano and Decred: drawn in the supplied icon pack's rounded-square
+        // construction (Nano and Decred from the pack itself).
+        "XLM", "ATOM", "NEAR", "XNO", "DCR",
     };
     private static readonly Dictionary<string, Bitmap> LogoCache = new(StringComparer.OrdinalIgnoreCase);
 
@@ -565,6 +615,93 @@ public sealed record ActivityRowViewModel(
     string? TxId = null,
     string? Note = null)
 {
+    /// <summary>
+    /// The amount as shown: at most eight significant digits after the leading zeros, in the wallet's
+    /// number format. Explorers answer in base units, so an Ethereum receipt read
+    /// "+0.000009698659261008". <see cref="Amount"/> keeps every digit for the CSV export; a row whose
+    /// amount is a word ("unlocked") passes through untouched.
+    /// </summary>
+    public string AmountShort => ShortAmount(Amount);
+
+    public static string ShortAmount(string amount)
+    {
+        if (string.IsNullOrWhiteSpace(amount)) return amount;
+        var sign = amount[0] is '+' or '-' ? amount[..1] : string.Empty;
+        if (!decimal.TryParse(amount.AsSpan(sign.Length), System.Globalization.NumberStyles.AllowDecimalPoint,
+                System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return amount;
+        var decimals = value >= 1 ? 6 : Math.Min(12, (int)Math.Floor(-Math.Log10((double)value)) + 8);
+        if (value == 0) decimals = 0;
+        var rounded = Math.Round(value, Math.Max(0, decimals), MidpointRounding.AwayFromZero);
+        return sign + rounded.ToString("#,0." + new string('#', Math.Max(0, decimals)), Umbrella.Wallet.App.Fx.Culture);
+    }
+
+    /// <summary>"Received · TRX" for a transfer; "Vault · unlocked" for anything else — in the wallet's language.</summary>
+    public string Title => IsTransaction
+        ? $"{T(Kind)} · {Asset}"
+        : string.IsNullOrWhiteSpace(Amount) ? T(Asset) : $"{T(Asset)} · {T(Amount)}";
+
+    /// <summary>Under the title: the other side of a transfer, or what the event did.</summary>
+    public string Detail => T(Counterparty);
+
+    /// <summary>"≈ $3.42" under a transfer's amount (set by the feed from today's price).</summary>
+    public string? FiatLabel { get; init; }
+
+    public bool HasFiat => !string.IsNullOrEmpty(FiatLabel);
+
+    /// <summary>"Today", "Yesterday", "30 September" over the first event of each day (set by the feed).</summary>
+    public string? DayHeader { get; init; }
+
+    public bool HasDayHeader => !string.IsNullOrEmpty(DayHeader);
+
+    private static string T(string? s) => Umbrella.Wallet.App.ActivityLabelConverter.Translate(s);
+
+    /// <summary>The event's own icon: in, out, swap, the vault's lock, Tor, the network, the duress
+    /// shield, a key, a link — every kind of event recognisable at a glance.</summary>
+    public Avalonia.Media.Geometry IconGeometry => Kind switch
+    {
+        "Received" => ReceivedGlyph,
+        "Sent" => SentGlyph,
+        "Swap" => SwapGlyph,
+        "Connected" => LinkGlyph,
+        "Settings" => GearGlyph,
+        "Security" => Asset switch
+        {
+            "Vault" or "Auto-lock" or "Lock on minimize" => LockGlyph,
+            "Tor" or "Tor-only" => OnionGlyph,
+            "Duress" => ShieldGlyph,
+            "Watch-only keys" => KeyGlyph,
+            _ => GlobeGlyph,   // IP version, proxy, endpoints, Monero node
+        },
+        _ => OtherGlyph,
+    };
+
+    /// <summary>The icon's colour, from the CURRENT theme: money in is the theme's gain colour, money
+    /// out a soft red, everything the wallet itself did its accent; settings stay neutral. A theme
+    /// resource key or a literal colour — <see cref="Umbrella.Wallet.App.ThemeBrushConverter"/> reads both.</summary>
+    public string IconColor => Kind switch
+    {
+        "Received" => "UmPos",
+        "Sent" => "#E58A8A",
+        "Settings" => "UmTextDim",
+        _ => "UmAccentBright",
+    };
+
+    private static readonly Avalonia.Media.Geometry LockGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M8 11 V8 C8 5.8 9.8 4 12 4 C14.2 4 16 5.8 16 8 V11 M6 11 H18 V20 H6 Z M12 14.5 V16.5");
+    private static readonly Avalonia.Media.Geometry OnionGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M12 3.5 C7.5 7.5 6.5 15 12 20.5 C17.5 15 16.5 7.5 12 3.5 Z M12 8.5 C9.8 11 9.8 15 12 17 C14.2 15 14.2 11 12 8.5 Z");
+    private static readonly Avalonia.Media.Geometry GlobeGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M12 3.5 C16.7 3.5 20.5 7.3 20.5 12 C20.5 16.7 16.7 20.5 12 20.5 C7.3 20.5 3.5 16.7 3.5 12 C3.5 7.3 7.3 3.5 12 3.5 Z M3.5 12 H20.5 M12 3.5 C9 7 9 17 12 20.5 M12 3.5 C15 7 15 17 12 20.5");
+    private static readonly Avalonia.Media.Geometry ShieldGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M12 3 L19 6 V11 C19 15.5 16 18.8 12 20.5 C8 18.8 5 15.5 5 11 V6 Z M12 8 V12.5 M12 15.5 V16");
+    private static readonly Avalonia.Media.Geometry KeyGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M15 5 C17.2 5 19 6.8 19 9 C19 11.2 17.2 13 15 13 C12.8 13 11 11.2 11 9 C11 6.8 12.8 5 15 5 Z M12.2 11.8 L5 19 M7.5 16.5 L9.5 18.5 M5.5 18.5 L7 20");
+    private static readonly Avalonia.Media.Geometry GearGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M12 9 C13.7 9 15 10.3 15 12 C15 13.7 13.7 15 12 15 C10.3 15 9 13.7 9 12 C9 10.3 10.3 9 12 9 Z M12 3 V6 M12 18 V21 M3 12 H6 M18 12 H21 M5.6 5.6 L7.8 7.8 M16.2 16.2 L18.4 18.4 M5.6 18.4 L7.8 16.2 M16.2 7.8 L18.4 5.6");
+    private static readonly Avalonia.Media.Geometry LinkGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M10 14 L14 10 M9 11 L7 13 C5.6 14.4 5.6 16.6 7 18 C8.4 19.4 10.6 19.4 12 18 L14 16 M15 13 L17 11 C18.4 9.6 18.4 7.4 17 6 C15.6 4.6 13.4 4.6 12 6 L10 8");
+
     /// <summary>This row is a real on-chain transaction the user can attach a private note to.</summary>
     public bool CanHaveNote => !string.IsNullOrWhiteSpace(TxId) && IsTransaction;
 
@@ -586,7 +723,7 @@ public sealed record ActivityRowViewModel(
         _ => OtherGlyph,
     };
 
-    private static readonly Avalonia.Media.Geometry ReceivedGlyph = Avalonia.Media.StreamGeometry.Parse("M12 5 V17 M6 11 L12 17 L18 11");
+    private static readonly Avalonia.Media.Geometry ReceivedGlyph = Avalonia.Media.StreamGeometry.Parse("M12 6 V18 M6 12 L12 18 L18 12");
     private static readonly Avalonia.Media.Geometry SentGlyph = Avalonia.Media.StreamGeometry.Parse("M7 17 L17 7 M9 7 H17 V15");
     private static readonly Avalonia.Media.Geometry SwapGlyph = Avalonia.Media.StreamGeometry.Parse("M6 8 H17 L14 5 M18 16 H7 L10 19");
     private static readonly Avalonia.Media.Geometry OtherGlyph = Avalonia.Media.StreamGeometry.Parse("M12 7 V13 M12 16.5 V17");
@@ -713,16 +850,33 @@ public sealed record MarketRowViewModel(
     public string ChangeColor =>
         !HasPrice ? "#8A9099" : Change24h > 0 ? "#8FCB9B" : Change24h < 0 ? "#E09A9A" : "#8A9099";
 
-    public string Accepts => IsSupported ? "Accepted · address ready" : "Not yet · adapter pending";
-    public string AcceptsColor => IsSupported ? "#8FCB9B" : "#8A9099";
+    /// <summary>What this wallet holds of the coin ("2,1974 SOL · $258,19"), set by the view model from
+    /// the read balances; null when nothing is held.</summary>
+    public string? Held { get; init; }
+
+    public string Accepts => Held ?? Umbrella.Wallet.App.Loc.Instance[IsSupported ? "market.canReceive" : "market.notYet"];
+    public string AcceptsColor => Held is not null ? "#E8E8EE" : IsSupported ? "#8FCB9B" : "#8A9099";
 
     /// <summary>Inline sparkline drawn in every row, so no coin is left without a chart.</summary>
     public System.Collections.Generic.List<Avalonia.Point> Spark { get; init; } = new();
 
     public bool HasSpark => Spark.Count > 1;
 
-    /// <summary>The chain this coin settles on — same wording as Holdings and Receive.</summary>
-    public string NetworkLabel => CoinNetworks.For(Symbol, Name);
+    /// <summary>The chain this coin settles on — same wording as Holdings and Receive. A token says
+    /// which networks carry it; an EVM network says it is one.</summary>
+    public string NetworkLabel
+    {
+        get
+        {
+            var key = "mnet." + Symbol.ToUpperInvariant();
+            var market = Umbrella.Wallet.App.Loc.Instance[key];
+            return market != key ? market : CoinNetworks.For(Symbol, Name);
+        }
+    }
+
+    /// <summary>A token (a contract on another network: USDT, USDC, Chainlink, Uniswap) rather than a
+    /// blockchain's own coin. Market lists the two apart, so nobody takes Uniswap for a blockchain.</summary>
+    public bool IsToken => CoinKinds.IsToken(Symbol);
 
     /// <summary>Coin badge (brand-coloured disc + glyph), matching Holdings.</summary>
     public string BadgeColor => CoinBadge.Color(Symbol);

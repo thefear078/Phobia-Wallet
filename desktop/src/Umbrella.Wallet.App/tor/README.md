@@ -1,6 +1,6 @@
 # Bundled Tor
 
-Umbrella ships its own Tor client so "anonymous traffic" needs no external install.
+Phobia ships its own Tor client so "anonymous traffic" needs no external install.
 `EmbeddedTorService` launches `tor.exe` from this folder as a child process, on a private
 SOCKS port (**9250**) so a Tor Browser the user already runs is never disturbed.
 

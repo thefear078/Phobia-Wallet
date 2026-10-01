@@ -1,4 +1,4 @@
-# Umbrella Wallet — unified roadmap
+# Phobia Wallet — unified roadmap
 
 **Product version:** see [`VERSION`](../VERSION) (currently **4.8.2**).  
 **Consolidation date:** 2026-09-15 · **last status pass:** 2026-09-20 (P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.2, P1.4–P1.7, P1.9–P1.13 and L.1/L.2/L.3/L.8 closed).  
@@ -39,6 +39,9 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | Address poisoning / EIP-55 / reuse warnings | ✅ |
 | Desktop Win/Linux, themes, 6 languages, encrypted backup | ✅ |
 | SHA256SUMS on releases | ✅ |
+| Monero 25-word seeds in all 12 Monero languages (Chinese included) → Monero-only wallet, optional scan-from | ✅ (4.10) |
+| Monero service reachable (RPC bodies with a stated length) and restore over the account's whole life | ✅ (4.10) |
+| Rebrand Umbrella → **Phobia**: vector crystal logos + icons, midnight-violet default theme, every theme adapted, Phobia file names (+ legacy copies) | ✅ (4.10) |
 
 ---
 
@@ -76,6 +79,7 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | **P1.11** | **Privacy Radar — limits under every status.** Mandatory text: *what is protected* and *what is not* (e.g. “Tor hides your IP, but the selected explorer sees your addresses”). Difference: “Tor works” ≠ “IP is hidden from whoever already received your address.” Without this, Radar violates MANIFESTO §1–2. | MANIFESTO, audit | ✅ every Privacy Radar finding renders its limit underneath (`PrivacyScoreFinding.LimitCode`), so no status can appear as a bare reassurance |
 | **P1.12** | **“What leaked?” after send.** Short report: IP hidden yes/no · addresses seen by Node X · broadcast via Tor/Direct · coin control / fresh change on or off. The user sees the privacy cost of that operation. | MANIFESTO §1–2, audit | ✅ `SendLeakReport` renders under the send result: IP, kill-switch, ledger, input linkage **with the count**, change freshness, coin control, and the one nobody can fix (the recipient knows) |
 | **P1.13** | **Duress test scenario.** QA scenario: “inspector coerces” → decoy vault opens, real funds remain inaccessible with the decoy password. Without this, P1.1–P1.3 are features, not verified solutions. | MANIFESTO intro, audit | ✅ `DuressWalletScenarioTests` — coercion opens the decoy, the real phrase stays unreachable, the two wallets share no address, the file's size is identical with and without a decoy, and removal is as deniable as adding |
+| P1.21 | Password again before every send; one-click recommended protection in the Security Center | user, 2026-10 | ✅ on by default; the vault is opened with the typed password and must give back this wallet's phrase (a duress password does not confirm a send from the real wallet); scored in the Security Center |
 | **P1.20** | **Self-verify mode** (long, but required by philosophy). CLI or Debug panel: verify no clearnet in wallet connections; export xpub → balance in a third-party scanner; Tor via `curl --socks5-hostname`; cross-check with `VERIFY_YOUR_WALLET.md`. | MANIFESTO, audit | ✅ watch-only account xpub export in Settings → Security (pinned by a test that the addresses it yields are the wallet's own, external **and** change), and [`VERIFY_YOUR_WALLET.md`](VERIFY_YOUR_WALLET.md) written in full: balance from a third party, live route, download, build, counterparties — and what none of it proves |
 
 ### P2 — on-chain privacy “heavy artillery”
@@ -113,7 +117,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | # | Task | Status |
 |---|---|---|
 | H.1 | Bitcoin **PSBT** export/import + watch-only xpub | ✅ **PSBT both ways.** Export: the reviewed payment as an unsigned PSBT naming the master fingerprint and every BIP32 path — BIP-371 Taproot fields filled by hand, because NBitcoin's `AddKeyPath` leaves a Taproot coin unnamed — with the change index reserved as for a real send. Import (base64, hex or `.psbt`): reviewed line by line with the cost to this wallet, and only coins the wallet's **own scan** found are signed, at the value read from the chain; a PSBT that misstates one of them, or spends from one of its addresses a coin the scan cannot see, is refused. Completed PSBTs broadcast through the same route gate. The xpub export now includes the Taproot account the balance counts. **Not done:** a seedless watch-only wallet (import an xpub, sign elsewhere) — the app is built around an unlocked seed, and that mode is the same work H.2 needs, so they go together. Signing needs a synced wallet: this is not an air-gapped signer |
-| **H.2** | **Ledger / Trezor** (sign on device, no seed in Umbrella) + seedless watch-only | 🏆 **P0 next** — design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md); H.1 PSBT is the interim path |
+| **H.2** | **Ledger / Trezor** (sign on device, no seed in Phobia) + seedless watch-only | 🏆 **P0 next** — design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md); H.1 PSBT is the interim path |
 | H.3 | **Multisig** 2-of-3 | 📅 long |
 | H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 📅 Planned |
 | R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | 🟡 docs / ⏳ attestations |
@@ -159,7 +163,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | BTC | ✅ | ✅ | ✅ | ✅ | coin control; restored Taproot (`m/86'`) found and spent — receive stays SegWit |
 | LTC | ✅ | ✅ | ✅ | ✅ | |
 | BCH | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
-| DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
+| DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7; Bitcore then BlockCypher (4.10). History (Beta 1): BlockCypher across the used addresses, netted per transaction |
 | ETH | ✅ | ✅ | ✅ | ✅ | any held ERC-20 (N.1) |
 | Arb / Base / OP / Linea | ✅ | ✅ | ✅ | 🟡 | |
 | zkSync Era | ✅ | ✅ | ✅ | 🟡 | gas from the chain's own estimate |
@@ -169,14 +173,14 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | ADA | ✅ | ✅ | ✅ | ✅ | |
 | XMR | ✅ | ✅ | ✅ | ✅ | full private |
 | AVAX / BNB / MATIC / FTM / CRO | ✅ | ✅ | ✅ | 🟡 | EVM family |
-| ZEC | ✅ | ✅ | ✅ | 🟡 | receive, balance and transparent send (N.10) — v4 Sapling, ZIP-243 digest, ZIP-317 fee |
+| ZEC | ✅ | ✅ | ✅ | ✅ | receive, balance and transparent send (N.10) — v4 Sapling, ZIP-243 digest, ZIP-317 fee. History (Beta 1): Blockchair, then 3xpl |
 | XRP | ✅ | ✅ | ✅ | ✅ | receive, balance and send (N.4) — a plain Payment + destination tag, pinned to xrpl.js; history shows the amount DELIVERED, never a partial payment's claimed Amount |
 | XLM | ✅ | ✅ | ✅ | ✅ | receive, balance and send (N.5) — Payment / CreateAccount + memo, pinned to the Stellar Go SDK |
 | ATOM | ✅ | ✅ | ✅ | ❌ | receive, available balance and send (N.6) — MsgSend + memo, pinned to cosmjs; staked ATOM not counted. History: public REST servers prune their tx index (one answer in nine for an account with known sends), so it stays off rather than show an empty list that means nothing |
 | NEAR | ✅ | ✅ | ✅ | ✅ | receive, balance and send (N.7) — one Transfer from the implicit account, pinned to near-api-js |
 | DOT | ✅ | ✅ | ✅ | ❌ | receive + balance (Asset Hub + relay), send from Asset Hub (N.8) |
-| XNO | ✅ | ✅ | ❌ | ❌ | receive + balance (N.11) — m/44'/165'/0', ed25519-BLAKE2b, pinned to the Nano docs' vector; balance = pocketed + receivable; send needs signed blocks with proof of work |
-| DCR | ✅ | ✅ | ❌ | ❌ | receive + balance (N.12) — m/44'/42'/0'/0/0, BLAKE-256 Hash160 + checksum, pinned to dcrd and Trust Wallet |
+| XNO | ✅ | ✅ | ❌ | ✅ | receive + balance (N.11); history from the node's `account_history` (Beta 1) — m/44'/165'/0', ed25519-BLAKE2b, pinned to the Nano docs' vector; balance = pocketed + receivable; send needs signed blocks with proof of work |
+| DCR | ✅ | ✅ | ❌ | ✅ | receive + balance (N.12); history from dcrdata's Insight API, netted for change (Beta 1) — m/44'/42'/0'/0/0, BLAKE-256 Hash160 + checksum, pinned to dcrd and Trust Wallet |
 
 ---
 
@@ -313,7 +317,7 @@ Difference: **how the wallet works technically** (Tor, duress, non-custodial) �
 **On-start draft (EN, for implementing L.1/L.2/L.3):**
 
 > **NOT A FINANCIAL INSTITUTION**  
-> Umbrella Wallet is non-custodial software. We do not hold your funds, manage your keys, or provide banking services. You are solely responsible for your recovery phrase and for complying with local law.  
+> Phobia Wallet is non-custodial software. We do not hold your funds, manage your keys, or provide banking services. You are solely responsible for your recovery phrase and for complying with local law.  
 >  
 > **NO GUARANTEE OF ANONYMITY**  
 > Privacy features (Tor, encrypted local storage) do not make a public ledger private. Blockchain analysis can still link activity on transparent chains.  

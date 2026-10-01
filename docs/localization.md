@@ -70,7 +70,7 @@ Some things are identifiers, not prose. Translating them makes the user's job ha
 | `Bitcoin`, `Ethereum`, `Solana`, … | chain proper nouns |
 | `BIP84`, `ERC-20`, `TRC-20`, `SPL` | standards the user matches against an exchange's withdrawal screen |
 | `1H`, `24H`, `7D`, `30D`, `1Y` | chart range codes |
-| `UMBRELLA WALLET`, `the fear` | brand |
+| `PHOBIA WALLET`, `the fear` | brand |
 | Ticker symbols | universal |
 
 These are listed explicitly in `MoneyFlowLocalizationTests.AllowedLiterals`. Anything else hardcoded

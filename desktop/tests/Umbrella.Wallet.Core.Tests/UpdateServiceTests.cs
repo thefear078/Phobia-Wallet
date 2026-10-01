@@ -38,7 +38,7 @@ public sealed class UpdateServiceTests
         var release = UpdateService.ParseRelease(ReleaseJson);
 
         Assert.NotNull(release);
-        Assert.Equal(new Version(4, 9, 0), release.Version);
+        Assert.Equal(new ReleaseVersion(4, 9, 0), release.Version);
         Assert.Equal("v4.9.0", release.Tag);
         Assert.Equal("Every coin sends.", release.Notes);
         var setup = Assert.Single(release.Assets, a => a.Name == "UmbrellaWallet-Setup-4.9.0.exe");
@@ -51,12 +51,49 @@ public sealed class UpdateServiceTests
     public void A_draft_or_prerelease_is_never_offered(string from, string to) =>
         Assert.Null(UpdateService.ParseRelease(ReleaseJson.Replace(from, to)));
 
+    [Fact]
+    public void A_beta_copy_is_offered_prereleases_but_never_drafts()
+    {
+        Assert.NotNull(UpdateService.ParseRelease(ReleaseJson.Replace("\"prerelease\": false", "\"prerelease\": true"), allowPrerelease: true));
+        Assert.Null(UpdateService.ParseRelease(ReleaseJson.Replace("\"draft\": false", "\"draft\": true"), allowPrerelease: true));
+    }
+
+    [Fact]
+    public void The_beta_channel_picks_the_newest_release_of_all()
+    {
+        var beta1 = ReleaseJson.Replace("v4.9.0", "v4.10.0-beta.1").Replace("\"prerelease\": false", "\"prerelease\": true");
+        var beta2 = ReleaseJson.Replace("v4.9.0", "v4.10.0-beta.2").Replace("\"prerelease\": false", "\"prerelease\": true");
+        var list = $"[{ReleaseJson},{beta2},{beta1}]";
+
+        Assert.Equal("4.10.0-beta.2", UpdateService.NewestRelease(list, includePrereleases: true)!.Version.ToString());
+        Assert.Equal("4.9.0", UpdateService.NewestRelease(list, includePrereleases: false)!.Version.ToString());
+    }
+
+    [Fact]
+    public void Betas_order_before_their_release_and_by_number()
+    {
+        UpdateService.TryParseVersion("4.10.0-beta.1", out var b1);
+        UpdateService.TryParseVersion("4.10.0-beta.2", out var b2);
+        UpdateService.TryParseVersion("4.10.0-beta.10", out var b10);
+        UpdateService.TryParseVersion("4.10.0", out var release);
+        UpdateService.TryParseVersion("4.9.0", out var older);
+
+        Assert.True(b2 > b1);
+        Assert.True(b10 > b2);      // numbers, not text
+        Assert.True(release > b10); // the release supersedes every beta of it
+        Assert.True(b1 > older);
+        Assert.Equal("PhobiaWallet-Setup-4.10.0-beta.1.exe", UpdateService.AssetNameFor(InstallKind.WindowsInstaller, b1));
+        Assert.Equal("SHA256SUMS-4.10.0-beta.1.txt", UpdateService.SumsNameFor(b1));
+    }
+
     [Theory]
     [InlineData("v4.9.0", true)]
     [InlineData("4.10.2", true)]
     [InlineData("v4.9", false)]          // two parts: not how releases are tagged
     [InlineData("v4.9.0.1", false)]      // four parts: nor this
-    [InlineData("v4.9.0-rc1", false)]
+    [InlineData("v4.9.0-rc1", true)]     // a pre-release label is part of the version
+    [InlineData("v4.9.0-", false)]
+    [InlineData("v4.9.0-be ta", false)]
     [InlineData("latest", false)]
     [InlineData("", false)]
     public void Only_a_three_part_version_is_a_version(string tag, bool ok) =>
@@ -79,12 +116,19 @@ public sealed class UpdateServiceTests
         Assert.Equal(tag, UpdateService.TagFromReleaseUrl(url));
 
     [Theory]
+    [InlineData(InstallKind.WindowsInstaller, "PhobiaWallet-Setup-4.10.0.exe")]
+    [InlineData(InstallKind.WindowsFolder, "PhobiaWallet-Setup-4.10.0.exe")]
+    [InlineData(InstallKind.WindowsPortable, "PhobiaWallet-4.10.0-win-x64-portable.exe")]
+    [InlineData(InstallKind.Linux, "PhobiaWallet-4.10.0-linux-x64.tar.gz")]
+    public void Each_install_gets_the_file_the_release_process_names_for_it(InstallKind kind, string name) =>
+        Assert.Equal(name, UpdateService.AssetNameFor(kind, new ReleaseVersion(4, 10, 0)));
+
+    [Theory]
     [InlineData(InstallKind.WindowsInstaller, "UmbrellaWallet-Setup-4.9.0.exe")]
-    [InlineData(InstallKind.WindowsFolder, "UmbrellaWallet-Setup-4.9.0.exe")]
     [InlineData(InstallKind.WindowsPortable, "UmbrellaWallet-4.9.0-win-x64-portable.exe")]
     [InlineData(InstallKind.Linux, "UmbrellaWallet-4.9.0-linux-x64.tar.gz")]
-    public void Each_install_gets_the_file_the_release_process_names_for_it(InstallKind kind, string name) =>
-        Assert.Equal(name, UpdateService.AssetNameFor(kind, new Version(4, 9, 0)));
+    public void The_umbrella_era_names_are_still_known(InstallKind kind, string name) =>
+        Assert.Equal(name, UpdateService.LegacyAssetNameFor(kind, new ReleaseVersion(4, 9, 0)));
 
     [Fact]
     public void The_asset_names_match_what_the_release_workflow_publishes()
@@ -95,6 +139,8 @@ public sealed class UpdateServiceTests
         if (root is null) return;
         var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
+        Assert.Contains("PhobiaWallet-Setup-", workflow);
+        // Copies from before the rename look for these; the release keeps attaching them.
         Assert.Contains("UmbrellaWallet-Setup-", workflow);
         Assert.Contains("-win-x64-portable.exe", workflow);
         Assert.Contains("-linux-x64.tar.gz", workflow);

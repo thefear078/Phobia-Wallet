@@ -1,13 +1,13 @@
 # Security model
 
-What Umbrella protects, how, and — the part most wallets skip — what it explicitly does **not**
+What Phobia protects, how, and — the part most wallets skip — what it explicitly does **not**
 protect you from.
 
 If you only read one section, read [What this does not protect you from](#what-this-does-not-protect-you-from).
 
 ## Threat model
 
-Umbrella is built for someone who assumes the network is hostile and the service is not on their side.
+Phobia is built for someone who assumes the network is hostile and the service is not on their side.
 
 | Adversary | Covered? | How |
 |---|---|---|
@@ -99,7 +99,7 @@ capture-protected for the same reason the seed screen is.
 
 A Monero wallet cannot read the chain on its own — it asks a node, and unless you run one, that node
 is somebody else's machine. This is the most consequential setting on Monero and the easiest one for
-a wallet to make silently. Umbrella did exactly that until this was added; now **Settings → Privacy →
+a wallet to make silently. Phobia did exactly that until this was added; now **Settings → Privacy →
 Monero node** names the machine being asked, offers alternatives, and takes a custom `host:port`
 including a `.onion`.
 
@@ -214,7 +214,7 @@ Being direct about this is the point.
 **Malware running as your user.** If something is already executing on your machine with your
 privileges, it can read your keystrokes, your clipboard, and the wallet's memory while it is unlocked.
 No desktop wallet solves malware in the user session alone. Prefer a **hardware wallet** for serious
-amounts; Umbrella’s interim path is Bitcoin **PSBT** (H.1). USB Ledger/Trezor is roadmap **H.2** —
+amounts; Phobia’s interim path is Bitcoin **PSBT** (H.1). USB Ledger/Trezor is roadmap **H.2** —
 see [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md).
 
 **Losing your 24 words.** If you lose both the words and the vault password, the funds are gone.

@@ -1,4 +1,4 @@
-# Build & Verify Umbrella Wallet
+# Build & Verify Phobia Wallet
 
 *Don't trust — verify.* This wallet is open source and keyless. You never have to take our word
 that the binary you run matches the source you can read. This guide shows you how to (a) check a

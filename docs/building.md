@@ -1,4 +1,4 @@
-# Building Umbrella
+# Building Phobia
 
 Everything from "clone it" to "produce the same installer we publish".
 
@@ -137,8 +137,8 @@ It produces, under `D:\umbrella-dist` by default:
 | Output | What it is |
 |---|---|
 | `app\` | folder publish — what the installer packages |
-| `portable\Umbrella.exe` | single-file, self-contained, no install |
-| `UmbrellaWallet-Setup-<version>.exe` | the Inno Setup installer |
+| `portable\Phobia.exe` | single-file, self-contained, no install |
+| `PhobiaWallet-Setup-<version>.exe` | the Inno Setup installer |
 
 Override the output root or the compiler path if your machine differs:
 
@@ -179,14 +179,14 @@ dotnet publish desktop/src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj \
 Then rename the apphost in **both** output folders:
 
 ```
-Umbrella.Wallet.App.exe  →  Umbrella.exe
+Umbrella.Wallet.App.exe  →  Phobia.exe
 ```
 
 This is safe and it is what the release script does. The assembly stays `Umbrella.Wallet.App` so
 `avares://` resource URIs keep resolving; the apphost loads its dll by the **embedded** name, not by
 its own filename.
 
-> Skipping the rename is how a stale `Umbrella.exe` from a previous version survives a "deploy" that
+> Skipping the rename is how a stale `Phobia.exe` from a previous version survives a "deploy" that
 > only copied DLLs. If the app reports an old version after you built a new one, check this first.
 
 Finally, compile the installer:
@@ -200,7 +200,7 @@ Finally, compile the installer:
 ```bash
 dotnet publish desktop/src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj \
   -c Release -r linux-x64 --self-contained true -o dist/linux
-tar -czf UmbrellaWallet-4.6.0-linux-x64.tar.gz -C dist/linux .
+tar -czf PhobiaWallet-4.10.0-linux-x64.tar.gz -C dist/linux .
 ```
 
 ## Checksums
@@ -208,11 +208,11 @@ tar -czf UmbrellaWallet-4.6.0-linux-x64.tar.gz -C dist/linux .
 Publish a `SHA256SUMS-<version>.txt` next to the artifacts so people can verify what they downloaded:
 
 ```powershell
-Get-FileHash .\UmbrellaWallet-Setup-4.6.0.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-4.10.0.exe -Algorithm SHA256
 ```
 
 ```bash
-sha256sum UmbrellaWallet-Setup-4.6.0.exe UmbrellaWallet-4.6.0-win-x64-portable.exe \
+sha256sum PhobiaWallet-Setup-4.10.0.exe PhobiaWallet-4.10.0-win-x64-portable.exe \
   > SHA256SUMS-4.6.0.txt
 ```
 

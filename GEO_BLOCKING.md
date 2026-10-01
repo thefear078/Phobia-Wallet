@@ -3,7 +3,7 @@
 **Last updated:** 2026-09-15  
 **Status:** Policy document for **store distribution and compliance planning**. Desktop GitHub Releases remain a side-load channel; **you** must still obey local law.
 
-Umbrella does not provide legal advice. This list is a **starting point** for store geo requirements and must be reviewed by counsel before enforcing blocks in production.
+Phobia does not provide legal advice. This list is a **starting point** for store geo requirements and must be reviewed by counsel before enforcing blocks in production.
 
 ---
 
@@ -15,7 +15,7 @@ Umbrella does not provide legal advice. This list is a **starting point** for st
 
 ## 2. Restricted / high-risk jurisdictions (planned store blocklist)
 
-Umbrella Wallet **store builds** are intended **not** to be offered in jurisdictions with comprehensive crypto bans or sanctions-heavy regimes, including (non-exhaustive):
+Phobia Wallet **store builds** are intended **not** to be offered in jurisdictions with comprehensive crypto bans or sanctions-heavy regimes, including (non-exhaustive):
 
 | Region | Reason (summary) |
 |---|---|

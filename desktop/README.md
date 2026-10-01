@@ -1,8 +1,8 @@
-# Umbrella Wallet — desktop
+# Phobia Wallet — desktop
 
 Native, local-first, non-custodial crypto wallet built with **.NET 8 + Avalonia**. The recovery
 phrase is generated on the machine and encrypted at rest; it is never sent anywhere. This is the
-only shipped Umbrella product — there is no web app or backend server (the old web stack was
+only shipped Phobia product — there is no web app or backend server (the old web stack was
 removed). Ships for **Windows and Linux**; Android is planned, not shipped.
 
 Version and release history: see [`../VERSION`](../VERSION) and [`../CHANGELOG.md`](../CHANGELOG.md).

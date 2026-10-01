@@ -114,6 +114,7 @@ public partial class MainWindow : Window
         if (_observed is not null)
         {
             _observed.PropertyChanged += OnViewModelPropertyChanged;
+            Classes.Set("nostickers", !_observed.StickersEnabled);
             UpdateCaptureProtection();
             ApplyMobileMode();
             WirePickers(_observed);
@@ -176,13 +177,13 @@ public partial class MainWindow : Window
                 ? ("csv", "CSV spreadsheet")
                 : isPsbt
                     ? ("psbt", "Partially signed Bitcoin transaction")
-                    : ("json", "Umbrella backup");
+                    : ("json", "Phobia backup");
 
             if (save)
             {
                 var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
                 {
-                    Title = isCsv ? "Export transaction history" : isPsbt ? "Save PSBT" : "Save Umbrella backup",
+                    Title = isCsv ? "Export transaction history" : isPsbt ? "Save PSBT" : "Save Phobia backup",
                     SuggestedFileName = suggested,
                     DefaultExtension = ext,
                     FileTypeChoices = [new FilePickerFileType(typeName) { Patterns = [$"*.{ext}"] }],
@@ -192,7 +193,7 @@ public partial class MainWindow : Window
 
             var opened = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = isPsbt ? "Open a PSBT" : "Restore Umbrella backup",
+                Title = isPsbt ? "Open a PSBT" : "Restore Phobia backup",
                 AllowMultiple = false,
                 FileTypeFilter = [new FilePickerFileType(typeName) { Patterns = [$"*.{ext}"] }],
             });
@@ -225,6 +226,11 @@ public partial class MainWindow : Window
         if (e.PropertyName is nameof(MainViewModel.ActiveSection))
         {
             PageScroll.Offset = default;
+        }
+
+        if (e.PropertyName is nameof(MainViewModel.StickersEnabled) && _observed is not null)
+        {
+            Classes.Set("nostickers", !_observed.StickersEnabled);
         }
 
         if (e.PropertyName is nameof(MainViewModel.IsBackupStage)
@@ -331,7 +337,8 @@ public partial class MainWindow : Window
     private void OnChartPointerMoved(object? sender, PointerEventArgs e)
     {
         if (DataContext is not MainViewModel vm || sender is not Control canvas) return;
-        vm.UpdateCrosshair(e.GetPosition(canvas).X);
+        var at = e.GetPosition(canvas);
+        vm.UpdateCrosshair(at.X, at.Y);
     }
 
     private void OnChartPointerExited(object? sender, PointerEventArgs e)

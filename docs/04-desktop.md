@@ -82,7 +82,7 @@ in `ChainCatalog` / `ChainInfo` (roadmap §5.1), so "derives an address" is neve
 
 ### Monero keys (`MoneroKeys.cs`)
 
-Monero doesn't fit the BIP44 mould. Umbrella derives it deterministically from the wallet seed:
+Monero doesn't fit the BIP44 mould. Phobia derives it deterministically from the wallet seed:
 
 - `spendKey = ScReduce32(Keccak256("umbrella-monero-v1" ‖ seed))` — reduced mod the ed25519 group
   order ℓ.
@@ -129,7 +129,7 @@ never draw on an account the user never funded.
 ## Bundled Monero (`MoneroRpcService`)
 
 - `monero-wallet-rpc` ships in `Assets/monero/`, drives XMR as a full coin.
-- JSON-RPC on port 18099; restores the wallet from Umbrella's derived keys via `generate_from_keys`.
+- JSON-RPC on port 18099; restores the wallet from Phobia's derived keys via `generate_from_keys`.
 - Balance only exists after scanning with the view key (`get_balance` + sync height), so the UI can
   say "still syncing" instead of a wrong 0.
 - Readiness wait is 90 s (a 39 MB unsigned binary can spend that long in an antivirus scan on first

@@ -51,14 +51,15 @@ public static class ChainEndpoints
     public static IReadOnlyDictionary<string, IReadOnlyList<ChainEndpointOption>> Known { get; } =
         new Dictionary<string, IReadOnlyList<ChainEndpointOption>>(StringComparer.OrdinalIgnoreCase)
         {
-            // Three independent Esplora instances. Blockstream is the shipped default only because it
-            // always has been; it was returning 429 while these two answered, which is the everyday
-            // reason to have somewhere else to point besides privacy.
+            // Three independent Esplora instances, the one that answers first. Blockstream used to lead
+            // and was answering "too many requests" for whole sessions while mempool.space answered in
+            // tens of milliseconds; it stays as the last fallback. (mempool.emzy.de stopped answering
+            // altogether in September 2026 and was dropped.)
             ["BTC"] =
             [
-                new("https://blockstream.info/api", "Blockstream"),
                 new("https://mempool.space/api", "mempool.space"),
-                new("https://mempool.emzy.de/api", "mempool.emzy.de"),
+                new("https://mempool.ninja/api", "mempool.ninja"),
+                new("https://blockstream.info/api", "Blockstream"),
             ],
             ["LTC"] =
             [
@@ -74,9 +75,10 @@ public static class ChainEndpoints
             ],
             ["ETH"] =
             [
-                new("https://cloudflare-eth.com", "Cloudflare"),
+                new("https://ethereum-rpc.publicnode.com", "PublicNode (Allnodes)"),
                 new("https://eth.drpc.org", "dRPC"),
-                new("https://rpc.ankr.com/eth", "Ankr"),
+                new("https://1rpc.io/eth", "1RPC (Automata)"),
+                new("https://cloudflare-eth.com", "Cloudflare"),
             ],
             ["SOL"] =
             [

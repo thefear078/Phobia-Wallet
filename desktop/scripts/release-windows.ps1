@@ -1,10 +1,10 @@
 <#
-  release-windows.ps1 — one-shot Windows release for Umbrella Wallet (desktop).
+  release-windows.ps1 — one-shot Windows release for Phobia Wallet (desktop).
 
   Produces, under $OutRoot (default D:\umbrella-dist, which the Inno Setup script expects):
     app\         folder publish that the installer bundles
     portable\    self-contained single-file Umbrella.Wallet.App.exe
-    UmbrellaWallet-Setup-<version>.exe   the installer (built by ISCC)
+    PhobiaWallet-Setup-<version>.exe   the installer (built by ISCC)
 
   The version is read from the .csproj so it always matches VERSION / the .iss.
   Run from anywhere:  pwsh desktop/scripts/release-windows.ps1
@@ -20,14 +20,14 @@ $ErrorActionPreference = "Stop"
 # Repo root = two levels up from this script (desktop/scripts/ -> repo/).
 $repo    = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $csproj  = Join-Path $repo "desktop\src\Umbrella.Wallet.App\Umbrella.Wallet.App.csproj"
-$iss     = Join-Path $repo "desktop\installer\umbrella.iss"
+$iss     = Join-Path $repo "desktop\installer\phobia.iss"
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
   throw "dotnet not found on PATH. Restore the .NET 8 SDK first (winget install Microsoft.DotNet.SDK.8 --force)."
 }
 
 $version = ([xml](Get-Content $csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-Write-Host "Releasing Umbrella Wallet $version (win-x64)…" -ForegroundColor Cyan
+Write-Host "Releasing Phobia Wallet $version (win-x64)…" -ForegroundColor Cyan
 
 # 1) Stage the bundled Tor + Monero binaries (idempotent; skip if already present).
 # -RequireSignature: this builds something other people install, so the upstream sums files are
@@ -38,7 +38,7 @@ Write-Host "Releasing Umbrella Wallet $version (win-x64)…" -ForegroundColor Cy
 $appDir      = Join-Path $OutRoot "app"
 $portableDir = Join-Path $OutRoot "portable"
 # Clean stale output from a previous version, otherwise the apphost rename below trips over an
-# Umbrella.exe left behind by the last build (Rename-Item won't overwrite an existing file).
+# Phobia.exe left behind by the last build (Rename-Item won't overwrite an existing file).
 foreach ($d in @($appDir, $portableDir)) {
   if (Test-Path $d) { Remove-Item $d -Recurse -Force }
 }
@@ -52,15 +52,15 @@ dotnet publish $csproj -c Release -r win-x64 --self-contained true `
 dotnet publish $csproj -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $portableDir
 
-# Ship the apphost as Umbrella.exe. The assembly stays Umbrella.Wallet.App (so avares:// resource URIs
+# Ship the apphost as Phobia.exe. The assembly stays Umbrella.Wallet.App (so avares:// resource URIs
 # keep resolving); the apphost loads its dll by the embedded name, not its own filename, so renaming
-# just the exe is safe. The installer's AppExe is set to Umbrella.exe to match.
+# just the exe is safe. The installer's AppExe is set to Phobia.exe to match.
 foreach ($dir in @($appDir, $portableDir)) {
   $src = Join-Path $dir "Umbrella.Wallet.App.exe"
-  if (Test-Path $src) { Rename-Item $src "Umbrella.exe" -Force }
+  if (Test-Path $src) { Rename-Item $src "Phobia.exe" -Force }
 }
 
-Write-Host "Portable: $(Join-Path $portableDir 'Umbrella.exe')" -ForegroundColor Green
+Write-Host "Portable: $(Join-Path $portableDir 'Phobia.exe')" -ForegroundColor Green
 
 # 4) Installer (Inno Setup). The .iss reads its own AppVersion; keep it in sync with $version.
 if ($SkipInstaller) {
@@ -70,8 +70,8 @@ if ($SkipInstaller) {
 } else {
   # Pass the version the build actually produced. The .iss used to carry its own literal that had to
   # be updated by hand, and it drifted — a 4.6.0 build shipped as "UmbrellaWallet-Setup-4.5.0.exe".
-  & $Iscc "/DAppVersion=$version" $iss
-  $setup = Join-Path $OutRoot ("UmbrellaWallet-Setup-{0}.exe" -f $version)
+  & $Iscc "/DAppVersion=$version" "/DAppNumericVersion=$($version.Split('-')[0])" $iss
+  $setup = Join-Path $OutRoot ("PhobiaWallet-Setup-{0}.exe" -f $version)
   if (-not (Test-Path $setup)) {
     throw "Installer was expected at '$setup' but is not there — the .iss version and the build disagree."
   }

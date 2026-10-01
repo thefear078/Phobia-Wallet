@@ -1,6 +1,6 @@
 # Contact
 
-**Umbrella Wallet** is an independent project by **the fear** (thefear078).
+**Phobia Wallet** is an independent project by **the fear** (thefear078).
 
 | Channel | Link |
 |---|---|

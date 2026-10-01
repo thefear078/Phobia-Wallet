@@ -38,23 +38,32 @@ jobs:
           $csproj = "desktop/src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj"
           dotnet publish $csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o dist/app
           dotnet publish $csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist/portable
-          foreach ($d in "dist/app","dist/portable") { Rename-Item "$d/Umbrella.Wallet.App.exe" "Umbrella.exe" -Force }
+          foreach ($d in "dist/app","dist/portable") { Rename-Item "$d/Umbrella.Wallet.App.exe" "Phobia.exe" -Force }
 
       - name: Build installer (Inno Setup) + portable zip
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DAppVersion=$(Get-Content VERSION)" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/umbrella.iss
+          $ver = (Get-Content VERSION).Trim()
+          & $iscc "/DAppVersion=$ver" "/DAppNumericVersion=$($ver.Split('-')[0])" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/phobia.iss
           # The README links to a single portable EXE, not an archive. Producing a zip here meant the
           # download link on the front page 404'd on every release until somebody uploaded the exe by
           # hand - which the checksum job below would then reject as a stray artifact.
-          Copy-Item "dist/portable/Umbrella.exe" "dist/UmbrellaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe" -Force
+          $v = "${{ steps.v.outputs.version }}"
+          Copy-Item "dist/portable/Phobia.exe" "dist/PhobiaWallet-$v-win-x64-portable.exe" -Force
+          # The same two files under their Umbrella-era names, byte for byte: copies of the wallet from
+          # before the rename look for those names when they update themselves.
+          Copy-Item "dist/PhobiaWallet-Setup-$v.exe" "dist/UmbrellaWallet-Setup-$v.exe" -Force
+          Copy-Item "dist/PhobiaWallet-$v-win-x64-portable.exe" "dist/UmbrellaWallet-$v-win-x64-portable.exe" -Force
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
+            dist/PhobiaWallet-Setup-${{ steps.v.outputs.version }}.exe
+            dist/PhobiaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe
             dist/UmbrellaWallet-Setup-${{ steps.v.outputs.version }}.exe
             dist/UmbrellaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe
 
@@ -72,6 +81,9 @@ jobs:
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Build self-contained Linux tarball
+        env:
+          # Tor and Monero are pinned by hash; a release stops rather than ship without them.
+          REQUIRE_HELPERS: "1"
         run: |
           chmod +x desktop/scripts/publish-linux.sh
           ( cd desktop && ./scripts/publish-linux.sh )
@@ -79,13 +91,17 @@ jobs:
       - name: Normalise artifact name
         run: |
           V="${{ steps.v.outputs.version }}"
-          cp "desktop/dist/linux/umbrella-wallet-${V}-linux-x64.tar.gz" \
-             "UmbrellaWallet-${V}-linux-x64.tar.gz"
+          cp "desktop/dist/linux/phobia-wallet-${V}-linux-x64.tar.gz" "PhobiaWallet-${V}-linux-x64.tar.gz"
+          # And under the Umbrella-era name, for copies from before the rename.
+          cp "PhobiaWallet-${V}-linux-x64.tar.gz" "UmbrellaWallet-${V}-linux-x64.tar.gz"
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
+          files: |
+            PhobiaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
+            UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
 
   checksums:
     name: checksums
@@ -110,7 +126,7 @@ jobs:
         run: |
           mkdir assets
           gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
-            --pattern "UmbrellaWallet-*" --dir assets
+            --pattern "PhobiaWallet-*" --pattern "UmbrellaWallet-*" --dir assets
 
       # Fail closed if the release is incomplete: every platform artifact for THIS version must be
       # present and version-stamped before we publish a checksum manifest — a partial release must
@@ -119,6 +135,9 @@ jobs:
         run: |
           V="${{ steps.v.outputs.version }}"
           expected=(
+            "PhobiaWallet-Setup-${V}.exe"
+            "PhobiaWallet-${V}-win-x64-portable.exe"
+            "PhobiaWallet-${V}-linux-x64.tar.gz"
             "UmbrellaWallet-Setup-${V}.exe"
             "UmbrellaWallet-${V}-win-x64-portable.exe"
             "UmbrellaWallet-${V}-linux-x64.tar.gz"
@@ -127,8 +146,8 @@ jobs:
           for f in "${expected[@]}"; do
             if [ ! -f "assets/$f" ]; then echo "::error::missing release artifact: $f"; missing=1; fi
           done
-          # Reject any stray or wrong-version UmbrellaWallet-* asset so the manifest is exactly the set.
-          for f in assets/UmbrellaWallet-*; do
+          # Reject any stray or wrong-version asset so the manifest is exactly the set.
+          for f in assets/PhobiaWallet-* assets/UmbrellaWallet-*; do
             base="$(basename "$f")"
             keep=0
             for e in "${expected[@]}"; do [ "$base" = "$e" ] && keep=1; done
@@ -143,7 +162,7 @@ jobs:
       - name: Generate and self-verify the checksum manifest
         run: |
           V="${{ steps.v.outputs.version }}"
-          ( cd assets && sha256sum UmbrellaWallet-* ) > "SHA256SUMS-${V}.txt"
+          ( cd assets && sha256sum PhobiaWallet-* UmbrellaWallet-* ) > "SHA256SUMS-${V}.txt"
           echo "----- SHA256SUMS-${V}.txt -----"; cat "SHA256SUMS-${V}.txt"
           # Prove every line matches the attached file byte-for-byte before we publish it, and that
           # the manifest is not empty - v4.5.0 shipped one that was.
@@ -153,6 +172,7 @@ jobs:
       - name: Attach checksums to release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: SHA256SUMS-${{ steps.v.outputs.version }}.txt
 
       # Roadmap R.3. A checksum proves a download matches the manifest on the release page. It says
@@ -168,5 +188,6 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
+            assets/PhobiaWallet-*
             assets/UmbrellaWallet-*
             SHA256SUMS-${{ steps.v.outputs.version }}.txt

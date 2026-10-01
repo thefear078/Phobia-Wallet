@@ -1,10 +1,224 @@
 # Changelog
 
-All notable releases of **Umbrella Wallet**.
+All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
+
+## [4.10.0-beta.1] — Beta 1 (a GitHub pre-release; installed beta copies update to newer betas by themselves) — Umbrella is now Phobia; Monero seeds in every language
+
+Published as a **beta**: a GitHub pre-release. A 4.9.0 copy does not update to it by itself (download it
+from the release page); a beta copy updates to newer betas, and then to the full release, by itself.
+
+### Wallets, Market and history
+
+- **Switching wallets no longer stops working after the first switch.** The switch ended with the new
+  wallet's balance refresh, and while a command runs its buttons are disabled — every Switch button in
+  the app stayed grey for as long as that refresh took, over Tor a minute or more.
+- **"Every wallet's balance" works.** The figures were only in the switcher's pop-up, and a wallet the
+  wallet had never read showed $0. Each wallet now shows its balance in Settings → Wallets too, with the
+  total of all of them; a wallet that is not open is read in the background — at the addresses it
+  remembered, or, for one never opened on this device, at addresses derived with the password in use
+  (the phrase is dropped again straight away). A wallet not read yet shows "—", never a made-up zero.
+- **Market lists blockchains and tokens apart.** Bitcoin, Ethereum, Solana, TON, BNB Chain, Polygon… are
+  networks with their own coin; USDT, USDC, Chainlink and Uniswap are tokens — contracts that live on one.
+  Each token says which networks carry it, and every EVM network says it shares the 0x address. The
+  price, change and holding columns now line up whatever the length of a coin's network line.
+- **History for Dogecoin, Zcash, Nano and Decred**, each from the server its balance already comes from:
+  BlockCypher across Dogecoin's used addresses, Blockchair then 3xpl for Zcash, the Nano node, dcrdata.
+  A Dogecoin or Decred payment with change shows what actually left the wallet, not the whole input.
+- **History loads all coins at once.** One after another, the list waited for every explorer's
+  round-trip in turn; now it waits for the slowest one.
+- **The Linux build carries Tor again.** Its script still fetched Tor 14.5.7, which the Tor Project
+  had since removed, so the download failed and the tarball shipped without Tor, with only a warning in
+  the build log. It now fetches 15.0.24, the version the Windows build uses. Both Tor and Monero are
+  checked against SHA-256 hashes pinned in the script, read from each project's signed sums file
+  (signatures checked against the keys the Windows scripts pin), and a release stops rather than ship
+  without either.
+
+### The wallet reads its coins again — on Tor and off it
+
+- **"Tor only" no longer cuts the wallet off after a restart.** The setting was remembered but Tor itself
+  was not: on the next launch every request was blocked, waiting for a Tor that nothing started, and every
+  balance read "unknown". Turning Tor on is now remembered, and a Tor-only wallet starts Tor on launch.
+- **A Tor left behind no longer stops Tor from starting.** The wallet's Tor always uses the same port
+  and folder, so a Tor that outlived its wallet (a crash, a forced close, an update) made every new start
+  fail with "Tor exited before it finished bootstrapping". The wallet now ends a leftover copy of its own
+  Tor before starting one — never a Tor Browser or system Tor — and Tor itself now exits within seconds
+  of the wallet going away. When Tor does stop early, the message gives Tor's own reason.
+- **The connection chip says what is happening**: "Connecting…" while Tor starts, and "No route" when the
+  IP mode is pinned to IPv6 (or IPv4) on a computer that has none — with a warning under that setting.
+- **Bitcoin answers in seconds again.** It reads from mempool.space, then mempool.ninja, then Blockstream,
+  which had been answering "too many requests" for whole sessions (mempool.emzy.de stopped answering and
+  was dropped). A server that refuses is now asked last, for five minutes, by every coin that uses it —
+  before, each of a scan's addresses waited on it first, and a new wallet's Bitcoin scan took four minutes.
+- **Prices when Binance refuses** (it turns away many Tor exits): KuCoin, then CoinGecko, then Bybit for
+  whatever is still missing. A Tor-only wallet priced two coins out of twenty-seven.
+- **Ethereum and five EVM networks had lost their servers.** Cloudflare's Ethereum gateway answers
+  "Internal error" to every balance read, and Ankr — the fallback for Ethereum, BSC, Polygon, Avalanche,
+  Fantom, Arbitrum and Optimism — now wants an API key; polygon-rpc.com and rpc.ftm.tools want one too, so
+  Polygon and Fantom read nothing at all. Each network now has two or three keyless servers that answer
+  (PublicNode, dRPC, 1RPC and the networks' own), for balances and sending alike.
+- **Dogecoin no longer runs out of requests.** Its only explorer, BlockCypher, allows 200 requests an hour
+  and one wallet scan takes about forty, so after a few refreshes Dogecoin read "unknown" until the hour
+  was up. BitPay's Bitcore now reads it first, with BlockCypher behind it; a send that BlockCypher
+  refuses is relayed through Bitcore. A Dogecoin server chosen in Settings is still the only one asked.
+- **Bitcoin and Litecoin history fall back like their balances do.** History asked one server only, so
+  over Tor the Activity screen could show no Bitcoin at all while the balance read fine.
+- **Zcash balance when Blockchair refuses** (it blacklists busy IP addresses for a day — Tor exits too):
+  read from 3xpl instead. Sending ZEC still needs Blockchair's list of coins; when it refuses, Send says
+  so and nothing is broadcast.
+- Balances refresh in the background every two minutes rather than every minute (prices still every
+  minute); unlocking, switching wallets and sending refresh at once, as before. The free explorers this
+  wallet reads rate-limit hard, and a refused read is a balance nobody can see.
+
+### Your money first, everywhere
+
+- **Your assets list shows what you hold first**, biggest value first. It used to keep the catalog
+  order inside a fixed-height box with a hidden scroll bar: Bitcoin, Ethereum, Litecoin, Dogecoin and
+  TRON at $0.00 filled it, and the coins someone actually held were below the fold — "my coins don't
+  show". Coins at zero now fold behind one "show N more" button.
+- **Imported phrases are searched at other wallets' paths.** A phrase from MetaMask, Ledger Live,
+  Phantom, Solflare, TronLink or an older Bitcoin wallet can hold coins at addresses this wallet does
+  not use by default — a second MetaMask account, Phantom's further Solana accounts, Solflare's old
+  path, legacy "1…" and nested-SegWit "3…" Bitcoin and Litecoin addresses. Each wallet is checked once
+  by itself (Settings → wallet → Search now does it again); what is found shows in its assets as
+  view-only, named after the app whose path it is. On the BIP39 test phrase it finds SOL at six such
+  paths.
+- **Market**: the "this wallet" column says what you hold of each coin ("2.197388 SOL · $258.41")
+  instead of "Accepted · address ready" in English on every row. A coin's chart and 24-hour stats fall
+  back to KuCoin, Bybit and CoinGecko when Binance refuses (it refuses many Tor exits, which left an
+  empty chart frame); when no source answers, the chart says so.
+- **Send opens on the coin you hold the most of**, until you pick one — it opened on Ethereum at
+  0 ETH whatever the wallet held.
+- **TRON tokens no longer vanish** when Tronscan rate-limits: USDT and USDC are then read from
+  TronGrid.
+- Prices under one unit show four significant digits ("$0.2486", not "$0.248600"); Activity shows
+  "+0.000009698659" instead of an explorer's eighteen decimals (the CSV export keeps every digit);
+  amounts follow the wallet's number format.
+- **Everything on these screens is in your language**: the first wallet's name, the market status,
+  network lines on Send and Connect, staking descriptions and Tor's status messages were English in
+  every language.
+- **Tor takes the next free port** when 9250 is in use (two copies of the wallet side by side made the
+  second Tor exit at once), and a Tor-only wallet tries a failed Tor start again by itself.
+- The connection chip was blank on a plain direct start; it says DIRECT now.
+
+### A coin is one coin, on every network it lives on
+
+- **USDT is one asset, not "TRC-20".** Tether on TRON, Ethereum, BSC, Polygon, Arbitrum, Optimism and
+  Avalanche shows as ONE row with the total and the networks named under it ("USDT · TRON · Polygon");
+  its page lists each network. The same holds for USDC and for ETH on Ethereum and the rollups. A token
+  on a single network shows as the coin too ("Tether USD", "USDT · TRON").
+- **USDT and USDC are read on BSC, Polygon, Arbitrum, Optimism, Base and Avalanche** (a `balanceOf` call
+  to each contract — every contract and its decimals checked on its own chain) and **sent on their own
+  network**, the fee paid in that network's coin.
+- **Receive USDT or USDC on the network you choose**: chips for each network switch the address and the
+  QR, and the warning names that network.
+- **Swap says where the money comes from**: the wallet, its balance of the coin (click it to swap it all),
+  and a quote that arrives by itself as you type, with the fee's value in your currency.
+
+### Beta
+
+- **The app is a beta now** ("Beta 1" where the version was). **Check for updates follows the beta
+  channel**: a beta reads every recent release, pre-releases included, and installs the newest — the
+  next beta, then the full release. A full release never sees a pre-release. Versions are ordered as
+  Semantic Versioning orders them (4.10.0-beta.2 < 4.10.0). The release workflow publishes a version
+  with a suffix as a GitHub pre-release; the installer takes the numeric part for the file version.
+- **Faster**: the Bitcoin-family scan and every token read (TRON, Ethereum, the EVM networks, Solana,
+  TON) run at once instead of one after another, and the list and total update as each one answers;
+  the market's price lines load four at a time instead of one by one with a pause between.
+- **Lock screen**: a line in Phobia's voice that changes every time it locks, instead of the
+  explanation about the seed; "Advanced" and "Forgot password?" side by side, the same small size.
+- **Icons**: activity icons are drawn in a fixed box (no more off-centre glyphs) in the theme's own
+  colours.
+- **Fields**: a field inside its own rounded container (Swap's amount) no longer draws a dark box of its
+  own when focused.
+- **Themes retired**: Bitcoin, Matrix, Abyss, Kraken, Solarized, Monero and WhiteBit. A wallet on one of
+  them moves to Phobia.
+- **Floating crystals are off** (they read as stray pixels); Settings → Appearance turns them back on.
+
+### Market, Activity and Security, made for watching your money
+
+- **A real exchange chart.** The coin chart is laid out like Kraken's: the price axis on the right
+  with the last price tagged on it and a dashed line across, a volume band of its own under the price
+  area, a crosshair on both axes (price at the pointer's height, time underneath) and the hovered
+  candle's open, high, low, close, change and volume along the top. Candle mode drew **no candles at
+  all** before — the candle and volume layers had no size, so nothing they drew was rendered.
+- **Activity in time order, with an icon for every event.** The local events (unlocks, settings) were
+  listed before the chain's transfers, so a September unlock sat above an October payment; the feed is
+  now newest-first across both, under Today / Yesterday / date headings. Received, sent, swap, the
+  vault, Tor, the network, the duress password, keys and connections each have their own icon and
+  colour; transfers show what they are worth today. "Recent transactions" on Portfolio lists transfers
+  — it listed every event, unlocks included. The leftover English ("clearnet blocked", "IPv6 only",
+  "Monero node"…) is translated.
+- **Security on a par with privacy.** The password is asked again before every send (on by default;
+  Settings → Security), checked by opening this wallet's vault with it — a duress password does not
+  confirm a send from the real wallet. It is scored in the Security Center, and one button there,
+  "Turn on recommended protection", switches on every protection the wallet scores.
+- **Your assets are this wallet's.** Accounts found at other apps' paths stay out of the assets until
+  you switch them on (Settings → Wallets → Show found accounts); when shown, their tokens say whose
+  they are ("Tether USD · TronLink, account 3"). Every wallet's balance and the total can be shown in
+  the wallet switcher — an extra, off by default.
+- **Logos for Stellar, Cosmos, NEAR, Nano and Decred**, in the supplied icon pack's rounded-square
+  style (Nano and Decred from the pack itself; sources in `brand/coin-icons/`).
+- In-app News has a note for this beta.
+
+### Umbrella is now Phobia — a new name and a new look
+
+- **The wallet is called Phobia Wallet.** Same code, same keys, same vault: nothing about anyone's money
+  moves. The data folder and the installer's identity stay as they were, so installed and portable copies
+  update in place.
+- **Phobia files.** Downloads are `PhobiaWallet-Setup-<v>.exe`, `PhobiaWallet-<v>-win-x64-portable.exe` and
+  `PhobiaWallet-<v>-linux-x64.tar.gz`; the program is `Phobia.exe` on Windows and `phobia-wallet` on Linux.
+  Every release also attaches the same files under their `UmbrellaWallet-` names (same bytes, listed in the
+  checksums), because copies from before the rename look for those when they update themselves. An upgrade
+  removes the old `Umbrella.exe` and its shortcuts; a pin on the old exe needs pinning again.
+- **A new logo** — two cut crystals, drawn as vectors so they are sharp from the 16 px title bar to the
+  installer — and a new app icon rendered from it at every size. The launch screen shows the large
+  Phobia crystal.
+- **Phobia midnight violet is the default theme** — bold and quiet: a near-black page with a breath of
+  violet, charcoal cards on hairline edges, one solid violet for every call to action, headings in a clean
+  sans. The only scenery is a range of crystal mountains along the bottom of the lock and setup screens.
+  An install still on the old gold default moves to it once; gold stays in Settings as Honey gold.
+- **Two logos, each used once.** The two crystals are the main logo (title bar, sidebar, app icon, QR
+  codes, the lock and welcome screens); the large crystal is the secondary one (launch screen and the
+  balance card), re-coloured to each theme. Where a logo used to be repeated, small drawings now say what
+  the card is about: a shield for "your keys", a rising chart for the market, a dashed line in a chart
+  with nothing to show yet.
+- **Phobia's own effects, each with a switch** (Settings → Appearance → Animation) — and cheap: they run
+  at a low frame rate, pause whenever the window is not in front, and the card shine is a single sweep
+  every few seconds (continuous 60-frame effects measured at over half a CPU core): crystals floating
+  slowly up behind the page, crystal glints twinkling across it, and a sweep of light across the balance
+  card. The large crystal sits at the balance card's edge with its own light, a small crystal marks each
+  section heading, and faint crystal mountains hold the bottom of the wallet screens. Umbrella's rain is
+  gone; stickers are off by default (Settings → Appearance → Stickers brings them back).
+- **Every other theme was brought into the same design**: each page has the soft glow of its own accent,
+  and the logos and mountains take the theme's hue.
+- **Brand kit** in `brand/`: both logos, the channel picture, the colours, and posters (portrait and
+  landscape) in all six languages, rendered from real screens of the wallet in each language.
+- The Telegram channel picture inside the wallet was still the umbrella; it is the Phobia crystal now.
+- The coin status on Receive and the asset pages ("Ready", "Receive only"…) was English in every
+  language; it follows the wallet's language now.
+- **Linux:** the tarball now carries the Phobia icon and `install-desktop-entry.sh`, which adds the
+  wallet to your application menu (pointing at wherever you extracted it).
+
+### Monero seeds in every language Monero offers
+
+- **Import a Monero wallet from its own 25-word seed** — the one the Monero GUI, Feather, Cake Wallet and
+  MyMonero show — in any of Monero's 12 languages: Chinese (simplified), English, Dutch, French, Spanish,
+  German, Italian, Portuguese, Japanese, Russian, Esperanto and Lojban. It was refused before (reported
+  with a Chinese seed). It imports as a Monero-only wallet holding exactly that account.
+- Pasted the way people keep them: Chinese with or without spaces, numbered lists, any case, the short
+  first letters Monero itself accepts, and Spanish words typed without their accents.
+- A typo is named as one: when all 25 words are Monero words but the checksum word does not match, the
+  import says so instead of "invalid phrase".
+- **Optional "scan from"**: a Monero seed does not record its age, so the import screen asks — a block
+  height or the day the wallet was made (a week's margin is added). Left empty, the first scan reads the
+  whole chain: slower, but nothing is missed.
+- Pinned: every language against an independent implementation's keys and address, the wordlists
+  byte-for-byte against Monero's source, random keys round-tripped in all 12, and the date-to-block table
+  re-read from a public node.
 
 ### Monero: the wallet service could not be talked to, and a restore missed older funds
 

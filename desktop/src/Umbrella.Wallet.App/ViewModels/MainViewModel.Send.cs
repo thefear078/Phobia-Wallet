@@ -1066,8 +1066,10 @@ public partial class MainViewModel
                 return;
             }
 
+            // The network the token lives on: Ethereum, or the one an EVMTOKEN key names (the fee is that
+            // network's native coin — BNB, POL, ETH on a rollup — at the same 0x address).
             var (quote, error) = await _ethSender.PrepareTokenAsync(
-                from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals);
+                from.Address, token.Contract, SendTo.Trim(), amount, token.TokenDecimals, EvmChainForSendKey(sendKey));
 
             if (quote is null)
             {
@@ -1119,6 +1121,38 @@ public partial class MainViewModel
         {
             SendError = routeError;
             return;
+        }
+
+        // The password again, when asked for: the vault is opened with it and must give back THIS
+        // wallet's phrase — a duress password opens the decoy and does not confirm a send from the real
+        // wallet, nor the other way round. Nothing is signed before this passes.
+        if (RequirePasswordForSend)
+        {
+            var typed = SendConfirmPassword ?? string.Empty;
+            SendConfirmPassword = string.Empty;
+            if (typed.Length == 0)
+            {
+                SendError = Loc.Instance["send.passwordNeeded"];
+                return;
+            }
+
+            string opened;
+            try
+            {
+                StatusMessage = Loc.Instance["send.passwordChecking"];
+                opened = await _vault.UnlockAsync(typed);
+            }
+            catch
+            {
+                SendError = Loc.Instance["send.passwordWrong"];
+                return;
+            }
+
+            if (!string.Equals(opened.Trim(), _unlockedMnemonic.Trim(), StringComparison.Ordinal))
+            {
+                SendError = Loc.Instance["send.passwordWrong"];
+                return;
+            }
         }
 
         await RunBusyAsync(async () =>
@@ -1230,7 +1264,7 @@ public partial class MainViewModel
                     _lastUtxoScan.Remove(spentSymbol);
                     var explorer = _sendSymbol switch
                     {
-                        "BTC" => $"blockstream.info/tx/{txid}",
+                        "BTC" => $"mempool.space/tx/{txid}",
                         "DOGE" => $"live.blockcypher.com/doge/tx/{txid}",
                         "BCH" => $"blockchair.com/bitcoin-cash/transaction/{txid}",
                         _ => $"litecoinspace.org/tx/{txid}",

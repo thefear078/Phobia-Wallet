@@ -1,6 +1,6 @@
 # Support
 
-Umbrella Wallet is an independent, best-effort project. There is no SLA and **no key recovery**.
+Phobia Wallet is an independent, best-effort project. There is no SLA and **no key recovery**.
 
 ## Where to get help
 

@@ -1,6 +1,6 @@
 # Privacy policy — App Store / Play
 
-Umbrella Wallet’s **formal privacy policy** (the text you paste into store consoles) is:
+Phobia Wallet’s **formal privacy policy** (the text you paste into store consoles) is:
 
 → **[../PRIVACY_POLICY.md](../PRIVACY_POLICY.md)**
 

@@ -1,6 +1,6 @@
 # Coordinated disclosure
 
-How Umbrella Wallet handles privately reported vulnerabilities.
+How Phobia Wallet handles privately reported vulnerabilities.
 
 **Canonical user-facing policy:** [../SECURITY.md](../SECURITY.md)
 
