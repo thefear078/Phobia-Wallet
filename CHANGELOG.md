@@ -48,6 +48,37 @@ new design is finished.
   minute); unlocking, switching wallets and sending refresh at once, as before. The free explorers this
   wallet reads rate-limit hard, and a refused read is a balance nobody can see.
 
+### Your money first, everywhere
+
+- **Your assets list shows what you hold first**, biggest value first. It used to keep the catalog
+  order inside a fixed-height box with a hidden scroll bar: Bitcoin, Ethereum, Litecoin, Dogecoin and
+  TRON at $0.00 filled it, and the coins someone actually held were below the fold — "my coins don't
+  show". Coins at zero now fold behind one "show N more" button.
+- **Imported phrases are searched at other wallets' paths.** A phrase from MetaMask, Ledger Live,
+  Phantom, Solflare, TronLink or an older Bitcoin wallet can hold coins at addresses this wallet does
+  not use by default — a second MetaMask account, Phantom's further Solana accounts, Solflare's old
+  path, legacy "1…" and nested-SegWit "3…" Bitcoin and Litecoin addresses. Each wallet is checked once
+  by itself (Settings → wallet → Search now does it again); what is found shows in its assets as
+  view-only, named after the app whose path it is. On the BIP39 test phrase it finds SOL at six such
+  paths.
+- **Market**: the "this wallet" column says what you hold of each coin ("2.197388 SOL · $258.41")
+  instead of "Accepted · address ready" in English on every row. A coin's chart and 24-hour stats fall
+  back to KuCoin, Bybit and CoinGecko when Binance refuses (it refuses many Tor exits, which left an
+  empty chart frame); when no source answers, the chart says so.
+- **Send opens on the coin you hold the most of**, until you pick one — it opened on Ethereum at
+  0 ETH whatever the wallet held.
+- **TRON tokens no longer vanish** when Tronscan rate-limits: USDT and USDC are then read from
+  TronGrid.
+- Prices under one unit show four significant digits ("$0.2486", not "$0.248600"); Activity shows
+  "+0.000009698659" instead of an explorer's eighteen decimals (the CSV export keeps every digit);
+  amounts follow the wallet's number format.
+- **Everything on these screens is in your language**: the first wallet's name, the market status,
+  network lines on Send and Connect, staking descriptions and Tor's status messages were English in
+  every language.
+- **Tor takes the next free port** when 9250 is in use (two copies of the wallet side by side made the
+  second Tor exit at once), and a Tor-only wallet tries a failed Tor start again by itself.
+- The connection chip was blank on a plain direct start; it says DIRECT now.
+
 ### Umbrella is now Phobia — a new name and a new look
 
 - **The wallet is called Phobia Wallet.** Same code, same keys, same vault: nothing about anyone's money

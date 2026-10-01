@@ -1376,6 +1376,10 @@ public partial class MainViewModel : ViewModelBase
             _ = ApplyTorAsync();
         }
 
+        // Every other start computes the chip as a side effect (Tor starting, a proxy applied); a plain
+        // direct start did not, and the chip sat blank until something changed.
+        RefreshConnectionChip();
+
         Fx.Symbol = Fx.SymbolFor(_uiSettings.Currency); // right symbol immediately; rate loads next
         _ = LoadWatchAddressesAsync();
         _ = ApplyCurrencyAsync(); // fetches the USD→currency rate, then refreshes market/holdings

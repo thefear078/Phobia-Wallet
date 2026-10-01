@@ -1056,22 +1056,89 @@ public sealed class PublicChainBalanceClient
     public async Task<IReadOnlyList<TokenBalance>> GetTronTokensAsync(
         string address, CancellationToken cancellationToken = default)
     {
-        var result = new List<TokenBalance>();
-        if (string.IsNullOrWhiteSpace(address) || !address.StartsWith('T')) return result;
+        if (string.IsNullOrWhiteSpace(address) || !address.StartsWith('T')) return [];
 
+        // Tronscan names every token; when it rate-limits (it does, keyless), TronGrid still says what
+        // the money tokens hold. Before, a refused Tronscan read made USDT vanish from the total.
+        return await TryTronscanTokensAsync(address, cancellationToken)
+               ?? await TryTronGridTokensAsync(address, cancellationToken)
+               ?? [];
+    }
+
+    /// <summary>TRC-20 tokens TronGrid's account answer is read for, by contract: the stablecoins people
+    /// actually hold. TronGrid gives contract and raw amount only, so anything not listed here waits for
+    /// Tronscan, which names it.</summary>
+    private static readonly Dictionary<string, (string Symbol, string Name, int Decimals)> KnownTrc20 = new(StringComparer.Ordinal)
+    {
+        ["TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"] = ("USDT", "Tether USD", 6),
+        ["TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8"] = ("USDC", "USD Coin", 6),
+    };
+
+    private static async Task<IReadOnlyList<TokenBalance>?> TryTronGridTokensAsync(string address, CancellationToken ct)
+    {
+        try
+        {
+            using var res = await Http.GetAsync($"https://api.trongrid.io/v1/accounts/{Uri.EscapeDataString(address)}", ct);
+            if (!res.IsSuccessStatusCode) return null;
+            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            return ParseTronGridTokens(doc.RootElement);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The known TRC-20 balances in TronGrid's <c>/v1/accounts/{address}</c> answer:
+    /// <c>data[0].trc20</c> is a list of one-entry objects, contract → raw amount. An account that was
+    /// never activated answers <c>"data": []</c> — a real "no tokens". No <c>data</c> at all is no answer.
+    /// </summary>
+    public static IReadOnlyList<TokenBalance>? ParseTronGridTokens(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("data", out var data) ||
+            data.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var result = new List<TokenBalance>();
+        foreach (var account in data.EnumerateArray())
+        {
+            if (!account.TryGetProperty("trc20", out var trc20) || trc20.ValueKind != JsonValueKind.Array) continue;
+            foreach (var entry in trc20.EnumerateArray())
+            {
+                if (entry.ValueKind != JsonValueKind.Object) continue;
+                foreach (var pair in entry.EnumerateObject())
+                {
+                    if (!KnownTrc20.TryGetValue(pair.Name, out var token)) continue;
+                    if (pair.Value.ValueKind != JsonValueKind.String ||
+                        !System.Numerics.BigInteger.TryParse(pair.Value.GetString(), out var raw) || raw <= 0) continue;
+                    var amount = (decimal)raw / (decimal)Math.Pow(10, token.Decimals);
+                    result.Add(new TokenBalance(token.Symbol, token.Name, amount, pair.Name, token.Decimals));
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Every TRC-20 token Tronscan lists for the address, or null when Tronscan gave no answer.</summary>
+    private static async Task<IReadOnlyList<TokenBalance>?> TryTronscanTokensAsync(string address, CancellationToken cancellationToken)
+    {
+        var result = new List<TokenBalance>();
         try
         {
             using var res = await Http.GetAsync(
                 $"https://apilist.tronscanapi.com/api/account?address={Uri.EscapeDataString(address)}",
                 cancellationToken);
-            if (!res.IsSuccessStatusCode) return result;
+            if (!res.IsSuccessStatusCode) return null;
             using var doc = await JsonDocument.ParseAsync(
                 await res.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
 
             if (!doc.RootElement.TryGetProperty("trc20token_balances", out var tokens) ||
                 tokens.ValueKind != JsonValueKind.Array)
             {
-                return result;
+                return null;
             }
 
             foreach (var token in tokens.EnumerateArray())
@@ -1094,9 +1161,10 @@ public sealed class PublicChainBalanceClient
                 result.Add(new TokenBalance(abbr!.ToUpperInvariant(), name ?? abbr!, amount, contract!, decimals));
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch
         {
-            // treated as "no tokens"
+            return null;   // TronGrid next
         }
 
         return result;

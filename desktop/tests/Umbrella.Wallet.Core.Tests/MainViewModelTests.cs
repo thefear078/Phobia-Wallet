@@ -30,6 +30,15 @@ public sealed class MainViewModelTests : IDisposable
         return new(new EncryptedFileSeedVault(Path.Combine(_directory, "vault.json")));
     }
 
+    /// <summary>The connection chip is computed at start, whatever the route — a plain start with
+    /// nothing to switch on left it blank.</summary>
+    [Fact]
+    public void TheConnectionChipSaysSomethingFromTheStart()
+    {
+        var vm = NewViewModel();
+        Assert.False(string.IsNullOrWhiteSpace(vm.ConnectionChipLabel));
+    }
+
     [Fact]
     public async Task CreateWallet_ShowsA24WordPhrase_AndOpensTheWorkspace()
     {
