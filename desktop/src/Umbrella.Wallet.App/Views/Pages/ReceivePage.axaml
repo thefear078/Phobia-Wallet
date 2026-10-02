@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.ReceivePage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="12" MinWidth="0" ClipToBounds="True">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center"
+                   Text="{Binding [receive.title], Source={x:Static app:Loc.Instance}}"/>
+        <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/Recieve.json" Width="46" Height="46" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
+      </StackPanel>
+      <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
+                 Text="{Binding [sec.receiveDesc], Source={x:Static app:Loc.Instance}}"/>
+      <ItemsControl ItemsSource="{Binding Accounts}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:WalletAccountViewModel">
+            <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                    Margin="0,0,0,8" Padding="12" IsEnabled="{Binding IsReady}"
+                    AutomationProperties.Name="{Binding Name}"
+                    Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SelectReceiveAccountCommand}"
+                    CommandParameter="{Binding}">
+              <Grid ColumnDefinitions="Auto,56,*,Auto">
+                <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                         Fill="{Binding StatusColor}"/>
+                <Border Grid.Column="1" Width="44" Height="44" CornerRadius="22" Background="{Binding BadgeBg}" Margin="12,0,0,0" ClipToBounds="True">
+                  <Panel>
+                    <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="20" FontWeight="Bold"
+                               Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+                  </Panel>
+                </Border>
+                <StackPanel Grid.Column="2" Margin="12,0" VerticalAlignment="Center"
+                            MinWidth="0" ClipToBounds="True">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding NetworkLabel}"
+                             TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextDim}" Margin="0,2,0,0"
+                             Text="{Binding Address}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <TextBlock Grid.Column="3" Text="{Binding StatusLabel}" Foreground="{Binding StatusColor}"
+                           FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+  </StackPanel>
+</UserControl>

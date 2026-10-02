@@ -1,0 +1,224 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.ActivityPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="12">
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}"/>
+      <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-10.json" Width="42" Height="42" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
+    </StackPanel>
+    <!-- What the feed holds: a note that closes for good (Settings → Appearance → Interface brings it back). -->
+    <Border Classes="note" IsVisible="{Binding ShowActivityIntro}">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+        <Border Classes="noteMark">
+          <Path Data="M8 7.2 V12 M8 4.3 V4.4" Width="16" Height="16"/>
+        </Border>
+        <TextBlock Grid.Column="1" Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                   Text="{Binding [activity.desc], Source={x:Static app:Loc.Instance}}"/>
+        <Button Grid.Column="2" Classes="noteClose" Content="✕" Command="{Binding DismissNoticeCommand}"
+                CommandParameter="activity.intro" ToolTip.Tip="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"
+                AutomationProperties.Name="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"/>
+      </Grid>
+    </Border>
+
+    <!-- Coins whose history this build does not read (roadmap P1.10). Without this an
+         empty feed reads as "nothing happened" when it means "nobody asked" — the same
+         shape of lie as a zero balance from an unreachable explorer. -->
+    <Border IsVisible="{Binding HasHistoryGaps}" Background="#33E7CA83" BorderBrush="#7A6230"
+            BorderThickness="1" CornerRadius="10" Padding="12,9">
+      <TextBlock Text="{Binding HistoryGapNote}" Foreground="#E7CA83" FontSize="11.5"
+                 LineHeight="17" TextWrapping="Wrap" MaxWidth="720"/>
+    </Border>
+
+    <!-- Last sync + on-demand refresh: the history is fetched from public explorers, so tell
+         the user how fresh it is and let them re-pull it. -->
+    <Border Classes="card" Padding="12,8">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <TextBlock Classes="eyebrow" Text="{Binding [activity.lastSync], Source={x:Static app:Loc.Instance}}"
+                     VerticalAlignment="Center"/>
+          <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                     Text="{Binding LastHistorySync}" VerticalAlignment="Center"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Classes="ghost" Padding="12,5" MinHeight="0"
+                  Content="{Binding [activity.export], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding ExportHistoryCsvCommand}"/>
+          <Button Classes="ghost" Padding="12,5" MinHeight="0"
+                  Content="{Binding [activity.refresh], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding RefreshHistoryCommand}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Filters (§6): category, asset, status and date each narrow the one merged feed. -->
+    <WrapPanel Orientation="Horizontal" Margin="2,0,0,2">
+      <StackPanel Spacing="3" Margin="0,0,14,8">
+        <TextBlock Classes="eyebrow" Text="{Binding [activity.filterType], Source={x:Static app:Loc.Instance}}"/>
+        <ComboBox ItemsSource="{Binding ActivityFilters}" SelectedItem="{Binding ActivityFilter, Mode=TwoWay}" MinWidth="150">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding Converter={StaticResource ActivityLabel}}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+      <StackPanel Spacing="3" Margin="0,0,14,8">
+        <TextBlock Classes="eyebrow" Text="{Binding [activity.filterAsset], Source={x:Static app:Loc.Instance}}"/>
+        <ComboBox ItemsSource="{Binding ActivityAssets}" SelectedItem="{Binding ActivityAssetFilter, Mode=TwoWay}" MinWidth="110">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding Converter={StaticResource ActivityLabel}}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+      <StackPanel Spacing="3" Margin="0,0,14,8">
+        <TextBlock Classes="eyebrow" Text="{Binding [activity.filterStatus], Source={x:Static app:Loc.Instance}}"/>
+        <ComboBox ItemsSource="{Binding ActivityStatuses}" SelectedItem="{Binding ActivityStatusFilter, Mode=TwoWay}" MinWidth="130">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding Converter={StaticResource ActivityLabel}}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+      <StackPanel Spacing="3" Margin="0,0,0,8">
+        <TextBlock Classes="eyebrow" Text="{Binding [activity.filterDate], Source={x:Static app:Loc.Instance}}"/>
+        <ComboBox ItemsSource="{Binding ActivityDateRanges}" SelectedItem="{Binding ActivityDateFilter, Mode=TwoWay}" MinWidth="140">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding Converter={StaticResource ActivityLabel}}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </StackPanel>
+    </WrapPanel>
+
+    <!-- Empty state — distinguishes "still fetching" from "synced, genuinely nothing", so an
+         empty feed never reads as broken. -->
+    <Border Classes="card" IsVisible="{Binding !HasFilteredActivity}" MinHeight="120">
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+        <!-- Fetching on-chain history -->
+        <StackPanel IsVisible="{Binding HistoryLoading}" Spacing="8" HorizontalAlignment="Center">
+          <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-10.json" Width="46" Height="46"
+                         HorizontalAlignment="Center" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}"/>
+          <TextBlock HorizontalAlignment="Center" FontSize="13" Foreground="{DynamicResource UmTextDim}"
+                     Text="{Binding [activity.loading], Source={x:Static app:Loc.Instance}}"/>
+        </StackPanel>
+        <!-- Synced, but nothing on-chain / matching -->
+        <StackPanel IsVisible="{Binding !HistoryLoading}" Spacing="6" HorizontalAlignment="Center">
+          <TextBlock HorizontalAlignment="Center" FontSize="14" Foreground="{DynamicResource UmTextDim}"
+                     Text="{Binding [activity.empty], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="380" TextWrapping="Wrap"
+                     FontSize="12" Foreground="{DynamicResource UmTextMuted}"
+                     Text="{Binding [activity.emptyHint], Source={x:Static app:Loc.Instance}}"/>
+          <Button Classes="ghost" Padding="12,5" MinHeight="0" Margin="0,4,0,0" HorizontalAlignment="Center"
+                  Content="{Binding [activity.refresh], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding RefreshHistoryCommand}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Private note editor (encrypted at rest). Opens when 📝 is tapped on a transaction. -->
+    <Border IsVisible="{Binding IsEditingNote}" Background="{DynamicResource UmCard}"
+            BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="10"
+            Padding="12" Margin="0,0,0,10">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                   Text="{Binding [notes.title], Source={x:Static app:Loc.Instance}}"/>
+        <TextBox Text="{Binding NoteDraft}" AcceptsReturn="True" MaxLength="280" MinHeight="54"
+                 TextWrapping="Wrap"
+                 Watermark="{Binding [notes.placeholder], Source={x:Static app:Loc.Instance}}"/>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="{Binding [notes.save], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding SaveNoteCommand}"/>
+          <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding CancelEditNoteCommand}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <ItemsControl ItemsSource="{Binding FilteredActivity}" IsVisible="{Binding HasFilteredActivity}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ActivityRowViewModel">
+          <!-- Each event is its own rounded card. The card itself copies the explorer link
+               (a no-op when there is none); the Retry / note buttons live inside it and stay
+               independently clickable. -->
+          <StackPanel>
+          <!-- The day this event (and the ones under it) happened on. -->
+          <TextBlock IsVisible="{Binding HasDayHeader}" Text="{Binding DayHeader}" Classes="eyebrow"
+                     Margin="4,10,0,8" Foreground="{DynamicResource UmTextDim}"/>
+          <Button Classes="ghost" Padding="0" Margin="0,0,0,8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                  Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).CopyActivityLinkCommand}"
+                  CommandParameter="{Binding}">
+            <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                    BorderThickness="1" CornerRadius="14" MinHeight="62" Padding="14,10">
+              <StackPanel Spacing="5">
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" VerticalAlignment="Center">
+                <Border Width="40" Height="40" CornerRadius="20" VerticalAlignment="Center" Margin="0,0,14,0" BorderThickness="1"
+                        Background="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=wash}"
+                        BorderBrush="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=ring}">
+                  <!-- Drawn in a fixed 24×24 box so every glyph sits dead centre. -->
+                  <Viewbox Width="19" Height="19" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Canvas Width="24" Height="24">
+                      <Path Data="{Binding IconGeometry}" StrokeThickness="1.9" StrokeLineCap="Round" StrokeJoin="Round"
+                            Stroke="{Binding IconColor, Converter={StaticResource ThemeBrush}}"/>
+                    </Canvas>
+                  </Viewbox>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" ClipToBounds="True">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}"
+                             Text="{Binding Detail}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="12,0" Spacing="1">
+                  <TextBlock Classes="mono" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right"
+                             Text="{Binding AmountShort, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}"
+                             IsVisible="{Binding IsTransaction}"/>
+                  <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Right"
+                             Text="{Binding FiatLabel}" IsVisible="{Binding HasFiat}"/>
+                </StackPanel>
+                <!-- Confirmation-status pill (money movements only) + Retry on a failed send. -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,8,0" VerticalAlignment="Center">
+                  <Border IsVisible="{Binding ShowStatus}" Background="Transparent" BorderBrush="{Binding StatusColor}"
+                          BorderThickness="1" CornerRadius="7" Padding="8,2" VerticalAlignment="Center">
+                    <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding StatusColor}"
+                               Text="{Binding StatusLabel}"/>
+                  </Border>
+                  <Button Classes="ghost" Padding="10,3" MinHeight="0" VerticalAlignment="Center"
+                          IsVisible="{Binding CanRetry}"
+                          Content="{Binding [activity.retry], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RetrySendCommand}"
+                          CommandParameter="{Binding}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <!-- Add / edit a private (encrypted) note on this transaction. -->
+                  <Button Classes="ghost" Padding="6,2" MinHeight="0" VerticalAlignment="Center"
+                          IsVisible="{Binding CanHaveNote}" Content="📝"
+                          ToolTip.Tip="{Binding [notes.add], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).BeginEditNoteCommand}"
+                          CommandParameter="{Binding}"/>
+                  <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center"/>
+                  <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="11" Text="↗" IsVisible="{Binding HasLink}" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Grid>
+              <!-- The saved private note, shown under the row when present. -->
+              <TextBlock IsVisible="{Binding HasNote}" Text="{Binding Note}" Margin="54,0,0,0"
+                         FontSize="11.5" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+          </Button>
+          </StackPanel>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

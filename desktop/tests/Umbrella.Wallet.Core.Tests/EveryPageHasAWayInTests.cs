@@ -16,10 +16,12 @@ public sealed class EveryPageHasAWayInTests
         if (root is null) return; // not run from a source checkout
 
         var app = Path.Combine(root, "desktop", "src", "Umbrella.Wallet.App");
-        var view = File.ReadAllText(Path.Combine(app, "Views", "MainWindow.axaml"));
+        // The window and the pages it hosts (Views/Pages, shared with the Android shell).
+        var view = string.Join("\n", Directory.GetFiles(Path.Combine(app, "Views"), "*.axaml", SearchOption.AllDirectories)
+            .Select(File.ReadAllText));
         var code = string.Join("\n", Directory.GetFiles(Path.Combine(app, "ViewModels"), "*.cs").Select(File.ReadAllText));
 
-        var pages = Regex.Matches(view, @"Classes=""page"" IsVisible=""\{Binding Is(\w+)\}""")
+        var pages = Regex.Matches(view, @"(?:Classes=""page""|<pages:\w+Page) IsVisible=""\{Binding Is(\w+)\}""")
             .Select(m => m.Groups[1].Value).Distinct().ToList();
         Assert.NotEmpty(pages);
 

@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.NewsPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="14" MaxWidth="720" HorizontalAlignment="Left">
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center"
+                 Text="{Binding [nav.news], Source={x:Static app:Loc.Instance}}"/>
+      <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-12.json" Width="42" Height="42" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
+    </StackPanel>
+    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5"
+               Text="{Binding [news.desc], Source={x:Static app:Loc.Instance}}"/>
+
+    <!-- Official Telegram channel — the one place for news and contact. -->
+    <Border Classes="card" Background="{DynamicResource UmCardAlt}">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+        <Border Width="42" Height="42" CornerRadius="12" ClipToBounds="True" VerticalAlignment="Center">
+          <Image Source="avares://Umbrella.Wallet.App/Assets/phobia-channel.png" Stretch="UniformToFill"/>
+        </Border>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="{Binding [sec.tgChannel], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>
+          <TextBlock Text="{Binding [about.channel], Source={x:Static app:Loc.Instance}}"
+                     FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+        </StackPanel>
+        <Button Grid.Column="2" Classes="primary" Content="{Binding [common.open], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
+                Command="{Binding OpenUrlCommand}" CommandParameter="{Binding ChannelUrl}"/>
+      </Grid>
+    </Border>
+
+    <ItemsControl ItemsSource="{Binding News}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:NewsItemViewModel">
+          <!-- One clean card per item: a single bordered card that IS the button, so there
+               is no doubled edge (a ghost button wrapped around a card looked broken). -->
+          <Button Classes="row" CornerRadius="14" Margin="0,0,0,10" Padding="0"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                  Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).OpenNewsCommand}" CommandParameter="{Binding}">
+            <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                    BorderThickness="1" CornerRadius="14" Padding="18,15">
+              <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                  <Border Background="{Binding TagColor}" CornerRadius="6" Padding="8,2">
+                    <TextBlock Text="{Binding Tag}" FontSize="9.5" FontWeight="SemiBold"
+                               Foreground="#0C0D10" LetterSpacing="1"/>
+                  </Border>
+                  <TextBlock Text="{Binding Date}" FontSize="11" Foreground="{DynamicResource UmTextMuted}"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding Body}" FontSize="12.5" Foreground="{DynamicResource UmTextDim}"
+                           TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding [news.read], Source={x:Static app:Loc.Instance}}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource UmAccent}"/>
+              </StackPanel>
+            </Border>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

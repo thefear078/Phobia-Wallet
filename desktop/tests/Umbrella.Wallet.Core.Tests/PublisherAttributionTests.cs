@@ -52,8 +52,9 @@ public sealed class PublisherAttributionTests
     [Fact]
     public void The_welcome_screen_still_carries_the_makers_mark()
     {
-        var xaml = File.ReadAllText(Path.Combine(
-            RepoRoot(), "desktop", "src", "Umbrella.Wallet.App", "Views", "MainWindow.axaml"));
+        var views = Path.Combine(RepoRoot(), "desktop", "src", "Umbrella.Wallet.App", "Views");
+        var xaml = File.ReadAllText(Path.Combine(views, "MainWindow.axaml"))
+                   + File.ReadAllText(Path.Combine(views, "Pages", "SettingsPage.axaml"));
 
         Assert.Contains("the fear", xaml, StringComparison.Ordinal);
         Assert.Contains("FearMark", xaml, StringComparison.Ordinal);

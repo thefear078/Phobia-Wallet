@@ -14,6 +14,22 @@
     <!-- Brand gradients are the same across every palette (they ARE the Phobia signature), so they
          live here as static resources rather than in the per-theme brush set. -->
     <Application.Resources>
+        <!-- Converters shared by the desktop window, its pages and the Android shell. -->
+        <local:StringEqualsConverter x:Key="StringEquals" />
+        <local:MarketFilterConverter x:Key="MarketFilter" />
+        <local:ToastBorderConverter x:Key="ToastBorder" />
+        <local:ToastGlyphConverter x:Key="ToastGlyph" />
+        <local:ChangeWashConverter x:Key="ChangeWash" />
+        <local:ActivityLabelConverter x:Key="ActivityLabel" />
+        <local:ThemeBrushConverter x:Key="ThemeBrush" />
+        <local:ChartLinePointConverter x:Key="HLineStart" Kind="HStart" />
+        <local:ChartLinePointConverter x:Key="HLineEnd" Kind="HEnd" />
+        <local:ChartLinePointConverter x:Key="VLineStart" Kind="VStart" />
+        <local:ChartLinePointConverter x:Key="VLineEnd" Kind="VEnd" />
+        <local:BoolToWeightConverter x:Key="BoolToWeight" />
+        <local:SmoothLineConverter x:Key="SmoothLine" />
+        <local:SmoothAreaConverter x:Key="SmoothArea" />
+
         <LinearGradientBrush x:Key="UmSignature" StartPoint="0%,0%" EndPoint="100%,100%">
             <GradientStop Offset="0" Color="#24C6FF"/>
             <GradientStop Offset="0.5" Color="#3478FF"/>

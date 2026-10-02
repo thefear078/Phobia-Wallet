@@ -1,0 +1,590 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.SendPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="14" MaxWidth="620" HorizontalAlignment="Left">
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [send.title], Source={x:Static app:Loc.Instance}}"/>
+      <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-08.json" Width="42" Height="42" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
+    </StackPanel>
+    <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
+               Text="{Binding [sec.sendDesc], Source={x:Static app:Loc.Instance}}"/>
+
+    <!-- Paying a swap: what it buys and through whom, above the fields it filled in. -->
+    <Border IsVisible="{Binding HasSwapPayment}" Background="{DynamicResource UmCardAlt}"
+            BorderBrush="{DynamicResource UmAccent}" BorderThickness="1" CornerRadius="10" Padding="12,10">
+      <TextBlock Text="{Binding SwapPaymentBanner}" TextWrapping="Wrap" FontSize="12.5"
+                 Foreground="{DynamicResource UmText}"/>
+    </Border>
+
+    <!-- Step 1 · what & where -->
+    <Border Classes="card">
+      <StackPanel Spacing="12">
+        <TextBlock Classes="eyebrow" Text="{Binding [send.step1], Source={x:Static app:Loc.Instance}}"/>
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Classes="eyebrow" Text="{Binding [col.asset], Source={x:Static app:Loc.Instance}}"/>
+          <!-- Which wallet the balances below belong to: with several wallets, "0.4 ETH"
+               means nothing until it says whose. -->
+          <TextBlock Grid.Column="1" FontSize="11" Foreground="{DynamicResource UmTextDim}"
+                     VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
+                     Text="{Binding SendBalancesFromLabel}"/>
+        </Grid>
+        <!-- The native coins plus every token actually held, each with what the active
+             wallet holds of it. Updated in place, so a refresh never moves the selection. -->
+        <ComboBox ItemsSource="{Binding SendableAssetOptions}"
+                  SelectedItem="{Binding SelectedSendAsset}"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                  MaxDropDownHeight="440">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:SendOption">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14" Margin="0,3">
+                <StackPanel Spacing="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Display}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"
+                             TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center" IsVisible="{Binding HasBalance}">
+                  <TextBlock Text="{Binding Balance}" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                  <TextBlock Text="{Binding BalanceFiat}" FontSize="10.5" HorizontalAlignment="Right"
+                             Foreground="{DynamicResource UmTextDim}"
+                             IsVisible="{Binding BalanceFiat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBlock Classes="eyebrow" Text="{Binding [send.destLabel], Source={x:Static app:Loc.Instance}}"/>
+        <TextBox Text="{Binding SendTo}" Watermark="{Binding [send.destPlaceholder], Source={x:Static app:Loc.Instance}}"/>
+        <!-- Stellar's memo: an exchange credits a deposit by it, so it is asked for right under
+             the address and said again on the review — or its absence is. -->
+        <StackPanel Spacing="4" IsVisible="{Binding IsMemoChain}">
+          <TextBlock Classes="eyebrow" Text="{Binding [send.memoLabel], Source={x:Static app:Loc.Instance}}"/>
+          <TextBox Text="{Binding SendMemo}" Watermark="{Binding [send.memoPh], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="#E7CA83"
+                     Text="{Binding [send.memoHint], Source={x:Static app:Loc.Instance}}"/>
+        </StackPanel>
+        <!-- XRP's destination tag does the same job for an exchange deposit, as a number. -->
+        <StackPanel Spacing="4" IsVisible="{Binding IsDestinationTagChain}">
+          <TextBlock Classes="eyebrow" Text="{Binding [send.tagLabel], Source={x:Static app:Loc.Instance}}"/>
+          <TextBox Text="{Binding SendMemo}" Watermark="{Binding [send.tagPh], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="#E7CA83"
+                     Text="{Binding [send.tagHint], Source={x:Static app:Loc.Instance}}"/>
+        </StackPanel>
+
+        <!-- Network-check-on-paste: advisory only, but flags a destination that doesn't look
+             like the selected network before any funds move. -->
+        <Border IsVisible="{Binding SendAddressWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="#2A2416" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="8" Padding="12,9">
+          <!-- Grid (Auto icon, * text) so a long warning wraps inside the card instead of
+               running off the right edge. -->
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="⚠" Foreground="#E7CA83" VerticalAlignment="Top" Margin="0,0,8,0"/>
+            <TextBlock Grid.Column="1" Text="{Binding SendAddressWarning}" Foreground="#D8C79A"
+                       TextWrapping="Wrap" FontSize="11.5"/>
+          </Grid>
+        </Border>
+
+        <!-- Positive trust signal: the destination is a saved contact or one you've paid
+             before. Green, so a trusted address reads as safe at a glance. -->
+        <Border IsVisible="{Binding SendKnownContactShown}" CornerRadius="8" Padding="12,8"
+                Background="#1622C55E" BorderThickness="1" BorderBrush="#2F7D53">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="✓" Foreground="#7DCF8F" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding SendKnownContact}" Foreground="#9FE0B1" FontSize="12"
+                       TextWrapping="Wrap" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Border>
+
+        <!-- PayJoin (P2.2): what a pasted payment link offered, and whether it will be used.
+             Teal: information, not a warning. -->
+        <Border IsVisible="{Binding HasSendPayjoinNote}" CornerRadius="8" Padding="12,8"
+                Background="#168FB8CB" BorderThickness="1" BorderBrush="#3E6E82">
+          <TextBlock Text="{Binding SendPayjoinNote}" Foreground="#B9D9E6" FontSize="12"
+                     TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- Scam control: address-poisoning / own-address warning. The lookalike case is
+             red (a likely scam); the own-address case is amber (a caution). Advisory. -->
+        <Border IsVisible="{Binding SendSafetyShown}" CornerRadius="10" Padding="12,10"
+                Background="#22000000" BorderThickness="1" BorderBrush="{Binding SendSafetyColor}">
+          <StackPanel Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="⚠" Foreground="{Binding SendSafetyColor}" FontSize="13" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding SendSafetyTitle}" Foreground="{Binding SendSafetyColor}"
+                         FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="{Binding SendSafetyText}" Foreground="{DynamicResource UmTextDim}"
+                       FontSize="11.5" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Local address book: save this destination, or reuse a saved one for this asset. -->
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+          <TextBox Grid.Column="0" Text="{Binding SendAddressLabel}"
+                   Watermark="{Binding [send.addrLabel], Source={x:Static app:Loc.Instance}}"/>
+          <Button Grid.Column="1" Classes="ghost" MinHeight="0" Padding="14,8" VerticalAlignment="Stretch"
+                  Content="{Binding [send.addrSave], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding SaveSendAddressCommand}"/>
+        </Grid>
+        <StackPanel Spacing="4" IsVisible="{Binding HasSendAddressBook}">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                     Text="{Binding [send.addrSaved], Source={x:Static app:Loc.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding SendAddressBook}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="app:AddressBookEntry">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,1">
+                  <Button Grid.Column="0" Classes="ghost" MinHeight="0" Padding="10,6"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                          ToolTip.Tip="{Binding Address}"
+                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).UseSendAddressCommand}"
+                          CommandParameter="{Binding}">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"/>
+                      <TextBlock Classes="mono" FontSize="10.5" Foreground="{DynamicResource UmTextMuted}"
+                                 Text="{Binding Address}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Grid.Column="1" Classes="chip" Content="✕" VerticalAlignment="Center" Margin="6,0,0,0"
+                          AutomationProperties.Name="{Binding [common.remove], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RemoveSendAddressCommand}"
+                          CommandParameter="{Binding}"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Classes="eyebrow" VerticalAlignment="Center"
+                     Text="{Binding [send.amount], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Grid.Column="1" FontSize="11" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"
+                     Text="{Binding SelectedSendBalanceLabel}"/>
+        </Grid>
+        <!-- Fiat quick-entry: type a USD amount and the coin amount fills in below. Shown only
+             when the asset is priced. The coin field stays the authoritative value that is
+             signed — this only fills it in, so the user always confirms the coin amount. -->
+        <StackPanel Spacing="3" Margin="0,2,0,0" IsVisible="{Binding FiatInputAvailable}">
+          <TextBox Text="{Binding SendFiatAmount}"
+                   Watermark="{Binding [send.fiatPlaceholder], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Margin="2,0,0,0"
+                     IsVisible="{Binding SendFiatCoinEquiv, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     Text="{Binding SendFiatCoinEquiv}"/>
+        </StackPanel>
+
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <TextBox Grid.Column="0" Text="{Binding SendAmount}" Watermark="0.0"/>
+          <!-- Quick amount presets: a share of the balance (25% / 50%) plus the fee-aware Max. -->
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+            <Button Classes="ghost" MinHeight="0" Padding="12,10" VerticalAlignment="Stretch"
+                    Content="25%" Command="{Binding SetAmountPercentCommand}" CommandParameter="25"/>
+            <Button Classes="ghost" MinHeight="0" Padding="12,10" VerticalAlignment="Stretch"
+                    Content="50%" Command="{Binding SetAmountPercentCommand}" CommandParameter="50"/>
+            <Button Classes="ghost" MinHeight="0" Padding="16,10" VerticalAlignment="Stretch"
+                    Content="{Binding [send.max], Source={x:Static app:Loc.Instance}}" Command="{Binding SetMaxAmountCommand}"/>
+          </StackPanel>
+        </Grid>
+        <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Margin="2,0,0,0"
+                   IsVisible="{Binding SendAmountFiat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Text="{Binding SendAmountFiat}"/>
+
+        <!-- Coin control (§3.4): opt-in manual UTXO selection for BTC/LTC/DOGE. Off = automatic
+             selection (unchanged). On = only the ticked coins may fund the spend, so a payment
+             never publicly links coins that belong to a different identity. -->
+        <Border IsVisible="{Binding CoinControlAvailable}"
+                Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder}"
+                BorderThickness="1" CornerRadius="10" Padding="12,10">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                <TextBlock FontSize="12.5" FontWeight="SemiBold"
+                           Text="{Binding [send.coinControl], Source={x:Static app:Loc.Instance}}"/>
+                <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}"
+                           Text="{Binding [send.coinControlHint], Source={x:Static app:Loc.Instance}}"/>
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" VerticalAlignment="Center" OnContent="" OffContent=""
+                            IsChecked="{Binding CoinControlOn}"/>
+            </Grid>
+
+            <StackPanel Spacing="8" IsVisible="{Binding CoinControlOn}">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{DynamicResource UmTextDim}" Text="{Binding CoinControlSummary}"/>
+                <Button Grid.Column="1" Classes="ghost" MinHeight="0" Padding="10,5" FontSize="11"
+                        Content="{Binding [send.coinAll], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding CoinControlSelectAllCommand}"/>
+                <Button Grid.Column="2" Classes="ghost" MinHeight="0" Padding="10,5" FontSize="11"
+                        Content="{Binding [send.coinNone], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding CoinControlSelectNoneCommand}"/>
+              </Grid>
+
+              <TextBlock Text="{Binding [send.coinLoading], Source={x:Static app:Loc.Instance}}"
+                         FontSize="11" Foreground="{DynamicResource UmTextDim}"
+                         IsVisible="{Binding CoinControlLoading}"/>
+
+              <ScrollViewer MaxHeight="188" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                <ItemsControl ItemsSource="{Binding CoinControlUtxos}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CoinControlUtxoVm">
+                      <Border Background="{DynamicResource UmCard}" CornerRadius="8" Padding="10,7" Margin="0,0,0,6">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                    VerticalAlignment="Center" Margin="0,0,8,0"/>
+                          <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Amount}" FontWeight="SemiBold" FontSize="12.5" Classes="mono"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <Border Background="{DynamicResource UmAccentWash}" CornerRadius="4" Padding="5,1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Kind, Converter={StaticResource ActivityLabel}}" FontSize="9.5" Foreground="{DynamicResource UmAccentText}"/>
+                              </Border>
+                              <TextBlock Text="{Binding AddressShort}" FontSize="10.5" Classes="mono"
+                                         Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                          </StackPanel>
+                          <TextBlock Grid.Column="2" Text="{Binding Status}" FontSize="10" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource UmTextMuted}"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Network fee speed (UTXO chains): Economy / Standard / Priority. Standard is the
+             economical rate the wallet has always used, so an untouched selector never changes
+             the fee; only the sat/vB fed to the planner changes, and every level stays inside
+             the chain's safe fee band (never below the relay floor). The signing path is
+             unaffected. Changing it after a quote is shown re-prices it. -->
+        <Border IsVisible="{Binding FeeLevelAvailable}"
+                Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder}"
+                BorderThickness="1" CornerRadius="10" Padding="12,10">
+          <StackPanel Spacing="8">
+            <StackPanel Spacing="1">
+              <TextBlock Text="{Binding [fee.title], Source={x:Static app:Loc.Instance}}"
+                         FontSize="12.5" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding [fee.hint], Source={x:Static app:Loc.Instance}}"
+                         FontSize="11" Foreground="{DynamicResource UmTextDim}"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="18">
+              <RadioButton GroupName="feeLevel" IsChecked="{Binding IsFeeEconomy, Mode=OneWay}"
+                           Command="{Binding SetFeeLevelCommand}" CommandParameter="0"
+                           Content="{Binding [fee.economy], Source={x:Static app:Loc.Instance}}"/>
+              <RadioButton GroupName="feeLevel" IsChecked="{Binding IsFeeStandard, Mode=OneWay}"
+                           Command="{Binding SetFeeLevelCommand}" CommandParameter="1"
+                           Content="{Binding [fee.standard], Source={x:Static app:Loc.Instance}}"/>
+              <RadioButton GroupName="feeLevel" IsChecked="{Binding IsFeePriority, Mode=OneWay}"
+                           Command="{Binding SetFeeLevelCommand}" CommandParameter="2"
+                           Content="{Binding [fee.priority], Source={x:Static app:Loc.Instance}}"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Private send (one switch). Turning it on does the things a careful person
+             would otherwise have to remember: start Tor, wait for it, arm the kill-switch.
+             The lower half is the part that keeps this honest - Tor hides your IP from an
+             explorer, it does not make a public chain private, and no switch hides you from
+             the person you are paying. Both halves are always shown together, so "nothing
+             left to turn on" can never be read as "nothing left to know". -->
+        <Border Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder}"
+                BorderThickness="1" CornerRadius="10" Padding="12,10">
+          <StackPanel Spacing="10">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Grid.Column="0" Spacing="1">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <TextBlock Text="🧅" FontSize="12.5" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding [psend.title], Source={x:Static app:Loc.Instance}}"
+                             FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock Text="{Binding [psend.hint], Source={x:Static app:Loc.Instance}}"
+                           FontSize="11" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" VerticalAlignment="Center" OnContent="" OffContent=""
+                            IsChecked="{Binding PrivateSendOn}"/>
+            </Grid>
+
+            <!-- What it will do. Hidden only when there is genuinely nothing left. -->
+            <StackPanel Spacing="5" IsVisible="{Binding PrivateSendHasSteps}">
+              <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                         Text="{Binding [psend.willDo], Source={x:Static app:Loc.Instance}}"/>
+              <ItemsControl ItemsSource="{Binding PrivateSendSteps}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+                      <TextBlock Text="→" Foreground="{DynamicResource UmAccent}"
+                                 VerticalAlignment="Top" Margin="0,0,8,0" FontSize="11.5"/>
+                      <TextBlock Grid.Column="1" Text="{Binding}" FontSize="11.5" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource UmTextSoft}"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <TextBlock IsVisible="{Binding PrivateSendReady}" FontSize="11.5" TextWrapping="Wrap"
+                       Foreground="#8FCB9B"
+                       Text="{Binding [psend.ready], Source={x:Static app:Loc.Instance}}"/>
+
+            <!-- What it cannot change. Never hidden, never empty. -->
+            <StackPanel Spacing="5">
+              <TextBlock Classes="eyebrow" Foreground="#E7CA83"
+                         Text="{Binding [psend.cannot], Source={x:Static app:Loc.Instance}}"/>
+              <ItemsControl ItemsSource="{Binding PrivateSendLimits}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+                      <TextBlock Text="•" Foreground="#E7CA83"
+                                 VerticalAlignment="Top" Margin="0,0,8,0" FontSize="11.5"/>
+                      <TextBlock Grid.Column="1" Text="{Binding}" FontSize="11" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource UmTextDim}"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <Button Classes="ghost" HorizontalAlignment="Left" FontSize="11.5"
+                    IsVisible="{Binding PrivateSendHasSteps}"
+                    Command="{Binding ApplyPrivateSendCommand}"
+                    Content="{Binding [psend.apply], Source={x:Static app:Loc.Instance}}"/>
+          </StackPanel>
+        </Border>
+
+        <Border IsVisible="{Binding SendError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
+          <TextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
+        <Button Classes="primary" Content="{Binding [send.review], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left"
+                IsEnabled="{Binding !IsBusy}" Command="{Binding PrepareSendCommand}"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Step 2 · review & confirm. Financially transparent (§4): the full destination is
+         always visible (never truncated), the amount carries its fiat value, and the total
+         debit reads separately from the network fee. -->
+    <Border Classes="card" BorderBrush="#7A6230" IsVisible="{Binding HasSendQuote}">
+      <StackPanel Spacing="12">
+        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [send.step2], Source={x:Static app:Loc.Instance}}"/>
+
+        <!-- Amount + fiat -->
+        <StackPanel Spacing="2">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.amount], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Classes="mono" FontSize="15" FontWeight="SemiBold" Text="{Binding SendReviewAmount}"/>
+          <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}"
+                     IsVisible="{Binding SendReviewFiat, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     Text="{Binding SendReviewFiat}"/>
+        </StackPanel>
+
+        <!-- Full destination — selectable, wraps, never shortened (verify every character). -->
+        <StackPanel Spacing="2">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.destLabel], Source={x:Static app:Loc.Instance}}"/>
+          <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1"
+                  CornerRadius="8" Padding="10,8">
+            <SelectableTextBlock Classes="mono" FontSize="12" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource UmTextSoft}" Text="{Binding SendReviewTo}"/>
+          </Border>
+        </StackPanel>
+
+        <!-- The memo that will be signed, with its type — or a plain warning that there is none. -->
+        <StackPanel Spacing="2" IsVisible="{Binding HasSendReviewMemo}">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding SendReviewMemoCaption}"/>
+          <SelectableTextBlock Classes="mono" FontSize="12" TextWrapping="Wrap" Foreground="#E7CA83" Text="{Binding SendReviewMemo}"/>
+        </StackPanel>
+
+        <!-- Network fee (kept as its own line, separate from the total debit below). -->
+        <StackPanel Spacing="2">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [send.networkFee], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Text="{Binding SendQuoteFee}"/>
+        </StackPanel>
+
+        <!-- "What will happen": the send, itemised, before anything is signed. The fee
+             landing ON TOP of the amount and change returning to an address you own are the
+             two things people misread most, so both get their own line. -->
+        <Border IsVisible="{Binding HasSendSimulation}"
+                Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder2}"
+                BorderThickness="1" CornerRadius="10" Padding="12,10">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                       Text="{Binding [sim.title], Source={x:Static app:Loc.Instance}}"/>
+
+            <ItemsControl ItemsSource="{Binding SendSimulationRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SendSimulationRow">
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                    <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                      <TextBlock FontSize="12" Text="{Binding Label}"
+                                 Foreground="{DynamicResource UmTextSoft}"/>
+                      <TextBlock FontSize="10.5" IsVisible="{Binding HasHint}" Text="{Binding Hint}"
+                                 Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Classes="mono" FontSize="12" VerticalAlignment="Center"
+                               Text="{Binding Amount}"
+                               Foreground="{DynamicResource UmText}"
+                               FontWeight="{Binding Emphasis, Converter={StaticResource BoolToWeight}}"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <ItemsControl ItemsSource="{Binding SendSimulationWarnings}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock FontSize="11.5" TextWrapping="Wrap" Margin="0,3,0,0"
+                             Foreground="#E7CA83" Text="{Binding}"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextMuted}"
+                       Text="{Binding [sim.final], Source={x:Static app:Loc.Instance}}"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Total debit — what actually leaves the wallet, stated apart from the fee. -->
+        <Border Background="#1E1A12" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="8" Padding="10,8">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [send.totalDebit], Source={x:Static app:Loc.Instance}}"/>
+            <TextBlock FontSize="12" Foreground="#D8C79A" TextWrapping="Wrap" Text="{Binding SendReviewDebit}"/>
+          </StackPanel>
+        </Border>
+
+        <!-- Privacy Radar (local, offline): how this send affects YOUR on-chain privacy —
+             chain analysis FOR the user. Shown for UTXO chains, where linking inputs matters. -->
+        <Border IsVisible="{Binding HasSendPrivacy}" CornerRadius="8" Padding="12,10"
+                Background="#22000000" BorderThickness="1" BorderBrush="{Binding SendPrivacyColor}">
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="🛡" FontSize="13" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding [priv.title], Source={x:Static app:Loc.Instance}}"
+                         Classes="eyebrow" VerticalAlignment="Center"
+                         Foreground="{Binding SendPrivacyColor}"/>
+            </StackPanel>
+            <TextBlock Text="{Binding SendPrivacyHeadline}" Foreground="{Binding SendPrivacyColor}"
+                       FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <ItemsControl ItemsSource="{Binding SendPrivacyFindings}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SendPrivacyFindingVm">
+                  <Grid ColumnDefinitions="Auto,*" Margin="0,3,0,0">
+                    <TextBlock Text="{Binding Glyph}" VerticalAlignment="Top" Margin="0,0,8,0"/>
+                    <StackPanel Grid.Column="1" Spacing="1">
+                      <TextBlock Text="{Binding Title}" Foreground="{Binding Color}"
+                                 FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                      <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource UmTextDim}"
+                                 FontSize="11" TextWrapping="Wrap"/>
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
+                   Text="{Binding [send.step2warn], Source={x:Static app:Loc.Instance}}"/>
+
+        <!-- Anonymity reminder: broadcasting with Tor off exposes your IP to the node. Only
+             shown when clearnet is actually possible (Tor off and kill-switch off). -->
+        <Border IsVisible="{Binding ShowSendClearnetNote}" CornerRadius="8" Padding="12,9"
+                Background="#22000000" BorderThickness="1" BorderBrush="#7A6230">
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="🧅" VerticalAlignment="Top" Margin="0,0,8,0"/>
+            <TextBlock Grid.Column="1" Text="{Binding [send.clearnetNote], Source={x:Static app:Loc.Instance}}"
+                       Foreground="{DynamicResource UmTextDim}" FontSize="11.5" TextWrapping="Wrap"/>
+          </Grid>
+        </Border>
+
+        <!-- The password once more before anything is signed (Settings → Security). -->
+        <TextBox IsVisible="{Binding RequirePasswordForSend}" PasswordChar="•" MaxWidth="360" HorizontalAlignment="Left"
+                 Text="{Binding SendConfirmPassword, Mode=TwoWay}"
+                 Watermark="{Binding [send.passwordWatermark], Source={x:Static app:Loc.Instance}}"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Classes="danger" Content="{Binding [send.confirm], Source={x:Static app:Loc.Instance}}" IsEnabled="{Binding !IsBusy}"
+                  Command="{Binding ConfirmSendCommand}"/>
+          <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}" Command="{Binding CancelSendQuoteCommand}"/>
+        </StackPanel>
+
+        <!-- PSBT export (roadmap H.1): the same payment, unsigned, for another wallet to check
+             or sign. Bitcoin only — PSBT is Bitcoin's format. -->
+        <StackPanel Spacing="6" IsVisible="{Binding CanExportSendPsbt}">
+          <Button Classes="ghost" FontSize="12" HorizontalAlignment="Left" IsEnabled="{Binding !IsBusy}"
+                  Content="{Binding [send.exportPsbt], Source={x:Static app:Loc.Instance}}" Command="{Binding ExportSendPsbtCommand}"/>
+          <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" LineHeight="16" TextWrapping="Wrap"
+                     Text="{Binding [send.exportPsbtHint], Source={x:Static app:Loc.Instance}}"/>
+          <StackPanel Spacing="6" IsVisible="{Binding HasPsbtExport}">
+            <TextBox Classes="mono" FontSize="11" TextWrapping="Wrap" MaxHeight="120" IsReadOnly="True"
+                     Text="{Binding PsbtExportText, Mode=OneWay}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="ghost" FontSize="11" Padding="9,4" MinHeight="0"
+                      Content="{Binding [common.copy], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPsbtExportCommand}"/>
+              <Button Classes="ghost" FontSize="11" Padding="9,4" MinHeight="0"
+                      Content="{Binding [psbt.saveBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding SavePsbtExportCommand}"/>
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Broadcasting animation -->
+    <Border Classes="card" IsVisible="{Binding IsBusy}">
+      <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
+        <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/Sending.json"
+                       Width="72" Height="72" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}"/>
+        <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource UmTextDim}" FontSize="12.5"
+                   VerticalAlignment="Center" TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Result -->
+    <Border Background="#14231A" BorderBrush="#2F5A3C" BorderThickness="1" CornerRadius="10" Padding="14"
+            IsVisible="{Binding SendSuccess, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <StackPanel Orientation="Horizontal" Spacing="14">
+        <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/money.json"
+                       Width="56" Height="56" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Top"/>
+        <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmPos}" TextWrapping="Wrap"
+                   Text="{Binding SendSuccess}" VerticalAlignment="Center"/>
+      </StackPanel>
+    </Border>
+
+    <!-- What that send actually cost (roadmap P1.12). Settings say what you configured;
+         this says what the transfer you just made exposed, while you can still act on
+         it — different coins next time, Tor on before the next send. -->
+    <Border Classes="card" IsVisible="{Binding HasSendLeakReport}" BorderBrush="#5A6B8C">
+      <StackPanel Spacing="10">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="eyebrow" Text="{Binding [leak.title], Source={x:Static app:Loc.Instance}}"/>
+            <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" MaxWidth="560"
+                       Text="{Binding [leak.subtitle], Source={x:Static app:Loc.Instance}}"/>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="ghost" FontSize="11" Padding="10,5" VerticalAlignment="Top"
+                  Content="{Binding [common.close], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding DismissSendLeakReportCommand}"/>
+        </Grid>
+
+        <ItemsControl ItemsSource="{Binding SendLeakFindings}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:LeakFindingVm">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9" Margin="0,0,0,5">
+                <TextBlock Text="{Binding Glyph}" Foreground="{Binding Color}" FontSize="12"
+                           FontWeight="Bold" VerticalAlignment="Top"/>
+                <TextBlock Grid.Column="1" Text="{Binding Text}" FontSize="12" LineHeight="18"
+                           TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"/>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock IsVisible="{Binding SendLeakHasAvoidable}" FontSize="11.5" Foreground="#E7CA83"
+                   TextWrapping="Wrap" MaxWidth="560"
+                   Text="{Binding [leak.avoidable], Source={x:Static app:Loc.Instance}}"/>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

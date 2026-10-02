@@ -108,7 +108,7 @@ public sealed class InterfaceAndSearchTests : IDisposable
     [Fact]
     public void Every_settings_card_can_be_found()
     {
-        var xaml = File.ReadAllLines(Path.Combine(RepoRoot(), "desktop", "src", "Umbrella.Wallet.App", "Views", "MainWindow.axaml"));
+        var xaml = File.ReadAllLines(Path.Combine(RepoRoot(), "desktop", "src", "Umbrella.Wallet.App", "Views", "Pages", "SettingsPage.axaml"));
         var headings = new List<string>();
         for (var i = 0; i < xaml.Length; i++)
         {

@@ -1,0 +1,217 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.ConnectPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="16" MaxWidth="820" HorizontalAlignment="Left">
+    <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
+      <Border Width="4" Height="24" CornerRadius="2" Background="{DynamicResource UmAccentBright}"/>
+      <TextBlock Classes="serif" FontSize="26" Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+    </StackPanel>
+
+    <Border Classes="note" IsVisible="{Binding ShowConnectIntro}">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+        <Border Classes="noteMark">
+          <Path Data="M8 7.2 V12 M8 4.3 V4.4" Width="16" Height="16"/>
+        </Border>
+        <TextBlock Grid.Column="1" Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                   Text="{Binding [connect.intro], Source={x:Static app:Loc.Instance}}"/>
+        <Button Grid.Column="2" Classes="noteClose" Content="✕" Command="{Binding DismissNoticeCommand}"
+                CommandParameter="connect.intro" ToolTip.Tip="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"
+                AutomationProperties.Name="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"/>
+      </Grid>
+    </Border>
+
+    <!-- At a glance: how many, and what it is all worth. -->
+    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+      <Border Classes="card" Padding="16,12">
+        <StackPanel Spacing="3">
+          <TextBlock Classes="eyebrow" Text="{Binding [connect.tileWallets], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Text="{Binding WatchCountLabel}" FontSize="22" FontWeight="SemiBold"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Classes="card" Padding="16,12">
+        <StackPanel Spacing="3">
+          <TextBlock Classes="eyebrow" Text="{Binding [connect.tileExchanges], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Text="{Binding ExchangeCountLabel}" FontSize="22" FontWeight="SemiBold"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Classes="card" Padding="16,12">
+        <StackPanel Spacing="3">
+          <TextBlock Classes="eyebrow" Text="{Binding [connect.tileValue], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Text="{Binding ConnectedValueLabel}" FontSize="22" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <Border Classes="hairline" Padding="4" HorizontalAlignment="Left">
+      <StackPanel Orientation="Horizontal" Spacing="2">
+        <Button Classes="chip" Content="{Binding [connect.tabWallets], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectConnectTabCommand}"
+                CommandParameter="Wallets" Classes.active="{Binding IsConnectWallets}"/>
+        <Button Classes="chip" Content="{Binding [connect.tabExchanges], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectConnectTabCommand}"
+                CommandParameter="Exchanges" Classes.active="{Binding IsConnectExchanges}"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ============ Watched addresses ============ -->
+    <Border Classes="card" IsVisible="{Binding IsConnectWallets}" Padding="20,16">
+      <StackPanel Spacing="12">
+        <TextBlock Text="{Binding [connect.addWatchTitle], Source={x:Static app:Loc.Instance}}" FontSize="15" FontWeight="SemiBold"/>
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="eyebrow" Text="{Binding [connect.network], Source={x:Static app:Loc.Instance}}"/>
+            <ComboBox ItemsSource="{Binding WatchableNetworks}" SelectedItem="{Binding SelectedWatchNetwork}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SendOption">
+                  <StackPanel Spacing="1" Margin="0,3">
+                    <TextBlock Text="{Binding Display}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="6">
+            <TextBlock Classes="eyebrow" Text="{Binding [connect.labelOptional], Source={x:Static app:Loc.Instance}}"/>
+            <TextBox Text="{Binding WatchLabel}" Watermark="{Binding [connect.watchLabelPh], Source={x:Static app:Loc.Instance}}"/>
+          </StackPanel>
+        </Grid>
+        <StackPanel Spacing="6">
+          <TextBlock Classes="eyebrow" Text="{Binding [connect.publicAddress], Source={x:Static app:Loc.Instance}}"/>
+          <TextBox Text="{Binding WatchAddress}" Classes="mono" Watermark="{Binding [connect.watchAddrPh], Source={x:Static app:Loc.Instance}}"/>
+        </StackPanel>
+        <Button Classes="primary" Padding="22,9" MinHeight="0" HorizontalAlignment="Left"
+                Content="{Binding [connect.linkBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding AddWatchAddressCommand}"/>
+      </StackPanel>
+    </Border>
+
+    <Border Classes="hairline" IsVisible="{Binding IsConnectWallets}">
+      <StackPanel>
+        <ItemsControl ItemsSource="{Binding WatchRows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:WatchRowViewModel">
+              <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,0,0,1" Padding="16,12">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="14">
+                  <Border Width="38" Height="38" CornerRadius="19" Background="{Binding BadgeBg}" VerticalAlignment="Center" ClipToBounds="True">
+                    <Panel>
+                      <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" Text="{Binding BadgeGlyph}" FontSize="17" FontWeight="Bold"
+                                 Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasBadgeLogo}"/>
+                      <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+                    </Panel>
+                  </Border>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" MinWidth="0">
+                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" TextTrimming="CharacterEllipsis">
+                      <Run Text="{Binding Network}"/><Run Text=" · "/><Run Text="{Binding ShortAddress}" FontFamily="Cascadia Mono, Consolas, monospace"/>
+                    </TextBlock>
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Text="{Binding Holding}" FontSize="12.5" VerticalAlignment="Center" TextAlignment="Right"/>
+                  <Button Grid.Column="3" Classes="chip" Content="{Binding [common.remove], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
+                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RemoveWatchAddressCommand}" CommandParameter="{Binding Watch}"/>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel IsVisible="{Binding !HasWatchRows}" Margin="20,22" Spacing="6" HorizontalAlignment="Center">
+          <Path Classes="tileIcon" Width="34" Height="34" Stretch="Uniform" HorizontalAlignment="Center"
+                Data="M2 12 C5 6 9 4 12 4 C15 4 19 6 22 12 C19 18 15 20 12 20 C9 20 5 18 2 12 Z M12 9 C13.7 9 15 10.3 15 12 C15 13.7 13.7 15 12 15 C10.3 15 9 13.7 9 12 C9 10.3 10.3 9 12 9 Z"/>
+          <TextBlock Text="{Binding [connect.emptyWallets], Source={x:Static app:Loc.Instance}}" FontSize="12.5" Foreground="{DynamicResource UmTextMuted}"
+                     TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- ============ Exchanges ============ -->
+    <Border Classes="card" IsVisible="{Binding IsConnectExchanges}" Padding="20,16">
+      <StackPanel Spacing="14">
+        <TextBlock Text="{Binding [connect.addExchangeTitle], Source={x:Static app:Loc.Instance}}" FontSize="15" FontWeight="SemiBold"/>
+        <ItemsControl ItemsSource="{Binding ExchangeTiles}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ExchangeTile">
+              <Button Classes="chip" Classes.active="{Binding IsSelected}" Margin="0,0,8,8" Padding="8,6"
+                      Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SelectExchangeCommand}" CommandParameter="{Binding Name}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Border Width="24" Height="24" CornerRadius="7" Background="{Binding Color}">
+                    <TextBlock Text="{Binding Initials}" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="12.5"/>
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="12" Padding="14,10">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [connect.readOnlyKey], Source={x:Static app:Loc.Instance}}"/>
+            <TextBlock Foreground="#BBAF91" FontSize="11.5" TextWrapping="Wrap" Text="{Binding [connect.readOnlyNote], Source={x:Static app:Loc.Instance}}"/>
+          </StackPanel>
+        </Border>
+
+        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" Text="{Binding ExchangeKeyHint}"/>
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="10">
+          <TextBox Text="{Binding ExchangeLabel}" Watermark="{Binding [connect.labelPh], Source={x:Static app:Loc.Instance}}"/>
+          <TextBox Grid.Column="1" Text="{Binding ExchangeApiKey}" Watermark="{Binding [connect.apiKeyPh], Source={x:Static app:Loc.Instance}}"/>
+          <TextBox Grid.Row="1" Text="{Binding ExchangeApiSecret}" PasswordChar="●" Watermark="{Binding [connect.apiSecretPh], Source={x:Static app:Loc.Instance}}"
+                   IsVisible="{Binding ExchangeNeedsSecret}"/>
+          <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ExchangePassphrase}" PasswordChar="●" Watermark="{Binding [connect.apiPassPh], Source={x:Static app:Loc.Instance}}"
+                   IsVisible="{Binding ExchangeNeedsPassphrase}"/>
+        </Grid>
+
+        <Border IsVisible="{Binding ExchangeError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
+          <TextBlock Text="{Binding ExchangeError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
+        <TextBlock IsVisible="{Binding ExchangeStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Text="{Binding ExchangeStatus}" Foreground="{DynamicResource UmPos}" FontSize="12" TextWrapping="Wrap"/>
+        <Button Classes="primary" Padding="22,9" MinHeight="0" HorizontalAlignment="Left" IsEnabled="{Binding !IsBusy}"
+                Content="{Binding [connect.connectBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding ConnectExchangeCommand}"/>
+      </StackPanel>
+    </Border>
+
+    <Border Classes="hairline" IsVisible="{Binding IsConnectExchanges}">
+      <StackPanel>
+        <ItemsControl ItemsSource="{Binding ExchangeRows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ExchangeRowViewModel">
+              <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,0,0,1" Padding="16,12">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="14">
+                  <Border Width="38" Height="38" CornerRadius="11" Background="{Binding Color}" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Initials}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" MinWidth="0">
+                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Exchange}" FontSize="11" Foreground="{DynamicResource UmTextMuted}"/>
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Text="{Binding Holding}" FontSize="12.5" VerticalAlignment="Center" TextAlignment="Right"/>
+                  <Button Grid.Column="3" Classes="chip" Content="{Binding [common.disconnect], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
+                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RemoveExchangeCommand}" CommandParameter="{Binding Credential}"/>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel IsVisible="{Binding !HasExchangeRows}" Margin="20,22" Spacing="6" HorizontalAlignment="Center">
+          <Path Classes="tileIcon" Width="34" Height="34" Stretch="Uniform" HorizontalAlignment="Center"
+                Data="M4 10 L12 5 L20 10 M6 10 V18 M10 10 V18 M14 10 V18 M18 10 V18 M4 19 H20"/>
+          <TextBlock Text="{Binding [connect.emptyExchanges], Source={x:Static app:Loc.Instance}}" FontSize="12.5" Foreground="{DynamicResource UmTextMuted}"
+                     TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.DiscoverPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="12" MaxWidth="760" HorizontalAlignment="Left">
+    <TextBlock Classes="serif" FontSize="26"
+               Text="{Binding [nav.discover], Source={x:Static app:Loc.Instance}}"/>
+    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="{Binding [discover.sub], Source={x:Static app:Loc.Instance}}"/>
+
+    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+            Command="{Binding SelectSectionCommand}" CommandParameter="Market" AutomationProperties.Name="Market">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+          <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Data="M4 19 H20 M4 19 V5 M7 15 L11 10 L14 13 L19 6"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
+          <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+          <TextBlock Text="{Binding [discover.market], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+      </Grid>
+    </Button>
+
+    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+            Command="{Binding SelectSectionCommand}" CommandParameter="Buy" AutomationProperties.Name="Buy">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+          <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Data="M12 5 V19 M5 12 H19"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
+          <TextBlock Text="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+          <TextBlock Text="{Binding [discover.buy], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+      </Grid>
+    </Button>
+
+    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+            Command="{Binding SelectSectionCommand}" CommandParameter="P2p" AutomationProperties.Name="P2p">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+          <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Data="M8 8 A3 3 0 1 0 8 7.99 M16 16 A3 3 0 1 0 16 15.99 M9 10 L15 14"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
+          <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+          <TextBlock Text="{Binding [discover.p2p], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+      </Grid>
+    </Button>
+
+    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+            Command="{Binding SelectSectionCommand}" CommandParameter="News" AutomationProperties.Name="News">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+          <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Data="M5 5 H19 V19 H5 Z M8 9 H16 M8 12 H16 M8 15 H13"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
+          <TextBlock Text="{Binding [nav.news], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+          <TextBlock Text="{Binding [discover.news], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+      </Grid>
+    </Button>
+
+    <!-- Pages the 4.5.0 redesign left with no way in: they existed, worked, and could not be
+         reached. EveryPageHasAWayInTests now fails the build if that happens again. -->
+    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+            Command="{Binding SelectSectionCommand}" CommandParameter="Connect" AutomationProperties.Name="Connect">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+          <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Data="M10 14 L14 10 M8.5 12.5 L6.5 14.5 A3.2 3.2 0 0 0 11 19 L13 17 M15.5 11.5 L17.5 9.5 A3.2 3.2 0 0 0 13 5 L11 7"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
+          <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+          <TextBlock Text="{Binding [discover.connect], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"/>
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+      </Grid>
+    </Button>
+    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+            Command="{Binding SelectSectionCommand}" CommandParameter="Nfts" AutomationProperties.Name="Nfts">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+          <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Data="M4 5 H20 V19 H4 Z M4 15 L9 10 L14 15 M13 13 L16 10 L20 14"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
+          <TextBlock Text="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+          <TextBlock Text="{Binding [discover.nfts], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"/>
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+      </Grid>
+    </Button>
+    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="18,15"
+            Command="{Binding SelectSectionCommand}" CommandParameter="Staking" AutomationProperties.Name="Staking">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="42" Height="42" CornerRadius="21" VerticalAlignment="Center"
+                Background="{DynamicResource UmAccentWash}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="1">
+          <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8" StrokeLineCap="Round"
+                StrokeJoin="Round" Fill="Transparent" Width="22" Height="22" Stretch="Uniform"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Data="M12 4 L20 8 L12 12 L4 8 Z M4 12 L12 16 L20 12 M4 16 L12 20 L20 16"/>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
+          <TextBlock Text="{Binding [nav.staking], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
+          <TextBlock Text="{Binding [discover.staking], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"/>
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="›" FontSize="22" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
+      </Grid>
+    </Button>
+  </StackPanel>
+</UserControl>

@@ -313,7 +313,10 @@ public partial class MainWindow : Window
         {
             Dispatcher.UIThread.Post(() =>
             {
-                if (PageScroll.Content is Visual content && StakePanel.TranslatePoint(new Point(0, 0), content) is { } at)
+                // The panel lives in the Staking page (Views/Pages), so it is found by name.
+                if (PageScroll.Content is Visual content &&
+                    content.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == "StakePanel") is { } panel &&
+                    panel.TranslatePoint(new Point(0, 0), content) is { } at)
                     PageScroll.Offset = PageScroll.Offset.WithY(Math.Max(0, at.Y - 24));
             }, DispatcherPriority.Loaded);
         }
@@ -423,18 +426,6 @@ public partial class MainWindow : Window
         _heroShift.Y = 0;
     }
 
-    // --- Market detail chart crosshair: map the pointer X to the nearest candle. ---
-    private void OnChartPointerMoved(object? sender, PointerEventArgs e)
-    {
-        if (DataContext is not MainViewModel vm || sender is not Control canvas) return;
-        var at = e.GetPosition(canvas);
-        vm.UpdateCrosshair(at.X, at.Y);
-    }
-
-    private void OnChartPointerExited(object? sender, PointerEventArgs e)
-    {
-        (DataContext as MainViewModel)?.HideCrosshair();
-    }
 
     private void OnUserActivity(object? sender, EventArgs eventArgs) => ResetAutoLock();
 

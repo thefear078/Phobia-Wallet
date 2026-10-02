@@ -1,0 +1,441 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.MarketPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <UserControl.Resources>
+    <DataTemplate x:Key="MarketMoverRow" x:DataType="vm:MarketRowViewModel">
+      <Button Classes="row" CornerRadius="10" Padding="6,6" Margin="0,1" MinHeight="0"
+              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+              AutomationProperties.Name="{Binding Name}"
+              Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+              CommandParameter="{Binding}">
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+          <Border Width="26" Height="26" CornerRadius="13" Background="{Binding BadgeBg}" ClipToBounds="True" VerticalAlignment="Center">
+            <Panel>
+              <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="12.5" FontWeight="Bold"
+                         Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+            </Panel>
+          </Border>
+          <TextBlock Grid.Column="1" Text="{Binding Symbol}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="2" Classes="mono" FontSize="12" Text="{Binding PriceLabel}" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="3" Classes="mono" FontSize="11.5" Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}"
+                     MinWidth="64" TextAlignment="Right" VerticalAlignment="Center"/>
+        </Grid>
+      </Button>
+    </DataTemplate>
+    <!-- One coin in the Market list: shared by the Blockchains and the Tokens sections. -->
+    <DataTemplate x:Key="MarketCoinRow" x:DataType="vm:MarketRowViewModel">
+      <Button Classes="row" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0"
+              AutomationProperties.Name="{Binding Name}"
+              Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+              CommandParameter="{Binding}">
+        <Button.IsVisible>
+          <MultiBinding Converter="{StaticResource MarketFilter}">
+            <Binding Path="Symbol"/>
+            <Binding Path="Name"/>
+            <Binding Path="$parent[UserControl].((vm:MainViewModel)DataContext).MarketQuery"/>
+            <Binding Path="IsToken"/>
+            <Binding Path="Tag" RelativeSource="{RelativeSource AncestorType=ItemsControl}"/>
+          </MultiBinding>
+        </Button.IsVisible>
+        <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Height="58">
+          <!-- Fixed widths on the right, the coin in what is left: every row's price, change and
+               holding sit in the same place, whatever the length of its network line (star columns
+               sized themselves to each row's text and the prices zig-zagged down the list). -->
+          <DockPanel Margin="16,0">
+            <TextBlock DockPanel.Dock="Right" Width="170" FontSize="11.5" Text="{Binding Accepts}"
+                       Foreground="{Binding AcceptsColor}" TextAlignment="Right"
+                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Accepts}" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Right" Classes="mono" Text="{Binding ChangeLabel}"
+                       Foreground="{Binding ChangeColor}" Width="86" TextAlignment="Right" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Right" Classes="mono" Width="120" Text="{Binding PriceLabel}"
+                       TextAlignment="Right" VerticalAlignment="Center"/>
+            <!-- Inline sparkline at the selected window: every coin gets a chart, not just the selected one. -->
+            <Canvas DockPanel.Dock="Right" Width="110" Height="30" VerticalAlignment="Center" Margin="10,0">
+              <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
+                    StrokeThickness="5" Opacity="0.14" StrokeLineCap="Round" StrokeJoin="Round"
+                    IsVisible="{Binding HasSpark}"/>
+              <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
+                    StrokeThickness="1.7" StrokeLineCap="Round" StrokeJoin="Round"
+                    IsVisible="{Binding HasSpark}"/>
+            </Canvas>
+            <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+              <!-- Watchlist star. Nested in the row button on purpose: starring a coin
+                   must not also open its chart, so it carries its own command. -->
+              <Button Classes="ghost" Padding="6,2" MinHeight="0" VerticalAlignment="Center"
+                      AutomationProperties.Name="{Binding [market.watchHint], Source={x:Static app:Loc.Instance}}"
+                      ToolTip.Tip="{Binding [market.watchHint], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).ToggleWatchCommand}"
+                      CommandParameter="{Binding Symbol}">
+                <TextBlock Text="{Binding WatchGlyph}" Foreground="{Binding WatchColor}" FontSize="14"/>
+              </Button>
+              <Border Grid.Column="1" Width="32" Height="32" CornerRadius="16" Background="{Binding BadgeBg}" ClipToBounds="True">
+                <Panel>
+                  <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="16" FontWeight="Bold"
+                             Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+                </Panel>
+              </Border>
+              <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock FontSize="10.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding NetworkLabel}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NetworkLabel}"/>
+              </StackPanel>
+            </Grid>
+          </DockPanel>
+        </Border>
+      </Button>
+    </DataTemplate>
+    <!-- The wallet switcher: every wallet one click away, from the sidebar, the top bar or the bottom
+         tab. Shared, so all three show the same list; an item's Click closes it (code-behind). -->
+  </UserControl.Resources>
+
+  <StackPanel Classes="page" Spacing="14">
+    <Grid ColumnDefinitions="*,Auto">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="serif" FontSize="26"
+                   Text="{Binding [market.title], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" Text="{Binding MarketStatus}"/>
+      </StackPanel>
+
+      <!-- Chart window. Real candles: 1H is 60 one-minute points, not a daily smear. -->
+      <Border Grid.Column="1" Classes="hairline" Padding="4" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="2">
+          <Button Classes="chip" Content="1H" Command="{Binding SelectChartRangeCommand}"
+                  CommandParameter="1H" Classes.active="{Binding IsRange1H}"/>
+          <Button Classes="chip" Content="24H" Command="{Binding SelectChartRangeCommand}"
+                  CommandParameter="24H" Classes.active="{Binding IsRange24H}"/>
+          <Button Classes="chip" Content="7D" Command="{Binding SelectChartRangeCommand}"
+                  CommandParameter="7D" Classes.active="{Binding IsRange7D}"/>
+          <Button Classes="chip" Content="30D" Command="{Binding SelectChartRangeCommand}"
+                  CommandParameter="30D" Classes.active="{Binding IsRange30D}"/>
+          <Button Classes="chip" Content="1Y" Command="{Binding SelectChartRangeCommand}"
+                  CommandParameter="1Y" Classes.active="{Binding IsRange1Y}"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Detail chart (click a coin) -->
+    <Border Classes="card" IsVisible="{Binding HasChart}">
+      <StackPanel Spacing="10">
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+          <TextBlock Text="{Binding SelectedMarketName}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="{Binding SelectedMarketSymbol}" Classes="mono" FontSize="11"
+                     Foreground="{DynamicResource UmTextMuted}" Margin="8,4,0,0" VerticalAlignment="Center"/>
+          <!-- Up/down market stickers, chosen by the chart window's direction. -->
+          <lottie:Lottie Grid.Column="2" Path="avares://Umbrella.Wallet.App/Assets/stickers/up.json"
+                         Width="38" Height="38" HorizontalAlignment="Left" Margin="10,0,0,0"
+                         IsVisible="{Binding ChartIsUp}"
+                         RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}"/>
+          <lottie:Lottie Grid.Column="2" Path="avares://Umbrella.Wallet.App/Assets/stickers/down.json"
+                         Width="38" Height="38" HorizontalAlignment="Left" Margin="10,0,0,0"
+                         IsVisible="{Binding !ChartIsUp}"
+                         RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}"/>
+          <TextBlock Grid.Column="3" Text="{Binding SelectedMarketPriceLabel}" Classes="mono" FontSize="15"
+                     VerticalAlignment="Center" Margin="0,0,12,0"/>
+          <Button Grid.Column="4" Classes="chip" Content="{Binding [common.close], Source={x:Static app:Loc.Instance}}" Command="{Binding CloseChartCommand}"/>
+        </Grid>
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+          <TextBlock Text="{Binding ChartCaption}" Classes="eyebrow" VerticalAlignment="Center"/>
+          <Border Grid.Column="1" Background="{Binding ChartChangeColor, Converter={StaticResource ChangeWash}}"
+                  CornerRadius="999" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+            <TextBlock Text="{Binding ChartChangeLabel}" Foreground="{Binding ChartChangeColor}"
+                       Classes="mono" FontSize="11.5" FontWeight="SemiBold"/>
+          </Border>
+          <!-- Line ⇄ Candles toggle, like a pro charting view. -->
+          <Border Grid.Column="3" Classes="hairline" Padding="3" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+              <Button Classes="chip" Content="{Binding [chart.line], Source={x:Static app:Loc.Instance}}" Command="{Binding SetChartViewCommand}"
+                      CommandParameter="Line" Classes.active="{Binding IsLineView}"/>
+              <Button Classes="chip" Content="{Binding [chart.candles], Source={x:Static app:Loc.Instance}}" Command="{Binding SetChartViewCommand}"
+                      CommandParameter="Candles" Classes.active="{Binding IsCandleView}"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+        <!-- The chart, laid out like an exchange terminal (Kraken / TradingView): price axis on the
+             right with the last price tagged on it, the price area above its own volume band,
+             a crosshair across both axes, and the hovered candle's O H L C up top. -->
+        <Border Background="{DynamicResource UmBg}" CornerRadius="12" Height="360" Padding="0" ClipToBounds="True">
+          <Panel>
+            <TextBlock Text="{Binding [chart.loading], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextMuted}" FontSize="12"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding IsChartLoading}"/>
+            <TextBlock Text="{Binding ChartUnavailableText}" Foreground="{DynamicResource UmTextMuted}" FontSize="12.5"
+                       TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420" ZIndex="2"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding ChartUnavailableText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- O H L C · volume · change of the hovered candle (the last one otherwise). -->
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="14,10,0,0"
+                        IsVisible="{Binding HasChartEnd}">
+              <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"><Run Text="{Binding [chart.o], Source={x:Static app:Loc.Instance}}"/><Run Text=" "/><Run Text="{Binding OhlcOpen}" Foreground="{Binding OhlcColor}"/></TextBlock>
+              <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"><Run Text="{Binding [chart.h], Source={x:Static app:Loc.Instance}}"/><Run Text=" "/><Run Text="{Binding OhlcHigh}" Foreground="{Binding OhlcColor}"/></TextBlock>
+              <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"><Run Text="{Binding [chart.l], Source={x:Static app:Loc.Instance}}"/><Run Text=" "/><Run Text="{Binding OhlcLow}" Foreground="{Binding OhlcColor}"/></TextBlock>
+              <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"><Run Text="{Binding [chart.c], Source={x:Static app:Loc.Instance}}"/><Run Text=" "/><Run Text="{Binding OhlcClose}" Foreground="{Binding OhlcColor}"/></TextBlock>
+              <TextBlock Classes="mono" FontSize="11" Foreground="{Binding OhlcColor}" Text="{Binding OhlcChange}"/>
+              <TextBlock Classes="mono" FontSize="11" Foreground="{DynamicResource UmTextMuted}"><Run Text="{Binding [chart.vol], Source={x:Static app:Loc.Instance}}"/><Run Text=" "/><Run Text="{Binding OhlcVolume}" Foreground="{DynamicResource UmTextDim}"/></TextBlock>
+            </StackPanel>
+
+            <!-- The plot is a fixed 870×296 canvas the Viewbox scales to the card; GetPosition
+                 returns the canvas's own coordinates whatever the scale, so the crosshair stays true. -->
+            <Viewbox Stretch="Uniform" StretchDirection="Both" MaxHeight="324"
+                     HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Margin="6,0,6,6">
+            <Canvas x:Name="ChartCanvas" Background="Transparent" Width="870" Height="296"
+                    PointerMoved="OnChartPointerMoved" PointerExited="OnChartPointerExited">
+              <Line StartPoint="10,14" EndPoint="790,14" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.7"/>
+              <Line StartPoint="10,68" EndPoint="790,68" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.7"/>
+              <Line StartPoint="10,122" EndPoint="790,122" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.7"/>
+              <Line StartPoint="10,176" EndPoint="790,176" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.7"/>
+              <Line StartPoint="10,230" EndPoint="790,230" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.7"/>
+              <Line StartPoint="10,14" EndPoint="10,272" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.35"/>
+              <Line StartPoint="205,14" EndPoint="205,272" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.35"/>
+              <Line StartPoint="400,14" EndPoint="400,272" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.35"/>
+              <Line StartPoint="595,14" EndPoint="595,272" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.35"/>
+              <Line StartPoint="790,14" EndPoint="790,272" Stroke="{DynamicResource UmBorder}" StrokeThickness="1" Opacity="0.35"/>
+              <Line StartPoint="10,236" EndPoint="790,236" Stroke="{DynamicResource UmBorder2}" StrokeThickness="1"/>
+              <TextBlock Canvas.Left="798" Canvas.Top="7" Classes="mono" FontSize="10" Width="70" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel0}"/>
+              <TextBlock Canvas.Left="798" Canvas.Top="61" Classes="mono" FontSize="10" Width="70" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel1}"/>
+              <TextBlock Canvas.Left="798" Canvas.Top="115" Classes="mono" FontSize="10" Width="70" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel2}"/>
+              <TextBlock Canvas.Left="798" Canvas.Top="169" Classes="mono" FontSize="10" Width="70" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel3}"/>
+              <TextBlock Canvas.Left="798" Canvas.Top="223" Classes="mono" FontSize="10" Width="70" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartLevel4}"/>
+
+              <!-- Line mode: the soft wash and the line of light, with its glow. -->
+              <Path Data="{Binding ChartArea, Converter={StaticResource SmoothArea}}"
+                    Fill="{DynamicResource UmChartArea}" IsVisible="{Binding IsLineView}"/>
+              <Path Data="{Binding ChartPoints, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
+                    StrokeThickness="12" Opacity="0.07" StrokeLineCap="Round" StrokeJoin="Round"
+                    IsVisible="{Binding IsLineView}"/>
+              <Path Data="{Binding ChartPoints, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
+                    StrokeThickness="6" Opacity="0.16" StrokeLineCap="Round" StrokeJoin="Round"
+                    IsVisible="{Binding IsLineView}"/>
+              <Path Data="{Binding ChartPoints, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
+                    StrokeThickness="2.4" StrokeLineCap="Round" StrokeJoin="Round"
+                    IsVisible="{Binding IsLineView}"/>
+
+              <!-- Volume, in its own band under the price area. -->
+              <ItemsControl ItemsSource="{Binding ChartVolumeBars}" x:CompileBindings="False" Width="870" Height="296">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.Styles>
+                  <Style Selector="ContentPresenter">
+                    <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                    <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                  </Style>
+                </ItemsControl.Styles>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:VolumeBarVm">
+                    <Rectangle Width="{Binding W}" Height="{Binding H}" Fill="{Binding Color}" RadiusX="1" RadiusY="1"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- Candles: green up, red down, thin wick through a solid body. -->
+              <ItemsControl ItemsSource="{Binding ChartCandles}" x:CompileBindings="False" Width="870" Height="296"
+                            IsVisible="{Binding IsCandleView}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.Styles>
+                  <Style Selector="ContentPresenter">
+                    <Setter Property="Canvas.Left" Value="{Binding ItemX}"/>
+                    <Setter Property="Canvas.Top" Value="{Binding ItemY}"/>
+                  </Style>
+                </ItemsControl.Styles>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CandleVm">
+                    <Canvas Width="{Binding W}" Height="{Binding H}">
+                      <Rectangle Canvas.Left="{Binding WickLocalX}" Width="1.4" Height="{Binding H}" Fill="{Binding Color}"/>
+                      <Rectangle Canvas.Top="{Binding BodyLocalY}" Width="{Binding W}" Height="{Binding BodyH}" Fill="{Binding Color}" RadiusX="1" RadiusY="1"/>
+                    </Canvas>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- Moving average over the candles. -->
+              <Path Data="{Binding ChartMa, Converter={StaticResource SmoothLine}}" Stroke="{DynamicResource UmAccentBright}"
+                    StrokeThickness="1.6" Opacity="0.85" StrokeLineCap="Round" StrokeJoin="Round"
+                    IsVisible="{Binding IsCandleView}"/>
+
+              <!-- The last price: dashed across the plot, tagged on the axis. -->
+              <Line StartPoint="{Binding ChartLastPriceY, Converter={StaticResource HLineStart}}"
+                    EndPoint="{Binding ChartLastPriceY, Converter={StaticResource HLineEnd}}"
+                    Stroke="{Binding ChartChangeColor}" StrokeThickness="1" StrokeDashArray="4,3" Opacity="0.8"
+                    IsVisible="{Binding HasChartEnd}"/>
+              <Border Canvas.Left="792" Canvas.Top="{Binding ChartLastPriceTagTop}" Background="{Binding ChartChangeColor}"
+                      CornerRadius="3" Padding="5,1" MinWidth="72" IsVisible="{Binding HasChartEnd}">
+                <TextBlock Classes="mono" FontSize="10.5" FontWeight="SemiBold" Foreground="#FFFFFF" Text="{Binding ChartLastPriceLabel}"/>
+              </Border>
+              <Ellipse Canvas.Left="{Binding ChartEndHaloLeft}" Canvas.Top="{Binding ChartEndHaloTop}" Width="22" Height="22"
+                       Fill="{DynamicResource UmAccentBright}" Opacity="0.22" IsVisible="{Binding IsLineView}"/>
+              <Ellipse Canvas.Left="{Binding ChartEndLeft}" Canvas.Top="{Binding ChartEndTop}" Width="10" Height="10"
+                       Fill="{DynamicResource UmAccentBright}" Stroke="{DynamicResource UmBg}" StrokeThickness="1.5"
+                       IsVisible="{Binding IsLineView}"/>
+
+              <!-- Crosshair: both lines dashed, price tag on the axis, time tag underneath. -->
+              <Line StartPoint="{Binding CrosshairLineLeft, Converter={StaticResource VLineStart}}"
+                    EndPoint="{Binding CrosshairLineLeft, Converter={StaticResource VLineEnd}}"
+                    Stroke="{DynamicResource UmTextDim}" StrokeThickness="1" StrokeDashArray="3,3" IsVisible="{Binding CrosshairVisible}"/>
+              <Line StartPoint="{Binding CrosshairHLineTop, Converter={StaticResource HLineStart}}"
+                    EndPoint="{Binding CrosshairHLineTop, Converter={StaticResource HLineEnd}}"
+                    Stroke="{DynamicResource UmTextDim}" StrokeThickness="1" StrokeDashArray="3,3" IsVisible="{Binding CrosshairVisible}"/>
+              <Ellipse Canvas.Left="{Binding CrosshairDotLeft}" Canvas.Top="{Binding CrosshairDotTop}"
+                       Width="8" Height="8" Fill="{Binding OhlcColor}"
+                       Stroke="{DynamicResource UmBg}" StrokeThickness="1.5" IsVisible="{Binding CrosshairVisible}"/>
+              <Border Canvas.Left="792" Canvas.Top="{Binding CrosshairPriceTagTop}" Background="{DynamicResource UmCardAlt}"
+                      BorderBrush="{DynamicResource UmTextDim}" BorderThickness="1" CornerRadius="3" Padding="5,1" MinWidth="72"
+                      IsVisible="{Binding CrosshairVisible}">
+                <TextBlock Classes="mono" FontSize="10.5" FontWeight="SemiBold" Text="{Binding CrosshairAxisPrice}"/>
+              </Border>
+              <Border Canvas.Left="{Binding CrosshairTimeTagLeft}" Canvas.Top="275" Width="100" Background="{DynamicResource UmCardAlt}"
+                      BorderBrush="{DynamicResource UmTextDim}" BorderThickness="1" CornerRadius="3" Padding="4,1"
+                      IsVisible="{Binding CrosshairVisible}">
+                <TextBlock Classes="mono" FontSize="10" TextAlignment="Center" Text="{Binding CrosshairTime}"/>
+              </Border>
+
+              <TextBlock Canvas.Left="0" Canvas.Top="278" Classes="mono" FontSize="10" Width="60" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime0}"/>
+              <TextBlock Canvas.Left="175" Canvas.Top="278" Classes="mono" FontSize="10" Width="60" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime1}"/>
+              <TextBlock Canvas.Left="370" Canvas.Top="278" Classes="mono" FontSize="10" Width="60" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime2}"/>
+              <TextBlock Canvas.Left="565" Canvas.Top="278" Classes="mono" FontSize="10" Width="60" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime3}"/>
+              <TextBlock Canvas.Left="740" Canvas.Top="278" Classes="mono" FontSize="10" Width="60" TextAlignment="Center" Foreground="{DynamicResource UmTextMuted}" Text="{Binding ChartTime4}"/>
+            </Canvas>
+            </Viewbox>
+          </Panel>
+        </Border>
+
+        <!-- Uniswap-style stats row (24h), from the same Binance feed. -->
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding HasMarketStats}" Margin="0,4,0,0">
+          <Border Classes="hairline" Padding="14,12">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="eyebrow" Text="{Binding [market.high24h], Source={x:Static app:Loc.Instance}}"/>
+              <TextBlock Classes="mono" FontSize="15" Text="{Binding StatHigh24h}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" Classes="hairline" Padding="14,12">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="eyebrow" Text="{Binding [market.low24h], Source={x:Static app:Loc.Instance}}"/>
+              <TextBlock Classes="mono" FontSize="15" Text="{Binding StatLow24h}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="2" Classes="hairline" Padding="14,12">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="eyebrow" Text="{Binding [market.vol24h], Source={x:Static app:Loc.Instance}}"/>
+              <TextBlock Classes="mono" FontSize="15" Text="{Binding StatVolume24h}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <!-- Richer stats from the optional CoinGecko connector. -->
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="12" IsVisible="{Binding HasRichStats}" Margin="0,2,0,0">
+          <Border Classes="hairline" Padding="14,12">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="eyebrow" Text="{Binding [market.mcap], Source={x:Static app:Loc.Instance}}"/>
+              <TextBlock Classes="mono" FontSize="15" Text="{Binding StatMarketCap}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" Classes="hairline" Padding="14,12">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="eyebrow" Text="{Binding [market.fdv], Source={x:Static app:Loc.Instance}}"/>
+              <TextBlock Classes="mono" FontSize="15" Text="{Binding StatFdv}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- Overview: movers and the watchlist, both computed from prices the wallet has
+         ALREADY fetched. No extra endpoint and no extra request — a privacy wallet should
+         not pay for an overview screen with more traffic. Coins with no live price are left
+         out rather than shown as a flat 0%. -->
+    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding HasMarketMovers}">
+      <Border Classes="card" Padding="16,14">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                     Text="{Binding [market.gainers], Source={x:Static app:Loc.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding MarketGainers}" ItemTemplate="{StaticResource MarketMoverRow}"/>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" Padding="16,14">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                     Text="{Binding [market.losers], Source={x:Static app:Loc.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding MarketLosers}" ItemTemplate="{StaticResource MarketMoverRow}"/>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="2" Classes="card" Padding="16,14">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                     Text="{Binding [market.watchlist], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource UmTextDim}"
+                     IsVisible="{Binding !HasWatchlist}"
+                     Text="{Binding [market.watchEmpty], Source={x:Static app:Loc.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding MarketWatchlist}" ItemTemplate="{StaticResource MarketMoverRow}"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Search: filters rows by ticker or name without touching the live-update list. -->
+    <Grid ColumnDefinitions="*,Auto">
+      <Border Classes="hairline" Padding="12,0" Height="40">
+        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+          <Path Classes="tileIcon" Width="16" Height="16" Stretch="Uniform"
+                Data="M11 11 L15 15 M13 8 A5 5 0 1 1 3 8 A5 5 0 0 1 13 8"/>
+          <TextBox Grid.Column="1" Text="{Binding MarketQuery, Mode=TwoWay}" Watermark="{Binding [market.searchPh], Source={x:Static app:Loc.Instance}}"
+                   BorderThickness="0" Background="Transparent" Margin="8,0,0,0" VerticalAlignment="Center"/>
+          <Button Grid.Column="2" Classes="chip" Content="{Binding [common.clear], Source={x:Static app:Loc.Instance}}" Command="{Binding ClearMarketQueryCommand}"
+                  IsVisible="{Binding MarketQuery, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        </Grid>
+      </Border>
+      <Button Grid.Column="1" Classes="chip" Content="{Binding [common.refresh], Source={x:Static app:Loc.Instance}}" Margin="10,0,0,0" VerticalAlignment="Center"
+              Command="{Binding RefreshMarketCommand}"/>
+    </Grid>
+
+    <Border Classes="hairline">
+      <StackPanel>
+        <Border Height="34" Background="{DynamicResource UmCard}">
+          <DockPanel Margin="16,0">
+            <TextBlock DockPanel.Dock="Right" Width="170" Classes="eyebrow" Text="{Binding [col.thisWallet], Source={x:Static app:Loc.Instance}}" TextAlignment="Right" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Right" Width="86" Classes="eyebrow" Text="{Binding [col.24h], Source={x:Static app:Loc.Instance}}" TextAlignment="Right" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Right" Width="120" Classes="eyebrow" Text="{Binding [col.price], Source={x:Static app:Loc.Instance}}" TextAlignment="Right" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Right" Width="110" Margin="10,0" Classes="eyebrow" Text="{Binding ChartRange}" TextAlignment="Center" VerticalAlignment="Center"/>
+            <TextBlock Classes="eyebrow" Text="{Binding [col.coin], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+          </DockPanel>
+        </Border>
+        <Border Padding="16,12,16,8" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmAccentBright}"
+                       Text="{Binding [market.chainsTitle], Source={x:Static app:Loc.Instance}}"/>
+            <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                       Text="{Binding [market.chainsHint], Source={x:Static app:Loc.Instance}}"/>
+          </StackPanel>
+        </Border>
+        <ItemsControl ItemsSource="{Binding Market}" Tag="chains"
+                      ItemTemplate="{StaticResource MarketCoinRow}"/>
+        <Border Padding="16,12,16,8" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmAccentBright}"
+                       Text="{Binding [market.tokensTitle], Source={x:Static app:Loc.Instance}}"/>
+            <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                       Text="{Binding [market.tokensHint], Source={x:Static app:Loc.Instance}}"/>
+          </StackPanel>
+        </Border>
+        <ItemsControl ItemsSource="{Binding Market}" Tag="tokens"
+                      ItemTemplate="{StaticResource MarketCoinRow}"/>
+      </StackPanel>
+    </Border>
+    <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720" HorizontalAlignment="Left"
+               Text="{Binding [market.footer], Source={x:Static app:Loc.Instance}}"/>
+  </StackPanel>
+</UserControl>

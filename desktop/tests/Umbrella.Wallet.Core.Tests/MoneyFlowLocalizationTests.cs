@@ -123,7 +123,7 @@ public sealed class MoneyFlowLocalizationTests
             "(?:Text|Content|Watermark|ToolTip\\.Tip)=\"([^\"{}]*[A-Za-z][^\"{}]*)\"");
 
         var offenders = new List<string>();
-        foreach (var file in Directory.GetFiles(views, "*.axaml"))
+        foreach (var file in Directory.GetFiles(views, "*.axaml", SearchOption.AllDirectories))
         {
             var lines = File.ReadAllLines(file);
             for (var i = 0; i < lines.Length; i++)
