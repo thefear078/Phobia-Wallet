@@ -41,12 +41,13 @@
          the user how fresh it is and let them re-pull it. -->
     <Border Classes="card" Padding="12,8">
       <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <!-- Wraps the time under its label when the buttons leave too little room (a phone). -->
+        <WrapPanel VerticalAlignment="Center" Margin="0,0,8,0">
           <TextBlock Classes="eyebrow" Text="{Binding [activity.lastSync], Source={x:Static app:Loc.Instance}}"
-                     VerticalAlignment="Center"/>
+                     VerticalAlignment="Center" Margin="0,0,6,0"/>
           <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
                      Text="{Binding LastHistorySync}" VerticalAlignment="Center"/>
-        </StackPanel>
+        </WrapPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
           <Button Classes="ghost" Padding="12,5" MinHeight="0"
                   Content="{Binding [activity.export], Source={x:Static app:Loc.Instance}}"
