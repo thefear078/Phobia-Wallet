@@ -1,0 +1,69 @@
+name: Android smoke (one-off)
+
+# A one-off check of the Android app on a real Android emulator: the released APK and an x86_64 build
+# of the same commit are installed, started and walked through first run and the main pages; every
+# step leaves a screenshot, the UI tree and the log in the "android-smoke" artifact.
+on:
+  push:
+    branches: [claude/android-smoke]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
+        with:
+          dotnet-version: "8.0.x"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install the Android workload
+        run: dotnet workload install android
+
+      # The emulator is x86_64; this is the same code built for its own ABI.
+      - name: Build an x86_64 APK of this commit
+        run: |
+          dotnet publish desktop/src/Umbrella.Wallet.Android/Umbrella.Wallet.Android.csproj -c Release -f net8.0-android \
+            -p:RuntimeIdentifiers=android-x64 "-p:AndroidSdkDirectory=${ANDROID_SDK_ROOT:-$ANDROID_HOME}" \
+            "-p:JavaSdkDirectory=$JAVA_HOME" -o out-x64
+          cp out-x64/*-Signed.apk phobia-x64.apk
+          ls -la phobia-x64.apk
+
+      - name: Download the released APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v4.10.0-beta.1 --repo "${{ github.repository }}" --pattern "PhobiaWallet-Beta-1-android.apk"
+          mv PhobiaWallet-Beta-1-android.apk phobia-release.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: python3 .github/android-smoke/drive.py smoke
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-smoke
+          path: smoke/
+          retention-days: 7
