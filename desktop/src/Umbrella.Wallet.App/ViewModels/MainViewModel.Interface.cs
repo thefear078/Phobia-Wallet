@@ -26,7 +26,12 @@ public partial class MainViewModel
     /// <summary>Buy's three-step "how it works" card.</summary>
     public const string BuyHowToNotice = "buy.howTo";
 
+    /// <summary>Activity's note on what the feed holds.</summary>
+    public const string ActivityIntroNotice = "activity.intro";
+
     public bool ShowSwapIntro => !IsNoticeDismissed(SwapIntroNotice);
+
+    public bool ShowActivityIntro => !IsNoticeDismissed(ActivityIntroNotice);
 
     public bool ShowBuyHowTo => !IsNoticeDismissed(BuyHowToNotice);
 
@@ -58,6 +63,7 @@ public partial class MainViewModel
     private void NotifyNotices()
     {
         OnPropertyChanged(nameof(ShowSwapIntro));
+        OnPropertyChanged(nameof(ShowActivityIntro));
         OnPropertyChanged(nameof(ShowBuyHowTo));
         OnPropertyChanged(nameof(HasDismissedNotices));
     }

@@ -546,11 +546,11 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 
 <br/>
 
-<a href="https://t.me/UmbrellaWallet">
+<a href="https://t.me/PhobiaStat">
   <img src="docs/assets/logo-telegram-channel.png" width="72" alt="Phobia Wallet on Telegram"/>
 </a>
 
-**[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** ·
+**[t.me/PhobiaStat](https://t.me/PhobiaStat)** ·
 [GitHub](https://github.com/thefear078/UmbrellaWallet) ·
 [TikTok @thefear078](https://www.tiktok.com/@thefear078) ·
 [Reddit u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004)

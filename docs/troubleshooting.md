@@ -148,7 +148,7 @@ explicit culture in assertions rather than relying on the machine's.
 ## Still stuck
 
 - [Open an issue](https://github.com/thefear078/UmbrellaWallet/issues)
-- [Telegram](https://t.me/UmbrellaWallet)
+- [Telegram](https://t.me/PhobiaStat)
 - **Security problems: [report privately](https://github.com/thefear078/UmbrellaWallet/security/advisories/new)**, not in a public issue.
 
 Never post your seed phrase, a private key, or a screenshot containing either. No one legitimate will

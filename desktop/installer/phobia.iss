@@ -35,7 +35,7 @@
   #define AppFileLabel AppVersion
 #endif
 
-#define AppUrl "https://t.me/UmbrellaWallet"
+#define AppUrl "https://t.me/PhobiaStat"
 #define AppReleases "https://github.com/thefear078/UmbrellaWallet/releases"
 
 [Setup]

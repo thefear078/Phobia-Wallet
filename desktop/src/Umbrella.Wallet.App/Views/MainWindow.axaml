@@ -1910,24 +1910,23 @@
                     <Grid RowDefinitions="Auto,Auto">
                       <!-- You pay -->
                       <Border Background="{DynamicResource UmInput}" BorderBrush="{DynamicResource UmBorder2}"
-                              BorderThickness="1" CornerRadius="16" Padding="16,13">
-                        <Grid ColumnDefinitions="*,Auto">
-                          <StackPanel Spacing="6" VerticalAlignment="Center">
-                            <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
-                                       Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
-                            <!-- Which wallet pays, and what it holds of this coin (click: use it all). -->
-                            <Button Classes="ghost" Padding="0" MinHeight="0" HorizontalAlignment="Left" Background="Transparent"
-                                    BorderThickness="0" Command="{Binding SwapUseBalanceCommand}"
-                                    IsVisible="{Binding SwapFromBalanceLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                              <StackPanel Spacing="1">
-                                <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapWalletLabel}"/>
-                                <TextBlock FontSize="11.5" Classes="mono" Foreground="{DynamicResource UmAccentBright}" Text="{Binding SwapFromBalanceLabel}"/>
-                              </StackPanel>
-                            </Button>
-                            <TextBox Classes="bare" Text="{Binding SwapAmount}" Watermark="0.0" BorderThickness="0" Padding="0"
-                                     MinHeight="0" Background="Transparent" FontSize="26" FontWeight="SemiBold"/>
-                          </StackPanel>
-                          <ComboBox Grid.Column="1" MinWidth="150" MaxWidth="220" VerticalAlignment="Center"
+                              BorderThickness="1" CornerRadius="16" Padding="16,12,16,14">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
+                          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"
+                                     Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
+                          <!-- Which wallet pays, on its own line at the top right, never under the coin picker. -->
+                          <TextBlock Grid.Column="1" FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapWalletLabel}"
+                                     HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                          <TextBox Grid.Row="1" Classes="bare" Text="{Binding SwapAmount}" Watermark="0.0" BorderThickness="0" Padding="0"
+                                   MinHeight="0" Background="Transparent" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                          <!-- What it holds of this coin (click: use it all). -->
+                          <Button Grid.Row="2" Classes="ghost" Padding="0" MinHeight="0" HorizontalAlignment="Left" Background="Transparent"
+                                  BorderThickness="0" Command="{Binding SwapUseBalanceCommand}"
+                                  IsVisible="{Binding SwapFromBalanceLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock FontSize="11.5" Classes="mono" Foreground="{DynamicResource UmAccentBright}" Text="{Binding SwapFromBalanceLabel}"
+                                       TextTrimming="CharacterEllipsis"/>
+                          </Button>
+                          <ComboBox Grid.Row="1" Grid.Column="1" MinWidth="150" MaxWidth="220" VerticalAlignment="Center"
                                     ItemsSource="{Binding SwapFromOptions}" SelectedItem="{Binding SwapFromAsset}">
                             <ComboBox.ItemTemplate>
                               <DataTemplate x:DataType="net:SwapAsset">
@@ -1941,13 +1940,13 @@
                         </Grid>
                       </Border>
 
-                      <!-- Flip button, overlapping the seam between the two panels. -->
-                      <Border Grid.Row="0" Grid.RowSpan="2" Width="42" Height="42" CornerRadius="21"
+                      <!-- Flip button, in the gap between the two panels: it overlaps their edges, not their contents. -->
+                      <Border Grid.Row="0" Grid.RowSpan="2" Width="40" Height="40" CornerRadius="20"
                               HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="2"
                               Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="2">
                         <Button Classes="action" Command="{Binding FlipSwapCommand}"
                                 AutomationProperties.Name="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"
-                                Width="42" Height="42">
+                                Width="40" Height="40">
                           <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="2" StrokeLineCap="Round"
                                 StrokeJoin="Round" Fill="Transparent" Width="18" Height="18" Stretch="Uniform"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -1956,20 +1955,20 @@
                       </Border>
 
                       <!-- You receive -->
-                      <Border Grid.Row="1" Margin="0,8,0,0" Background="{DynamicResource UmInput}"
-                              BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="16" Padding="16,13">
-                        <Grid ColumnDefinitions="*,Auto">
-                          <StackPanel Spacing="6" VerticalAlignment="Center">
-                            <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
-                                       Text="{Binding [swap.to], Source={x:Static app:Loc.Instance}}"/>
+                      <Border Grid.Row="1" Margin="0,10,0,0" Background="{DynamicResource UmInput}"
+                              BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="16" Padding="16,14,16,12">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="6">
+                          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                                     Text="{Binding [swap.to], Source={x:Static app:Loc.Instance}}"/>
+                          <Panel Grid.Row="1" VerticalAlignment="Center">
                             <TextBlock Text="{Binding SwapExpectedOut}" FontSize="24" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource UmTextDim}" Classes="mono"
+                                       Foreground="{DynamicResource UmTextDim}" Classes="mono" TextTrimming="CharacterEllipsis"
                                        IsVisible="{Binding SwapExpectedOut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                             <TextBlock Text="≈ 0.0" FontSize="24" FontWeight="SemiBold" Classes="mono"
                                        Foreground="{DynamicResource UmTextMuted}"
                                        IsVisible="{Binding !HasSwapQuote}"/>
-                          </StackPanel>
-                          <ComboBox Grid.Column="1" MinWidth="150" MaxWidth="220" VerticalAlignment="Center"
+                          </Panel>
+                          <ComboBox Grid.Row="1" Grid.Column="1" MinWidth="150" MaxWidth="220" VerticalAlignment="Center"
                                     ItemsSource="{Binding SwapToOptions}" SelectedItem="{Binding SwapToAsset}">
                             <ComboBox.ItemTemplate>
                               <DataTemplate x:DataType="net:SwapAsset">
@@ -2871,8 +2870,9 @@
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                     <StackPanel Spacing="6" VerticalAlignment="Center">
                       <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Border Background="{DynamicResource UmAccent}" CornerRadius="6" Padding="6,2">
-                          <TextBlock Text="{Binding [p2p.inWallet], Source={x:Static app:Loc.Instance}}" FontSize="9.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        <Border Background="{DynamicResource UmAccent}" CornerRadius="6" Padding="7,3" VerticalAlignment="Center" MinHeight="20">
+                          <TextBlock Text="{Binding [p2p.inWallet], Source={x:Static app:Loc.Instance}}" FontSize="9.5" FontWeight="Bold" Foreground="#FFFFFF"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"/>
                         </Border>
                         <TextBlock Text="{Binding [sec.swapHere], Source={x:Static app:Loc.Instance}}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                       </StackPanel>
@@ -2991,8 +2991,19 @@
                   <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}"/>
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-10.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" Margin="2,0,0,4"
-                           TextWrapping="Wrap" Text="{Binding [activity.desc], Source={x:Static app:Loc.Instance}}"/>
+                <!-- What the feed holds: a note that closes for good (Settings → Appearance → Interface brings it back). -->
+                <Border Classes="note" IsVisible="{Binding ShowActivityIntro}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border Classes="noteMark">
+                      <Path Data="M8 7.2 V12 M8 4.3 V4.4" Width="16" Height="16"/>
+                    </Border>
+                    <TextBlock Grid.Column="1" Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                               Text="{Binding [activity.desc], Source={x:Static app:Loc.Instance}}"/>
+                    <Button Grid.Column="2" Classes="noteClose" Content="✕" Command="{Binding DismissNoticeCommand}"
+                            CommandParameter="activity.intro" ToolTip.Tip="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"
+                            AutomationProperties.Name="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"/>
+                  </Grid>
+                </Border>
 
                 <!-- Coins whose history this build does not read (roadmap P1.10). Without this an
                      empty feed reads as "nothing happened" when it means "nobody asked" — the same

@@ -50,4 +50,4 @@ Tracked in [docs/ROADMAP.md](docs/ROADMAP.md) as **L.5** (jurisdictional blockli
 
 ## 6. Contact
 
-Questions about distribution: [CONTACT.md](CONTACT.md) · [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)
+Questions about distribution: [CONTACT.md](CONTACT.md) · [t.me/PhobiaStat](https://t.me/PhobiaStat)

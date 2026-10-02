@@ -31,6 +31,14 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _hasVault;
     [ObservableProperty] private bool _isUnlocked;
     [ObservableProperty] private bool _isBusy;
+
+    /// <summary>
+    /// Balances and prices are being read in the background. Separate from <see cref="IsBusy"/>, which
+    /// is what the user's own actions wait on: the minute-by-minute refresh used to set that flag, so
+    /// for the 5–60 seconds a refresh takes over Tor, Send, Confirm and a dozen Settings buttons were
+    /// greyed out and Swap showed "updating prices and balances" instead of a quote.
+    /// </summary>
+    [ObservableProperty] private bool _isRefreshing;
     [ObservableProperty] private string _password = string.Empty;
     // Optional BIP39 passphrase entered on the unlock screen. Empty opens the normal wallet; any value
     // opens a separate hidden wallet. Never stored — only held long enough to derive this session.
@@ -1471,7 +1479,7 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public void OnWindowActivated()
     {
-        if (!IsUnlocked || PendingPhraseBackup || IsBusy) return;
+        if (!IsUnlocked || PendingPhraseBackup || IsBusy || IsRefreshing) return;
         if (DateTimeOffset.UtcNow - _lastLiveRefresh < TimeSpan.FromSeconds(30)) return;
         _lastLiveRefresh = DateTimeOffset.UtcNow;   // one read per return, however often the window is clicked
         _ = RefreshLiveDataAsync();
@@ -1658,7 +1666,7 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Product news, shown in the News section. Curated, offline; no network needed.
     /// Click an item to read the full note. Newest first.</summary>
     /// <summary>Official Telegram channel — news, releases and contact.</summary>
-    public string ChannelUrl => "https://t.me/UmbrellaWallet";
+    public string ChannelUrl => "https://t.me/PhobiaStat";
 
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
@@ -1812,7 +1820,7 @@ public partial class MainViewModel : ViewModelBase
             "Heads-up on where Umbrella is going:\n\n" +
             "• The web version is paused and closed for an indefinite period. We're concentrating everything on the desktop apps — Windows and Linux now, Android planned — where your keys stay fully on your own device with no server in the middle.\n" +
             "• Nothing changes for your wallet: it was always self-custody and local-first. If you used the web preview, your funds live on-chain under your recovery phrase, not on any server.\n" +
-            "• Follow the official Telegram channel for news, releases and contact: t.me/UmbrellaWallet — that's the one official channel; ignore anything else claiming to be us.",
+            "• Follow the official Telegram channel for news, releases and contact: t.me/PhobiaStat — that's the one official channel; ignore anything else claiming to be us.",
             "2026-08-09"),
         new("3.0", "Version 3.0 — Telegram/TON import, full translation, more themes",
             "A big one:\n\n" +
@@ -3104,8 +3112,11 @@ public partial class MainViewModel : ViewModelBase
             StatusMessage = passphrase.Length > 0
                 ? "Hidden wallet unlocked · loading chain balances"
                 : "Vault unlocked · loading chain balances";
-            await RefreshLiveDataAsync();
         });
+        // Outside the busy wrapper: the wallet is open and usable at once, with the last saved
+        // balances on screen, while the live ones are read. Awaiting it here kept every button that
+        // waits on IsBusy grey for as long as the first refresh took.
+        if (IsUnlocked) _ = RefreshLiveDataAsync();
     }
 
     /// <summary>
@@ -4681,7 +4692,7 @@ public partial class MainViewModel : ViewModelBase
         _refreshCts = new CancellationTokenSource();
         var mine = _refreshCts;
         var ct = _refreshCts.Token;
-        IsBusy = true;
+        IsRefreshing = true;
         StatusMessage = Loc.Instance["status.refreshingLive"];
         try
         {
@@ -4900,9 +4911,9 @@ public partial class MainViewModel : ViewModelBase
         }
         finally
         {
-            // Only the latest refresh owns the busy flag: a cancelled one finishing late must not clear
-            // it while the refresh that replaced it is still running.
-            if (ReferenceEquals(_refreshCts, mine)) IsBusy = false;
+            // Only the latest refresh owns the flag: a cancelled one finishing late must not clear it while
+            // the refresh that replaced it is still running.
+            if (ReferenceEquals(_refreshCts, mine)) IsRefreshing = false;
         }
     }
 
@@ -5950,11 +5961,22 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        foreach (var chain in ChainCatalog.All)
+        // Every chain's address at once. Each derivation stretches the phrase into its seed again
+        // (PBKDF2, 2048 rounds) and walks its own path; one after another they took a quarter of a
+        // second of the unlock, side by side a fraction of that. The rows are still added in catalog order.
+        var chains = ChainCatalog.All.Where(c => IsWalletCoinEnabled(c.Symbol)).ToList();
+        var derived = new ReceiveAddress?[chains.Count];
+        var failed = new Exception?[chains.Count];
+        Parallel.For(0, chains.Count, i =>
         {
-            // Single-coin / selected-coin wallets: only derive the coins this wallet is set to accept.
-            if (!IsWalletCoinEnabled(chain.Symbol)) continue;
+            if (!ChainCatalog.HasRealAddress(chains[i].Id)) return;
+            try { derived[i] = _deriver.DeriveReceiveAddress(mnemonic, chains[i].Id); }
+            catch (Exception ex) { failed[i] = ex; }
+        });
 
+        for (var i = 0; i < chains.Count; i++)
+        {
+            var chain = chains[i];
             if (!ChainCatalog.HasRealAddress(chain.Id))
             {
                 Accounts.Add(new WalletAccountViewModel(
@@ -5965,17 +5987,11 @@ public partial class MainViewModel : ViewModelBase
                 continue;
             }
 
-            ReceiveAddress account;
-            try
-            {
-                account = _deriver.DeriveReceiveAddress(mnemonic, chain.Id);
-            }
-            catch (PassphraseUnsupportedException)
-            {
-                // Hidden wallet (a passphrase is active) on a chain whose scheme can't honour it
-                // (Cardano/Icarus): omit the account entirely rather than show the base wallet's address.
-                continue;
-            }
+            // Hidden wallet (a passphrase is active) on a chain whose scheme can't honour it
+            // (Cardano/Icarus): omit the account entirely rather than show the base wallet's address.
+            if (failed[i] is PassphraseUnsupportedException) continue;
+            if (failed[i] is { } error) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error).Throw();
+            var account = derived[i]!;
             // "Ready" means the wallet can both receive AND send. A chain with a real address but no
             // send path (Dogecoin) or no public balance sync (Monero) is shown as "Receive only" so it
             // never looks spendable — the send picker only offers "Ready" accounts (roadmap §5.1).

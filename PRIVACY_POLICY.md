@@ -77,7 +77,7 @@ We will update the “Last updated” date when this policy changes. Material ch
 
 | | |
 |---|---|
-| Privacy / product questions | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
+| Privacy / product questions | [t.me/PhobiaStat](https://t.me/PhobiaStat) |
 | Security issues (private) | [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) |
 | Author contacts | [CONTACT.md](CONTACT.md) |
 
