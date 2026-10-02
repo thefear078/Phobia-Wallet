@@ -22,6 +22,7 @@ no account and no backend: nothing about a user exists anywhere except on their 
 - [Vector 7 — Compromised release binary](#vector-7--a-compromised-release-binary-supply-chain)
 - [Vector 8 — Telemetry and metadata leakage](#vector-8--telemetry-and-metadata-leakage-from-the-app-itself)
 - [Vector 9 — Data left after wipe](#vector-9--data-left-behind-after-delete-everything)
+- [Vector 10 — Swap routes and staking servers](#vector-10--swap-routes-and-staking-servers)
 - [What is deliberately out of scope](#what-is-deliberately-out-of-scope)
 - [Reporting a vulnerability](#reporting-a-vulnerability)
 
@@ -269,6 +270,36 @@ a question for the drive's firmware, not for this program. Full-disk encryption 
 and is the operating system's job.
 
 **Residual risk: LOW after 4.7, and it was not before.**
+
+---
+
+## Vector 10 — Swap routes and staking servers
+
+**Attacker.** A swap route (THORChain, NEAR Intents, Exolix) that quotes or settles dishonestly, or a
+server that builds a staking transaction other than the one asked for (TronGrid builds TRON's).
+
+**What they could try.** Quote one figure and pay out less; keep coins paid to a custodial route;
+return a TRON transaction that votes for someone else, freezes more, or sends TRX away, hoping it is
+signed unread.
+
+**What the wallet does.**
+- Swaps go to the user's own receiving address, never an exchange account. The quote is read again at
+  Confirm and carries a minimum; every payment except an in-wallet THORChain deposit goes through the
+  ordinary Send review and password. Routes are tried by trust and the custodial one (Exolix) is used
+  only for Monero, Nano and Decred, which nothing decentralised reaches, and is shown in a warning
+  colour before anything is paid.
+- TRON staking: the wallet decodes the protobuf TronGrid returned and refuses to sign unless it is
+  exactly one contract of the expected type, from this wallet, for the amount, resource and Super
+  Representative chosen, and the id it signs is the SHA-256 of those bytes.
+- Solana and Cosmos staking transactions are built on this machine; the Cosmos node only simulates one
+  for its gas, and the account's sequence is checked again just before signing.
+
+**Where the defence ends.** A custodial route that keeps the coins it was paid cannot be stopped by the
+wallet — which is why it is named and avoided wherever possible. A Cosmos validator that misbehaves can
+be slashed, and delegators lose a small share with it.
+
+**Residual risk: LOW for THORChain, NEAR Intents and staking; MEDIUM for the minutes a custodial swap
+holds the coins.**
 
 ---
 

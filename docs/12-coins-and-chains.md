@@ -514,3 +514,17 @@ threat model names each one as an open gap rather than implying it away.
 | 26 | Polkadot | DOT | ✅ Full | Receive, balance (Asset Hub + relay), send from Asset Hub |
 | 27 | Nano | XNO | ✅ Full | Send, receive, balance (incl. receivable) and history; no fee |
 | 28 | Decred | DCR | ⚠️ Partial | Receive, balance and history; no send yet |
+
+## Staking from the wallet
+
+| Network | In the wallet | How |
+|---|---|---|
+| TRON | ✅ stake, vote, claim, unstake, withdraw | Stake 2.0: freeze for energy, all votes to one elected Super Representative; unfreezing takes 14 days |
+| Solana | ✅ stake, undelegate, withdraw | Native stake accounts at seeds of the wallet key (`phobia-stake-N`), delegated to a validator |
+| Cosmos Hub | ✅ delegate, claim, undelegate | Delegate to an active validator; undelegating takes 21 days |
+| Ethereum | — described | Solo (32 ETH) or a liquid-staking pool |
+| Cardano | — described | Delegate to a stake pool |
+| TON | — described | Nominator pools |
+| Polygon | — described | Validator delegation on the staking contract |
+
+See [guides/staking.md](guides/staking.md).

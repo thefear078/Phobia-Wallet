@@ -18,7 +18,11 @@ Product direction and the current work plan live in
   proxy is also supported. Public explorer/RPC calls inherit it.
 - **Send and receive** real transactions, signed locally; only the signed result is broadcast.
 - **On-chain history** read from public explorers for the wallet's own addresses.
-- In-wallet **swap** via THORChain, and a market view with live prices and OHLC candles.
+- In-wallet **swap** of any coin for any coin, each on its own network, routed by trust
+  (THORChain → NEAR Intents → Exolix for Monero, Nano and Decred), and a market view with live prices
+  and OHLC candles.
+- **Staking** from the wallet on TRON, Solana and the Cosmos Hub — stake, claim, unstake, withdraw,
+  signed here and confirmed like a send.
 
 ### Network support (check the in-app badge before you send or receive)
 

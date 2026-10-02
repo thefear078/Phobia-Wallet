@@ -19,31 +19,33 @@ safely.
 
 ## 1. Download
 
-Get the latest build from
-**[GitHub Releases](https://github.com/thefear078/UmbrellaWallet/releases/latest)**.
-
-Typical assets:
+The current build is **Beta 1**, a GitHub *pre-release*: get it from its
+**[release page](https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.10.0-beta.1)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
+full 4.10.0 is out.)
 
 | Platform | File |
 |---|---|
-| Windows installer | `PhobiaWallet-Setup-<version>.exe` |
-| Windows portable | `PhobiaWallet-<version>-win-x64-portable.exe` |
-| Linux | `PhobiaWallet-<version>-linux-x64.tar.gz` |
+| Windows installer | `PhobiaWallet-Setup-Beta-1.exe` |
+| Windows portable | `PhobiaWallet-Beta-1-win-x64-portable.exe` — one file, no install |
+| Linux | `PhobiaWallet-Beta-1-linux-x64.tar.gz` — Tor and Monero included |
 
-Also download **`SHA256SUMS-<version>.txt`** from the same release.
+Also download **`SHA256SUMS-Beta-1.txt`** from the same release. A full release names its files by
+version instead (`PhobiaWallet-Setup-4.10.0.exe`, `SHA256SUMS-4.10.0.txt`).
 
 ## 2. Verify the file
 
 Do not run an unsigned copy you cannot check.
 
 ```powershell
-# Windows PowerShell — compare to the matching line in SHA256SUMS
-Get-FileHash .\PhobiaWallet-Setup-4.10.0.exe -Algorithm SHA256
+# Windows PowerShell — compare to the matching line in SHA256SUMS-Beta-1.txt
+Get-FileHash .\PhobiaWallet-Setup-Beta-1.exe -Algorithm SHA256
 ```
 
 ```bash
 # Linux / macOS
-sha256sum -c SHA256SUMS-4.8.2.txt
+sha256sum -c SHA256SUMS-Beta-1.txt --ignore-missing
+# and who built it — every file carries a GitHub build attestation
+gh attestation verify PhobiaWallet-Beta-1-linux-x64.tar.gz --repo thefear078/Phobia-Wallet
 ```
 
 Details: [SECURITY.md — Verifying what you run](../SECURITY.md#verifying-what-you-run).
@@ -82,7 +84,8 @@ paths Phobia supports. Two other formats import as single-coin wallets:
 ## 6. Turn on Tor (recommended)
 
 Before you unlock (or immediately after), open **Settings → Privacy** and enable Tor. Optional:
-**Tor-only kill-switch** so clearnet is refused if Tor is down.
+**Tor-only kill-switch** so clearnet is refused if Tor is down; with it on, the wallet starts Tor by
+itself at every launch.
 
 Tor hides your **IP** from explorers. It does **not** make Bitcoin/Ethereum private. See
 [PRIVACY.md](../PRIVACY.md).
@@ -94,8 +97,8 @@ Tor hides your **IP** from explorers. It does **not** make Bitcoin/Ethereum priv
 2. **Send a tiny test amount first.** Blockchain transfers are final.
 3. On the review screen, check destination, amount, fee, and any privacy warnings.
 
-Coins that are **receive-only** (for example zkSync Era until send is proven) are labelled honestly —
-do not treat them as “Ready” to spend.
+Every coin in the wallet sends except **Decred**, which can be received (including from a swap) but not
+sent yet; it is labelled *receive only*, and the Send picker never offers it.
 
 ## 8. Backup
 
@@ -106,6 +109,11 @@ you rely on it. The paper seed remains the ultimate recovery path.
 
 | Topic | Document |
 |---|---|
+| Swap any coin for any coin | [guides/swap.md](guides/swap.md) |
+| Stake TRX, SOL and ATOM | [guides/staking.md](guides/staking.md) |
+| Watch addresses, connect exchanges | [guides/connect.md](guides/connect.md) |
+| Several wallets, Settings, the interface | [guides/wallets-and-settings.md](guides/wallets-and-settings.md) |
+| The whole wallet in Ukrainian | [guides/user-guide-uk.md](guides/user-guide-uk.md) |
 | Philosophy | [MANIFESTO.md](../MANIFESTO.md) |
 | Threats | [THREAT_MODEL.md](../THREAT_MODEL.md) |
 | Problems | [troubleshooting.md](troubleshooting.md) |

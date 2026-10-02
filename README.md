@@ -70,7 +70,9 @@ UmbrellaWallet/
 
 | If you want to… | Read this first |
 |---|---|
-| Install and use | [Getting started](docs/getting-started.md) |
+| Install and use | [Getting started](docs/getting-started.md) · [User guides](docs/guides/README.md) |
+| Swap, stake, connect | [Swap](docs/guides/swap.md) · [Staking](docs/guides/staking.md) · [Connect](docs/guides/connect.md) |
+| Read it in Ukrainian | [Посібник користувача](docs/guides/user-guide-uk.md) |
 | Understand the philosophy | [MANIFESTO.md](MANIFESTO.md) |
 | Know security guarantees | [THREAT_MODEL.md](THREAT_MODEL.md) |
 | Report a vulnerability | [SECURITY.md](SECURITY.md) |
@@ -366,7 +368,7 @@ desktop/
       Theming.cs                     19 palettes
       GuideContent.cs                the in-app guide
   tests/
-    Umbrella.Wallet.Core.Tests/      526 offline tests
+    Umbrella.Wallet.Core.Tests/      about 1,800 offline tests
   installer/                         Inno Setup script
   scripts/                           release, Tor/Monero staging
 docs/                                everything in this README's Docs section
@@ -481,6 +483,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | [docs/INDEX.md](docs/INDEX.md) | **Central documentation hub** — start here |
 | [docs/getting-started.md](docs/getting-started.md) | Install, verify, first wallet |
+| [docs/guides/](docs/guides/README.md) | **User guides** — swap, staking, connect, wallets and settings, and a full guide in Ukrainian |
 | [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to — **do not dilute this tone** |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Attack vectors: what is defended, and where the defence ends |
 | [PRIVACY.md](PRIVACY.md) | Technical privacy: what leaves this machine |

@@ -35,6 +35,9 @@ means saying your address.
 | Your wallet addresses | Block explorers and RPC nodes | To read balances and history |
 | A signed transaction | The same | To broadcast it |
 | Coin symbols | CoinGecko, Binance | To price what you hold |
+| The address you pay from and the address you receive at | The swap route you confirm: THORChain, NEAR Intents (1Click) or Exolix | To carry out a swap — only when you swap |
+| Your TRON, Solana or Cosmos address, and the staking transaction | TronGrid, the Solana RPC node, the Cosmos Hub REST node (the same servers that read your balance) | To read your stake and broadcast a staking action — only when you open Staking or stake |
+| Your read-only API key's requests | The exchange it belongs to, and nobody else | To read that account's balances — only when you connect an exchange |
 | Nothing identifying | GitHub | Shortly after start and twice a day, to look for a new release (Settings → Updates can turn this off); and when a release is downloaded |
 
 **Tor hides your IP from these servers. It does not un-send the address.** That sentence is the whole

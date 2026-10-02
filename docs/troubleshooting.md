@@ -70,6 +70,27 @@ amount to a new address first.
 
 ---
 
+## Swaps
+
+| What you see | What it means / what to do |
+|---|---|
+| "No route swaps X for Y right now" | None of THORChain, NEAR Intents or Exolix quoted the pair. Try later, or a different pair. Polkadot has no route at the moment. |
+| The figure changed at Confirm | Prices moved between the quote and Confirm; the new one is what you get. |
+| The swap card says **refunded** | The route could not fill the swap and returned the coins to the paying address. |
+| Paid, and nothing arrived yet | The swap card and Activity follow it; THORChain and NEAR Intents usually take minutes, Bitcoin-paid swaps wait for its confirmations. |
+
+## Staking
+
+| What you see | What it means / what to do |
+|---|---|
+| "Could not read this right now" on a card | The network's server did not answer (often over Tor). Open Staking again in a minute. |
+| TRON: frozen, but "the vote did not go through" | The TRX is frozen and yours; TronGrid was busy. Press **Stake** again — the vote goes through. |
+| TRON: Claim refused | TRON allows one claim every 24 hours. |
+| Solana: "activating" | A stake starts earning at the next epoch, about two days. |
+| Solana: Withdraw not offered | Undelegate first; the stake is free after the epoch ends. |
+| Cosmos: undelegated ATOM not back | Unbonding takes 21 days; it then returns to the balance by itself. |
+| "Not enough … for this amount and the fees" | Leave room for the fee (and on Solana the ~0.0023 SOL reserve). **Max** does this for you. |
+
 ## Tor
 
 **"Tor will not start."**
@@ -88,6 +109,13 @@ all, instead of quietly falling back to a direct connection.
 ---
 
 ## The app itself
+
+- **A removed wallet** is not gone: Settings → Wallets → **Removed wallets → Restore**.
+- **A note you closed** (Swap, Buy crypto, Activity, Staking, Connect): Settings → Appearance →
+  Interface → **Closed notes → Show again**.
+- **The round "back to top" button** can be turned off in Settings → Appearance → Interface.
+- **Can't find a setting:** type a word into the search box at the top of Settings — in your language
+  or in English.
 
 **"The app icon is blank in Search or on the desktop."**
 Usually a shortcut whose icon path points at a file that does not exist, or a stale Windows icon

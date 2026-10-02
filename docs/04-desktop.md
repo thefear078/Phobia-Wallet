@@ -115,6 +115,26 @@ never draw on an account the user never funded.
 > **Fees:** see [07-financial.md](07-financial.md). Short version: you pay the network's fee, not
 > ours. TRON USDT is the expensive outlier.
 
+## Swaps (`SwapCatalog`, three clients)
+
+`SwapCatalog` lists every swappable asset with its network, the account that pays or receives it, and
+its identifier on each route. Routes are tried by trust: `ThorchainSwapClient` (no custodian; memo
+deposits, signed in-wallet from BTC/LTC/DOGE/BCH/ETH), `NearIntentsSwapClient` (the 1Click API: a
+one-time deposit address, a contract that refunds) and `ExolixSwapClient` (custodial; Monero, Nano and
+Decred only). Every payment other than an in-wallet THORChain deposit goes through the Send screen,
+prefilled, for the normal review and password; the swap is then followed until done or refunded.
+
+## Staking (`TronStaking`, `SolanaStake`, `CosmosStaking`)
+
+| Network | Core | Infrastructure | What is signed |
+|---|---|---|---|
+| TRON | `TronStaking` — reads the protobuf TronGrid returns: one contract, its type, owner, amount, resource, Super Representative; txID = SHA-256 of the raw bytes | `TronStakingClient` — freezebalancev2, votewitnessaccount, withdrawbalance, unfreezebalancev2, withdrawexpireunfreeze; rate-limit retry | The checked txID, with the TRON key |
+| Solana | `SolanaStake` — CreateAccountWithSeed / Initialize / DelegateStake / Deactivate / Withdraw; seed accounts `phobia-stake-N` of the wallet key; jsonParsed stake accounts against the epoch | `SolanaStakingClient` — positions (seed accounts + getProgramAccounts), validators (getVoteAccounts), rent reserve | A legacy message via `SolanaMessage`, one signer |
+| Cosmos Hub | `CosmosStaking` — MsgDelegate / MsgUndelegate / MsgWithdrawDelegatorReward; body and auth info byte-identical to the send path's | `CosmosStakingClient` — delegations, rewards, unbonding, bonded validators; simulate for gas; sequence re-checked before signing | SIGN_MODE_DIRECT, the Cosmos key |
+
+The view model (`MainViewModel.Staking.cs`) builds one action at a time, describes it in words, asks for
+the password like a send, and reads the position again afterwards.
+
 ## Bundled Tor (`EmbeddedTorService`)
 
 - `tor.exe` (or `tor` on Linux) ships in `Assets/tor/`, launched as a child process.

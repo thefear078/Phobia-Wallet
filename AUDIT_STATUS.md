@@ -1,6 +1,6 @@
 # Audit status
 
-**Last updated:** 2026-09-15
+**Last updated:** 2026-10-02 (Phobia Beta 1)
 
 ## External security audit
 
@@ -19,7 +19,9 @@ Until then, do **not** describe Phobia as “audited” in README, store listing
 
 | Control | Where |
 |---|---|
-| Offline unit / integration tests (hundreds) | CI `desktop` job |
+| Offline unit / integration tests (about 1,800) | CI `desktop` job |
+| Reproducible build check (two paths, byte-identical assemblies) | CI `reproducible-build` job |
+| Signed-transaction vectors: every send path, swap and staking encodings | `desktop/tests` |
 | CodeQL | `.github/workflows/codeql.yml` |
 | gitleaks / Dependabot / vulnerable-package gate | Security workflows |
 | Public threat model & privacy docs | [THREAT_MODEL.md](THREAT_MODEL.md), [PRIVACY.md](PRIVACY.md) |

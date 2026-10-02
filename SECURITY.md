@@ -83,9 +83,10 @@ There is no funded bounty programme yet. Being straight about that rather than i
 
 | Version | Supported |
 |---|---|
-| 4.6.x | ✅ |
-| 4.5.x | ⚠️ critical fixes only |
-| < 4.5 | ❌ |
+| 4.10.0 betas (Phobia **Beta 1**) | ✅ |
+| 4.9.x | ✅ |
+| 4.8.x | ⚠️ critical fixes only |
+| < 4.8 | ❌ |
 
 Always run the latest release. The wallet looks for one by itself (shortly after start, then twice a
 day), downloads it and keeps it only if its SHA-256 matches **both** the release's `SHA256SUMS` file and
