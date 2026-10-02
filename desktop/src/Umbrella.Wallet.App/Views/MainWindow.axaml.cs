@@ -308,6 +308,16 @@ public partial class MainWindow : Window
             UpdateScrollTopButton();
         }
 
+        // A staking action opened from a card further down: bring its panel into sight.
+        if (e.PropertyName is nameof(MainViewModel.StakeActionOpen) && _observed?.StakeActionOpen == true)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (PageScroll.Content is Visual content && StakePanel.TranslatePoint(new Point(0, 0), content) is { } at)
+                    PageScroll.Offset = PageScroll.Offset.WithY(Math.Max(0, at.Y - 24));
+            }, DispatcherPriority.Loaded);
+        }
+
         if (e.PropertyName is nameof(MainViewModel.StickersEnabled) && _observed is not null)
         {
             Classes.Set("nostickers", !_observed.StickersEnabled);

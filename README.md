@@ -137,6 +137,11 @@ with KuCoin and Bybit behind Binance, so it still draws over Tor.
 <img src="docs/assets/screenshot-market-v410.png" width="80%" alt="Market chart with candles"/>
 </div>
 
+**Stake from the wallet.**
+TRX, SOL and ATOM stake right here — freeze and vote on TRON, a stake account on Solana, a delegation on the
+Cosmos Hub — each built, checked and signed in the wallet and confirmed with your password like a send.
+The transaction TronGrid builds for TRON is decoded and compared with what you asked before it is signed.
+
 **Your balance, point by point.**
 The chart beside the balance follows the pointer: each point is what the coins you hold now were worth at
 that moment, when that was, and the move since the start — real prices, not a smoothed guess. A wallet of

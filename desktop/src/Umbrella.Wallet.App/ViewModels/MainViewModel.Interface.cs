@@ -33,6 +33,10 @@ public partial class MainViewModel
 
     public bool ShowActivityIntro => !IsNoticeDismissed(ActivityIntroNotice);
 
+    public bool ShowStakingIntro => !IsNoticeDismissed("staking.intro");
+
+    public bool ShowConnectIntro => !IsNoticeDismissed("connect.intro");
+
     public bool ShowBuyHowTo => !IsNoticeDismissed(BuyHowToNotice);
 
     public bool HasDismissedNotices => _uiSettings.DismissedNotices.Count > 0;
@@ -64,6 +68,8 @@ public partial class MainViewModel
     {
         OnPropertyChanged(nameof(ShowSwapIntro));
         OnPropertyChanged(nameof(ShowActivityIntro));
+        OnPropertyChanged(nameof(ShowStakingIntro));
+        OnPropertyChanged(nameof(ShowConnectIntro));
         OnPropertyChanged(nameof(ShowBuyHowTo));
         OnPropertyChanged(nameof(HasDismissedNotices));
     }

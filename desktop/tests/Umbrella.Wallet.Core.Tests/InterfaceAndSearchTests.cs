@@ -240,6 +240,68 @@ public sealed class InterfaceAndSearchTests : IDisposable
         }
     }
 
+    // ---------------- Connect and Staking ----------------
+
+    [Fact]
+    public void Connect_lists_a_watched_address_with_what_it_holds()
+    {
+        var vm = NewViewModel();
+        const string address = "TJvaAeFb8Lykt9RQcVyyTFN2iDvGMuyD4M";
+        vm.Accounts.Add(new WalletAccountViewModel("TRX", "Cold", "Watch", address, "external", 0.3, 100, "TRX", 0, Balance: BalanceRead.Live));
+        vm.WatchAddresses.Add(new Umbrella.Wallet.Infrastructure.Network.WatchAddress("TRX", address, "Cold"));
+
+        var row = Assert.Single(vm.WatchRows);
+        Assert.Equal("Cold", row.Label);
+        Assert.Contains("100", row.Holding);
+        Assert.Equal("1", vm.WatchCountLabel);
+        Assert.True(vm.HasWatchRows);
+        vm.WatchAddresses.Clear();
+        Assert.False(vm.HasWatchRows);
+    }
+
+    [Fact]
+    public void Picking_an_exchange_lights_its_tile_and_asks_for_its_own_fields()
+    {
+        var vm = NewViewModel();
+        vm.SelectExchangeCommand.Execute("OKX");
+        Assert.Equal("OKX", vm.ExchangeName);
+        Assert.True(Assert.Single(vm.ExchangeTiles, t => t.IsSelected).Name == "OKX");
+        Assert.True(vm.ExchangeNeedsPassphrase);
+        vm.SelectConnectTabCommand.Execute("Exchanges");
+        Assert.True(vm.IsConnectExchanges);
+        Assert.False(vm.IsConnectWallets);
+    }
+
+    [Fact]
+    public async Task Staking_offers_TRON_Solana_and_Cosmos_for_a_phrase_wallet_and_opens_each_action()
+    {
+        var vm = NewViewModel();
+        vm.Password = "umbrella-test-vault-2026";
+        vm.ConfirmPassword = vm.Password;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        vm.RecomputeHoldingsForTest();
+
+        Assert.Equal(["TRX", "SOL", "ATOM"], vm.StakeChains.Select(c => c.Symbol).ToArray());
+        Assert.DoesNotContain(vm.StakingRows, r => r.Symbol is "TRX" or "SOL" or "ATOM");   // the rest stay described
+
+        await vm.OpenStakeActionCommand.ExecuteAsync("TRX|claim");
+        Assert.True(vm.StakeActionOpen);
+        Assert.False(vm.StakeNeedsAmount);
+        Assert.False(vm.StakeNeedsValidator);
+
+        await vm.OpenStakeActionCommand.ExecuteAsync("ATOM|unstake|cosmosvaloper15gyzcp2kas2yntv9k3p0zm4k8y6e89ecmkeqee");
+        Assert.True(vm.StakeNeedsAmount);
+
+        vm.StakeAmount = "abc";
+        await vm.PrepareStakeActionCommand.ExecuteAsync(null);
+        Assert.True(vm.HasStakeError);
+        Assert.False(vm.HasStakeReview);
+
+        vm.CloseStakeActionCommand.Execute(null);
+        Assert.False(vm.StakeActionOpen);
+    }
+
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

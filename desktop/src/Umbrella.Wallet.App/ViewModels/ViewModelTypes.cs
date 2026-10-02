@@ -709,6 +709,7 @@ public sealed record ActivityRowViewModel(
         "Received" => ReceivedGlyph,
         "Sent" => SentGlyph,
         "Swap" => SwapGlyph,
+        "Staked" => StakeGlyph,
         "Connected" => LinkGlyph,
         "Settings" => GearGlyph,
         "Security" => Asset switch
@@ -758,7 +759,7 @@ public sealed record ActivityRowViewModel(
     public bool HasLink => !string.IsNullOrWhiteSpace(Explorer);
 
     /// <summary>True for money movements (used by the Transactions section and the "Transactions" filter).</summary>
-    public bool IsTransaction => Kind is "Sent" or "Received" or "Swap";
+    public bool IsTransaction => Kind is "Sent" or "Received" or "Swap" or "Staked";
 
     /// <summary>The glyph on the home screen's recent transactions: in, out, swap, or anything else.</summary>
     public Avalonia.Media.Geometry KindGeometry => Kind switch
@@ -772,12 +773,14 @@ public sealed record ActivityRowViewModel(
     private static readonly Avalonia.Media.Geometry ReceivedGlyph = Avalonia.Media.StreamGeometry.Parse("M12 6 V18 M6 12 L12 18 L18 12");
     private static readonly Avalonia.Media.Geometry SentGlyph = Avalonia.Media.StreamGeometry.Parse("M7 17 L17 7 M9 7 H17 V15");
     private static readonly Avalonia.Media.Geometry SwapGlyph = Avalonia.Media.StreamGeometry.Parse("M6 8 H17 L14 5 M18 16 H7 L10 19");
+    private static readonly Avalonia.Media.Geometry StakeGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M5 8 L12 4.5 L19 8 L12 11.5 Z M5 12 L12 15.5 L19 12 M5 16 L12 19.5 L19 16");
     private static readonly Avalonia.Media.Geometry OtherGlyph = Avalonia.Media.StreamGeometry.Parse("M12 7 V13 M12 16.5 V17");
 
     /// <summary>Which activity filter tab this row belongs to.</summary>
     public string Category => Kind switch
     {
-        "Sent" or "Received" or "Swap" => "Transactions",
+        "Sent" or "Received" or "Swap" or "Staked" => "Transactions",
         "Connected" => "Connections",
         "Theme" or "Settings" => "Settings",
         _ => "System",
@@ -791,6 +794,7 @@ public sealed record ActivityRowViewModel(
         "Received" => "#5AC8B4",
         "Connected" => "#5AC8B4",
         "Swap" => "#8A5FD6",
+        "Staked" => "#5FA8D3",
         "Theme" => "#E7CA83",
         _ => "#8A9099",
     };

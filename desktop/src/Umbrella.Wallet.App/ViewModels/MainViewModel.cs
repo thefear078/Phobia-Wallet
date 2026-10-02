@@ -304,6 +304,7 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnExchangeNameChanged(string value)
     {
+        OnPropertyChanged(nameof(ExchangeTiles));
         OnPropertyChanged(nameof(ExchangeNeedsPassphrase));
         OnPropertyChanged(nameof(ExchangeNeedsSecret));
         OnPropertyChanged(nameof(ExchangeKeyHint));
@@ -1416,6 +1417,9 @@ public partial class MainViewModel : ViewModelBase
         _monero.NodeAddress = ActiveMoneroNode;
         LoadMoneroNodeChoice();
         BuildCounterparties();   // who this wallet talks to, from the catalog the tests pin
+        // Connect lists what is watched and connected the moment either list changes.
+        WatchAddresses.CollectionChanged += (_, _) => RebuildConnectRows();
+        Exchanges.CollectionChanged += (_, _) => RebuildConnectRows();
         if (EffectiveCustomProxy() is { } startupProxy)
         {
             PublicHttp.SetProxy(startupProxy);
@@ -1593,7 +1597,8 @@ public partial class MainViewModel : ViewModelBase
             .ToDictionary(g => g.Key, g => (Amount: g.Sum(x => x.Amount), Value: g.Sum(x => x.Value)),
                 StringComparer.OrdinalIgnoreCase);
 
-        var rows = StakingCatalog.Select(o =>
+        SyncStakeChains();   // the live cards' "available" line follows the balance
+        var rows = StakingCatalog.Where(o => !StakeableHere.Contains(o.Symbol)).Select(o =>
         {
             held.TryGetValue(o.Symbol, out var h);
             var has = h.Amount > 0;
@@ -2159,6 +2164,9 @@ public partial class MainViewModel : ViewModelBase
         // The Security Center reads live state, so it is rebuilt every time it is opened rather than
         // cached — a stale "protected" row would be worse than no row at all.
         if (value == "Security") RefreshSecurityChecks();
+
+        // Staking reads every position afresh whenever it is opened, however it was reached.
+        if (value == "Staking" && IsUnlocked) _ = RefreshStakingAsync();
     }
 
     partial void OnHasVaultChanged(bool value) => NotifySectionFlags();
@@ -6180,6 +6188,7 @@ public partial class MainViewModel : ViewModelBase
         RebuildSendableAssets();
 
         RebuildStaking(); // keep the staking list driven by what the user actually holds
+        RebuildConnectRows(); // Connect's watched addresses and exchanges, with what they hold now
         SchedulePortfolioChart(); // redraw the balance chart when what is held changes
     }
 

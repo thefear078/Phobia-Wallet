@@ -53,6 +53,54 @@ from the release page); a beta copy updates to newer betas, and then to the full
 - **Back in the window, the balance is read again** when it is older than half a minute, instead of waiting up
   to two minutes for the next timer tick.
 
+### Staking from the wallet
+
+- **Stake TRX, SOL and ATOM — real transactions, signed here.** TRON (Stake 2.0): freeze TRX for energy and
+  give all its votes to a Super Representative picked from the elected 27, claim the voting rewards (once a
+  day), unfreeze (14 days) and withdraw. Solana: a stake account created at a seed of the wallet's own key
+  ("phobia-stake-N", so the one key creates, finds and controls it — no second keypair), delegated to a
+  validator from the live vote accounts; undelegate and withdraw per account, reserve included. Cosmos Hub:
+  delegate to an active validator (commission shown), claim every delegation's rewards in one transaction,
+  undelegate (21 days). Every action is reviewed in words, confirmed with the password like a send, shown
+  in Activity, and read back from the chain afterwards.
+- **Nothing TronGrid builds is signed blind.** TronGrid builds each TRON staking transaction; the wallet
+  decodes the protobuf it returned and refuses to sign unless it is exactly one contract of the expected
+  type, from this wallet, for the amount, resource and Super Representative asked — and the id signed is
+  the SHA-256 of those bytes. Pinned to real transactions TronGrid built; a whole Solana stake transaction
+  passed a validator's simulation, and delegate / claim / undelegate passed the Hub's simulation.
+- TronGrid's free tier allows three requests a second; a stake is two transactions back to back, so a
+  refusal for the rate is waited out and asked again.
+- Ethereum, Cardano, TON and Polygon stay described, with how staking works there.
+
+### Connect, rebuilt
+
+- Watched addresses and exchange accounts are listed the way the wallet lists money: each with its coin or
+  exchange badge, what it holds now and its value, the counts and the total at the top, Addresses and
+  Exchanges on their own tabs, and exchanges picked from tiles. The explanation is a note that closes.
+
+### Faster
+
+- **Unlocking no longer waits for the network.** The first balance refresh ran inside the unlock's busy
+  state, so the wallet opened only when every server had answered. It now opens at once with the last saved
+  balances and fills in.
+- **A background refresh no longer blocks anything.** The minute-by-minute refresh set the same busy flag
+  the user's own actions wait on: for the 5–60 seconds it took over Tor, Send, Confirm and a dozen Settings
+  buttons were grey, and Swap showed "updating prices and balances" instead of a quote. It has its own flag now.
+- **The vault's two slots are opened side by side** — the same work whatever the password, half the wait —
+  and every chain's address is derived in parallel.
+- **Startup:** the intro screen held the window back for two seconds; now about half a second. While the
+  lock screen waits, the key derivation and the address code are compiled once on a throwaway input, so the
+  first unlock runs warm, and published builds ship ahead-of-time compiled code (ReadyToRun).
+
+### Smaller things
+
+- Activity's explanation is a note that closes, like Swap's and Buy's.
+- Swap: the wallet's name, the balance, the amount and the coin picker each have their own place — the
+  wallet name used to run under the picker — and the flip button sits in the gap between the two panels.
+- P2P & DEX: the "In the wallet" badge's text is centred.
+- **The official Telegram channel is now [t.me/PhobiaStat](https://t.me/PhobiaStat)**, everywhere the wallet,
+  the installer and the documents name it.
+
 ### Easier to use
 
 - **The balance chart follows the pointer.** Each point says what the coins held now were worth at that
