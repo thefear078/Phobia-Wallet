@@ -31,9 +31,11 @@ jobs:
       # The emulator is x86_64; this is the same code built for its own ABI.
       - name: Build an x86_64 APK of this commit
         run: |
-          dotnet publish desktop/src/Umbrella.Wallet.Android/Umbrella.Wallet.Android.csproj -c Release -f net8.0-android \
-            -p:RuntimeIdentifiers=android-x64 "-p:AndroidSdkDirectory=${ANDROID_SDK_ROOT:-$ANDROID_HOME}" \
-            "-p:JavaSdkDirectory=$JAVA_HOME" -o out-x64
+          # In the project file, not on the command line: a global property would reach the referenced
+          # projects too.
+          sed -i 's#<RuntimeIdentifiers>.*</RuntimeIdentifiers>#<RuntimeIdentifiers>android-x64</RuntimeIdentifiers>#' desktop/src/Umbrella.Wallet.Android/Umbrella.Wallet.Android.csproj
+          grep RuntimeIdentifiers desktop/src/Umbrella.Wallet.Android/Umbrella.Wallet.Android.csproj
+          dotnet publish desktop/src/Umbrella.Wallet.Android/Umbrella.Wallet.Android.csproj -c Release -f net8.0-android "-p:AndroidSdkDirectory=${ANDROID_SDK_ROOT:-$ANDROID_HOME}" "-p:JavaSdkDirectory=$JAVA_HOME" -o out-x64
           cp out-x64/*-Signed.apk phobia-x64.apk
           ls -la phobia-x64.apk
 
