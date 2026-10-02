@@ -73,6 +73,35 @@ jobs:
           ./desktop/scripts/fetch-tor.ps1 -RequireSignature -Destination "$env:RUNNER_TEMP/tor"
           ./desktop/scripts/fetch-monero.ps1 -RequireSignature -Destination "$env:RUNNER_TEMP/monero"
 
+  android:
+    name: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The android workload installs into the SDK's own folder, so the SDK goes somewhere this user
+      # can write to rather than the runner's root-owned /usr/share/dotnet.
+      - uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
+        with:
+          dotnet-version: "8.0.x"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install the Android workload
+        run: dotnet workload install android
+      # Signed with the SDK's debug key: this proves the phone app still builds, it is not a release.
+      - name: Build the APK
+        run: |
+          chmod +x desktop/scripts/publish-android.sh
+          ( cd desktop && ./scripts/publish-android.sh )
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phobia-android-check-build
+          path: desktop/dist/android/*.apk
+          retention-days: 7
+
   version:
     name: version-consistency
     runs-on: ubuntu-latest

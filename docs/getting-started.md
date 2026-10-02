@@ -28,6 +28,7 @@ full 4.10.0 is out.)
 | Windows installer | `PhobiaWallet-Setup-Beta-1.exe` |
 | Windows portable | `PhobiaWallet-Beta-1-win-x64-portable.exe` — one file, no install |
 | Linux | `PhobiaWallet-Beta-1-linux-x64.tar.gz` — Tor and Monero included |
+| Android | `PhobiaWallet-Beta-1-android.apk` — Android 7.0+, see the [Android guide](guides/android.md) |
 
 Also download **`SHA256SUMS-Beta-1.txt`** from the same release. A full release names its files by
 version instead (`PhobiaWallet-Setup-4.10.0.exe`, `SHA256SUMS-4.10.0.txt`).
@@ -58,6 +59,10 @@ Details: [SECURITY.md — Verifying what you run](../SECURITY.md#verifying-what-
 
 Linux: unpack the tarball and run `./phobia-wallet`; `./install-desktop-entry.sh` adds it to your
 application menu. (Releases before 4.10.0 named the program `Umbrella.Wallet.App`.)
+
+Android: open the APK on the phone and allow your browser or file manager to install it once
+(Android asks). The [Android guide](guides/android.md) walks through it, and through what the phone
+app does not do yet.
 
 ## 4. First launch
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the network: no contacts, no storage, no camera, no location. Backups are off so the
+     encrypted vault never leaves the phone through the system's backup service. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+  <uses-permission android:name="android.permission.INTERNET" />
+  <application android:label="Phobia" android:icon="@drawable/icon" android:allowBackup="false"
+               android:fullBackupContent="false" android:supportsRtl="true" />
+</manifest>

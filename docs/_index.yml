@@ -8,6 +8,8 @@ documentation:
       file: getting-started.md
     - title: User Guides
       file: guides/README.md
+    - title: Android
+      file: guides/android.md
     - title: Swap
       file: guides/swap.md
     - title: Staking

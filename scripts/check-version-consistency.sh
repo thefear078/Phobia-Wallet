@@ -44,6 +44,9 @@ require "README version badge"      "README.md"                                 
 require "README installer link"     "README.md"                                                   "PhobiaWallet-Setup-${LABEL}.exe"
 require "README portable link"      "README.md"                                                   "PhobiaWallet-${LABEL}-win-x64-portable.exe"
 require "README linux link"         "README.md"                                                   "PhobiaWallet-${LABEL}-linux-x64.tar.gz"
+require "README android link"       "README.md"                                                   "PhobiaWallet-${LABEL}-android.apk"
+# Android's versionName is the numeric part; the beta number rides in versionCode.
+require "android versionName"       "desktop/src/Umbrella.Wallet.Android/Umbrella.Wallet.Android.csproj" "<ApplicationDisplayVersion>${VERSION%%-*}</ApplicationDisplayVersion>"
 require "CHANGELOG entry"           "CHANGELOG.md"                                                 "## [${VERSION}]"
 
 # The release workflow must produce EXACTLY the files the README links to. It did not: the README
@@ -55,6 +58,7 @@ WF=".github/workflows/release.yml"
 require "workflow builds the portable exe"  "$WF" 'PhobiaWallet-${{ steps.v.outputs.label }}-win-x64-portable.exe'
 require "workflow builds the installer"     "$WF" 'PhobiaWallet-Setup-${{ steps.v.outputs.label }}.exe'
 require "workflow builds the linux tarball" "$WF" 'PhobiaWallet-${{ steps.v.outputs.label }}-linux-x64.tar.gz'
+require "workflow builds the android apk"   "$WF" 'PhobiaWallet-${{ steps.v.outputs.label }}-android.apk'
 require "workflow names the manifest per release" "$WF" 'SHA256SUMS-${{ steps.v.outputs.label }}.txt'
 if grep -qF 'UmbrellaWallet-Portable-' "$WF"; then
   echo "::error::workflow still builds a portable ZIP; the README links to a portable EXE"

@@ -60,6 +60,17 @@ public partial class App : Application
             Warmup.Start();
         }
 
+        else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        {
+            // Android: one view, the phone layout, over the same view model as the desktop.
+            UiSettings.LoadAndApply();
+            singleView.MainView = new MobileShell
+            {
+                DataContext = new MainViewModel(new WalletRegistry()),
+            };
+            Warmup.Start();
+        }
+
         base.OnFrameworkInitializationCompleted();
     }
 }

@@ -9,6 +9,7 @@ Start with [Getting started](../getting-started.md) if the wallet is not install
 | [Swap](swap.md) | Any coin for any coin: the three routes, review, paying, following a swap |
 | [Staking](staking.md) | Stake TRX, SOL and ATOM from the wallet: rewards, unstaking, withdrawing |
 | [Connect](connect.md) | Watch other addresses read-only; read exchange balances with a read-only key |
+| [Android](android.md) | Installing the APK, the phone layout, what the phone app does not do yet |
 | [Wallets and settings](wallets-and-settings.md) | Several wallets, removing and restoring, Settings search, the interface, security switches |
 | [Посібник українською](user-guide-uk.md) | The whole wallet in Ukrainian, from installation to staking |
 | [Troubleshooting](../troubleshooting.md) | When balances, sends, Tor or the app misbehave |

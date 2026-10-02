@@ -11,6 +11,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 Published as a **beta**: a GitHub pre-release. A 4.9.0 copy does not update to it by itself (download it
 from the release page); a beta copy updates to newer betas, and then to the full release, by itself.
 
+### Phobia on Android
+
+- **An Android app (APK, Android 7.0 or newer, 64- and 32-bit ARM).** The same wallet — the same keys,
+  signing code, coins and pages — laid out for a phone: the balance card with the 24-hour move in percent
+  and in money and a note when there is unread activity; the portfolio chart (1D / 1W / 1M / 1Y, follows
+  your finger); Receive, Send, Swap and Buy tiles; your assets with their 7-day lines and network chips;
+  a four-coin market overview; and a bottom bar with Home, Activity, Explore, Settings and the crystal
+  button for quick actions. The wallet's name opens the wallet switcher; the phone's back gesture closes
+  a sheet, then returns home. Guide: [docs/guides/android.md](docs/guides/android.md).
+- **Seed and Monero key screens are FLAG_SECURE** on the phone — no screenshots, no recording, a blank
+  recent-apps preview — as the desktop blocks capture of the same screens. Android backup is off, so the
+  vault never goes to a cloud backup. The only permission is the network.
+- **On a phone the wallet says "this device"** where the desktop says "this PC", in every language.
+- **Not on the phone yet:** Tor and the Monero wallet service (bundled with Windows and Linux only), so the
+  phone reads each chain directly and Settings says the servers see its IP; no automatic updates.
+- **New theme: Ice** (Phobia blue) — the phone's default, and in Settings on the desktop too.
+- The release attaches `PhobiaWallet-Beta-1-android.apk`, in the checksum manifest and the build
+  attestation like every other file; CI builds the APK on every change.
+- Under the hood: every page is its own file (`Views/Pages/*`), so the desktop window and the phone shell
+  host the same pages; onboarding moved out of the main window the same way.
+
 ### Swap any coin for any coin
 
 - **Every coin the wallet holds can be swapped for every coin it can receive**, each on its own network:

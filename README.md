@@ -27,7 +27,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
-![Android](https://img.shields.io/badge/Android-planned-8A8A9C?logo=android&logoColor=white)
+![Android](https://img.shields.io/badge/Android-beta%20APK-6E5FB8?logo=android&logoColor=white)
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
@@ -70,7 +70,7 @@ UmbrellaWallet/
 
 | If you want to… | Read this first |
 |---|---|
-| Install and use | [Getting started](docs/getting-started.md) · [User guides](docs/guides/README.md) |
+| Install and use | [Getting started](docs/getting-started.md) · [User guides](docs/guides/README.md) · [On Android](docs/guides/android.md) |
 | Swap, stake, connect | [Swap](docs/guides/swap.md) · [Staking](docs/guides/staking.md) · [Connect](docs/guides/connect.md) |
 | Read it in Ukrainian | [Посібник користувача](docs/guides/user-guide-uk.md) |
 | Understand the philosophy | [MANIFESTO.md](MANIFESTO.md) |
@@ -253,10 +253,17 @@ This is the icon you will see once it is installed.
 | **Windows installer** | [`PhobiaWallet-Setup-Beta-1.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Setup-Beta-1.exe) |
 | **Windows portable** | [`PhobiaWallet-Beta-1-win-x64-portable.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-win-x64-portable.exe) — one file, no install, leaves nothing behind |
 | **Linux** | [`PhobiaWallet-Beta-1-linux-x64.tar.gz`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-linux-x64.tar.gz) |
+| **Android** | [`PhobiaWallet-Beta-1-android.apk`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
 | **Checksums** | [`SHA256SUMS-Beta-1.txt`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/SHA256SUMS-Beta-1.txt) |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
+
+**On a phone:** the Android app is the same wallet — the same keys, signing code, coins and screens —
+laid out for a phone. Tor and the Monero service are bundled with Windows and Linux only for now; the
+[Android guide](docs/guides/android.md) says what that changes.
+
+<img src="docs/assets/screenshot-android-home-v410.png" width="32%" alt="Phobia on Android — home"/> <img src="docs/assets/screenshot-android-assets-v410.png" width="32%" alt="Phobia on Android — assets and market"/> <img src="docs/assets/screenshot-android-quick-v410.png" width="32%" alt="Phobia on Android — quick actions"/>
 
 ### Verify what you downloaded
 
@@ -474,7 +481,8 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🗓 Planned | Android · reproducible builds · external security audit |
+| 🧪 Beta | **Android** (APK; Tor and the Monero service are desktop-only for now) |
+| 🗓 Planned | Tor on Android · reproducible builds · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation
@@ -483,7 +491,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | [docs/INDEX.md](docs/INDEX.md) | **Central documentation hub** — start here |
 | [docs/getting-started.md](docs/getting-started.md) | Install, verify, first wallet |
-| [docs/guides/](docs/guides/README.md) | **User guides** — swap, staking, connect, wallets and settings, and a full guide in Ukrainian |
+| [docs/guides/](docs/guides/README.md) | **User guides** — Android, swap, staking, connect, wallets and settings, and a full guide in Ukrainian |
 | [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to — **do not dilute this tone** |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Attack vectors: what is defended, and where the defence ends |
 | [PRIVACY.md](PRIVACY.md) | Technical privacy: what leaves this machine |

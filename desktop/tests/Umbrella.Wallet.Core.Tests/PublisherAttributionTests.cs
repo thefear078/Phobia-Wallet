@@ -54,6 +54,7 @@ public sealed class PublisherAttributionTests
     {
         var views = Path.Combine(RepoRoot(), "desktop", "src", "Umbrella.Wallet.App", "Views");
         var xaml = File.ReadAllText(Path.Combine(views, "MainWindow.axaml"))
+                   + File.ReadAllText(Path.Combine(views, "Pages", "OnboardingView.axaml"))
                    + File.ReadAllText(Path.Combine(views, "Pages", "SettingsPage.axaml"));
 
         Assert.Contains("the fear", xaml, StringComparison.Ordinal);

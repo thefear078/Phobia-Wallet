@@ -2,8 +2,8 @@
 
 This is the **central index** for all official Phobia Wallet documents.
 
-Phobia is a **desktop-only**, non-custodial crypto wallet (.NET 8 + Avalonia; Windows and Linux;
-Android planned). There is no web app and no backend that knows who you are.
+Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Linux**, with an
+**Android** app in beta. There is no web app and no backend that knows who you are.
 
 ---
 
@@ -11,7 +11,7 @@ Android planned). There is no web app and no backend that knows who you are.
 
 | If you want to… | Start here |
 |---|---|
-| Install and use the wallet | [Getting started](getting-started.md) · [User guides](guides/README.md) |
+| Install and use the wallet | [Getting started](getting-started.md) · [User guides](guides/README.md) · [On Android](guides/android.md) |
 | Read everything in Ukrainian | [Посібник користувача](guides/user-guide-uk.md) |
 | Follow day-to-day engineering workflow | [WORKFLOW.md](WORKFLOW.md) |
 | Understand the philosophy | [MANIFESTO.md](../MANIFESTO.md) |
@@ -30,6 +30,7 @@ Android planned). There is no web app and no backend that knows who you are.
 | Document | Description |
 |---|---|
 | [Getting started](getting-started.md) | Download, verify, first wallet, Tor, first send |
+| [Android](guides/android.md) | The phone app: installing the APK, the layout, what it does not do yet |
 | [Swap](guides/swap.md) | Any coin for any coin: routes, review, paying, following a swap |
 | [Staking](guides/staking.md) | Stake TRX, SOL and ATOM from the wallet; claim, unstake, withdraw |
 | [Connect](guides/connect.md) | Watched addresses and read-only exchange keys |

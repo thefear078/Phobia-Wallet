@@ -1417,6 +1417,14 @@ public partial class MainViewModel : ViewModelBase
         _monero.NodeAddress = ActiveMoneroNode;
         LoadMoneroNodeChoice();
         BuildCounterparties();   // who this wallet talks to, from the catalog the tests pin
+        Activity.CollectionChanged += (_, _) => NotifyUnreadActivity();
+        // Tor-only without a Tor to route through would refuse every request; the phone has none.
+        if (!HasBundledServices && (_uiSettings.TorOnlyMode || _uiSettings.TorEnabled))
+        {
+            _uiSettings.TorOnlyMode = false;
+            _uiSettings.TorEnabled = false;
+            _uiSettings.Save();
+        }
         // Connect lists what is watched and connected the moment either list changes.
         WatchAddresses.CollectionChanged += (_, _) => RebuildConnectRows();
         Exchanges.CollectionChanged += (_, _) => RebuildConnectRows();
@@ -1464,7 +1472,10 @@ public partial class MainViewModel : ViewModelBase
     /// only for the test suite, which runs Tor-only precisely so that every request is refused and
     /// nothing goes online.
     /// </summary>
-    public static bool StartTorAutomatically { get; set; } = true;
+    public static bool StartTorAutomatically { get; set; } = !OperatingSystem.IsAndroid();
+
+    /// <summary>The bundled Tor and Monero programs ship with the Windows and Linux builds only.</summary>
+    public static bool HasBundledServices => !OperatingSystem.IsAndroid();
 
     /// <summary>
     /// Whether a new view model reads the currency rate (and then rebuilds the asset list) in the
@@ -2165,6 +2176,9 @@ public partial class MainViewModel : ViewModelBase
         // cached — a stale "protected" row would be worse than no row at all.
         if (value == "Security") RefreshSecurityChecks();
 
+        // Opening the activity feed is reading it.
+        if (value is "Activity" or "Transactions") MarkActivitySeen();
+
         // Staking reads every position afresh whenever it is opened, however it was reached.
         if (value == "Staking" && IsUnlocked) _ = RefreshStakingAsync();
     }
@@ -2835,6 +2849,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnIsBalanceHiddenChanged(bool value)
     {
         OnPropertyChanged(nameof(HeroEndLabel));
+        OnPropertyChanged(nameof(Change24hDelta));
         NotifyPortfolioPoints();
         OnPropertyChanged(nameof(BalanceDisplayMain));
         OnPropertyChanged(nameof(BalanceDisplayCents));
@@ -4179,11 +4194,15 @@ public partial class MainViewModel : ViewModelBase
         if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return;
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true,
-            });
+            // A phone has no shell to hand a URL to: its launcher opens the browser.
+            if (OperatingSystem.IsAndroid() && CurrentTopLevel() is { Launcher: { } launcher })
+                _ = launcher.LaunchUriAsync(new Uri(url));
+            else
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true,
+                });
             StatusMessage = string.Format(Loc.Instance["status.openedInBrowser"], url);
             ShowToast(Loc.Instance["toast.opened"], isError: false);
         }
@@ -6189,6 +6208,7 @@ public partial class MainViewModel : ViewModelBase
 
         RebuildStaking(); // keep the staking list driven by what the user actually holds
         RebuildConnectRows(); // Connect's watched addresses and exchanges, with what they hold now
+        NotifyHomeLists();    // the phone's home: four assets, four market tiles, the 24h line
         SchedulePortfolioChart(); // redraw the balance chart when what is held changes
     }
 
@@ -6449,12 +6469,18 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>The window (desktop) or the view's host (Android) — where the clipboard and the
+    /// launcher live.</summary>
+    private static TopLevel? CurrentTopLevel() => Application.Current?.ApplicationLifetime switch
+    {
+        IClassicDesktopStyleApplicationLifetime { MainWindow: { } window } => window,
+        ISingleViewApplicationLifetime { MainView: { } view } => TopLevel.GetTopLevel(view),
+        _ => null,
+    };
+
     private async Task CopyTextAsync(string text)
     {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
-            {
-                MainWindow: { Clipboard: { } clipboard }
-            })
+        if (CurrentTopLevel() is { Clipboard: { } clipboard })
         {
             await clipboard.SetTextAsync(text);
             var seconds = _uiSettings.ClipboardAutoClearSeconds;

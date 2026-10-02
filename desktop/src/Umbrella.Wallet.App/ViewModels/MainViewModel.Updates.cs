@@ -108,6 +108,8 @@ public partial class MainViewModel
     /// </summary>
     private void ScheduleUpdateChecks()
     {
+        // The Android app is updated by installing the next APK; its update check comes later.
+        if (OperatingSystem.IsAndroid()) return;
         try
         {
             UpdateService.CleanUpAfterUpdate();

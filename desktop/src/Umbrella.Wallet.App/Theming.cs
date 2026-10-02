@@ -28,6 +28,7 @@ public static class Theming
         new("phobia", "Phobia · midnight violet"),
         new("umbrella", "Honey gold · light on black"),
         new("navy", "Navy · the classic blue"),
+        new("ice", "Ice · Phobia blue"),
         new("purple", "The fear · monochrome noir"),
         new("signal", "Ember · crimson editorial"),
         new("black", "Void · electric OLED"),
@@ -81,6 +82,16 @@ public static class Theming
         ],
         // Navy — the original signature: deep navy/graphite base (never pure black), matte glass cards,
         // cool-white text and the cyan→blue→violet accent. Kept for everyone who chose it.
+        // Ice — the Android design: deep navy pages, blue-tinted cards on hairline edges, one bright
+        // crystal blue. White labels sit on its accent at 4.8:1.
+        ["ice"] =
+        [
+            "#071021", "#0A1528", "#0E1B31", "#0B172B", "#11223C", "#16294A",
+            "#1A2B47", "#213659", "#2B4672",
+            "#1E6FE0", "#3EA2FF", "#2A7BEE", "#11305A", "#173A6A",
+            "#F2F7FF", "#C7D3E8", "#8FA0BD", "#6E819F", "#3CD989",
+            "#F2F7FF", "#FFFFFF", "#071021",
+        ],
         ["navy"] =
         [
             "#080D16", "#0B1220", "#111927", "#0F1826", "#151E2D", "#1B2740",

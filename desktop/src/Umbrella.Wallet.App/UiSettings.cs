@@ -51,6 +51,9 @@ public sealed class UiSettings
     /// <summary>Notes the user closed (how a swap works, how buying works). They stay closed until
     /// Settings → Appearance → Interface brings them back.</summary>
     public List<string> DismissedNotices { get; set; } = [];
+
+    /// <summary>When the activity feed was last opened (Unix ms): newer events count as unread.</summary>
+    public long ActivitySeenAtMs { get; set; }
     /// <summary>Crystals floating slowly up behind the page. On by default; gated by AnimationsEnabled.</summary>
     public bool FloatingCrystals { get; set; } = false;
 
@@ -154,7 +157,14 @@ public sealed class UiSettings
         {
             // Fresh install (incl. after a delete + re-download): pick the OS language if we translate
             // it, so a Ukrainian/Russian/… user isn't dropped into English with no setting to restore.
-            if (!File.Exists(Path)) return new UiSettings { Language = DefaultLanguage(), BrandVersion = CurrentBrandVersion };
+            if (!File.Exists(Path))
+                return new UiSettings
+                {
+                    Language = DefaultLanguage(),
+                    BrandVersion = CurrentBrandVersion,
+                    // The phone app is designed in Ice; the desktop keeps Phobia's violet.
+                    Theme = OperatingSystem.IsAndroid() ? "ice" : Theming.DefaultTheme,
+                };
             var settings = JsonSerializer.Deserialize<UiSettings>(File.ReadAllText(Path)) ?? new UiSettings();
             var changed = MoveToPhobia(settings);
             // A theme that was retired (Matrix, Abyss, Kraken, Solarized, Bitcoin, Monero, WhiteBit) falls

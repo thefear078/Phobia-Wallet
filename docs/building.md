@@ -203,6 +203,25 @@ dotnet publish desktop/src/Umbrella.Wallet.App/Umbrella.Wallet.App.csproj \
 tar -czf PhobiaWallet-4.10.0-linux-x64.tar.gz -C dist/linux .
 ```
 
+## Android
+
+The phone app is `desktop/src/Umbrella.Wallet.Android` — Avalonia's Android host around the same App
+project, shown through `Views/MobileShell.axaml`. It is not in `Umbrella.Wallet.sln`, so the desktop
+build and tests need no Android tooling. It needs the .NET 8 SDK with the Android workload, a JDK 17 and
+an Android SDK:
+
+```bash
+dotnet workload install android
+./desktop/scripts/publish-android.sh          # -> desktop/dist/android/phobia-wallet-<version>-android.apk
+```
+
+Without a key the APK is signed with the SDK's debug key, which is fine for trying it. A release signs
+with `ANDROID_KEYSTORE`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASS` set (the release workflow reads them
+from the `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS` repository secrets).
+Android installs an update only over a copy signed with the same key, so that key is kept, not rotated.
+The versionCode is `major·1000000 + minor·10000 + patch·100 + beta` (99 for a full release); a test keeps
+it in step with `VERSION`.
+
 ## Checksums
 
 Publish a `SHA256SUMS-<version>.txt` next to the artifacts so people can verify what they downloaded:
