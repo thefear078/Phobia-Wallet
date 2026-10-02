@@ -12,6 +12,10 @@ public sealed record WalletEntry(
     string Id, string Label, bool IsLegacy, string? Color = null, IReadOnlyList<string>? Coins = null,
     ulong? MoneroScanFrom = null);
 
+/// <summary>A wallet taken out of the list. Its encrypted vault is kept on this device, so it can be put
+/// back; only a full data wipe deletes it.</summary>
+public sealed record RemovedWallet(string Key, string Label, string? Color, DateTimeOffset RemovedAt);
+
 /// <summary>
 /// Binance-style multi-wallet registry. Tracks several independent wallets — each its own
 /// password-encrypted seed vault — and which one is active. It never touches the seeds themselves
@@ -22,7 +26,8 @@ public sealed record WalletEntry(
 ///  • The pre-existing single vault is always preserved and, once present, registered as the first
 ///    "Main wallet" — upgrading never moves or rewrites it.
 ///  • Adding a wallet is purely additive; it can never overwrite another wallet's vault.
-///  • The active wallet can't be removed, and only a managed wallet's own vault file is ever deleted.
+///  • The active wallet can't be removed, and removing a wallet never deletes its vault: the file is
+///    moved to <c>wallets/removed/</c> and can be restored. Only a full data wipe deletes it.
 /// </summary>
 public sealed class WalletRegistry
 {
@@ -112,9 +117,10 @@ public sealed class WalletRegistry
         Save();
     }
 
-    /// <summary>Removes a wallet and deletes its managed vault file. The active wallet and the legacy
-    /// wallet's file are protected: removing the legacy entry de-registers it but never deletes
-    /// <c>data/vault.json</c>. Throws when asked to remove the active wallet.</summary>
+    /// <summary>Takes a wallet out of the list. A managed wallet's vault is MOVED to
+    /// <c>wallets/removed/</c>, never deleted — one click used to erase a wallet's only copy of its
+    /// encrypted seed. The legacy entry is de-registered and <c>data/vault.json</c> stays where it is.
+    /// Throws when asked to remove the active wallet.</summary>
     public void Remove(string id)
     {
         var entry = _wallets.FirstOrDefault(w => w.Id == id);
@@ -129,19 +135,84 @@ public sealed class WalletRegistry
 
         if (!entry.IsLegacy)
         {
-            try
+            var path = _managedVaultPath(entry.Id);
+            if (File.Exists(path))
             {
-                var path = _managedVaultPath(entry.Id);
-                if (File.Exists(path)) File.Delete(path);
-            }
-            catch
-            {
-                // Best-effort: a leftover vault file is harmless (it is orphaned and unreferenced).
+                // Kept, not deleted. If the move fails the wallet stays in the list: a removal that could
+                // lose the vault is not a removal this registry makes.
+                var key = $"{entry.Id}-{DateTime.UtcNow:yyyyMMddHHmmss}";
+                Directory.CreateDirectory(RemovedDir);
+                File.Move(path, Path.Combine(RemovedDir, key + ".vault.json"));
+                var removed = LoadRemoved();
+                removed.Add(new RemovedRow(key, entry.Id, entry.Label, entry.Color, entry.Coins?.ToList(),
+                    entry.MoneroScanFrom, DateTimeOffset.UtcNow));
+                SaveRemoved(removed);
             }
         }
 
         Save();
     }
+
+    /// <summary>Wallets taken out of the list whose vaults are still on this device, newest first.</summary>
+    public IReadOnlyList<RemovedWallet> Removed =>
+        LoadRemoved()
+            .Where(r => File.Exists(Path.Combine(RemovedDir, r.Key + ".vault.json")))
+            .OrderByDescending(r => r.RemovedAt)
+            .Select(r => new RemovedWallet(r.Key, r.Label, r.Color, r.RemovedAt))
+            .ToList();
+
+    /// <summary>Puts a removed wallet back in the list, its vault back where wallets live. Its old id is
+    /// kept unless something has taken it since. Returns null when there is nothing to restore.</summary>
+    public WalletEntry? Restore(string key)
+    {
+        var removed = LoadRemoved();
+        var row = removed.FirstOrDefault(r => r.Key == key);
+        var source = Path.Combine(RemovedDir, key + ".vault.json");
+        if (row is null || !File.Exists(source)) return null;
+
+        var id = _wallets.Any(w => w.Id == row.Id) || File.Exists(_managedVaultPath(row.Id)) ? NewId() : row.Id;
+        var target = _managedVaultPath(id);
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.Move(source, target);
+
+        var entry = new WalletEntry(id, row.Label, IsLegacy: false, row.Color, row.Coins, row.MoneroScanFrom);
+        _wallets.Add(entry);
+        Save();
+        removed.Remove(row);
+        SaveRemoved(removed);
+        return entry;
+    }
+
+    /// <summary>Where removed wallets' vaults wait, beside the live ones.</summary>
+    private string RemovedDir => Path.Combine(Path.GetDirectoryName(_managedVaultPath("probe"))!, "removed");
+
+    private string RemovedIndexPath => Path.Combine(RemovedDir, "removed.json");
+
+    private List<RemovedRow> LoadRemoved()
+    {
+        try
+        {
+            return File.Exists(RemovedIndexPath)
+                ? JsonSerializer.Deserialize<List<RemovedRow>>(File.ReadAllText(RemovedIndexPath), JsonOptions) ?? []
+                : [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private void SaveRemoved(List<RemovedRow> rows)
+    {
+        Directory.CreateDirectory(RemovedDir);
+        var tmp = $"{RemovedIndexPath}.{Guid.NewGuid():N}.tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(rows, JsonOptions), Encoding.UTF8);
+        File.Move(tmp, RemovedIndexPath, overwrite: true);
+    }
+
+    private sealed record RemovedRow(
+        string Key, string Id, string Label, string? Color, List<string>? Coins, ulong? MoneroScanFrom,
+        DateTimeOffset RemovedAt);
 
     // --- Persistence ---------------------------------------------------------
 

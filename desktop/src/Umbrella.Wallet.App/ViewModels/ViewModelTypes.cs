@@ -277,8 +277,12 @@ public sealed record SettingsShortcut(string Label, string Tab, string Keywords)
 
 /// <summary>One wallet in the multi-wallet switcher.</summary>
 public sealed record WalletListItemViewModel(
-    string Id, string Label, bool IsActive, bool IsLegacy, string? Color = null, string? TotalLabel = null)
+    string Id, string Label, bool IsActive, bool IsLegacy, string? Color = null, string? TotalLabel = null,
+    bool RemoveArmed = false)
 {
+    /// <summary>"Remove", or — after the first press — "Confirm removal", for a few seconds.</summary>
+    public string RemoveLabel => Umbrella.Wallet.App.Loc.Instance[RemoveArmed ? "wallets.removeConfirm" : "settings.walletRemove"];
+
     /// <summary>The wallet's balance in the switcher, when that option is on.</summary>
     public bool HasTotal => !string.IsNullOrEmpty(TotalLabel);
 
@@ -304,6 +308,9 @@ public static class CoinKinds
 
     public static bool IsToken(string symbol) => Tokens.Contains(symbol);
 }
+
+/// <summary>A wallet taken out of the list whose vault is still on this device.</summary>
+public sealed record RemovedWalletRow(string Key, string Label, string When);
 
 /// <summary>A network chip (Receive's "which network"), lit when chosen.</summary>
 public sealed record NetworkChip(string Name, bool IsActive);

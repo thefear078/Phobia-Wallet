@@ -53,6 +53,14 @@ from the release page); a beta copy updates to newer betas, and then to the full
 - **Back in the window, the balance is read again** when it is older than half a minute, instead of waiting up
   to two minutes for the next timer tick.
 
+### A removed wallet can be brought back
+
+- **"Remove" no longer erases a wallet.** One press deleted a wallet's encrypted vault — its only copy of the
+  seed on this device — with no question asked. Now the first press turns the button into "Confirm removal"
+  for six seconds, and the second only takes the wallet out of the list: its vault moves to **Removed
+  wallets** (Settings → Wallets), where "Restore" puts it back, opening with its own password as before.
+  Only a full data wipe deletes a removed wallet's vault.
+
 ### Wallets, Market and history
 
 - **Switching wallets no longer stops working after the first switch.** The switch ended with the new

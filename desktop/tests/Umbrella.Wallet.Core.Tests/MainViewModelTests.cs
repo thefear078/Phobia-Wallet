@@ -525,6 +525,44 @@ public sealed class MainViewModelTests : IDisposable
     }
 
     /// <summary>
+    /// Removing a wallet takes two presses, and the second only moves it to "Removed wallets", from where
+    /// it comes back with its own vault. One press used to delete a wallet's vault for good.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_RemoveNeedsConfirmation_AndCanBeUndone()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var mainId = vm.Wallets.Single(w => w.IsActive).Id;
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var savingsId = vm.Wallets.Single(w => w.IsActive).Id;
+        await vm.SwitchWalletCommand.ExecuteAsync(mainId);
+
+        vm.RemoveWalletCommand.Execute(savingsId);   // first press: armed, nothing removed
+        Assert.Equal(2, vm.Wallets.Count);
+        Assert.True(vm.Wallets.Single(w => w.Id == savingsId).RemoveArmed);
+
+        vm.RemoveWalletCommand.Execute(savingsId);   // second press: out of the list, kept
+        Assert.Single(vm.Wallets);
+        var removed = Assert.Single(vm.RemovedWallets);
+        Assert.Equal("Savings", removed.Label);
+
+        vm.RestoreRemovedWalletCommand.Execute(removed.Key);
+        Assert.Equal(2, vm.Wallets.Count);
+        Assert.Empty(vm.RemovedWallets);
+
+        await vm.SwitchWalletCommand.ExecuteAsync(vm.Wallets.Single(w => w.Label == "Savings").Id);
+        Assert.True(vm.IsUnlocked);                  // it opens with its own password, as before
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+    }
+
+    /// <summary>
     /// Swap offers every coin the open wallet can pay with, and every coin a route delivers to an address
     /// it has — Monero and the TRON and Cardano coins among them — but never a coin it cannot send yet.
     /// </summary>

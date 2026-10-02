@@ -91,21 +91,53 @@ public sealed class WalletRegistryTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => reg.Remove(reg.Active!.Id));
     }
 
+    /// <summary>
+    /// Removing a wallet takes it out of the list and KEEPS its vault, restorable. One click used to delete
+    /// the vault — a wallet's only copy of its encrypted seed on this device (2026-10-01: nine wallets).
+    /// </summary>
     [Fact]
-    public void Remove_ManagedWallet_DeletesItsVault_ButLeavesOthers()
+    public void Remove_ManagedWallet_KeepsItsVault_AndRestorePutsItBack()
     {
         File.WriteAllText(LegacyVaultPath, "{}");
         var reg = NewRegistry();
         var added = reg.Add("Temp");
+        reg.SetColor(added.Id, "#8FCB9B");
         var managedPath = reg.VaultPathFor(added);
         Directory.CreateDirectory(Path.GetDirectoryName(managedPath)!);
-        File.WriteAllText(managedPath, "{}");
+        File.WriteAllText(managedPath, "{\"seed\":\"encrypted\"}");
 
         reg.Remove(added.Id); // legacy is active, so this is allowed
 
-        Assert.False(File.Exists(managedPath));      // its vault file is gone
+        Assert.False(File.Exists(managedPath));      // out of the live set…
         Assert.True(File.Exists(LegacyVaultPath));   // the main wallet is untouched
         Assert.Single(reg.Wallets);
+        var removed = Assert.Single(NewRegistry().Removed);   // …and still listed after a restart
+        Assert.Equal("Temp", removed.Label);
+
+        var restored = reg.Restore(removed.Key);
+
+        Assert.NotNull(restored);
+        Assert.Equal(added.Id, restored!.Id);                 // same id: nothing took it since
+        Assert.Equal("#8FCB9B", restored.Color);
+        Assert.Equal("{\"seed\":\"encrypted\"}", File.ReadAllText(reg.VaultPathFor(restored)));
+        Assert.Equal(2, NewRegistry().Wallets.Count);
+        Assert.Empty(reg.Removed);
+    }
+
+    [Fact]
+    public void Restore_of_something_already_restored_does_nothing()
+    {
+        File.WriteAllText(LegacyVaultPath, "{}");
+        var reg = NewRegistry();
+        var added = reg.Add("Once");
+        Directory.CreateDirectory(Path.GetDirectoryName(reg.VaultPathFor(added))!);
+        File.WriteAllText(reg.VaultPathFor(added), "{}");
+        reg.Remove(added.Id);
+        var key = reg.Removed.Single().Key;
+
+        Assert.NotNull(reg.Restore(key));
+        Assert.Null(reg.Restore(key));
+        Assert.Equal(2, reg.Wallets.Count);
     }
 
     [Fact]

@@ -3543,7 +3543,7 @@
                                       IsVisible="{Binding !IsActive}" VerticalAlignment="Center"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).SwitchWalletCommand}"
                                       CommandParameter="{Binding Id}"/>
-                              <Button Grid.Column="4" Classes="ghost" Content="{Binding [settings.walletRemove], Source={x:Static app:Loc.Instance}}"
+                              <Button Grid.Column="4" Classes="ghost" Classes.danger="{Binding RemoveArmed}" Content="{Binding RemoveLabel}"
                                       IsVisible="{Binding CanRemove}" VerticalAlignment="Center"
                                       Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveWalletCommand}"
                                       CommandParameter="{Binding Id}"/>
@@ -3552,6 +3552,32 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- Removed wallets: their vaults are kept on this device until restored or wiped. -->
+                    <Border Background="{DynamicResource UmCardAlt}" CornerRadius="10" Padding="12,10"
+                            IsVisible="{Binding HasRemovedWallets}">
+                      <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding [wallets.removedTitle], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
+                        <TextBlock Text="{Binding [wallets.removedHint], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
+                                   Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding RemovedWallets}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RemovedWalletRow">
+                              <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <StackPanel VerticalAlignment="Center" Spacing="1">
+                                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                  <TextBlock Text="{Binding When}" FontSize="10.5" Foreground="{DynamicResource UmTextMuted}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Classes="chip" VerticalAlignment="Center"
+                                        Content="{Binding [wallets.restore], Source={x:Static app:Loc.Instance}}"
+                                        Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RestoreRemovedWalletCommand}"
+                                        CommandParameter="{Binding Key}"/>
+                              </Grid>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </Border>
 
                     <!-- Rename the active wallet. -->
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">

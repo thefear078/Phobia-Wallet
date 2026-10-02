@@ -3689,8 +3689,10 @@ public partial class MainViewModel : ViewModelBase
                 sum += usd ?? 0;
                 total = usd is { } known ? Fx.Money(known) : "—";
             }
-            Wallets.Add(new WalletListItemViewModel(w.Id, WalletDisplayName(w.Label), w.Id == activeId, w.IsLegacy, w.Color, total));
+            var armed = _removeArmedId == w.Id && DateTimeOffset.UtcNow - _removeArmedAt < RemoveConfirmWindow;
+            Wallets.Add(new WalletListItemViewModel(w.Id, WalletDisplayName(w.Label), w.Id == activeId, w.IsLegacy, w.Color, total, armed));
         }
+        RefreshRemovedWallets();
         AllWalletsTotalLabel = ShowAllWalletTotals ? string.Format(Loc.Instance["wallets.allTotal"], Fx.Money(sum)) : string.Empty;
         OnPropertyChanged(nameof(ActiveWalletLabel));
         OnPropertyChanged(nameof(SendBalancesFromLabel));
@@ -3953,17 +3955,79 @@ public partial class MainViewModel : ViewModelBase
         StatusMessage = string.Format(Loc.Instance["status.renamedTo"], ActiveWalletLabel);
     }
 
-    /// <summary>Remove another (non-active) wallet, deleting only its own encrypted vault. The active
-    /// wallet and the Main wallet's seed file are protected by the registry.</summary>
+    /// <summary>
+    /// Takes another (non-active) wallet out of the list — in two presses: the first turns the button
+    /// into "Confirm removal" for a few seconds, the second removes. Nothing is deleted: the registry moves
+    /// the wallet's encrypted vault to "Removed wallets", from where it can be restored. One click used to
+    /// erase a wallet's vault for good.
+    /// </summary>
     [RelayCommand]
     private void RemoveWallet(string? id)
     {
         if (string.IsNullOrWhiteSpace(id)) return;
+        var label = _registry.Wallets.FirstOrDefault(w => w.Id == id)?.Label ?? id;
+
+        if (_removeArmedId != id || DateTimeOffset.UtcNow - _removeArmedAt >= RemoveConfirmWindow)
+        {
+            _removeArmedId = id;
+            _removeArmedAt = DateTimeOffset.UtcNow;
+            RefreshWalletList();
+            ShowToast(string.Format(Loc.Instance["status.walletRemoveArm"], WalletDisplayName(label)), isError: false);
+            // The button goes back to "Remove" by itself when the window closes.
+            _ = Task.Delay(RemoveConfirmWindow).ContinueWith(_ =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (_removeArmedId == id) { _removeArmedId = null; RefreshWalletList(); }
+                }), TaskScheduler.Default);
+            return;
+        }
+
+        _removeArmedId = null;
         try
         {
             _registry.Remove(id);
             RefreshWalletList();
-            StatusMessage = Loc.Instance["status.walletRemoved"];
+            StatusMessage = string.Format(Loc.Instance["status.walletRemoved"], WalletDisplayName(label));
+            ShowToast(StatusMessage, isError: false);
+        }
+        catch (Exception ex)
+        {
+            Fail(ex.Message);
+        }
+    }
+
+    private static readonly TimeSpan RemoveConfirmWindow = TimeSpan.FromSeconds(6);
+    private string? _removeArmedId;
+    private DateTimeOffset _removeArmedAt;
+
+    /// <summary>Wallets taken out of the list whose vaults are still on this device — restorable.</summary>
+    public ObservableCollection<RemovedWalletRow> RemovedWallets { get; } = [];
+
+    public bool HasRemovedWallets => RemovedWallets.Count > 0;
+
+    private void RefreshRemovedWallets()
+    {
+        RemovedWallets.Clear();
+        foreach (var r in _registry.Removed)
+            RemovedWallets.Add(new RemovedWalletRow(r.Key, WalletDisplayName(r.Label),
+                r.RemovedAt.ToLocalTime().ToString("d MMM yyyy · HH:mm", Fx.Culture)));
+        OnPropertyChanged(nameof(HasRemovedWallets));
+    }
+
+    /// <summary>Puts a removed wallet back in the list. It opens with its own password, as before.</summary>
+    [RelayCommand]
+    private void RestoreRemovedWallet(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return;
+        try
+        {
+            var entry = _registry.Restore(key);
+            RefreshWalletList();
+            if (entry is not null)
+            {
+                StatusMessage = string.Format(Loc.Instance["status.walletRestored"], WalletDisplayName(entry.Label));
+                ShowToast(StatusMessage, isError: false);
+            }
         }
         catch (Exception ex)
         {
