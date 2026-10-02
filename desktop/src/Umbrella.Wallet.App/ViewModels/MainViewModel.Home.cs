@@ -54,7 +54,68 @@ public partial class MainViewModel
 
     public bool HasPortfolioSeries => PortfolioSeries.Count > 1;
 
-    partial void OnPortfolioSeriesChanged(IReadOnlyList<double> value) => OnPropertyChanged(nameof(HasPortfolioSeries));
+    /// <summary>When the series was drawn: point i of n is that moment minus the window times (1 − i/(n−1)).</summary>
+    private DateTime _portfolioSeriesAt = DateTime.Now;
+
+    partial void OnPortfolioSeriesChanged(IReadOnlyList<double> value)
+    {
+        _portfolioSeriesAt = DateTime.Now;
+        OnPropertyChanged(nameof(HasPortfolioSeries));
+        NotifyPortfolioPoints();
+    }
+
+    private void NotifyPortfolioPoints()
+    {
+        OnPropertyChanged(nameof(PortfolioPointLabels));
+        OnPropertyChanged(nameof(PortfolioPointCaptions));
+    }
+
+    /// <summary>What the balance chart says under the pointer: that point's worth in the chosen
+    /// currency — today's holdings at that moment's price — or dots while the balance is hidden.</summary>
+    public IReadOnlyList<string> PortfolioPointLabels =>
+        PortfolioSeries.Select(v => IsBalanceHidden ? "•••••" : Fx.Money(v)).ToList();
+
+    /// <summary>Under each point's value: when it was, and how far the worth had moved since the start
+    /// of the window. The last point is "now".</summary>
+    public IReadOnlyList<string> PortfolioPointCaptions
+    {
+        get
+        {
+            var series = PortfolioSeries;
+            var n = series.Count;
+            if (n < 2) return [];
+            var first = series[0];
+            var captions = new List<string>(n);
+            for (var i = 0; i < n; i++)
+            {
+                var when = i == n - 1 ? Loc.Instance["chart.now"] : PortfolioTimeLabel(PortfolioRange, _portfolioSeriesAt, i, n);
+                var move = first > 0 ? (series[i] - first) / first * 100 : 0;
+                captions.Add($"{when} · {(move >= 0 ? "+" : "−")}{Math.Abs(move).ToString("0.00", Fx.Culture)}%");
+            }
+            return captions;
+        }
+    }
+
+    /// <summary>The wall-clock moment of point <paramref name="i"/> of <paramref name="n"/>, evenly spaced
+    /// across the window that ends at <paramref name="end"/>, in the wallet's language.</summary>
+    public static string PortfolioTimeLabel(string range, DateTime end, int i, int n)
+    {
+        var span = range switch
+        {
+            "1W" => TimeSpan.FromDays(7),
+            "1M" => TimeSpan.FromDays(30),
+            "1Y" => TimeSpan.FromDays(365),
+            _ => TimeSpan.FromHours(24),
+        };
+        var t = end - TimeSpan.FromTicks((long)(span.Ticks * (1 - (double)i / Math.Max(1, n - 1))));
+        return range switch
+        {
+            "1W" => t.ToString("ddd d MMM · HH:mm", Fx.Culture),
+            "1M" => t.ToString("d MMM · HH:mm", Fx.Culture),
+            "1Y" => t.ToString("d MMM yyyy", Fx.Culture),
+            _ => t.ToString("ddd HH:mm", Fx.Culture),
+        };
+    }
 
     /// <summary>The label at the chart's lit end: the balance now, or dots while it is hidden.</summary>
     public string HeroEndLabel => IsBalanceHidden ? "•••••" : $"{CurrencySymbol}{TotalBalanceMain}{BalanceDisplayCents}";
@@ -163,7 +224,7 @@ public partial class MainViewModel
             .Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only"
                         && !a.IsSuspectedSpam && a.Balance != BalanceRead.Unknown && a.Amount > 0)
             .GroupBy(a => a.Symbol.ToUpperInvariant())
-            .Select(g => (Symbol: g.Key, Amount: g.Sum(a => a.Amount)))
+            .Select(g => (Symbol: g.Key, Amount: g.Sum(a => a.Amount), Price: g.Max(a => a.Price)))
             .ToList();
 
         if (holdings.Count == 0)
@@ -177,12 +238,45 @@ public partial class MainViewModel
 
         if (!HasPortfolioSeries) PortfolioChartStatus = Loc.Instance["chart.loading"];
 
-        var series = await MarketSeriesAsync(MarketRangeFor(PortfolioRange), holdings.Select(h => h.Symbol).ToList());
-        if (version != _portfolioChartVersion) return;   // a newer request superseded this one
+        // At once from the prices already on this device (the market list's and the last session's), so
+        // a range switch draws instantly; then again when the network has answered.
+        var marketRange = MarketRangeFor(PortfolioRange);
+        var symbols = holdings.Select(h => h.Symbol).ToList();
+        var known = PeekSeries(marketRange, symbols);
+        if (known.Count == symbols.Count) DrawPortfolio(holdings, known);
 
+        var series = await MarketSeriesAsync(marketRange, symbols);
+        if (version != _portfolioChartVersion) return;   // a newer request superseded this one
+        DrawPortfolio(holdings, series);
+    }
+
+    /// <summary>Price history already on this device for each coin: fetched this session, or the candles
+    /// the last session kept. However old — the fetch that follows replaces it.</summary>
+    private Dictionary<string, IReadOnlyList<double>> PeekSeries(string marketRange, IEnumerable<string> symbols)
+    {
+        var found = new Dictionary<string, IReadOnlyList<double>>(StringComparer.OrdinalIgnoreCase);
+        _seriesByRange.TryGetValue(marketRange, out var cached);
+        foreach (var symbol in symbols)
+        {
+            if (cached.Series is { } kept && kept.TryGetValue(symbol, out var series) && series.Count > 1)
+                found[symbol] = series;
+            else if (Umbrella.Wallet.Infrastructure.Network.PublicMarketRatesClient.TryPeekCandles(symbol, marketRange, out var candles, out _)
+                     && candles.Count > 1)
+                found[symbol] = candles.Select(c => c.Close).ToList();
+        }
+        return found;
+    }
+
+    /// <summary>Today's holdings valued at each moment's price. The last point is the live price, the
+    /// same one the balance above the chart is counted at, so "now" on the chart is the balance.</summary>
+    private void DrawPortfolio(
+        List<(string Symbol, double Amount, double Price)> holdings, IReadOnlyDictionary<string, IReadOnlyList<double>> series)
+    {
         var total = new double[PortfolioPoints];
+        var live = 0.0;
+        var liveKnown = true;
         var leftOut = new List<string>();
-        foreach (var (symbol, amount) in holdings)
+        foreach (var (symbol, amount, price) in holdings)
         {
             if (!series.TryGetValue(symbol, out var prices) || prices.Count < 2)
             {
@@ -191,7 +285,14 @@ public partial class MainViewModel
             }
 
             for (var i = 0; i < PortfolioPoints; i++) total[i] += amount * Resample(prices, i, PortfolioPoints);
+            if (price > 0) live += amount * price;
+            else liveKnown = false;
         }
+        if (liveKnown && live > 0) total[^1] = live;
+
+        // The same line again (the network confirmed what was already drawn): leave it, and the pointer's
+        // place on it, alone.
+        if (leftOut.Count == 0 && PortfolioSeries.Count == total.Length && PortfolioSeries.SequenceEqual(total)) return;
 
         if (leftOut.Count == holdings.Count)
         {

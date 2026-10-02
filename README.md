@@ -137,6 +137,11 @@ with KuCoin and Bybit behind Binance, so it still draws over Tor.
 <img src="docs/assets/screenshot-market-v410.png" width="80%" alt="Market chart with candles"/>
 </div>
 
+**Your balance, point by point.**
+The chart beside the balance follows the pointer: each point is what the coins you hold now were worth at
+that moment, when that was, and the move since the start — real prices, not a smoothed guess. A wallet of
+stablecoins draws as the flat line it is.
+
 **Activity you can scan.**
 Every event has its own icon, the list runs newest first under Today / Yesterday headings, and every
 transfer shows what it is worth.

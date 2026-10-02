@@ -1002,7 +1002,11 @@
                         </StackPanel>
                       </Border>
                       <Panel Grid.Row="1" Margin="-6,8,-6,0">
+                        <!-- Follows the pointer: each point's worth (today's holdings at that moment's price), when it
+                             was and the move since the start. A 1% floor on the scale keeps a stablecoin wallet flat. -->
                         <controls:GlowChart Values="{Binding PortfolioSeries}" LineColor="{DynamicResource UmGlow}"
+                                            PointLabels="{Binding PortfolioPointLabels}" PointCaptions="{Binding PortfolioPointCaptions}"
+                                            MinSpanFraction="0.01"
                                             EndLabel="{Binding HeroEndLabel}" EndCaption="{Binding [chart.now], Source={x:Static app:Loc.Instance}}"
                                             LabelBackground="{DynamicResource UmCardAlt}" LabelBorder="{DynamicResource UmBorder2}"
                                             LabelForeground="{DynamicResource UmText}" CaptionForeground="{DynamicResource UmTextMuted}"
@@ -1882,17 +1886,20 @@
                   <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}"/>
                   <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-08.json" Width="42" Height="42" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
-                           Text="{Binding [swap.desc], Source={x:Static app:Loc.Instance}}"/>
-
-                <!-- Honest coverage note: which chains the non-custodial route reaches, and what to do
-                     for the rest, so "why can't I swap X?" is answered on the screen itself. Folded: open,
-                     it repeated most of the paragraph above it. -->
-                <Expander Header="{Binding [swap.coverageTitle], Source={x:Static app:Loc.Instance}}" Classes="soft"
-                          HorizontalAlignment="Stretch" Background="{DynamicResource UmCardAlt}" CornerRadius="12">
-                  <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
-                             Text="{Binding [swap.coverage], Source={x:Static app:Loc.Instance}}"/>
-                </Expander>
+                <!-- How routes are chosen: a note that closes for good (Settings → Appearance → Interface
+                     brings closed notes back). The list of coins is gone: the pickers below are that list. -->
+                <Border Classes="note" IsVisible="{Binding ShowSwapIntro}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border Classes="noteMark">
+                      <Path Data="M8 7.2 V12 M8 4.3 V4.4" Width="16" Height="16"/>
+                    </Border>
+                    <TextBlock Grid.Column="1" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5" VerticalAlignment="Center"
+                               Text="{Binding [swap.desc], Source={x:Static app:Loc.Instance}}"/>
+                    <Button Grid.Column="2" Classes="noteClose" Content="✕" Command="{Binding DismissNoticeCommand}"
+                            CommandParameter="swap.intro" ToolTip.Tip="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"
+                            AutomationProperties.Name="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"/>
+                  </Grid>
+                </Border>
 
                 <!-- Step 1 · pair & amount. A DEX-style stacked "You pay → You receive" widget with a
                      circular flip button straddling the two panels, like Uniswap. -->
@@ -2773,10 +2780,16 @@
                              Text="{Binding [sec.buyDesc], Source={x:Static app:Loc.Instance}}"/>
                 </StackPanel>
 
-                <!-- How it works: three steps, then a shortcut to the address you'll paste. -->
-                <Border Classes="card">
+                <!-- How it works: three steps. The whole card closes for good (Settings → Appearance →
+                     Interface brings it back); the address shortcuts under it stay. -->
+                <Border Classes="card" IsVisible="{Binding ShowBuyHowTo}">
                   <StackPanel Spacing="12">
-                    <TextBlock Text="{Binding [sec.howItWorks], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding [sec.howItWorks], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
+                      <Button Grid.Column="1" Classes="noteClose" Content="✕" Command="{Binding DismissNoticeCommand}"
+                              CommandParameter="buy.howTo" ToolTip.Tip="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"
+                              AutomationProperties.Name="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"/>
+                    </Grid>
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14">
                       <StackPanel Spacing="4">
                         <TextBlock Text="{Binding [buy.step1], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
@@ -2794,13 +2807,13 @@
                                    Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
                       </StackPanel>
                     </Grid>
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Button Classes="primary" Content="{Binding [buy.showAddresses], Source={x:Static app:Loc.Instance}}"
-                              Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
-                      <Button Classes="ghost" Content="{Binding [buy.copyPrimary], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPrimaryAddressCommand}"/>
-                    </StackPanel>
                   </StackPanel>
                 </Border>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button Classes="primary" Content="{Binding [buy.showAddresses], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
+                  <Button Classes="ghost" Content="{Binding [buy.copyPrimary], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPrimaryAddressCommand}"/>
+                </StackPanel>
 
                 <TextBlock Classes="eyebrow" Text="{Binding [buy.providers], Source={x:Static app:Loc.Instance}}" Margin="2,4,0,0"/>
 
@@ -3472,8 +3485,8 @@
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:SettingsShortcut">
                             <Button Classes="row" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,8"
-                                    Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenSettingCommand}"
-                                    CommandParameter="{Binding Tab}">
+                                    Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).OpenSettingResultCommand}"
+                                    CommandParameter="{Binding}">
                               <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
                                 <Border Grid.Column="1" Background="{DynamicResource UmCardAlt}" CornerRadius="5" Padding="7,2">
@@ -3755,6 +3768,30 @@
                               SelectedValue="{Binding SidebarPosition, Mode=TwoWay}"
                               Width="260" HorizontalAlignment="Left"/>
 
+                  </StackPanel>
+                </Border>
+
+                <!-- Interface: the "back to top" button, and closed notes brought back. -->
+                <Border Classes="card" IsVisible="{Binding IsTabAppearance}">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="eyebrow" Text="{Binding [settings.interface], Source={x:Static app:Loc.Instance}}"/>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                      <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding [settings.scrollTop], Source={x:Static app:Loc.Instance}}" FontSize="13"/>
+                        <TextBlock Text="{Binding [settings.scrollTopHint], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
+                                   Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"/>
+                      </StackPanel>
+                      <ToggleSwitch Grid.Column="1" IsChecked="{Binding ScrollToTopEnabled, Mode=TwoWay}" OnContent="" OffContent="" VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                      <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding [settings.notesReset], Source={x:Static app:Loc.Instance}}" FontSize="13"/>
+                        <TextBlock Text="{Binding [settings.notesResetHint], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
+                                   Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"/>
+                      </StackPanel>
+                      <Button Grid.Column="1" Classes="ghost" VerticalAlignment="Center" IsEnabled="{Binding HasDismissedNotices}"
+                              Content="{Binding [settings.notesResetBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding RestoreNoticesCommand}"/>
+                    </Grid>
                   </StackPanel>
                 </Border>
 
@@ -4733,6 +4770,16 @@
 
             </StackPanel>
           </ScrollViewer>
+
+          <!-- Back to top: fades in at the bottom right once a page is scrolled far down, glides up on a
+               click. Settings → Appearance → Interface turns it off. -->
+          <Button x:Name="ScrollTopButton" Grid.Column="0" Classes="scrollTop" Click="OnScrollTopClick"
+                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,30,16"
+                  ToolTip.Tip="{Binding [common.scrollTop], Source={x:Static app:Loc.Instance}}"
+                  AutomationProperties.Name="{Binding [common.scrollTop], Source={x:Static app:Loc.Instance}}">
+            <Path Data="M6 14.5 L12 8.5 L18 14.5" Width="24" Height="24" Stroke="{DynamicResource UmAccentText}"
+                  StrokeThickness="2.4" StrokeLineCap="Round" StrokeJoin="Round"/>
+          </Button>
 
           <!-- Right column (Portfolio only), the gold design: the market in three tabs, a way into it,
                the theme swatches, what the balance is made of, and the wallet's address. The column sits

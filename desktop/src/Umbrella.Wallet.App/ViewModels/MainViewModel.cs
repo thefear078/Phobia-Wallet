@@ -326,6 +326,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(TotalIncompleteLabel));
             OnPropertyChanged(nameof(BalanceDisplayCents));
             OnPropertyChanged(nameof(HeroEndLabel));
+            NotifyPortfolioPoints();                            // the chart's times and values, in the new language
             OnPropertyChanged(nameof(SendBalancesFromLabel));   // "Balances from …" above the Send picker
             OnPropertyChanged(nameof(UpdateBannerText));   // "a new version is ready", in the new language
             MarkMoneroUnreadReason();           // the XMR row's reason, in the new language
@@ -389,6 +390,7 @@ public partial class MainViewModel : ViewModelBase
         Fx.Rate = await _rates.GetFiatRateAsync(_uiSettings.Currency);
         OnPropertyChanged(nameof(CurrencySymbol));
         OnPropertyChanged(nameof(TotalBalanceCaption));
+        NotifyPortfolioPoints();   // the chart's values under the pointer, in the new currency
         RefreshHoldings();   // rebuild Holdings rows so their Fx-based labels re-read the new rate
         RecalcBalance();
         _ = RefreshMarketAsync(); // market rows re-read prices in the new currency
@@ -1023,60 +1025,6 @@ public partial class MainViewModel : ViewModelBase
         SelectSection("Settings");
     }
 
-    // --- Settings search -----------------------------------------------------
-    /// <summary>Everything you can find in Settings, with the pane each lives in. Drives the search box.</summary>
-    private static readonly SettingsShortcut[] SettingsCatalog =
-    [
-        new("Language", "Appearance", "interface language english ukrainian"),
-        new("Theme", "Appearance", "colors dark brand uniswap binance bitcoin telegram tron"),
-        new("Display currency", "Appearance", "usd eur uah rub fiat money symbol"),
-        new("Wallets", "Wallets", "switch multiple accounts binance"),
-        new("Add a wallet", "Wallets", "new wallet import second savings"),
-        new("Rename wallet", "Wallets", "label name"),
-        new("Auto-lock timer", "Security", "idle lock minutes"),
-        new("Reveal recovery phrase", "Backup", "seed words 24 mnemonic show"),
-        new("Backup & restore", "Backup", "export import vault file"),
-        new("Monero keys", "Backup", "xmr spend view secret"),
-        new("Tor / network privacy", "Privacy", "tor onion routing ip"),
-        new("Screenshot protection", "Privacy", "hide seed capture screen"),
-        new("Guide & docs", "Guide", "help documentation how to"),
-        new("About & licence", "Guide", "version publisher the fear licence trademark notices"),
-        new("Delete wallet", "Danger", "erase wipe remove everything"),
-        new("Clear history", "Danger", "activity transactions log"),
-        new("Disconnect all", "Danger", "watch addresses exchanges unlink"),
-    ];
-
-    public ObservableCollection<SettingsShortcut> SettingsResults { get; } = [];
-    public bool HasSettingsResults => SettingsResults.Count > 0;
-
-    [ObservableProperty] private string _settingsSearch = string.Empty;
-
-    partial void OnSettingsSearchChanged(string value)
-    {
-        SettingsResults.Clear();
-        var q = value?.Trim();
-        if (!string.IsNullOrEmpty(q))
-        {
-            foreach (var s in SettingsCatalog)
-            {
-                if (s.Label.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                    s.Keywords.Contains(q, StringComparison.OrdinalIgnoreCase))
-                {
-                    SettingsResults.Add(s);
-                }
-            }
-        }
-        OnPropertyChanged(nameof(HasSettingsResults));
-    }
-
-    /// <summary>Open a settings pane from a search result and clear the query.</summary>
-    [RelayCommand]
-    private void OpenSetting(string? tab)
-    {
-        if (!string.IsNullOrWhiteSpace(tab)) SettingsTab = tab;
-        SettingsSearch = string.Empty;
-    }
-
     // --- Developer fee -------------------------------------------------------
     // Baked into the build (DeveloperFeeConfig): the recipient address is obfuscated and never shown
     // in the UI. The fee percentage is still disclosed in the send review before the user confirms.
@@ -1353,8 +1301,14 @@ public partial class MainViewModel : ViewModelBase
     /// it), which read in English in every language; shown, it is the translated name. A name the user
     /// typed is shown exactly as typed.
     /// </summary>
-    public static string WalletDisplayName(string? label) =>
-        string.IsNullOrWhiteSpace(label) || label == "Main wallet" ? Loc.Instance["wallet.mainName"] : label;
+    public static string WalletDisplayName(string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label) || label == "Main wallet") return Loc.Instance["wallet.mainName"];
+        // "Wallet 2" is the name the wallet gave it, not one the user typed: it reads in the wallet's
+        // language like "Main wallet" does, instead of English beside a Ukrainian "Основний гаманець".
+        var m = System.Text.RegularExpressions.Regex.Match(label, @"^Wallet (\d+)$");
+        return m.Success ? string.Format(Loc.Instance["wallet.numbered"], m.Groups[1].Value) : label;
+    }
 
     /// <summary>Whose balances the Send picker shows — the active wallet's, by name.</summary>
     public string SendBalancesFromLabel => string.Format(Loc.Instance["send.balancesFrom"], ActiveWalletLabel);
@@ -1480,7 +1434,7 @@ public partial class MainViewModel : ViewModelBase
 
         Fx.Symbol = Fx.SymbolFor(_uiSettings.Currency); // right symbol immediately; rate loads next
         _ = LoadWatchAddressesAsync();
-        _ = ApplyCurrencyAsync(); // fetches the USD→currency rate, then refreshes market/holdings
+        if (FetchCurrencyOnStart) _ = ApplyCurrencyAsync(); // fetches the USD→currency rate, then refreshes market/holdings
         RefreshHoldings();
         RecalcBalance();
         StartAutoRefresh();
@@ -1499,6 +1453,13 @@ public partial class MainViewModel : ViewModelBase
     /// nothing goes online.
     /// </summary>
     public static bool StartTorAutomatically { get; set; } = true;
+
+    /// <summary>
+    /// Whether a new view model reads the currency rate (and then rebuilds the asset list) in the
+    /// background. Off only in tests that step through the asset list themselves: that rebuild landing
+    /// between two of their lines made them fail now and then.
+    /// </summary>
+    public static bool FetchCurrencyOnStart { get; set; } = true;
 
     /// <summary>When balances were last read in full.</summary>
     private DateTimeOffset _lastLiveRefresh = DateTimeOffset.MinValue;
@@ -2858,6 +2819,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnIsBalanceHiddenChanged(bool value)
     {
         OnPropertyChanged(nameof(HeroEndLabel));
+        NotifyPortfolioPoints();
         OnPropertyChanged(nameof(BalanceDisplayMain));
         OnPropertyChanged(nameof(BalanceDisplayCents));
         OnPropertyChanged(nameof(HideBalanceLabel));
@@ -4687,20 +4649,27 @@ public partial class MainViewModel : ViewModelBase
     /// read, priced with today's prices where the market knows the coin. Null for a wallet never read.</summary>
     private double? WalletTotalUsd(string walletId, bool active)
     {
-        if (active) return Holdings.Sum(h => h.Value);
+        // The rows on screen count only when they are this wallet's: in the middle of a switch they are
+        // still the previous wallet's (or the locked placeholders), and the new wallet showed that figure.
+        if (active && IsUnlocked && _accountsWalletKey == walletId) return WalletValueRows().Sum(v => v.Value);
         var entries = _balanceStore.Load(walletId);
         if (entries.Count == 0) return null;
         var prices = MarketPriceBook();
         return entries.Sum(e => e.Amount * (prices.TryGetValue(e.Symbol, out var p) ? p : e.Price));
     }
 
+    /// <summary>Whose accounts are on screen: the wallet they were derived for, or null while locked.
+    /// Balances are only ever saved under this key — never under whichever wallet is active by then.</summary>
+    private string? _accountsWalletKey;
+
     /// <summary>Persist the current balances/prices so the next unlock/switch shows them instantly.</summary>
     private void SaveBalanceCache()
     {
+        if (_accountsWalletKey is null || _accountsWalletKey != ActiveWalletCacheKey) return;
         var entries = Accounts
             .Where(a => a.Amount > 0 || a.Price > 0)
             .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h, a.Chain));
-        _balanceStore.Save(ActiveWalletCacheKey, entries);
+        _balanceStore.Save(_accountsWalletKey, entries);
         if (ShowAllWalletTotals) RefreshWalletList();   // the open wallet's figure in the switcher
     }
 
@@ -5921,6 +5890,7 @@ public partial class MainViewModel : ViewModelBase
         // read once the wallet is unlocked.
         _ = LoadExchangesAsync(mnemonic);
         DeriveAccounts(mnemonic);
+        _accountsWalletKey = ActiveWalletCacheKey;   // these rows are this wallet's from here on
         LoadFoundAccounts(); // money this phrase holds at other wallets' paths, from its last scan
         OnPropertyChanged(nameof(SignMsgAddress)); // the Ethereum address the sign-message tool uses
         SignMsgSignature = string.Empty;
@@ -6031,6 +6001,7 @@ public partial class MainViewModel : ViewModelBase
 
     private void ResetAddresses()
     {
+        _accountsWalletKey = null;   // placeholders belong to no wallet
         Accounts.Clear();
         _evmSideReadOk.Clear();
         foreach (var chain in ChainCatalog.All)
@@ -6262,13 +6233,25 @@ public partial class MainViewModel : ViewModelBase
         TotalBalanceCents = cut >= 0 ? text[(cut + separator.Length)..] : "00";
     }
 
+    /// <summary>What the wallet's total is made of: every holding with a known balance — not just the
+    /// rows the asset list's filter or search leaves on screen.</summary>
+    private List<(double Value, double Change)> WalletValueRows() =>
+        Accounts
+            .Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only"
+                        && a.Balance != BalanceRead.Unknown && (ShowSpamTokens || !a.IsSuspectedSpam))
+            .Select(a => (a.Price * a.Amount, a.Change24h))
+            .ToList();
+
     private void RecalcBalance()
     {
         // The total is a sum of what the wallet actually knows. Anything it could not read is counted
         // separately and said out loud, because a number quietly missing an asset is a wrong number
         // that looks exactly like a right one (MANIFESTO §4 / roadmap P0.6).
         UnreadableAssetCount = Holdings.Count(h => h.Balance == BalanceRead.Unknown);
-        var total = Holdings.Sum(h => h.Value);                 // USD
+        // The WHOLE wallet, whatever the asset list below is filtered to: picking "Bitcoin" there used to
+        // turn the total into the Bitcoin figure, and the switcher showed that as the wallet's balance.
+        var valued = WalletValueRows();
+        var total = valued.Sum(v => v.Value);                   // USD
         var displayTotal = total * (double)Fx.Rate;             // in the chosen currency
 
         // Formatted in the SAME locale as every other fiat figure (Fx.Money). This used to be
@@ -6280,11 +6263,11 @@ public partial class MainViewModel : ViewModelBase
         ShowTotal(displayTotal);
         double weighted = 0;
         double weight = 0;
-        foreach (var h in Holdings)
+        foreach (var (value, change) in valued)
         {
-            if (h.Value <= 0) continue;
-            weighted += h.Change24h * h.Value;
-            weight += h.Value;
+            if (value <= 0) continue;
+            weighted += change * value;
+            weight += value;
         }
 
         var avg = weight > 0 ? weighted / weight : 0;

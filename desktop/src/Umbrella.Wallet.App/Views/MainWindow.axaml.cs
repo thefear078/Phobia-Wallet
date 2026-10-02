@@ -1,5 +1,8 @@
 using Avalonia.Platform.Storage;
 using System;
+using System.Linq;
+using Avalonia;
+using Avalonia.VisualTree;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
@@ -82,6 +85,73 @@ public partial class MainWindow : Window
         {
             if (DataContext is MainViewModel vm) vm.WindowWidth = e.NewSize.Width;
         };
+
+        // "Back to top" fades in once a page is scrolled far down.
+        PageScroll.ScrollChanged += (_, _) => UpdateScrollTopButton();
+    }
+
+    // --- Settings search: the card a result names ---------------------------
+
+    /// <summary>
+    /// Scrolls the Settings card whose text is <paramref name="title"/> to just under the top of the page
+    /// and lights its edge for a moment. Posted: the pane the result is on has only just been shown.
+    /// </summary>
+    private void FocusSettingsCard(string title)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (PageScroll.Content is not Visual content) return;
+            var text = content.GetVisualDescendants()
+                .OfType<TextBlock>()
+                .FirstOrDefault(t => t.IsEffectivelyVisible && string.Equals(t.Text, title, StringComparison.Ordinal));
+            if (text is null) return;
+
+            var card = text.GetVisualAncestors().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("card")) as Visual ?? text;
+            if (card.TranslatePoint(new Point(0, 0), content) is { } at)
+                PageScroll.Offset = PageScroll.Offset.WithY(Math.Max(0, at.Y - 24));
+
+            if (card is Border border)
+            {
+                border.Classes.Add("found");
+                DispatcherTimer.RunOnce(() => border.Classes.Remove("found"), TimeSpan.FromSeconds(1.6));
+            }
+        }, DispatcherPriority.Loaded);
+    }
+
+    // --- Back to top ---------------------------------------------------------
+    private DispatcherTimer? _scrollGlide;
+
+    /// <summary>How far down a page has to be before the button shows: well past the first screen.</summary>
+    private double ScrollTopThreshold => Math.Max(700, PageScroll.Viewport.Height * 1.25);
+
+    private void UpdateScrollTopButton()
+    {
+        var show = _observed?.ScrollToTopEnabled != false && PageScroll.Offset.Y > ScrollTopThreshold;
+        ScrollTopButton.Classes.Set("shown", show);
+    }
+
+    /// <summary>Glides back to the top in a short ease-out — or jumps, with motion turned off.</summary>
+    private void OnScrollTopClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var from = PageScroll.Offset.Y;
+        if (from <= 0) return;
+        _scrollGlide?.Stop();
+        if (_observed?.AnimationsEnabled == false)
+        {
+            PageScroll.Offset = PageScroll.Offset.WithY(0);
+            return;
+        }
+
+        var started = DateTime.UtcNow;
+        var duration = Math.Clamp(from / 6, 280, 520);   // a long page takes a little longer, never slow
+        _scrollGlide = new DispatcherTimer(TimeSpan.FromMilliseconds(12), DispatcherPriority.Render, (_, _) =>
+        {
+            var t = Math.Min(1, (DateTime.UtcNow - started).TotalMilliseconds / duration);
+            var eased = 1 - Math.Pow(1 - t, 3);
+            PageScroll.Offset = PageScroll.Offset.WithY(from * (1 - eased));
+            if (t >= 1) _scrollGlide?.Stop();
+        });
+        _scrollGlide.Start();
     }
 
     // --- Title-bar dragging (custom chrome) ----------------------------------
@@ -110,12 +180,14 @@ public partial class MainWindow : Window
         if (_observed is not null)
         {
             _observed.PropertyChanged -= OnViewModelPropertyChanged;
+            _observed.SettingsFocusRequested -= FocusSettingsCard;
         }
 
         _observed = DataContext as MainViewModel;
         if (_observed is not null)
         {
             _observed.PropertyChanged += OnViewModelPropertyChanged;
+            _observed.SettingsFocusRequested += FocusSettingsCard;
             Classes.Set("nostickers", !_observed.StickersEnabled);
             UpdateCaptureProtection();
             ApplyMobileMode();
@@ -227,7 +299,13 @@ public partial class MainWindow : Window
         // had been scrolled to — Security opened halfway down, below its own summary.
         if (e.PropertyName is nameof(MainViewModel.ActiveSection))
         {
+            _scrollGlide?.Stop();
             PageScroll.Offset = default;
+        }
+
+        if (e.PropertyName is nameof(MainViewModel.ScrollToTopEnabled))
+        {
+            UpdateScrollTopButton();
         }
 
         if (e.PropertyName is nameof(MainViewModel.StickersEnabled) && _observed is not null)

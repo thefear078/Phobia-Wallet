@@ -15,6 +15,10 @@ public sealed class SpamHoldingsIntegrationTests : IDisposable
     private readonly string _directory = Path.Combine(
         Path.GetTempPath(), $"umbrella-spam-{Guid.NewGuid():N}");
 
+    public SpamHoldingsIntegrationTests() => MainViewModel.FetchCurrencyOnStart = false;
+
+    /// <summary>A view model whose asset list changes only when the test changes it — no background
+    /// rebuild after the currency rate arrives.</summary>
     private MainViewModel NewViewModel() =>
         new(new EncryptedFileSeedVault(Path.Combine(_directory, "vault.json")));
 
@@ -110,6 +114,7 @@ public sealed class SpamHoldingsIntegrationTests : IDisposable
 
     public void Dispose()
     {
+        MainViewModel.FetchCurrencyOnStart = true;
         if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
     }
 }

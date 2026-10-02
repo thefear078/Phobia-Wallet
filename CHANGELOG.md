@@ -53,6 +53,35 @@ from the release page); a beta copy updates to newer betas, and then to the full
 - **Back in the window, the balance is read again** when it is older than half a minute, instead of waiting up
   to two minutes for the next timer tick.
 
+### Easier to use
+
+- **The balance chart follows the pointer.** Each point says what the coins held now were worth at that
+  moment, when it was, and how far the worth had moved since the start of the window; the last point is the
+  balance above it, at the live price. A wallet of stablecoins used to draw as a mountain range — the scale
+  stretched a 0.05% wobble to the full height — and now draws as the near-flat line it is (the scale never
+  stands for less than 1% of the value). A range switch draws at once from the prices already on the device,
+  then again when the network answers.
+- **Settings search finds things.** It searched seventeen English phrases, so "тема" or "мова" found
+  nothing. It now searches what every Settings card says — titles, hints, switches — in the wallet's language
+  and in English, plus words people type that the screen does not (seed, proxy, тема…), and a result opens its
+  pane and scrolls to the card, which lights up for a moment. A test keeps the index in step with the screen.
+- **"Back to top".** A round button fades and rises in at the bottom right once a page is scrolled well past
+  its first screen, and glides back up on a click. Settings → Appearance → Interface turns it off.
+- **Notes that close.** Swap's note on how routes are chosen and Buy crypto's "How it works" card each have
+  a ✕ and stay closed; Settings → Appearance → Interface brings closed notes back. Swap no longer lists every
+  coin it can swap — the pickers are that list.
+
+### A wallet's figures stay that wallet's
+
+- **The total is the whole wallet.** With a network picked above the asset list ("Bitcoin"), the next
+  refresh turned the total into that network's figure, and the wallet switcher showed it as the wallet's
+  balance. The total now always counts every holding; the filter only narrows the list.
+- **A switch no longer shows the previous wallet's figure under the new name.** The switcher read the rows
+  on screen for the open wallet even while they were still the previous wallet's, or the locked
+  placeholders ("$0.00"); it now reads them only once they are the open wallet's own, and its last saved
+  balances until then. Balances are saved only under the wallet they were read for.
+- A wallet the app named itself ("Wallet 2") reads in the wallet's language ("Гаманець 2"), like "Main wallet".
+
 ### A removed wallet can be brought back
 
 - **"Remove" no longer erases a wallet.** One press deleted a wallet's encrypted vault — its only copy of the

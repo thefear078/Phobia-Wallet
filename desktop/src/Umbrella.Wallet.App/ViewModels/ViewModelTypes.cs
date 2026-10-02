@@ -270,9 +270,48 @@ public sealed record P2pVenue(
     string Name, string Kind, string Custody, string Description, string Url, string Tag, string Accent);
 
 /// <summary>A searchable Settings entry: a label, the pane it lives in, and hidden keywords.</summary>
-public sealed record SettingsShortcut(string Label, string Tab, string Keywords)
+/// <summary>One thing Settings search can find: the string that titles it, its pane, every string the
+/// card shows, and words people type for it that the card does not say.</summary>
+public sealed record SettingsShortcut(string TitleKey, string Tab, IReadOnlyList<string> Keys, string Keywords)
 {
-    public string TabLabel => Tab;
+    /// <summary>The title in the wallet's language. Card headings are written in capitals; a result reads
+    /// as a sentence, with the acronyms kept.</summary>
+    public string Label => SentenceCase(Umbrella.Wallet.App.Loc.Instance[TitleKey]);
+
+    /// <summary>The string that names the pane on its tab.</summary>
+    public string TabKey => Tab switch
+    {
+        "Wallets" => "settings.tabWallets",
+        "Security" => "settings.security",
+        "Privacy" => "settings.privacy",
+        "Backup" => "settings.backup",
+        "Guide" => "settings.guide",
+        "Danger" => "settings.danger",
+        _ => "settings.appearance",
+    };
+
+    public string TabLabel => Umbrella.Wallet.App.Loc.Instance[TabKey];
+
+    private static readonly HashSet<string> Acronyms = new(StringComparer.Ordinal)
+    {
+        "IP", "IPV4", "IPV6", "SOCKS5", "PSBT", "QR", "API", "XMR", "BTC", "ETH", "RPC", "KYC", "PIN", "URL",
+        "HD", "UTXO", "NFT", "ID", "EVM", "USD", "SHA256", "PGP", "GPG", "CSV", "PDF",
+    };
+
+    public static string SentenceCase(string text)
+    {
+        if (string.IsNullOrEmpty(text) || text.Any(char.IsLower)) return text;
+        var words = text.Split(' ');
+        for (var i = 0; i < words.Length; i++)
+        {
+            var bare = new string(words[i].Where(char.IsLetterOrDigit).ToArray());
+            if (Acronyms.Contains(bare)) continue;
+            words[i] = bare == "TOR" ? words[i].Replace("TOR", "Tor") : words[i].ToLowerInvariant();
+        }
+        var joined = string.Join(' ', words);
+        var first = joined.IndexOf(joined.FirstOrDefault(char.IsLetter));
+        return first < 0 ? joined : joined[..first] + char.ToUpperInvariant(joined[first]) + joined[(first + 1)..];
+    }
 }
 
 /// <summary>One wallet in the multi-wallet switcher.</summary>

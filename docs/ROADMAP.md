@@ -42,6 +42,8 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | Monero 25-word seeds in all 12 Monero languages (Chinese included) → Monero-only wallet, optional scan-from | ✅ (4.10) |
 | Monero service reachable (RPC bodies with a stated length) and restore over the account's whole life | ✅ (4.10) |
 | Rebrand Umbrella → **Phobia**: vector crystal logos + icons, midnight-violet default theme, every theme adapted, Phobia file names (+ legacy copies) | ✅ (4.10) |
+| Swap any coin for any coin (THORChain → NEAR Intents → Exolix, route named before paying), Nano sends, restorable wallet removal | ✅ (Beta 1) |
+| Balance chart follows the pointer (real worth per point, 1% scale floor), Settings search in every language over every card, “Back to top”, notes that close, wallet total never narrowed by the asset filter | ✅ (Beta 1) |
 
 ---
 

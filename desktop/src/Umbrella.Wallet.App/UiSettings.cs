@@ -43,6 +43,14 @@ public sealed class UiSettings
 
     /// <summary>Show every wallet's balance (as of its last refresh) and their sum in the wallet switcher.</summary>
     public bool ShowAllWalletTotals { get; set; } = false;
+
+    /// <summary>The round "back to top" button that fades in at the bottom right of a page scrolled far
+    /// down. On by default.</summary>
+    public bool ScrollToTopButton { get; set; } = true;
+
+    /// <summary>Notes the user closed (how a swap works, how buying works). They stay closed until
+    /// Settings → Appearance → Interface brings them back.</summary>
+    public List<string> DismissedNotices { get; set; } = [];
     /// <summary>Crystals floating slowly up behind the page. On by default; gated by AnimationsEnabled.</summary>
     public bool FloatingCrystals { get; set; } = false;
 
