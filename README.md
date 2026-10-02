@@ -196,21 +196,21 @@ is the most common way people lose money.
 | Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address — **and now sendable**, fee in ETH |
 | Litecoin (LTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84, full HD scan |
 | Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | real UTXO spend |
-| Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | — | CashAddr, SIGHASH_FORKID |
-| Monero (XMR) | ✅ | ✅ | ✅ | ✅ | — | local `monero-wallet-rpc`, loopback only |
-| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | — | SPL tokens send too, Token-2022 (PayPal USD) included when its extensions allow |
-| TRON (TRX) | ✅ | ✅ | ✅ | ✅ | — | + every TRC-20 at the same address |
-| USDT (TRC-20) | ✅ | ✅ | ✅ | ✅ | — | same address as TRX; fee paid in TRX |
-| TON | ✅ | ✅ | ✅ | ✅ | — | wallet v4R2, pinned to `@ton/ton` |
-| Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | — | CIP-1852, BIP32-Ed25519 |
-| Zcash (ZEC) | ✅ | ✅ | ✅ | — | — | **transparent `t1…` only** — not shielded |
-| XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | — | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
-| Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | — | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
-| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | — | — | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
-| NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | — | from your implicit account, to any `.near` name or implicit account |
+| Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | ✅ | CashAddr, SIGHASH_FORKID |
+| Monero (XMR) | ✅ | ✅ | ✅ | ✅ | ✅ | local `monero-wallet-rpc`, loopback only |
+| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | ✅ | SPL tokens send too, Token-2022 (PayPal USD) included when its extensions allow |
+| TRON (TRX) | ✅ | ✅ | ✅ | ✅ | ✅ | + every TRC-20 at the same address |
+| USDT (TRC-20) | ✅ | ✅ | ✅ | ✅ | ✅ | same address as TRX; fee paid in TRX |
+| TON | ✅ | ✅ | ✅ | ✅ | 🟡 | wallet v4R2, pinned to `@ton/ton` |
+| Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | ✅ | CIP-1852, BIP32-Ed25519 |
+| Zcash (ZEC) | ✅ | ✅ | ✅ | ✅ | ✅ | **transparent `t1…` only** — not shielded |
+| XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | ✅ | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
+| Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | ✅ | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
+| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | — | ✅ | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
+| NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | 🟡 | from your implicit account, to any `.near` name or implicit account |
 | Polkadot (DOT) | ✅ | ✅ | ✅ | — | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub |
-| Nano (XNO) | ✅ | ✅ | — | — | — | restores in Ledger / Trust / Nault (BIP39); incoming XNO stays *receivable* until a signing wallet pockets it — the balance counts it, sending is not here yet |
-| Decred (DCR) | ✅ | ✅ | — | — | — | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); sending is not here yet |
+| Nano (XNO) | ✅ | ✅ | ✅ | ✅ | ✅ | restores in Ledger / Trust / Nault (BIP39); no fee — a send pockets what it needs first, with proof of work computed on your computer |
+| Decred (DCR) | ✅ | ✅ | — | ✅ | 🟡 | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); received from a swap, sending is not here yet |
 | Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
 | zkSync Era (ETH) | ✅ | ✅ | ✅ | 🟡 | — | the gas comes from zkSync's own estimate, not Ethereum's 21,000 |
 
@@ -218,8 +218,12 @@ Plus the native coin of every major EVM network at the same `0x` address (BNB, M
 and ETH on Arbitrum / Optimism / Base), and NFTs listed by name and count with **no image fetch**, so
 viewing them never leaks your IP.
 
-Swaps are non-custodial via THORChain: your coin goes to a THORChain vault with a signed memo and the
-network delivers to your own address. Nobody holds your funds in between.
+Any coin swaps for any other, each on its own network, and always to your own address. The route is chosen
+by trust and named before you pay: **THORChain** first (nobody holds your coins), then **NEAR Intents** (a
+smart contract holds them for the swap and refunds you if it cannot be filled; +0.25% without a partner
+key), and the **Exolix** exchange only for Monero, Nano and Decred, which nothing decentralised reaches — it
+holds the coins for the minutes of the swap, and the screen says so in a warning colour. 🟡 in the table: a
+route exists but did not quote that coin when this was written.
 
 ## Download
 
@@ -232,9 +236,9 @@ This is the icon you will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | `PhobiaWallet-Setup-4.10.0-beta.1.exe` |
-| **Windows portable** | `PhobiaWallet-4.10.0-beta.1-win-x64-portable.exe` — one file, no install, leaves nothing behind |
-| **Linux** | `PhobiaWallet-4.10.0-beta.1-linux-x64.tar.gz` |
+| **Windows installer** | `PhobiaWallet-Setup-Beta-1.exe` |
+| **Windows portable** | `PhobiaWallet-Beta-1-win-x64-portable.exe` — one file, no install, leaves nothing behind |
+| **Linux** | `PhobiaWallet-Beta-1-linux-x64.tar.gz` |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
@@ -245,12 +249,12 @@ Every release ships `SHA256SUMS-<version>.txt`. Check it before you run anything
 
 ```bash
 # Linux / macOS — run in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-4.10.0-beta.1.txt
+sha256sum -c SHA256SUMS-Beta-1.txt
 ```
 
 ```powershell
 # Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\PhobiaWallet-Setup-4.10.0-beta.1.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-Beta-1.exe -Algorithm SHA256
 ```
 
 If the hash does not match, do not run it. Better still, [build it yourself](docs/building.md) — the

@@ -1305,6 +1305,13 @@
                 <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
                            Text="{Binding [sec.sendDesc], Source={x:Static app:Loc.Instance}}"/>
 
+                <!-- Paying a swap: what it buys and through whom, above the fields it filled in. -->
+                <Border IsVisible="{Binding HasSwapPayment}" Background="{DynamicResource UmCardAlt}"
+                        BorderBrush="{DynamicResource UmAccent}" BorderThickness="1" CornerRadius="10" Padding="12,10">
+                  <TextBlock Text="{Binding SwapPaymentBanner}" TextWrapping="Wrap" FontSize="12.5"
+                             Foreground="{DynamicResource UmText}"/>
+                </Border>
+
                 <!-- Step 1 · what & where -->
                 <Border Classes="card">
                   <StackPanel Spacing="12">
@@ -1913,8 +1920,17 @@
                             <TextBox Classes="bare" Text="{Binding SwapAmount}" Watermark="0.0" BorderThickness="0" Padding="0"
                                      MinHeight="0" Background="Transparent" FontSize="26" FontWeight="SemiBold"/>
                           </StackPanel>
-                          <ComboBox Grid.Column="1" MinWidth="118" VerticalAlignment="Center"
-                                    ItemsSource="{Binding SwapFromOptions}" SelectedItem="{Binding SwapFromSymbol}"/>
+                          <ComboBox Grid.Column="1" MinWidth="150" MaxWidth="220" VerticalAlignment="Center"
+                                    ItemsSource="{Binding SwapFromOptions}" SelectedItem="{Binding SwapFromAsset}">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate x:DataType="net:SwapAsset">
+                                <StackPanel Spacing="1" Margin="0,2">
+                                  <TextBlock Text="{Binding Symbol}" FontWeight="SemiBold"/>
+                                  <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                                </StackPanel>
+                              </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
                         </Grid>
                       </Border>
 
@@ -1946,8 +1962,17 @@
                                        Foreground="{DynamicResource UmTextMuted}"
                                        IsVisible="{Binding !HasSwapQuote}"/>
                           </StackPanel>
-                          <ComboBox Grid.Column="1" MinWidth="118" VerticalAlignment="Center"
-                                    ItemsSource="{Binding SwapToOptions}" SelectedItem="{Binding SwapToSymbol}"/>
+                          <ComboBox Grid.Column="1" MinWidth="150" MaxWidth="220" VerticalAlignment="Center"
+                                    ItemsSource="{Binding SwapToOptions}" SelectedItem="{Binding SwapToAsset}">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate x:DataType="net:SwapAsset">
+                                <StackPanel Spacing="1" Margin="0,2">
+                                  <TextBlock Text="{Binding Symbol}" FontWeight="SemiBold"/>
+                                  <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                                </StackPanel>
+                              </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
                         </Grid>
                       </Border>
                     </Grid>
@@ -1972,6 +1997,22 @@
                       <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [swap.youGet], Source={x:Static app:Loc.Instance}}"/>
                       <TextBlock Classes="mono" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource UmPos}" Text="{Binding SwapExpectedOut}"/>
                     </StackPanel>
+
+                    <!-- Who carries the swap, and what that means for the coins in between. -->
+                    <Border CornerRadius="8" Padding="10,8" Background="{DynamicResource UmCardAlt}" BorderThickness="1"
+                            BorderBrush="{DynamicResource UmBorder2}" IsVisible="{Binding !SwapRouteCustodial}">
+                      <StackPanel Spacing="2">
+                        <TextBlock Classes="eyebrow" Text="{Binding [swap.route], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock Text="{Binding SwapRouteText}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource UmTextSoft}"/>
+                      </StackPanel>
+                    </Border>
+                    <Border CornerRadius="8" Padding="10,8" Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1"
+                            IsVisible="{Binding SwapRouteCustodial}">
+                      <StackPanel Spacing="2">
+                        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [swap.route], Source={x:Static app:Loc.Instance}}"/>
+                        <TextBlock Text="{Binding SwapRouteText}" TextWrapping="Wrap" FontSize="12" Foreground="#E7CA83"/>
+                      </StackPanel>
+                    </Border>
 
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
                       <TextBlock Grid.Row="0" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.rate], Source={x:Static app:Loc.Instance}}"/>
@@ -2000,7 +2041,7 @@
                     <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
                                Text="{Binding [swap.confirmNote], Source={x:Static app:Loc.Instance}}"/>
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Button Classes="danger" Content="{Binding [swap.confirmBtn], Source={x:Static app:Loc.Instance}}" IsEnabled="{Binding !IsBusy}" Command="{Binding ConfirmSwapCommand}"/>
+                      <Button Classes="danger" Content="{Binding SwapConfirmLabel}" IsEnabled="{Binding !SwapBusy}" Command="{Binding ConfirmSwapCommand}"/>
                       <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}" Command="{Binding CancelSwapCommand}"/>
                     </StackPanel>
                   </StackPanel>
@@ -2024,6 +2065,21 @@
                                    Width="56" Height="56" RepeatCount="{Binding #RootWindow.((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Top"/>
                     <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmPos}" TextWrapping="Wrap"
                                Text="{Binding SwapSuccess}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+                <!-- A paid swap, followed until it ends. -->
+                <Border Classes="card" IsVisible="{Binding HasSwapTrack}">
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="eyebrow" Text="{Binding [swap.st.title], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Text="{Binding SwapTrackTitle}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding SwapTrackStatus}" Foreground="{DynamicResource UmAccentBright}" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Button Classes="ghost" Content="{Binding [swap.st.check], Source={x:Static app:Loc.Instance}}" Command="{Binding RefreshSwapStatusCommand}"/>
+                      <Button Classes="ghost" Content="{Binding [swap.track], Source={x:Static app:Loc.Instance}}" Command="{Binding OpenUrlCommand}"
+                              CommandParameter="{Binding SwapTrackUrl}"
+                              IsVisible="{Binding SwapTrackUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                      <Button Classes="ghost" Content="{Binding [common.close], Source={x:Static app:Loc.Instance}}" Command="{Binding DismissSwapTrackCommand}"/>
+                    </StackPanel>
                   </StackPanel>
                 </Border>
               </StackPanel>

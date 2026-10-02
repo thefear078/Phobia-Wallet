@@ -182,7 +182,7 @@ public partial class MainViewModel
             }
 
             var release = result.Release;
-            var newVersion = !string.Equals(UpdateLatestVersion, VersionText(release.Version), StringComparison.Ordinal);
+            var newVersion = !string.Equals(UpdateLatestVersion, VersionName(release.Version), StringComparison.Ordinal);
 
             // A release newer than the one already downloaded supersedes it. Keeping the old file as
             // "ready" would name the new version on the banner and install the old one on the click.
@@ -193,7 +193,7 @@ public partial class MainViewModel
             }
 
             _latestRelease = release;
-            UpdateLatestVersion = VersionText(release.Version);
+            UpdateLatestVersion = VersionName(release.Version);
             UpdateNotes = TrimNotes(release.Notes);
             UpdateAvailable = true;
             if (newVersion) UpdateBannerDismissed = false;
@@ -340,6 +340,10 @@ public partial class MainViewModel
     }
 
     private static string VersionText(ReleaseVersion v) => v.ToString();
+
+    /// <summary>A release as the user knows it: "Beta 2", or "4.10.0" for a full release.</summary>
+    private static string VersionName(ReleaseVersion v) =>
+        v.FileLabel.StartsWith("Beta-", StringComparison.Ordinal) ? v.FileLabel.Replace('-', ' ') : v.ToString();
 
     /// <summary>Release notes are markdown and can be long; the banner's details show the start of them.</summary>
     private static string TrimNotes(string notes)

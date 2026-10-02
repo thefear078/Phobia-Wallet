@@ -37,8 +37,17 @@ public readonly record struct ReleaseVersion(int Major, int Minor, int Patch, st
 {
     public bool IsPrerelease => Pre.Length > 0;
 
-    /// <summary>"4.10.0-beta.1" — the form release files are named with.</summary>
+    /// <summary>"4.10.0-beta.1" — the version itself, as VERSION and the tags carry it.</summary>
     public override string ToString() => IsPrerelease ? $"{Major}.{Minor}.{Patch}-{Pre}" : $"{Major}.{Minor}.{Patch}";
+
+    /// <summary>
+    /// What the release's files are named with: "Beta-1" for 4.10.0-beta.1 — a beta is called by its
+    /// beta number, the way people say it — and the plain version ("4.10.0") for a full release.
+    /// </summary>
+    public string FileLabel =>
+        Pre.StartsWith("beta.", StringComparison.OrdinalIgnoreCase) && int.TryParse(Pre["beta.".Length..], out var n)
+            ? $"Beta-{n}"
+            : ToString();
 
     public int CompareTo(ReleaseVersion other)
     {
@@ -317,7 +326,7 @@ public static class UpdateService
 
     private static string NameFor(string product, InstallKind kind, ReleaseVersion version)
     {
-        var v = version.ToString();
+        var v = version.FileLabel;
         return kind switch
         {
             InstallKind.WindowsPortable => $"{product}-{v}-win-x64-portable.exe",
@@ -327,7 +336,7 @@ public static class UpdateService
     }
 
     /// <summary>The checksum manifest's name for a version.</summary>
-    public static string SumsNameFor(ReleaseVersion version) => $"SHA256SUMS-{version}.txt";
+    public static string SumsNameFor(ReleaseVersion version) => $"SHA256SUMS-{version.FileLabel}.txt";
 
     /// <summary>The download URL for a file of a release — only ever this project's own.</summary>
     public static string DownloadUrl(ReleaseInfo release, string fileName) =>

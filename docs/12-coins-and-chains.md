@@ -512,5 +512,5 @@ threat model names each one as an open gap rather than implying it away.
 | 24 | Cosmos | ATOM | ✅ Full | Receive, available balance and send (memo) |
 | 25 | Near | NEAR | ✅ Full | Receive, balance and send from the implicit account |
 | 26 | Polkadot | DOT | ✅ Full | Receive, balance (Asset Hub + relay), send from Asset Hub |
-| 27 | Nano | XNO | ⚠️ Partial | Receive, balance (incl. receivable) and history; no send yet |
+| 27 | Nano | XNO | ✅ Full | Send, receive, balance (incl. receivable) and history; no fee |
 | 28 | Decred | DCR | ⚠️ Partial | Receive, balance and history; no send yet |

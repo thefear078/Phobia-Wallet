@@ -105,11 +105,14 @@ public partial class MainViewModel
     /// coins you own would tell the price server which coins those are; asking for the whole list tells
     /// it nothing it could not see from any other copy of this wallet.
     /// </summary>
-    private async Task<Dictionary<string, IReadOnlyList<double>>> MarketSeriesAsync(string marketRange)
+    private async Task<Dictionary<string, IReadOnlyList<double>>> MarketSeriesAsync(
+        string marketRange, IReadOnlyCollection<string>? only = null)
     {
+        var wanted = (only ?? Market.Select(m => m.Symbol).ToList())
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (_seriesByRange.TryGetValue(marketRange, out var cached) &&
             DateTimeOffset.UtcNow - cached.At < SeriesReuse &&
-            Market.All(m => cached.Series.ContainsKey(m.Symbol) || !m.HasPrice))
+            wanted.All(s => cached.Series.ContainsKey(s) || Market.FirstOrDefault(m => m.Symbol == s) is not { HasPrice: true }))
         {
             return cached.Series;
         }
@@ -118,20 +121,30 @@ public partial class MainViewModel
             ? new Dictionary<string, IReadOnlyList<double>>(previous, StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, IReadOnlyList<double>>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var symbol in Market.Select(m => m.Symbol).Distinct(StringComparer.OrdinalIgnoreCase).ToList())
+        // Four at a time, and only what is asked for: the balance chart needs the coins held, not every
+        // coin in the market list fetched one after another.
+        using var gate = new SemaphoreSlim(4);
+        var results = await Task.WhenAll(wanted.Where(s => !fetched.ContainsKey(s)).Select(async symbol =>
         {
-            if (fetched.ContainsKey(symbol)) continue;
+            await gate.WaitAsync();
             try
             {
                 var series = await _rates.GetPriceSeriesAsync(symbol, marketRange, CancellationToken.None);
-                if (series.Count > 1) fetched[symbol] = series;
+                return (symbol, series);
             }
             catch
             {
                 // A coin without history is left out of the chart and named under it — never guessed.
+                return (symbol, (IReadOnlyList<double>)[]);
             }
-
-            await Task.Delay(120);
+            finally
+            {
+                gate.Release();
+            }
+        }));
+        foreach (var (symbol, series) in results)
+        {
+            if (series.Count > 1) fetched[symbol] = series;
         }
 
         _seriesByRange[marketRange] = (DateTimeOffset.UtcNow, fetched);
@@ -164,7 +177,7 @@ public partial class MainViewModel
 
         if (!HasPortfolioSeries) PortfolioChartStatus = Loc.Instance["chart.loading"];
 
-        var series = await MarketSeriesAsync(MarketRangeFor(PortfolioRange));
+        var series = await MarketSeriesAsync(MarketRangeFor(PortfolioRange), holdings.Select(h => h.Symbol).ToList());
         if (version != _portfolioChartVersion) return;   // a newer request superseded this one
 
         var total = new double[PortfolioPoints];

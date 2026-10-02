@@ -11,6 +11,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 Published as a **beta**: a GitHub pre-release. A 4.9.0 copy does not update to it by itself (download it
 from the release page); a beta copy updates to newer betas, and then to the full release, by itself.
 
+### Swap any coin for any coin
+
+- **Every coin the wallet holds can be swapped for every coin it can receive**, each on its own network:
+  Bitcoin, Litecoin, Dogecoin, Bitcoin Cash, Zcash, Ethereum and its networks (Arbitrum, Base, Optimism,
+  BSC, Avalanche, Polygon), TRON and its USDT, Solana, XRP, Cardano, Stellar, TON, Cosmos Hub, Monero,
+  Nano and Decred. The pickers show the coin and its network ("USDT · TRON"), and only what the open wallet
+  can pay with or receive at.
+- **Three routes, chosen by trust, and named before anything is paid.** THORChain first — nobody holds the
+  coins. Then NEAR Intents (the 1Click API): the coins go to a one-time deposit address, a smart contract
+  fills the swap and refunds the payer if it cannot; without a partner key it adds a 0.25% fee, and the
+  quote says so. Then Exolix, an exchange that holds the coins for the minutes of the swap — the only route
+  for Monero, Nano and Decred, shown in a warning colour. When one route cannot quote a pair, the next is
+  asked, and when none can, each one's own reason is shown.
+- **One review for every payment.** THORChain deposits from BTC, LTC, DOGE, BCH and ETH are signed in the
+  swap screen as before. Every other route opens its payment on the Send screen, filled in — coin, deposit
+  address, amount, memo — under a banner that says what it buys and through whom, for the same review and
+  password as any send. Once paid, the swap is followed until it is done, refunded or failed.
+- NEAR Intents and Exolix are in the network counterparty list: both are told the paying and the receiving
+  address.
+
+### Nano sends
+
+- **XNO can be sent.** A send first pockets the received payments it needs (Nano only spends what the
+  account's own chain has received), then publishes a state send block. There is no fee: each block carries
+  a few seconds of proof of work computed on this computer — an unrolled BLAKE2b-64 made it about ten times
+  faster, so a send's work takes seconds, not a minute and a half. The block hash is pinned to a real mainnet
+  block, the signature byte for byte to the Nano documentation's signed block, and a live node accepts the
+  signature and the work (a block with one signature bit flipped is refused as "Bad signature").
+
+### Faster
+
+- **Charts open drawn.** The market list's sparklines, a coin's chart and the balance chart used to fetch the
+  same candles three times; they now share them, and identical requests in flight are made once. A coin's
+  chart draws from the candles already in hand (in ~0.15 s) and only fetches when they are old; the last
+  session's candles are kept with the prices, so the sparklines draw before the network answers.
+- **The balance chart** reads only the coins held, four at a time — it used to walk every listed coin one
+  after another.
+- **Switching theme** builds the theme off to the side and swaps it in whole: ~0.06 s instead of ~0.6 s of a
+  frozen window.
+- **Back in the window, the balance is read again** when it is older than half a minute, instead of waiting up
+  to two minutes for the next timer tick.
+
 ### Wallets, Market and history
 
 - **Switching wallets no longer stops working after the first switch.** The switch ended with the new
@@ -169,10 +211,12 @@ from the release page); a beta copy updates to newer betas, and then to the full
 - **The wallet is called Phobia Wallet.** Same code, same keys, same vault: nothing about anyone's money
   moves. The data folder and the installer's identity stay as they were, so installed and portable copies
   update in place.
-- **Phobia files.** Downloads are `PhobiaWallet-Setup-<v>.exe`, `PhobiaWallet-<v>-win-x64-portable.exe` and
-  `PhobiaWallet-<v>-linux-x64.tar.gz`; the program is `Phobia.exe` on Windows and `phobia-wallet` on Linux.
-  Every release also attaches the same files under their `UmbrellaWallet-` names (same bytes, listed in the
-  checksums), because copies from before the rename look for those when they update themselves. An upgrade
+- **Phobia files, named the way people say them.** A beta's downloads carry its beta number —
+  `PhobiaWallet-Setup-Beta-1.exe`, `PhobiaWallet-Beta-1-win-x64-portable.exe`,
+  `PhobiaWallet-Beta-1-linux-x64.tar.gz` and `SHA256SUMS-Beta-1.txt` — and Windows lists the program as
+  "Phobia Wallet Beta 1"; a full release keeps its version number. The program is `Phobia.exe` on Windows
+  and `phobia-wallet` on Linux. The `UmbrellaWallet-` copies are no longer attached: no released version
+  downloads its own update (4.9.0 only reads the version and links to the releases page). An upgrade
   removes the old `Umbrella.exe` and its shortcuts; a pin on the old exe needs pinning again.
 - **A new logo** — two cut crystals, drawn as vectors so they are sharp from the 16 px title bar to the
   installer — and a new app icon rendered from it at every size. The launch screen shows the large

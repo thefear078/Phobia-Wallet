@@ -179,7 +179,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | ATOM | ✅ | ✅ | ✅ | ❌ | receive, available balance and send (N.6) — MsgSend + memo, pinned to cosmjs; staked ATOM not counted. History: public REST servers prune their tx index (one answer in nine for an account with known sends), so it stays off rather than show an empty list that means nothing |
 | NEAR | ✅ | ✅ | ✅ | ✅ | receive, balance and send (N.7) — one Transfer from the implicit account, pinned to near-api-js |
 | DOT | ✅ | ✅ | ✅ | ❌ | receive + balance (Asset Hub + relay), send from Asset Hub (N.8) |
-| XNO | ✅ | ✅ | ❌ | ✅ | receive + balance (N.11); history from the node's `account_history` (Beta 1) — m/44'/165'/0', ed25519-BLAKE2b, pinned to the Nano docs' vector; balance = pocketed + receivable; send needs signed blocks with proof of work |
+| XNO | ✅ | ✅ | ✅ | ✅ | receive, balance, history and send (N.11) — m/44'/165'/0', ed25519-BLAKE2b; a send pockets the receivable it needs (open/receive blocks), then publishes a state send block; hash pinned to a mainnet block, signature to the Nano docs, proof of work computed locally (an unrolled BLAKE2b-64, seconds on a desktop) and accepted by a live node (NanoSendLiveTests) |
 | DCR | ✅ | ✅ | ❌ | ✅ | receive + balance (N.12); history from dcrdata's Insight API, netted for change (Beta 1) — m/44'/42'/0'/0/0, BLAKE-256 Hash160 + checksum, pinned to dcrd and Trust Wallet |
 
 ---

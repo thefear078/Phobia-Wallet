@@ -50,6 +50,8 @@ public partial class MainWindow : Window
         PointerPressed += OnUserActivity;
         KeyDown += OnUserActivity;
         Opened += (_, _) => ResetAutoLock();
+        // Back in the window: balances that may have moved meanwhile are read now, not at the next tick.
+        Activated += (_, _) => (DataContext as MainViewModel)?.OnWindowActivated();
         // Privacy: lock the vault the instant the window is minimized, if the user opted in.
         PropertyChanged += (_, e) =>
         {

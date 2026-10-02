@@ -338,8 +338,13 @@ public static class Theming
     public static void Apply(string id)
     {
         if (!Palettes.TryGetValue(id, out var palette)) return;
-        var resources = Application.Current?.Resources;
-        if (resources is null) return;
+        var app = Application.Current?.Resources;
+        if (app is null) return;
+
+        // Built off to the side and swapped in whole. Writing each of the ~50 keys into the application's
+        // resources made every control in the window re-read its resources ~50 times: switching theme
+        // froze the window for most of a second.
+        var resources = new Avalonia.Controls.ResourceDictionary();
 
         for (var i = 0; i < Keys.Length; i++)
         {
@@ -427,8 +432,23 @@ public static class Theming
         PublishSignature(resources, palette, hero, accent);
         if (id == DefaultTheme) PublishPhobiaSignature(resources);
 
+        // The application's own defaults for these keys (App.axaml) would win over a merged dictionary,
+        // so they step aside the first time; from then on the theme lives only in its dictionary.
+        foreach (var key in resources.Keys.ToList())
+        {
+            if (app.ContainsKey(key)) app.Remove(key);
+        }
+
+        var at = _applied is null ? -1 : app.MergedDictionaries.IndexOf(_applied);
+        if (at >= 0) app.MergedDictionaries[at] = resources;
+        else app.MergedDictionaries.Add(resources);
+        _applied = resources;
+
         Current = id;
     }
+
+    /// <summary>The theme dictionary in use, replaced whole by the next <see cref="Apply"/>.</summary>
+    private static Avalonia.Controls.ResourceDictionary? _applied;
 
     /// <summary>
     /// The balance card, the action tiles and the active navigation item: one treatment on every theme,

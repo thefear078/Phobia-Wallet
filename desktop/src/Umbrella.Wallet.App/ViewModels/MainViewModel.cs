@@ -1208,6 +1208,7 @@ public partial class MainViewModel : ViewModelBase
     private DotSendQuote? _dotQuote;
     private AdaSendQuote? _adaQuote;
     private XlmSendQuote? _xlmQuote;
+    private NanoSendQuote? _nanoQuote;
     private NearSendQuote? _nearQuote;
     private XrpSendQuote? _xrpQuote;
     private AtomSendQuote? _atomQuote;
@@ -1332,6 +1333,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly PolkadotTransactionSender _dotSender = new();
     private readonly CardanoTransactionSender _adaSender = new();
     private readonly StellarTransactionSender _xlmSender = new();
+    private readonly NanoSender _nanoSender = new();
     private readonly NearTransactionSender _nearSender = new();
     private readonly XrpTransactionSender _xrpSender = new();
     private readonly CosmosTransactionSender _atomSender = new();
@@ -1497,6 +1499,22 @@ public partial class MainViewModel : ViewModelBase
     /// nothing goes online.
     /// </summary>
     public static bool StartTorAutomatically { get; set; } = true;
+
+    /// <summary>When balances were last read in full.</summary>
+    private DateTimeOffset _lastLiveRefresh = DateTimeOffset.MinValue;
+
+    /// <summary>
+    /// The window came back to the front. Balances older than half a minute are read again at once, so
+    /// money that arrived while the wallet was in the background shows when the user looks — not up to
+    /// two minutes later at the next timer tick.
+    /// </summary>
+    public void OnWindowActivated()
+    {
+        if (!IsUnlocked || PendingPhraseBackup || IsBusy) return;
+        if (DateTimeOffset.UtcNow - _lastLiveRefresh < TimeSpan.FromSeconds(30)) return;
+        _lastLiveRefresh = DateTimeOffset.UtcNow;   // one read per return, however often the window is clicked
+        _ = RefreshLiveDataAsync();
+    }
 
     private void StartAutoRefresh()
     {
@@ -1684,14 +1702,14 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<NewsItemViewModel> News { get; } =
     [
         new("BETA", "Phobia beta — the wallet works again, end to end",
-            "Coins read again on Tor and off it, and every screen got the attention it was missing.\n\nCONNECTION\n• “Tor only” now starts Tor by itself. Before, it was remembered but Tor was not, and every balance read “unknown” after a restart.\n• A Tor left behind by an earlier run no longer stops Tor from starting, and a second copy of the wallet takes the next free port.\n• Servers that stopped answering were replaced: Ethereum, Polygon, Fantom and the other EVM networks, Bitcoin, Dogecoin, Zcash, prices, TRON tokens.\n\nYOUR MONEY FIRST\n• Your assets list shows what you hold, biggest first; coins at zero fold behind one button.\n• An imported phrase is searched at the paths MetaMask, Ledger Live, Phantom, Solflare, TronLink and older Bitcoin wallets use. What is found stays out of your assets unless you switch it on (Settings → Wallets).\n• Optional: every wallet\u2019s balance and the total in the wallet switcher.\n\nMARKET\n• A real exchange chart: candles, a volume band, the price axis on the right with the last price tagged, a crosshair on both axes and the hovered candle\u2019s open, high, low and close. Candle mode drew no candles before.\n• Charts and 24-hour stats fall back to KuCoin and Bybit when Binance refuses.\n\nACTIVITY\n• Every event has its own icon, the list is in time order with Today / Yesterday headers, and transfers show what they are worth.\n\nSECURITY\n• The password is asked again before every send (on by default).\n• One button in the Security Center turns on every recommended protection.\n\nStellar, Cosmos, NEAR, Nano and Decred have their own logos now.\n\nWALLETS, MARKET AND HISTORY\n• Switching wallets keeps working: the Switch buttons no longer stay grey after the first switch.\n• Every wallet’s balance (Settings → Wallets) shows each wallet and the total, read in the background; a wallet not read yet shows “—”.\n• Market lists blockchains and tokens apart — Uniswap and USDT are tokens on a network, not blockchains.\n• History for Dogecoin, Zcash, Nano and Decred, and every coin’s history now loads at once.",
+            "Coins read again on Tor and off it, and every screen got the attention it was missing.\n\nCONNECTION\n• “Tor only” now starts Tor by itself. Before, it was remembered but Tor was not, and every balance read “unknown” after a restart.\n• A Tor left behind by an earlier run no longer stops Tor from starting, and a second copy of the wallet takes the next free port.\n• Servers that stopped answering were replaced: Ethereum, Polygon, Fantom and the other EVM networks, Bitcoin, Dogecoin, Zcash, prices, TRON tokens.\n\nYOUR MONEY FIRST\n• Your assets list shows what you hold, biggest first; coins at zero fold behind one button.\n• An imported phrase is searched at the paths MetaMask, Ledger Live, Phantom, Solflare, TronLink and older Bitcoin wallets use. What is found stays out of your assets unless you switch it on (Settings → Wallets).\n• Optional: every wallet\u2019s balance and the total in the wallet switcher.\n\nMARKET\n• A real exchange chart: candles, a volume band, the price axis on the right with the last price tagged, a crosshair on both axes and the hovered candle\u2019s open, high, low and close. Candle mode drew no candles before.\n• Charts and 24-hour stats fall back to KuCoin and Bybit when Binance refuses.\n\nACTIVITY\n• Every event has its own icon, the list is in time order with Today / Yesterday headers, and transfers show what they are worth.\n\nSECURITY\n• The password is asked again before every send (on by default).\n• One button in the Security Center turns on every recommended protection.\n\nStellar, Cosmos, NEAR, Nano and Decred have their own logos now.\n\nSWAP ANY COIN\n• Every coin you hold can be swapped for every coin you can receive, on its own network — Monero, Nano and Decred included. The route is chosen by trust and named before you pay: THORChain, then NEAR Intents, then the Exolix exchange (which holds the coins during the swap).\n• Nano can be sent now, with no fee: a few seconds of proof of work on your computer.\n• Charts open drawn, the balance chart reads only what you hold, a theme switches in a blink, and the balance is read again when you come back to the window.\n\nWALLETS, MARKET AND HISTORY\n• Switching wallets keeps working: the Switch buttons no longer stay grey after the first switch.\n• Every wallet’s balance (Settings → Wallets) shows each wallet and the total, read in the background; a wallet not read yet shows “—”.\n• Market lists blockchains and tokens apart — Uniswap and USDT are tokens on a network, not blockchains.\n• History for Dogecoin, Zcash, Nano and Decred, and every coin’s history now loads at once.",
             "2026-10-01", "v410beta"),
         new("4.10", "Umbrella is now Phobia",
             "Same wallet, new name and a new look.\n\n" +
             "• Nothing about your money changes. Your recovery phrase, your addresses and your encrypted vault are exactly where they were, and every setting carries over.\n" +
             "• A new crystal logo and a bold, quiet midnight-violet theme are the new default. If you liked the gold, it is still in Settings → Appearance as Honey gold, and every other theme shares the same design in its own colours. Crystals float behind the page, glints twinkle and light sweeps the balance card — each can be switched off in Settings → Appearance. Stickers are off by default and can be turned back on there too.\n" +
             "• Monero seeds in all 12 of Monero's languages — Chinese included — now import as a Monero-only wallet.\n\n" +
-            "The official channel and the GitHub releases are where they were. Downloads are named PhobiaWallet- now, and the old UmbrellaWallet- names are attached as well, so every installed copy can still update itself.",
+            "The official channel and the GitHub releases are where they were. Downloads are named PhobiaWallet- now, and a beta by its number: PhobiaWallet-Setup-Beta-1.exe.",
             "2026-09-30"),
         new("4.7", "Version 4.7 — you choose which server sees your addresses",
             "Your keys never leave your device. That is true, and every wallet says it.\n\n" +
@@ -2014,6 +2032,7 @@ public partial class MainViewModel : ViewModelBase
         "SOL", "TON", "ADA", "XLM", "NEAR", "XRP",   // account-based (XLM: memo; NEAR: implicit account; XRP: tag)
         "ATOM",                                      // Cosmos Hub (memo)
         "DOT",                                       // Polkadot Asset Hub (sr25519)
+        "XNO",                                       // Nano state blocks, proof of work computed here
         "TRX", "USDT",                               // TRON + TRC-20
         "XMR",                                       // Monero (local wallet-rpc)
     };
@@ -2042,6 +2061,7 @@ public partial class MainViewModel : ViewModelBase
         new("XRP", "XRP", "XRP Ledger · destination tag for exchange deposits"),
         new("ATOM", "Cosmos Hub", "Cosmos Hub · memo for exchange deposits"),
         new("DOT", "Polkadot", "Polkadot Asset Hub · where DOT balances now live"),
+        new("XNO", "Nano", "Nano · no fee, proof of work computed here"),
         new("BNB", "BNB", "BNB Smart Chain (BEP-20 address)"),
         new("MATIC", "Polygon", "Polygon network"),
         new("AVAX", "Avalanche", "Avalanche C-Chain"),
@@ -2518,6 +2538,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnSendToChanged(string value)
     {
         HasSendQuote = false;
+        OnPropertyChanged(nameof(HasSwapPayment));   // the swap banner belongs to its deposit address only
 
         // A pasted bitcoin: link is unpacked into address + amount (roadmap P2.2); the raw link text
         // is not an address and is not validated as one.
@@ -3563,6 +3584,7 @@ public partial class MainViewModel : ViewModelBase
     {
         _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
         _otherTotalsCts?.Cancel();   // and the other wallets' balances stop being read
+        ForgetSwapState();           // a swap payment or a followed swap belongs to the wallet that made it
         PickUnlockTagline();   // a new line on the lock screen each time
         ToastVisible = false;   // a notice about this wallet (or the one being opened) never outlives the lock
         _refreshCts?.Cancel();
@@ -4240,6 +4262,21 @@ public partial class MainViewModel : ViewModelBase
             if (idx >= 0) Market[idx] = MarketRowViewModel.LiveCoin(sym, name, e.Price, e.Change, holdable) with { Spark = Market[idx].Spark, IsWatched = Market[idx].IsWatched };
         }
 
+        // Last session's candles: every sparkline and the first chart opened draw from them at once, and
+        // the live fetch replaces them as it answers.
+        foreach (var e in cached.Where(e => e.Candles is { Count: > 1 } && e.Range is not null))
+        {
+            var candles = e.Candles!.Where(c => c.Length >= 4)
+                .Select(c => new PriceCandle(c[0], c[1], c[2], c[3], c.Length > 4 ? c[4] : 0)).ToList();
+            if (candles.Count < 2) continue;
+            PublicMarketRatesClient.SeedCandles(e.Symbol, e.Range!, candles, DateTimeOffset.FromUnixTimeSeconds(e.At));
+            if (!string.Equals(e.Range, ChartRange, StringComparison.OrdinalIgnoreCase)) continue;
+            var closes = candles.Select(c => c.Close).ToList();
+            RememberSeries(ChartRange, e.Symbol, closes);
+            var idx = Market.ToList().FindIndex(m => string.Equals(m.Symbol, e.Symbol, StringComparison.OrdinalIgnoreCase));
+            if (idx >= 0 && !Market[idx].HasSpark) Market[idx] = Market[idx] with { Spark = BuildChartPoints(closes, SparkWidth, SparkHeight) };
+        }
+
         ApplyWatchlist();
     }
 
@@ -4270,8 +4307,16 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private void SaveMarketCache() =>
-        _marketCache.Save(Market.Where(m => m.Price > 0).Select(m => new MarketCache.Entry(m.Symbol, m.Price, m.Change24h)));
+    private void SaveMarketCache()
+    {
+        var candles = PublicMarketRatesClient.CandlesFor(ChartRange)
+            .ToDictionary(c => c.Symbol, StringComparer.OrdinalIgnoreCase);
+        _marketCache.Save(Market.Where(m => m.Price > 0).Select(m =>
+            candles.TryGetValue(m.Symbol, out var c)
+                ? new MarketCache.Entry(m.Symbol, m.Price, m.Change24h, ChartRange, c.At.ToUnixTimeSeconds(),
+                    c.Candles.Select(k => new[] { k.Open, k.High, k.Low, k.Close, k.Volume }).ToList())
+                : new MarketCache.Entry(m.Symbol, m.Price, m.Change24h)));
+    }
 
     [RelayCommand]
     private async Task RefreshMarketAsync()
@@ -4351,39 +4396,45 @@ public partial class MainViewModel : ViewModelBase
         SelectedMarketChangeLabel = row.ChangeLabel;
         SelectedMarketChangeColor = row.ChangeColor;
         HasChart = true;
-        IsChartLoading = true;
         ChartUnavailableText = null;
-        ChartPoints = new System.Collections.Generic.List<Avalonia.Point>();
         HasChartEnd = false;
 
-        try
+        // Drawn at once from the candles the market list (or a last visit, or last session) already has;
+        // fetched only when those are old, and redrawn when the fresh ones arrive.
+        var range = ChartRange;
+        var known = PublicMarketRatesClient.TryPeekCandles(row.Symbol, range, out var cachedCandles, out var fresh);
+        if (known) BuildDetailChart(cachedCandles);
+        else ChartPoints = new System.Collections.Generic.List<Avalonia.Point>();
+        IsChartLoading = !known;
+
+        if (!known || !fresh)
         {
-            var candles = await _rates.GetCandlesAsync(row.Symbol, ChartRange, CancellationToken.None);
-            BuildDetailChart(candles);
-            if (ChartPoints.Count == 0)
-                ChartUnavailableText = string.Format(Loc.Instance["market.noChart"], row.Symbol);
-        }
-        catch
-        {
-            ChartUnavailableText = string.Format(Loc.Instance["market.noChart"], row.Symbol);
-        }
-        finally
-        {
-            IsChartLoading = false;
+            try
+            {
+                var candles = await _rates.GetCandlesAsync(row.Symbol, range, CancellationToken.None);
+                if (SelectedMarketSymbol != row.Symbol || ChartRange != range) return;   // the user moved on
+                if (candles.Count > 1 || !known) BuildDetailChart(candles);
+                if (ChartPoints.Count == 0)
+                    ChartUnavailableText = string.Format(Loc.Instance["market.noChart"], row.Symbol);
+            }
+            catch
+            {
+                if (!known) ChartUnavailableText = string.Format(Loc.Instance["market.noChart"], row.Symbol);
+            }
+            finally
+            {
+                IsChartLoading = false;
+            }
         }
 
-        // Uniswap-style 24h stats under the chart, from the same Binance feed (best-effort).
+        // Uniswap-style 24h stats under the chart, from the same Binance feed (best-effort) — the last ones
+        // read shown at once, the fresh ones when they come.
         HasMarketStats = false;
+        if (PublicMarketRatesClient.PeekMarketStats(row.Symbol) is { } seen) ShowMarketStats(seen);
         try
         {
             var stats = await _rates.GetMarketStatsAsync(row.Symbol, CancellationToken.None);
-            if (stats is not null)
-            {
-                StatHigh24h = Fx.Price((double)stats.High);
-                StatLow24h = Fx.Price((double)stats.Low);
-                StatVolume24h = FormatCompactMoney((double)stats.QuoteVolume);
-                HasMarketStats = true;
-            }
+            if (stats is not null && SelectedMarketSymbol == row.Symbol) ShowMarketStats(stats);
         }
         catch { /* stats are a nicety; never break the detail view over them */ }
 
@@ -4404,6 +4455,14 @@ public partial class MainViewModel : ViewModelBase
             }
             catch { /* connector is best-effort */ }
         }
+    }
+
+    private void ShowMarketStats(MarketStats stats)
+    {
+        StatHigh24h = Fx.Price((double)stats.High);
+        StatLow24h = Fx.Price((double)stats.Low);
+        StatVolume24h = FormatCompactMoney((double)stats.QuoteVolume);
+        HasMarketStats = true;
     }
 
     /// <summary>Compact money in the display currency: 4.6B, 1.5T, 32.4K… The magnitude suffix is
@@ -4467,6 +4526,7 @@ public partial class MainViewModel : ViewModelBase
         // and the holdings rows draw the same lines.
         if (MarketRangeFor(PortfolioRange) == ChartRange) _ = RefreshPortfolioChartAsync();
         RefreshHoldings();
+        SaveMarketCache();   // so the next start draws these lines before the network answers
     }
 
     private const double SparkWidth = 110;
@@ -4777,6 +4837,7 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();
             RecalcBalance();
             SaveBalanceCache(); // remember these totals so the next unlock/switch is instant
+            _lastLiveRefresh = DateTimeOffset.UtcNow;
             _ = RefreshOtherWalletTotalsAsync();   // the other wallets' figures, when that option is on
             MaybeDiscoverAutomatically(); // once per wallet: money at other wallets' paths
 

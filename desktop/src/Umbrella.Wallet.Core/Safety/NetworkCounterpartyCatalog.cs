@@ -185,6 +185,12 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.OnDemand, Chain),
         new("rest.cosmos.directory", "cosmos.directory", CounterpartyPurpose.Swaps,
             CounterpartyContact.OnDemand, Chain),
+        // NEAR Intents and Exolix are given both addresses of a swap: the one paying (as the refund
+        // address) and the one receiving — they are told, in so many words, that both are yours.
+        new("1click.chaindefuser.com", "NEAR Intents (1Click)", CounterpartyPurpose.Swaps,
+            CounterpartyContact.OnDemand, Chain | CounterpartyLearns.WhichCoinsYouHold | CounterpartyLearns.YourWalletAddresses),
+        new("exolix.com", "Exolix (exchange)", CounterpartyPurpose.Swaps,
+            CounterpartyContact.OnDemand, Chain | CounterpartyLearns.WhichCoinsYouHold | CounterpartyLearns.YourWalletAddresses),
 
         // --- Your own exchange accounts. Nothing is sent unless you connect one. ----------------------
         new("api.binance.com/exchange", "Binance", CounterpartyPurpose.ExchangeAccount,

@@ -16,7 +16,11 @@ public sealed class MarketCache
     public MarketCache(string? path = null) =>
         _path = path ?? Path.Combine(AppPaths.DataRoot, "market.json");
 
-    public sealed record Entry(string Symbol, double Price, double Change);
+    /// <summary>A coin's last price and, when the market list drew it, its candles for one chart window
+    /// (open, high, low, close, volume each), so sparklines and the first chart of a session draw at once.
+    /// The candle fields are last and defaulted: a market.json from before them still loads.</summary>
+    public sealed record Entry(
+        string Symbol, double Price, double Change, string? Range = null, long At = 0, List<double[]>? Candles = null);
 
     public IReadOnlyList<Entry> Load()
     {

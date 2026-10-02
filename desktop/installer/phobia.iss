@@ -30,6 +30,10 @@
 #ifndef AppVersion
   #define AppVersion GetVersionNumbersString(SourceDir + "\" + AppExe)
 #endif
+; What the setup file is named with: "Beta-1" for a beta (the build passes it), else the version.
+#ifndef AppFileLabel
+  #define AppFileLabel AppVersion
+#endif
 
 #define AppUrl "https://t.me/UmbrellaWallet"
 #define AppReleases "https://github.com/thefear078/UmbrellaWallet/releases"
@@ -63,7 +67,7 @@ UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
 OutputDir={#DistDir}
 ; The release attaches this file under its Umbrella-era name too, for copies from before the rename.
-OutputBaseFilename=PhobiaWallet-Setup-{#AppVersion}
+OutputBaseFilename=PhobiaWallet-Setup-{#AppFileLabel}
 SetupIconFile=..\src\Umbrella.Wallet.App\Assets\phobia.ico
 Compression=lzma2
 SolidCompression=yes

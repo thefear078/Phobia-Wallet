@@ -525,6 +525,33 @@ public sealed class MainViewModelTests : IDisposable
     }
 
     /// <summary>
+    /// Swap offers every coin the open wallet can pay with, and every coin a route delivers to an address
+    /// it has — Monero and the TRON and Cardano coins among them — but never a coin it cannot send yet.
+    /// </summary>
+    [Fact]
+    public async Task Swap_offers_every_payable_coin_and_every_reachable_one()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        var from = vm.SwapFromOptions.Select(a => a.Key).ToList();
+        Assert.Contains("BTC", from);
+        Assert.Contains("SOL", from);
+        Assert.Contains("ETH@ARB", from);
+        Assert.Contains("XNO", from);         // Nano sends, so it pays for a swap too
+        Assert.DoesNotContain("DCR", from);   // Decred receives from a swap; paying with it waits for its send
+
+        vm.SwapFromSymbol = "BTC";
+        var to = vm.SwapToOptions.Select(a => a.Key).ToList();
+        foreach (var key in new[] { "XMR", "ADA", "USDT@TRON", "XNO", "DCR", "ETH" }) Assert.Contains(key, to);
+        Assert.DoesNotContain("BTC", to);
+        Assert.Equal("BTC", vm.SwapFromAsset?.Key);
+    }
+
+    /// <summary>
     /// A new wallet's recovery phrase is on screen until "I've written it down". Switching away would
     /// lock it and clear the phrase before it was ever confirmed — so neither the switcher, the shortcut
     /// nor the palette may do it.
