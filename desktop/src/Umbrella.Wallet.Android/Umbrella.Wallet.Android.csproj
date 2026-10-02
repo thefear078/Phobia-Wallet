@@ -28,6 +28,8 @@
          also switches that serializer off by default - a settings file would silently fail to load. -->
     <AndroidLinkMode>None</AndroidLinkMode>
     <PublishTrimmed>false</PublishTrimmed>
+    <!-- Ahead-of-time compilation needs trimming on Android, so the app runs on the JIT. -->
+    <RunAOTCompilation>false</RunAOTCompilation>
     <!-- The shared App project is itself the desktop executable; it is referenced as a library here
          (and built without the phone's runtime identifier, below). -->
     <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
