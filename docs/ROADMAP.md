@@ -42,6 +42,9 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | Monero 25-word seeds in all 12 Monero languages (Chinese included) → Monero-only wallet, optional scan-from | ✅ (4.10) |
 | Monero service reachable (RPC bodies with a stated length) and restore over the account's whole life | ✅ (4.10) |
 | Rebrand Umbrella → **Phobia**: vector crystal logos + icons, midnight-violet default theme, every theme adapted, Phobia file names (+ legacy copies) | ✅ (4.10) |
+| Swap any coin for any coin (THORChain → NEAR Intents → Exolix, route named before paying), Nano sends, restorable wallet removal | ✅ (Beta 1) |
+| Balance chart follows the pointer (real worth per point, 1% scale floor), Settings search in every language over every card, “Back to top”, notes that close, wallet total never narrowed by the asset filter | ✅ (Beta 1) |
+| Staking from the wallet: TRON (freeze, vote, claim, unfreeze, withdraw — TronGrid's bytes checked before signing), Solana (seed stake accounts: stake, undelegate, withdraw), Cosmos Hub (delegate, claim, undelegate); Connect rebuilt; unlock and refresh no longer block the UI | ✅ (Beta 1) |
 
 ---
 
@@ -119,7 +122,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | H.1 | Bitcoin **PSBT** export/import + watch-only xpub | ✅ **PSBT both ways.** Export: the reviewed payment as an unsigned PSBT naming the master fingerprint and every BIP32 path — BIP-371 Taproot fields filled by hand, because NBitcoin's `AddKeyPath` leaves a Taproot coin unnamed — with the change index reserved as for a real send. Import (base64, hex or `.psbt`): reviewed line by line with the cost to this wallet, and only coins the wallet's **own scan** found are signed, at the value read from the chain; a PSBT that misstates one of them, or spends from one of its addresses a coin the scan cannot see, is refused. Completed PSBTs broadcast through the same route gate. The xpub export now includes the Taproot account the balance counts. **Not done:** a seedless watch-only wallet (import an xpub, sign elsewhere) — the app is built around an unlocked seed, and that mode is the same work H.2 needs, so they go together. Signing needs a synced wallet: this is not an air-gapped signer |
 | **H.2** | **Ledger / Trezor** (sign on device, no seed in Phobia) + seedless watch-only | 🏆 **P0 next** — design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md); H.1 PSBT is the interim path |
 | H.3 | **Multisig** 2-of-3 | 📅 long |
-| H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 📅 Planned |
+| H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 🟡 **Beta 1 APK** — the same view models, signing code and pages in a phone layout (`Views/MobileShell`), built in CI and attached to the release with its checksum and attestation. Seed and key screens are FLAG_SECURE, Android backup is off. **Not yet:** Tor and the Monero service on the phone, a stable signing key in the repository secrets (until then an update may need a reinstall), Play Store |
 | R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | 🟡 docs / ⏳ attestations |
 | R.2 | **Code signing OV/EV (SmartScreen)** | ⏳ **start ≥60 days before store release**; legal entity required; ~$300–1000/year (see R.6) |
 | R.3 | Sign releases with **GPG / Sigstore** | ✅ from the next release — every artifact **and** the sums file carry a keyless build attestation (GitHub OIDC → public transparency log), verified with `gh attestation verify`. No signing key exists, so none can be stolen. Earlier releases have checksums only, and the docs say so |
@@ -179,7 +182,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | ATOM | ✅ | ✅ | ✅ | ❌ | receive, available balance and send (N.6) — MsgSend + memo, pinned to cosmjs; staked ATOM not counted. History: public REST servers prune their tx index (one answer in nine for an account with known sends), so it stays off rather than show an empty list that means nothing |
 | NEAR | ✅ | ✅ | ✅ | ✅ | receive, balance and send (N.7) — one Transfer from the implicit account, pinned to near-api-js |
 | DOT | ✅ | ✅ | ✅ | ❌ | receive + balance (Asset Hub + relay), send from Asset Hub (N.8) |
-| XNO | ✅ | ✅ | ❌ | ✅ | receive + balance (N.11); history from the node's `account_history` (Beta 1) — m/44'/165'/0', ed25519-BLAKE2b, pinned to the Nano docs' vector; balance = pocketed + receivable; send needs signed blocks with proof of work |
+| XNO | ✅ | ✅ | ✅ | ✅ | receive, balance, history and send (N.11) — m/44'/165'/0', ed25519-BLAKE2b; a send pockets the receivable it needs (open/receive blocks), then publishes a state send block; hash pinned to a mainnet block, signature to the Nano docs, proof of work computed locally (an unrolled BLAKE2b-64, seconds on a desktop) and accepted by a live node (NanoSendLiveTests) |
 | DCR | ✅ | ✅ | ❌ | ✅ | receive + balance (N.12); history from dcrdata's Insight API, netted for change (Beta 1) — m/44'/42'/0'/0/0, BLAKE-256 Hash160 + checksum, pinned to dcrd and Trust Wallet |
 
 ---
@@ -216,7 +219,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 10. ✅ **N.1 / N.2** ERC-20 and TRC-20, ✅ **N.3** jettons and SPL tokens, both token programs.  
 11. ✅ **P2.1** Taproot find/show/spend, ✅ **P2.2** PayJoin (sender).  
 12. ✅ **H.1** PSBT export / review / sign. **H.2** Ledger/Trezor next — needs the seedless watch-only mode and the devices to test on.  
-13. **H.4** + L.5/L.7 — Android only after a mobile spec **and** store/geo compliance.  
+13. 🟡 **H.4** Android beta APK (side-load from the release page). Next: Tor on the phone, then L.5/L.7 store/geo compliance before any store listing.  
 14. ✅ New L1s — **XRP, XLM, ATOM, NEAR, DOT receive, balance and send**, each pinned to its reference library or spec (the Stellar Go SDK, near-api-js, xrpl.js, cosmjs, and for DOT merlin + Polkadot.js signatures plus the running runtime's own metadata and validation).  
 15. **R.7 / L.5** — Microsoft Store / geo-blocklist as needed.
 

@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Android app: Avalonia's Android host around the same App, view models and pages as the
+    desktop, shown through Views/MobileShell. Built by the release workflow (and CI) on a runner with
+    the Android workload; not part of Umbrella.Wallet.sln, so the desktop build and tests need no
+    Android tooling.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Umbrella.Wallet.Mobile</RootNamespace>
+    <AssemblyName>Phobia</AssemblyName>
+    <ApplicationId>com.thefear.phobia</ApplicationId>
+    <ApplicationTitle>Phobia</ApplicationTitle>
+    <!-- versionCode, which Android needs to rise for an update to install: major·1000000 + minor·10000
+         + patch·100 + the beta number (99 for the full release). 4.10.0-beta.1 → 4100001. PhoneLayoutTests
+         keeps it in step with VERSION. -->
+    <ApplicationVersion>4100001</ApplicationVersion>
+    <ApplicationDisplayVersion>4.10.0</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <!-- Phones: 64-bit ARM, and 32-bit ARM for older ones. One APK carries both. -->
+    <RuntimeIdentifiers>android-arm64;android-arm</RuntimeIdentifiers>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <!-- Nothing is trimmed: the wallet reads its own files with reflection-based JSON, and trimming
+         also switches that serializer off by default - a settings file would silently fail to load. -->
+    <AndroidLinkMode>None</AndroidLinkMode>
+    <PublishTrimmed>false</PublishTrimmed>
+    <!-- Ahead-of-time compilation needs trimming on Android, so the app runs on the JIT. -->
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <!-- The shared App project is itself the desktop executable; it is referenced as a library here
+         (and built without the phone's runtime identifier, below). -->
+    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" Version="11.3.18" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Umbrella.Wallet.App\Umbrella.Wallet.App.csproj"
+                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />
+  </ItemGroup>
+</Project>

@@ -655,6 +655,21 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "XNO":
+                {
+                    // The account's chain and what was sent to it are read from the node; nothing is signed
+                    // until the user confirms. No fee: the proof of work is computed on this computer.
+                    var (quote, error) = await _nanoSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
+                    if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
+                    _nanoQuote = quote;
+                    SendQuoteSummary = $"Send {Fmt(quote.Amount)} XNO  →  {quote.To}";
+                    SendQuoteFee = quote.ToPocket > 0
+                        ? string.Format(Loc.Instance["send.xnoFeePocket"], quote.ToPocket)
+                        : Loc.Instance["send.xnoFee"];
+                    BuildSendSimulation(balance: (decimal)from.Amount, amount: quote.Amount, networkFee: 0m, symbol: "XNO");
+                    break;
+                }
+
                 case "DOT":
                 {
                     // The running runtime's metadata says how the transfer is built; the account, its nonce,
@@ -1107,6 +1122,7 @@ public partial class MainViewModel
                         || _splQuote is not null
                         || _xlmQuote is not null || _nearQuote is not null || _xrpQuote is not null
                         || _atomQuote is not null || _dotQuote is not null || _zecQuote is not null
+                        || _nanoQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
         if (_unlockedMnemonic is null || !haveQuote)
         {
@@ -1441,6 +1457,29 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "XNO" when _nanoQuote is not null:
+                {
+                    var quote = _nanoQuote;
+                    var key = _deriver.DeriveNanoPrivateKey(_unlockedMnemonic!);
+                    try
+                    {
+                        var progress = new Progress<(string Step, int Index, int Count)>(p => StatusMessage = p.Step switch
+                        {
+                            "pocket" => string.Format(Loc.Instance["status.nanoPocket"], p.Index, p.Count),
+                            "work" => Loc.Instance["status.nanoWork"],
+                            _ => Loc.Instance["status.nanoPublish"],
+                        });
+                        var result = await _nanoSender.SendAsync(key, quote, progress);
+                        var explorer = result.Hash is null ? "" : $"nanolooker.com/block/{result.Hash}";
+                        await FinishSendAsync(result.Ok, result.Hash, result.Error, result.Unclear, "XNO", quote.Amount, quote.To, explorer);
+                    }
+                    finally
+                    {
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(key);
+                    }
+                    break;
+                }
+
                 case "DOT" when _dotQuote is not null:
                 {
                     var quote = _dotQuote;
@@ -1638,6 +1677,7 @@ public partial class MainViewModel
             return;
         }
 
+        OnSwapPaymentSent(reference, to);   // it may have gone: a swap paid this way is followed, not retried
         ClearSendQuotes();
         SendTo = string.Empty;
         SendAmount = string.Empty;
@@ -1657,6 +1697,7 @@ public partial class MainViewModel
             // Built BEFORE the quotes are cleared: the plan is what knows how many of the user's own
             // addresses funded this spend, and it is about to be thrown away (roadmap P1.12).
             BuildSendLeakReport(symbol);
+            OnSwapPaymentSent(reference, to);   // the payment of a swap: the swap is now under way
             ClearSendQuotes();
             SendTo = string.Empty;
             SendAmount = string.Empty;
@@ -1694,6 +1735,7 @@ public partial class MainViewModel
         _dotQuote = null;
         _adaQuote = null;
         _xlmQuote = null;
+        _nanoQuote = null;
         _nearQuote = null;
         _xrpQuote = null;
         _atomQuote = null;

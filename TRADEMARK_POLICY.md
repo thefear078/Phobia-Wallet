@@ -43,7 +43,7 @@ applicable. Good-faith mistakes fixed promptly after notice are preferred over t
 
 ## Permission requests
 
-Contact via [CONTACT.md](CONTACT.md) or [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet).  
+Contact via [CONTACT.md](CONTACT.md) or [t.me/PhobiaStat](https://t.me/PhobiaStat).  
 Do not send seed phrases or keys.
 
 ---

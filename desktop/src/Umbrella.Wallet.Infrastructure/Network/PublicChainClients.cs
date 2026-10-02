@@ -1699,6 +1699,21 @@ public sealed class PublicMarketRatesClient
     public async Task<MarketStats?> GetMarketStatsAsync(string symbol, CancellationToken ct = default)
     {
         var upper = symbol.ToUpperInvariant();
+        if (StatsCache.TryGetValue(upper, out var cached) && DateTimeOffset.UtcNow - cached.At < TimeSpan.FromMinutes(2))
+            return cached.Stats;
+        var stats = await FetchMarketStatsAsync(upper, ct);
+        if (stats is not null) StatsCache[upper] = (DateTimeOffset.UtcNow, stats);
+        return stats;
+    }
+
+    /// <summary>The last 24-hour stats read for a coin, however old — drawn at once while fresh ones load.</summary>
+    public static MarketStats? PeekMarketStats(string symbol) =>
+        StatsCache.TryGetValue(symbol.ToUpperInvariant(), out var cached) ? cached.Stats : null;
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTimeOffset At, MarketStats Stats)> StatsCache = new();
+
+    private async Task<MarketStats?> FetchMarketStatsAsync(string upper, CancellationToken ct)
+    {
         var pair = BinancePairs.GetValueOrDefault(upper);
         if (pair is not null)
         {
@@ -1844,6 +1859,86 @@ public sealed class PublicMarketRatesClient
     /// </summary>
     public async Task<IReadOnlyList<PriceCandle>> GetCandlesAsync(
         string symbol, string range, CancellationToken cancellationToken = default)
+    {
+        var key = (symbol.ToUpperInvariant(), range.ToUpperInvariant());
+        if (CandleCache.TryGetValue(key, out var cached) && DateTimeOffset.UtcNow - cached.At < CandleReuse(range))
+            return cached.Candles;
+
+        // One request per coin and window at a time: the market list's sparklines, the open chart and the
+        // portfolio chart all ask for the same candles, and used to fetch them three times over.
+        var fetch = CandleInFlight.GetOrAdd(key, k => FetchAndKeepAsync(k.Item1, k.Item2));
+        try
+        {
+            return await fetch.WaitAsync(cancellationToken);
+        }
+        finally
+        {
+            if (fetch.IsCompleted) CandleInFlight.TryRemove(new KeyValuePair<(string, string), Task<IReadOnlyList<PriceCandle>>>(key, fetch));
+        }
+    }
+
+    private async Task<IReadOnlyList<PriceCandle>> FetchAndKeepAsync(string symbol, string range)
+    {
+        try
+        {
+            var candles = await FetchCandlesAsync(symbol, range, CancellationToken.None);
+            if (candles.Count > 1) CandleCache[(symbol, range)] = (DateTimeOffset.UtcNow, candles);
+            return candles;
+        }
+        finally
+        {
+            // Done, whoever was waiting: the next request asks the network again (or the cache).
+            CandleInFlight.TryRemove((symbol, range), out _);
+        }
+    }
+
+    /// <summary>
+    /// The last candles fetched for a coin and window, however old, so a chart opens drawn at once
+    /// instead of on a spinner; <paramref name="fresh"/> says whether they are recent enough not to fetch again.
+    /// </summary>
+    public static bool TryPeekCandles(string symbol, string range, out IReadOnlyList<PriceCandle> candles, out bool fresh)
+    {
+        if (CandleCache.TryGetValue((symbol.ToUpperInvariant(), range.ToUpperInvariant()), out var cached))
+        {
+            candles = cached.Candles;
+            fresh = DateTimeOffset.UtcNow - cached.At < CandleReuse(range);
+            return true;
+        }
+        candles = [];
+        fresh = false;
+        return false;
+    }
+
+    /// <summary>Remembers candles read from the wallet's own cache on disk, so the first chart of a session
+    /// draws before the network answers. Never replaces newer ones.</summary>
+    public static void SeedCandles(string symbol, string range, IReadOnlyList<PriceCandle> candles, DateTimeOffset at)
+    {
+        if (candles.Count < 2) return;
+        var key = (symbol.ToUpperInvariant(), range.ToUpperInvariant());
+        CandleCache.AddOrUpdate(key, (at, candles), (_, current) => current.At >= at ? current : (at, candles));
+    }
+
+    /// <summary>Every coin's candles for a window, with when they were read — for the cache on disk.</summary>
+    public static IReadOnlyList<(string Symbol, DateTimeOffset At, IReadOnlyList<PriceCandle> Candles)> CandlesFor(string range) =>
+        CandleCache.Where(kv => kv.Key.Item2 == range.ToUpperInvariant())
+            .Select(kv => (kv.Key.Item1, kv.Value.At, kv.Value.Candles))
+            .ToList();
+
+    /// <summary>How long candles stay good: about one candle of the window.</summary>
+    private static TimeSpan CandleReuse(string range) => range.ToUpperInvariant() switch
+    {
+        "1H" => TimeSpan.FromSeconds(45),
+        "24H" => TimeSpan.FromMinutes(3),
+        "7D" => TimeSpan.FromMinutes(15),
+        "30D" => TimeSpan.FromMinutes(45),
+        _ => TimeSpan.FromHours(3),
+    };
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(string, string), (DateTimeOffset At, IReadOnlyList<PriceCandle> Candles)> CandleCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(string, string), Task<IReadOnlyList<PriceCandle>>> CandleInFlight = new();
+
+    private async Task<IReadOnlyList<PriceCandle>> FetchCandlesAsync(
+        string symbol, string range, CancellationToken cancellationToken)
     {
         var r = Resolution(range);
         var upper = symbol.ToUpperInvariant();

@@ -37,7 +37,7 @@
 | **ATOM** | Cosmos Hub | ✅ | ✅ | — | With a memo for exchange deposits. The balance is *available* ATOM — staked ATOM is not counted |
 | **NEAR** | NEAR Protocol | ✅ | ✅ | — | Your implicit account (the 64-character hex id), to any `.near` name or implicit account. Named accounts of your own and staked NEAR are not shown |
 | **DOT** | Polkadot | ✅ | ✅ | — | sr25519 like Polkadot.js / Nova; balance adds Asset Hub and the relay chain; sends go from Asset Hub, where balances now live |
-| **XNO** | Nano | — | ✅ | — | Receive and balance. Restores in Ledger / Trust Wallet / Nault (BIP39). Incoming XNO waits as "receivable" until a wallet that signs pockets it; the balance includes it. Sending is not here yet |
+| **XNO** | Nano | ✅ | ✅ | — | No fee: a send pockets the received payments it needs, then sends, with a few seconds of proof of work computed on your computer. Restores in Ledger / Trust Wallet / Nault (BIP39); "receivable" XNO is counted in the balance |
 | **DCR** | Decred | — | ✅ | — | Receive and balance. The BIP44 account Trust Wallet / Ledger / Exodus use — Decrediton derives differently and will not show it. Sending is not here yet |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
@@ -512,5 +512,19 @@ threat model names each one as an open gap rather than implying it away.
 | 24 | Cosmos | ATOM | ✅ Full | Receive, available balance and send (memo) |
 | 25 | Near | NEAR | ✅ Full | Receive, balance and send from the implicit account |
 | 26 | Polkadot | DOT | ✅ Full | Receive, balance (Asset Hub + relay), send from Asset Hub |
-| 27 | Nano | XNO | ⚠️ Partial | Receive, balance (incl. receivable) and history; no send yet |
+| 27 | Nano | XNO | ✅ Full | Send, receive, balance (incl. receivable) and history; no fee |
 | 28 | Decred | DCR | ⚠️ Partial | Receive, balance and history; no send yet |
+
+## Staking from the wallet
+
+| Network | In the wallet | How |
+|---|---|---|
+| TRON | ✅ stake, vote, claim, unstake, withdraw | Stake 2.0: freeze for energy, all votes to one elected Super Representative; unfreezing takes 14 days |
+| Solana | ✅ stake, undelegate, withdraw | Native stake accounts at seeds of the wallet key (`phobia-stake-N`), delegated to a validator |
+| Cosmos Hub | ✅ delegate, claim, undelegate | Delegate to an active validator; undelegating takes 21 days |
+| Ethereum | — described | Solo (32 ETH) or a liquid-staking pool |
+| Cardano | — described | Delegate to a stake pool |
+| TON | — described | Nominator pools |
+| Polygon | — described | Validator delegation on the staking contract |
+
+See [guides/staking.md](guides/staking.md).

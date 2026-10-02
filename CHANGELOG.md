@@ -11,6 +11,154 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 Published as a **beta**: a GitHub pre-release. A 4.9.0 copy does not update to it by itself (download it
 from the release page); a beta copy updates to newer betas, and then to the full release, by itself.
 
+### Phobia on Android
+
+- **An Android app (APK, Android 7.0 or newer, 64- and 32-bit ARM).** The same wallet — the same keys,
+  signing code, coins and pages — laid out for a phone: the balance card with the 24-hour move in percent
+  and in money and a note when there is unread activity; the portfolio chart (1D / 1W / 1M / 1Y, follows
+  your finger); Receive, Send, Swap and Buy tiles; your assets with their 7-day lines and network chips;
+  a four-coin market overview; and a bottom bar with Home, Activity, Explore, Settings and the crystal
+  button for quick actions. The wallet's name opens the wallet switcher; the phone's back gesture closes
+  a sheet, then returns home. Guide: [docs/guides/android.md](docs/guides/android.md).
+- **Seed and Monero key screens are FLAG_SECURE** on the phone — no screenshots, no recording, a blank
+  recent-apps preview — as the desktop blocks capture of the same screens. Android backup is off, so the
+  vault never goes to a cloud backup. The only permission is the network.
+- **On a phone the wallet says "this device"** where the desktop says "this PC", in every language.
+- **Not on the phone yet:** Tor and the Monero wallet service (bundled with Windows and Linux only), so the
+  phone reads each chain directly and Settings says the servers see its IP; no automatic updates.
+- **New theme: Ice** (Phobia blue) — the phone's default, and in Settings on the desktop too.
+- The release attaches `PhobiaWallet-Beta-1-android.apk`, in the checksum manifest and the build
+  attestation like every other file; CI builds the APK on every change.
+- Under the hood: every page is its own file (`Views/Pages/*`), so the desktop window and the phone shell
+  host the same pages; onboarding moved out of the main window the same way.
+
+### Swap any coin for any coin
+
+- **Every coin the wallet holds can be swapped for every coin it can receive**, each on its own network:
+  Bitcoin, Litecoin, Dogecoin, Bitcoin Cash, Zcash, Ethereum and its networks (Arbitrum, Base, Optimism,
+  BSC, Avalanche, Polygon), TRON and its USDT, Solana, XRP, Cardano, Stellar, TON, Cosmos Hub, Monero,
+  Nano and Decred. The pickers show the coin and its network ("USDT · TRON"), and only what the open wallet
+  can pay with or receive at.
+- **Three routes, chosen by trust, and named before anything is paid.** THORChain first — nobody holds the
+  coins. Then NEAR Intents (the 1Click API): the coins go to a one-time deposit address, a smart contract
+  fills the swap and refunds the payer if it cannot; without a partner key it adds a 0.25% fee, and the
+  quote says so. Then Exolix, an exchange that holds the coins for the minutes of the swap — the only route
+  for Monero, Nano and Decred, shown in a warning colour. When one route cannot quote a pair, the next is
+  asked, and when none can, each one's own reason is shown.
+- **One review for every payment.** THORChain deposits from BTC, LTC, DOGE, BCH and ETH are signed in the
+  swap screen as before. Every other route opens its payment on the Send screen, filled in — coin, deposit
+  address, amount, memo — under a banner that says what it buys and through whom, for the same review and
+  password as any send. Once paid, the swap is followed until it is done, refunded or failed.
+- NEAR Intents and Exolix are in the network counterparty list: both are told the paying and the receiving
+  address.
+
+### Nano sends
+
+- **XNO can be sent.** A send first pockets the received payments it needs (Nano only spends what the
+  account's own chain has received), then publishes a state send block. There is no fee: each block carries
+  a few seconds of proof of work computed on this computer — an unrolled BLAKE2b-64 made it about ten times
+  faster, so a send's work takes seconds, not a minute and a half. The block hash is pinned to a real mainnet
+  block, the signature byte for byte to the Nano documentation's signed block, and a live node accepts the
+  signature and the work (a block with one signature bit flipped is refused as "Bad signature").
+
+### Faster
+
+- **Charts open drawn.** The market list's sparklines, a coin's chart and the balance chart used to fetch the
+  same candles three times; they now share them, and identical requests in flight are made once. A coin's
+  chart draws from the candles already in hand (in ~0.15 s) and only fetches when they are old; the last
+  session's candles are kept with the prices, so the sparklines draw before the network answers.
+- **The balance chart** reads only the coins held, four at a time — it used to walk every listed coin one
+  after another.
+- **Switching theme** builds the theme off to the side and swaps it in whole: ~0.06 s instead of ~0.6 s of a
+  frozen window.
+- **Back in the window, the balance is read again** when it is older than half a minute, instead of waiting up
+  to two minutes for the next timer tick.
+
+### Staking from the wallet
+
+- **Stake TRX, SOL and ATOM — real transactions, signed here.** TRON (Stake 2.0): freeze TRX for energy and
+  give all its votes to a Super Representative picked from the elected 27, claim the voting rewards (once a
+  day), unfreeze (14 days) and withdraw. Solana: a stake account created at a seed of the wallet's own key
+  ("phobia-stake-N", so the one key creates, finds and controls it — no second keypair), delegated to a
+  validator from the live vote accounts; undelegate and withdraw per account, reserve included. Cosmos Hub:
+  delegate to an active validator (commission shown), claim every delegation's rewards in one transaction,
+  undelegate (21 days). Every action is reviewed in words, confirmed with the password like a send, shown
+  in Activity, and read back from the chain afterwards.
+- **Nothing TronGrid builds is signed blind.** TronGrid builds each TRON staking transaction; the wallet
+  decodes the protobuf it returned and refuses to sign unless it is exactly one contract of the expected
+  type, from this wallet, for the amount, resource and Super Representative asked — and the id signed is
+  the SHA-256 of those bytes. Pinned to real transactions TronGrid built; a whole Solana stake transaction
+  passed a validator's simulation, and delegate / claim / undelegate passed the Hub's simulation.
+- TronGrid's free tier allows three requests a second; a stake is two transactions back to back, so a
+  refusal for the rate is waited out and asked again.
+- Ethereum, Cardano, TON and Polygon stay described, with how staking works there.
+
+### Connect, rebuilt
+
+- Watched addresses and exchange accounts are listed the way the wallet lists money: each with its coin or
+  exchange badge, what it holds now and its value, the counts and the total at the top, Addresses and
+  Exchanges on their own tabs, and exchanges picked from tiles. The explanation is a note that closes.
+
+### Faster
+
+- **Unlocking no longer waits for the network.** The first balance refresh ran inside the unlock's busy
+  state, so the wallet opened only when every server had answered. It now opens at once with the last saved
+  balances and fills in.
+- **A background refresh no longer blocks anything.** The minute-by-minute refresh set the same busy flag
+  the user's own actions wait on: for the 5–60 seconds it took over Tor, Send, Confirm and a dozen Settings
+  buttons were grey, and Swap showed "updating prices and balances" instead of a quote. It has its own flag now.
+- **The vault's two slots are opened side by side** — the same work whatever the password, half the wait —
+  and every chain's address is derived in parallel.
+- **Startup:** the intro screen held the window back for two seconds; now about half a second. While the
+  lock screen waits, the key derivation and the address code are compiled once on a throwaway input, so the
+  first unlock runs warm, and published builds ship ahead-of-time compiled code (ReadyToRun).
+
+### Smaller things
+
+- Activity's explanation is a note that closes, like Swap's and Buy's.
+- Swap: the wallet's name, the balance, the amount and the coin picker each have their own place — the
+  wallet name used to run under the picker — and the flip button sits in the gap between the two panels.
+- P2P & DEX: the "In the wallet" badge's text is centred.
+- **The official Telegram channel is now [t.me/PhobiaStat](https://t.me/PhobiaStat)**, everywhere the wallet,
+  the installer and the documents name it.
+
+### Easier to use
+
+- **The balance chart follows the pointer.** Each point says what the coins held now were worth at that
+  moment, when it was, and how far the worth had moved since the start of the window; the last point is the
+  balance above it, at the live price. A wallet of stablecoins used to draw as a mountain range — the scale
+  stretched a 0.05% wobble to the full height — and now draws as the near-flat line it is (the scale never
+  stands for less than 1% of the value). A range switch draws at once from the prices already on the device,
+  then again when the network answers.
+- **Settings search finds things.** It searched seventeen English phrases, so "тема" or "мова" found
+  nothing. It now searches what every Settings card says — titles, hints, switches — in the wallet's language
+  and in English, plus words people type that the screen does not (seed, proxy, тема…), and a result opens its
+  pane and scrolls to the card, which lights up for a moment. A test keeps the index in step with the screen.
+- **"Back to top".** A round button fades and rises in at the bottom right once a page is scrolled well past
+  its first screen, and glides back up on a click. Settings → Appearance → Interface turns it off.
+- **Notes that close.** Swap's note on how routes are chosen and Buy crypto's "How it works" card each have
+  a ✕ and stay closed; Settings → Appearance → Interface brings closed notes back. Swap no longer lists every
+  coin it can swap — the pickers are that list.
+
+### A wallet's figures stay that wallet's
+
+- **The total is the whole wallet.** With a network picked above the asset list ("Bitcoin"), the next
+  refresh turned the total into that network's figure, and the wallet switcher showed it as the wallet's
+  balance. The total now always counts every holding; the filter only narrows the list.
+- **A switch no longer shows the previous wallet's figure under the new name.** The switcher read the rows
+  on screen for the open wallet even while they were still the previous wallet's, or the locked
+  placeholders ("$0.00"); it now reads them only once they are the open wallet's own, and its last saved
+  balances until then. Balances are saved only under the wallet they were read for.
+- A wallet the app named itself ("Wallet 2") reads in the wallet's language ("Гаманець 2"), like "Main wallet".
+
+### A removed wallet can be brought back
+
+- **"Remove" no longer erases a wallet.** One press deleted a wallet's encrypted vault — its only copy of the
+  seed on this device — with no question asked. Now the first press turns the button into "Confirm removal"
+  for six seconds, and the second only takes the wallet out of the list: its vault moves to **Removed
+  wallets** (Settings → Wallets), where "Restore" puts it back, opening with its own password as before.
+  Only a full data wipe deletes a removed wallet's vault.
+
 ### Wallets, Market and history
 
 - **Switching wallets no longer stops working after the first switch.** The switch ended with the new
@@ -169,10 +317,12 @@ from the release page); a beta copy updates to newer betas, and then to the full
 - **The wallet is called Phobia Wallet.** Same code, same keys, same vault: nothing about anyone's money
   moves. The data folder and the installer's identity stay as they were, so installed and portable copies
   update in place.
-- **Phobia files.** Downloads are `PhobiaWallet-Setup-<v>.exe`, `PhobiaWallet-<v>-win-x64-portable.exe` and
-  `PhobiaWallet-<v>-linux-x64.tar.gz`; the program is `Phobia.exe` on Windows and `phobia-wallet` on Linux.
-  Every release also attaches the same files under their `UmbrellaWallet-` names (same bytes, listed in the
-  checksums), because copies from before the rename look for those when they update themselves. An upgrade
+- **Phobia files, named the way people say them.** A beta's downloads carry its beta number —
+  `PhobiaWallet-Setup-Beta-1.exe`, `PhobiaWallet-Beta-1-win-x64-portable.exe`,
+  `PhobiaWallet-Beta-1-linux-x64.tar.gz` and `SHA256SUMS-Beta-1.txt` — and Windows lists the program as
+  "Phobia Wallet Beta 1"; a full release keeps its version number. The program is `Phobia.exe` on Windows
+  and `phobia-wallet` on Linux. The `UmbrellaWallet-` copies are no longer attached: no released version
+  downloads its own update (4.9.0 only reads the version and links to the releases page). An upgrade
   removes the old `Umbrella.exe` and its shortcuts; a pin on the old exe needs pinning again.
 - **A new logo** — two cut crystals, drawn as vectors so they are sharp from the 16 px title bar to the
   installer — and a new app icon rendered from it at every size. The launch screen shows the large

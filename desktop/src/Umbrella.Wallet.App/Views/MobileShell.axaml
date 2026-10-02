@@ -1,0 +1,612 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             xmlns:pages="using:Umbrella.Wallet.App.Views.Pages"
+             x:Class="Umbrella.Wallet.App.Views.MobileShell"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True"
+             x:Name="MobileRoot"
+             Background="{DynamicResource UmBg}">
+
+  <!-- The Android app: the same wallet and the same pages as the desktop, in a phone's shape — a home
+       screen of its own, a bottom bar with the crystal in the middle, and sheets that rise from below. -->
+
+  <UserControl.Styles>
+    <!-- A card: blue-tinted surface, hairline edge, large radius. -->
+    <Style Selector="Border.mcard">
+      <Setter Property="CornerRadius" Value="22"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}"/>
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="{DynamicResource UmCardTop}" Offset="0"/>
+          <GradientStop Color="{DynamicResource UmCardBottom}" Offset="1"/>
+        </LinearGradientBrush>
+      </Setter>
+      <Setter Property="Padding" Value="16"/>
+    </Style>
+
+    <!-- Square icon buttons in the header. -->
+    <Style Selector="Button.micon">
+      <Setter Property="Width" Value="46"/>
+      <Setter Property="Height" Value="46"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Background" Value="{DynamicResource UmCard}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource UmBorder2}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.micon Path">
+      <Setter Property="Stroke" Value="{DynamicResource UmText}"/>
+      <Setter Property="StrokeThickness" Value="1.7"/>
+      <Setter Property="StrokeLineCap" Value="Round"/>
+      <Setter Property="StrokeJoin" Value="Round"/>
+      <Setter Property="Width" Value="22"/>
+      <Setter Property="Height" Value="22"/>
+      <Setter Property="Stretch" Value="Uniform"/>
+    </Style>
+
+    <!-- The four quick actions under the chart. -->
+    <Style Selector="Button.mtile">
+      <Setter Property="Height" Value="84"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="CornerRadius" Value="18"/>
+      <Setter Property="Background" Value="{DynamicResource UmCard}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="4,10"/>
+    </Style>
+    <Style Selector="Button.mtile Path">
+      <Setter Property="Stroke" Value="{DynamicResource UmAccentBright}"/>
+      <Setter Property="StrokeThickness" Value="1.8"/>
+      <Setter Property="StrokeLineCap" Value="Round"/>
+      <Setter Property="StrokeJoin" Value="Round"/>
+      <Setter Property="Width" Value="26"/>
+      <Setter Property="Height" Value="26"/>
+      <Setter Property="Stretch" Value="Uniform"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.mtile TextBlock">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <!-- Segmented range picker and filter chips. -->
+    <Style Selector="Button.mseg">
+      <Setter Property="Padding" Value="12,5"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="CornerRadius" Value="999"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground" Value="{DynamicResource UmTextDim}"/>
+    </Style>
+    <Style Selector="Button.mseg.active">
+      <Setter Property="Background" Value="{DynamicResource UmAccentSel}"/>
+      <Setter Property="Foreground" Value="{DynamicResource UmAccentBright}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="Button.mchip">
+      <Setter Property="Padding" Value="14,6"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="CornerRadius" Value="999"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource UmBorder2}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="{DynamicResource UmTextDim}"/>
+    </Style>
+    <Style Selector="Button.mchip.active">
+      <Setter Property="Background" Value="{DynamicResource UmAccentSel}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource UmAccentBright}"/>
+      <Setter Property="Foreground" Value="{DynamicResource UmText}"/>
+    </Style>
+    <Style Selector="Button.mlink">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="4,2"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="Foreground" Value="{DynamicResource UmAccentBright}"/>
+      <Setter Property="FontSize" Value="13.5"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <!-- Bottom bar items. -->
+    <Style Selector="Button.mnav">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0,8"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="Foreground" Value="{DynamicResource UmTextDim}"/>
+    </Style>
+    <Style Selector="Button.mnav Path">
+      <Setter Property="Stroke" Value="{DynamicResource UmTextDim}"/>
+      <Setter Property="StrokeThickness" Value="1.7"/>
+      <Setter Property="StrokeLineCap" Value="Round"/>
+      <Setter Property="StrokeJoin" Value="Round"/>
+      <Setter Property="Width" Value="24"/>
+      <Setter Property="Height" Value="24"/>
+      <Setter Property="Stretch" Value="Uniform"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.mnav TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="0,5,0,0"/>
+    </Style>
+    <Style Selector="Button.mnav.active">
+      <Setter Property="Foreground" Value="{DynamicResource UmAccentBright}"/>
+    </Style>
+    <Style Selector="Button.mnav.active Path">
+      <Setter Property="Stroke" Value="{DynamicResource UmAccentBright}"/>
+    </Style>
+
+    <!-- Rows of a sheet. -->
+    <Style Selector="Button.msheet">
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Padding" Value="14,12"/>
+      <Setter Property="CornerRadius" Value="16"/>
+      <Setter Property="Background" Value="{DynamicResource UmCard}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource UmBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <!-- Pages from the desktop sit on a phone: no wide margins, full width. -->
+    <Style Selector="StackPanel.page">
+      <Setter Property="MaxWidth" Value="100000"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <!-- First run, create, import, unlock, the phrase backup. -->
+    <pages:OnboardingView IsVisible="{Binding !ShowSidebar}"/>
+
+    <!-- The wallet. -->
+    <Grid RowDefinitions="*,Auto" IsVisible="{Binding ShowSidebar}">
+      <ScrollViewer x:Name="MobileScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+        <StackPanel Margin="16,14,16,28" Spacing="14">
+
+          <!-- ======================= Home ======================= -->
+          <StackPanel IsVisible="{Binding IsPortfolio}" Spacing="14">
+
+            <!-- Header: the crystal, the name and the open wallet; scan and notifications. -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12" Margin="0,4,0,2">
+              <controls:BrandMark Kind="Mark" Width="52" Height="52" VerticalAlignment="Center"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="Phobia" FontSize="21" FontWeight="SemiBold"/>
+                <Button Classes="mlink" Padding="0" Command="{Binding ToggleWalletSheetCommand}" HorizontalAlignment="Left"
+                        AutomationProperties.Name="{Binding [mobile.walletsTitle], Source={x:Static app:Loc.Instance}}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="{Binding ActiveWalletLabel}" FontSize="13.5" FontWeight="Normal"
+                               Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis" MaxWidth="170"/>
+                    <Path Data="M6 9 L12 15 L18 9" Stroke="{DynamicResource UmTextDim}" StrokeThickness="1.8"
+                          StrokeLineCap="Round" StrokeJoin="Round" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+              <Button Grid.Column="2" Classes="micon" Command="{Binding QuickActionCommand}" CommandParameter="Receive"
+                      AutomationProperties.Name="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}">
+                <Path Data="M4 8 V5 C4 4.4 4.4 4 5 4 H8 M16 4 H19 C19.6 4 20 4.4 20 5 V8 M20 16 V19 C20 19.6 19.6 20 19 20 H16 M8 20 H5 C4.4 20 4 19.6 4 19 V16 M7 12 H17"/>
+              </Button>
+              <Button Grid.Column="3" Classes="micon" Command="{Binding QuickActionCommand}" CommandParameter="Activity"
+                      AutomationProperties.Name="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}">
+                <Panel>
+                  <Path Data="M6 16 V11 C6 7.7 8.7 5 12 5 C15.3 5 18 7.7 18 11 V16 L19.5 18 H4.5 Z M10 20.5 C10.4 21.4 11.1 22 12 22 C12.9 22 13.6 21.4 14 20.5"/>
+                  <Ellipse Width="8" Height="8" Fill="{DynamicResource UmAccentBright}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                           Margin="0,-6,-6,0" IsVisible="{Binding HasUnreadActivity}"/>
+                </Panel>
+              </Button>
+            </Grid>
+
+            <!-- Total balance, with the crystal standing in its own light. -->
+            <Border Classes="mcard" Padding="0" ClipToBounds="True" Height="236">
+              <Panel>
+                <Ellipse Width="240" Height="240" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-58,0">
+                  <Ellipse.Fill>
+                    <RadialGradientBrush>
+                      <GradientStop Color="{DynamicResource UmGlowSoft}" Offset="0"/>
+                      <GradientStop Color="{DynamicResource UmGlowClear}" Offset="1"/>
+                    </RadialGradientBrush>
+                  </Ellipse.Fill>
+                </Ellipse>
+                <!-- Ripples under the crystal. -->
+                <Ellipse Width="120" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,30"
+                         Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.2" Opacity="0.45"/>
+                <Ellipse Width="160" Height="36" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-6,24"
+                         Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1" Opacity="0.22"/>
+                <Ellipse Width="80" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,34,36"
+                         Fill="{DynamicResource UmAccentBright}" Opacity="0.25"/>
+                <controls:CrystalGem Width="132" Height="168" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,8,0"/>
+
+                <StackPanel Margin="18,20,18,16" Spacing="6" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding [common.total], Source={x:Static app:Loc.Instance}}" FontSize="12.5"
+                               LetterSpacing="1.2" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
+                    <Button Classes="mlink" Padding="2" Command="{Binding ToggleBalanceHiddenCommand}" VerticalAlignment="Center"
+                            AutomationProperties.Name="{Binding HideBalanceLabel}">
+                      <Path Data="M2 12 C4.5 7 8 5 12 5 C16 5 19.5 7 22 12 C19.5 17 16 19 12 19 C8 19 4.5 17 2 12 Z M12 9.5 C13.4 9.5 14.5 10.6 14.5 12 C14.5 13.4 13.4 14.5 12 14.5 C10.6 14.5 9.5 13.4 9.5 12 C9.5 10.6 10.6 9.5 12 9.5 Z"
+                            Stroke="{DynamicResource UmTextDim}" StrokeThickness="1.6" Width="17" Height="17" Stretch="Uniform"/>
+                    </Button>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <TextBlock Text="{Binding CurrencySymbol}" FontSize="34" FontWeight="Medium" VerticalAlignment="Bottom" Margin="0,0,4,6"/>
+                    <TextBlock Text="{Binding BalanceDisplayMain}" FontSize="58" FontWeight="SemiBold" VerticalAlignment="Bottom" LineHeight="62"/>
+                    <TextBlock Text="{Binding BalanceDisplayCents}" FontSize="30" Foreground="{DynamicResource UmTextDim}"
+                               VerticalAlignment="Bottom" Margin="1,0,0,7"/>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="{Binding PortfolioChangePercent}" Foreground="{Binding PortfolioChangeColor}" FontSize="15"/>
+                    <TextBlock Text="{Binding Change24hDelta}" Foreground="{Binding PortfolioChangeColor}" FontSize="15"/>
+                  </StackPanel>
+                  <Button Margin="0,8,0,0" Padding="12,8" CornerRadius="999" HorizontalAlignment="Left"
+                          Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1"
+                          IsVisible="{Binding HasUnreadActivity}" Command="{Binding QuickActionCommand}" CommandParameter="Activity">
+                    <StackPanel Orientation="Horizontal" Spacing="9">
+                      <Path Data="M12 3 L19 6 V11 C19 15.5 16 18.8 12 20.5 C8 18.8 5 15.5 5 11 V6 Z" Fill="{DynamicResource UmAccentBright}"
+                            Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding UnreadActivityLabel}" FontSize="13" VerticalAlignment="Center"/>
+                      <Path Data="M9 6 L15 12 L9 18" Stroke="{DynamicResource UmAccentBright}" StrokeThickness="1.8"
+                            StrokeLineCap="Round" StrokeJoin="Round" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Panel>
+            </Border>
+
+            <!-- Portfolio: what the coins held now were worth across the window, under the finger. -->
+            <Border Classes="mcard">
+              <Grid RowDefinitions="Auto,Auto,Auto">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding [mobile.portfolio], Source={x:Static app:Loc.Instance}}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                  <Border Grid.Column="1" CornerRadius="999" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}"
+                          BorderThickness="1" Padding="3">
+                    <StackPanel Orientation="Horizontal">
+                      <Button Classes="mseg" Content="1D" Command="{Binding SetPortfolioRangeCommand}" CommandParameter="1D"
+                              Classes.active="{Binding PortfolioRange, Converter={StaticResource StringEquals}, ConverterParameter=1D}"/>
+                      <Button Classes="mseg" Content="1W" Command="{Binding SetPortfolioRangeCommand}" CommandParameter="1W"
+                              Classes.active="{Binding PortfolioRange, Converter={StaticResource StringEquals}, ConverterParameter=1W}"/>
+                      <Button Classes="mseg" Content="1M" Command="{Binding SetPortfolioRangeCommand}" CommandParameter="1M"
+                              Classes.active="{Binding PortfolioRange, Converter={StaticResource StringEquals}, ConverterParameter=1M}"/>
+                      <Button Classes="mseg" Content="1Y" Command="{Binding SetPortfolioRangeCommand}" CommandParameter="1Y"
+                              Classes.active="{Binding PortfolioRange, Converter={StaticResource StringEquals}, ConverterParameter=1Y}"/>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+                <Panel Grid.Row="1" Height="150" Margin="-6,12,-6,0">
+                  <controls:GlowChart Values="{Binding PortfolioSeries}" LineColor="{DynamicResource UmGlow}"
+                                      PointLabels="{Binding PortfolioPointLabels}" PointCaptions="{Binding PortfolioPointCaptions}"
+                                      MinSpanFraction="0.01"
+                                      EndLabel="{Binding HeroEndLabel}" EndCaption="{Binding [chart.now], Source={x:Static app:Loc.Instance}}"
+                                      LabelBackground="{DynamicResource UmCardAlt}" LabelBorder="{DynamicResource UmBorder2}"
+                                      LabelForeground="{DynamicResource UmText}" CaptionForeground="{DynamicResource UmTextMuted}"
+                                      IsVisible="{Binding HasPortfolioSeries}"/>
+                  <TextBlock IsVisible="{Binding !HasPortfolioSeries}" Text="{Binding PortfolioChartStatus}" TextWrapping="Wrap"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" FontSize="12.5"
+                             Foreground="{DynamicResource UmTextMuted}"/>
+                </Panel>
+                <TextBlock Grid.Row="2" Text="{Binding PortfolioCaption}" FontSize="12.5" Margin="0,8,0,0"
+                           Foreground="{DynamicResource UmTextDim}" TextTrimming="CharacterEllipsis"/>
+              </Grid>
+            </Border>
+
+            <!-- Receive, Send, Swap, Buy. -->
+            <UniformGrid Columns="4" ColumnSpacing="10">
+              <Button Classes="mtile" Command="{Binding SelectSectionCommand}" CommandParameter="Receive">
+                <StackPanel Spacing="9">
+                  <Path Data="M12 3 V15 M12 15 L7 10 M12 15 L17 10 M5 20 H19"/>
+                  <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="mtile" Command="{Binding SelectSectionCommand}" CommandParameter="Send">
+                <StackPanel Spacing="9">
+                  <Path Data="M12 20 V8 M12 8 L7 13 M12 8 L17 13 M5 3.5 H19"/>
+                  <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="mtile" Command="{Binding SelectSectionCommand}" CommandParameter="Swap">
+                <StackPanel Spacing="9">
+                  <Path Data="M5 8 H18 L15 5 M19 16 H6 L9 19"/>
+                  <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <Button Classes="mtile" Command="{Binding SelectSectionCommand}" CommandParameter="Buy">
+                <StackPanel Spacing="9">
+                  <Path Data="M12 4 V20 M4 12 H20"/>
+                  <TextBlock Text="{Binding [mobile.buy], Source={x:Static app:Loc.Instance}}"/>
+                </StackPanel>
+              </Button>
+            </UniformGrid>
+
+            <!-- My assets. -->
+            <Border Classes="mcard" Padding="16,14,16,8">
+              <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding [mobile.myAssets], Source={x:Static app:Loc.Instance}}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                  <Button Grid.Column="1" Classes="mlink" Content="{Binding HomeAssetsToggleLabel}" Command="{Binding ToggleHomeAssetsCommand}"/>
+                </Grid>
+                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Classes="mchip" Content="{Binding [filter.all], Source={x:Static app:Loc.Instance}}" Command="{Binding SetChainFilterCommand}" CommandParameter="All"
+                            Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=All}"/>
+                    <Button Classes="mchip" Content="Bitcoin" Command="{Binding SetChainFilterCommand}" CommandParameter="Bitcoin"
+                            Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=Bitcoin}"/>
+                    <Button Classes="mchip" Content="Ethereum" Command="{Binding SetChainFilterCommand}" CommandParameter="Ethereum"
+                            Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=Ethereum}"/>
+                    <Button Classes="mchip" Content="Solana" Command="{Binding SetChainFilterCommand}" CommandParameter="Solana"
+                            Classes.active="{Binding ChainFilter, Converter={StaticResource StringEquals}, ConverterParameter=Solana}"/>
+                  </StackPanel>
+                </ScrollViewer>
+                <ItemsControl ItemsSource="{Binding HomeAssets}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:HoldingRowViewModel">
+                      <Button Background="Transparent" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource UmBorder}" CornerRadius="0"
+                              Padding="0,12" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              Command="{Binding #MobileRoot.((vm:MainViewModel)DataContext).OpenAssetDetailsCommand}" CommandParameter="{Binding Symbol}">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                          <Border Width="44" Height="44" CornerRadius="22" Background="{Binding BadgeBg}" ClipToBounds="True" VerticalAlignment="Center">
+                            <Panel>
+                              <TextBlock FontSize="19" FontWeight="Bold" Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                              <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+                            </Panel>
+                          </Border>
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3" MinWidth="0">
+                            <TextBlock Text="{Binding Name}" FontSize="15.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <TextBlock Text="{Binding Symbol}" FontSize="12.5" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Center"/>
+                              <Border Background="{Binding ChangeColor, Converter={StaticResource ChangeWash}}" CornerRadius="999" Padding="6,1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}" FontSize="11" FontWeight="SemiBold"/>
+                              </Border>
+                            </StackPanel>
+                          </StackPanel>
+                          <Viewbox Grid.Column="2" Width="96" Height="30" Stretch="Fill" VerticalAlignment="Center" IsVisible="{Binding HasSpark}">
+                            <Canvas Width="110" Height="30">
+                              <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{Binding ChangeColor}"
+                                    StrokeThickness="5" Opacity="0.16" StrokeLineCap="Round" StrokeJoin="Round"/>
+                              <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{Binding ChangeColor}"
+                                    StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"/>
+                            </Canvas>
+                          </Viewbox>
+                          <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="3">
+                            <TextBlock Classes="mono" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Right" Text="{Binding ValueLabel}"
+                                       IsVisible="{Binding #MobileRoot.((vm:MainViewModel)DataContext).AreValuesVisible}"/>
+                            <TextBlock Classes="mono" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Right" Text="••••"
+                                       IsVisible="{Binding #MobileRoot.((vm:MainViewModel)DataContext).IsBalanceHidden}"/>
+                            <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" HorizontalAlignment="Right"
+                                       Text="{Binding AmountLabel}" TextTrimming="CharacterEllipsis" MaxWidth="130"
+                                       IsVisible="{Binding #MobileRoot.((vm:MainViewModel)DataContext).AreValuesVisible}"/>
+                          </StackPanel>
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <!-- Market overview: four tiles. -->
+            <Border Classes="mcard" Padding="16,14">
+              <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding [mobile.marketOverview], Source={x:Static app:Loc.Instance}}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                  <Button Grid.Column="1" Classes="mlink" Content="{Binding [mobile.seeAll], Source={x:Static app:Loc.Instance}}"
+                          Command="{Binding SelectSectionCommand}" CommandParameter="Market"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding MarketOverviewRows}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <UniformGrid Columns="4"/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MarketRowViewModel">
+                      <Button Background="Transparent" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource UmBorder}" CornerRadius="0" Padding="9,0"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              Command="{Binding #MobileRoot.((vm:MainViewModel)DataContext).OpenMarketCoinCommand}" CommandParameter="{Binding}">
+                        <!-- Ticker over its change: four columns on a phone leave no room for both on one line. -->
+                        <StackPanel Spacing="4">
+                          <TextBlock Text="{Binding Symbol}" FontSize="13" FontWeight="SemiBold"/>
+                          <TextBlock Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}" FontSize="11"
+                                     TextTrimming="CharacterEllipsis"/>
+                          <Viewbox Height="26" Stretch="Fill" IsVisible="{Binding HasSpark}">
+                            <Canvas Width="110" Height="30">
+                              <Path Data="{Binding Spark, Converter={StaticResource SmoothLine}}" Stroke="{Binding ChangeColor}"
+                                    StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round"/>
+                            </Canvas>
+                          </Viewbox>
+                        </StackPanel>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- ======================= Every other page ======================= -->
+          <StackPanel IsVisible="{Binding !IsPortfolio}" Spacing="10">
+            <Button Classes="mlink" HorizontalAlignment="Left" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"
+                    AutomationProperties.Name="{Binding [mobile.back], Source={x:Static app:Loc.Instance}}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Data="M15 5 L8 12 L15 19" Stroke="{DynamicResource UmAccentBright}" StrokeThickness="2"
+                      StrokeLineCap="Round" StrokeJoin="Round" Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding [mobile.back], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+            <Border Classes="note" IsVisible="{Binding IsSettings}">
+              <TextBlock Text="{Binding [mobile.noTor], Source={x:Static app:Loc.Instance}}" FontSize="12" TextWrapping="Wrap"
+                         Foreground="{DynamicResource UmTextDim}"/>
+            </Border>
+            <pages:ReceivePage IsVisible="{Binding IsReceive}"/>
+            <pages:SendPage IsVisible="{Binding IsSend}"/>
+            <pages:SwapPage IsVisible="{Binding IsSwap}"/>
+            <pages:ActivityPage IsVisible="{Binding IsActivity}"/>
+            <pages:DiscoverPage IsVisible="{Binding IsDiscover}"/>
+            <pages:MarketPage IsVisible="{Binding IsMarket}"/>
+            <pages:StakingPage IsVisible="{Binding IsStaking}"/>
+            <pages:ConnectPage IsVisible="{Binding IsConnect}"/>
+            <pages:BuyPage IsVisible="{Binding IsBuy}"/>
+            <pages:P2pPage IsVisible="{Binding IsP2p}"/>
+            <pages:NewsPage IsVisible="{Binding IsNews}"/>
+            <pages:NftsPage IsVisible="{Binding IsNfts}"/>
+            <pages:AssetPage IsVisible="{Binding IsAsset}"/>
+            <pages:SecurityPage IsVisible="{Binding IsSecurity}"/>
+            <pages:SettingsPage IsVisible="{Binding IsSettings}"/>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Bottom bar: Home, Activity, the crystal, Explore, Settings. -->
+      <Border Grid.Row="1" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0"
+              CornerRadius="24,24,0,0" Padding="6,4,6,10">
+        <Grid ColumnDefinitions="*,*,Auto,*,*">
+          <Button Classes="mnav" Classes.active="{Binding IsPortfolio}" Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio">
+            <StackPanel>
+              <Path Data="M4 11 L12 4 L20 11 V20 H14.5 V14 H9.5 V20 H4 Z"/>
+              <!-- Shrinks a long label (“Налаштування”, “Einstellungen”) to its column instead of cutting it. -->
+              <Viewbox StretchDirection="DownOnly">
+                <TextBlock Text="{Binding [mobile.home], Source={x:Static app:Loc.Instance}}"/>
+              </Viewbox>
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="1" Classes="mnav" Classes.active="{Binding IsActivityGroup}" Command="{Binding SelectSectionCommand}" CommandParameter="Activity">
+            <StackPanel>
+              <Path Data="M3 12 H7 L10 5 L14 19 L17 12 H21"/>
+              <Viewbox StretchDirection="DownOnly">
+                <TextBlock Text="{Binding [nav.activity], Source={x:Static app:Loc.Instance}}"/>
+              </Viewbox>
+            </StackPanel>
+          </Button>
+          <!-- The crystal: quick actions. -->
+          <Button Grid.Column="2" Width="70" Height="70" CornerRadius="35" Margin="10,-30,10,0" Padding="0"
+                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                  BorderBrush="{DynamicResource UmAccentBright}" BorderThickness="2"
+                  Command="{Binding ToggleQuickSheetCommand}"
+                  AutomationProperties.Name="{Binding [mobile.quickTitle], Source={x:Static app:Loc.Instance}}">
+            <Button.Background>
+              <RadialGradientBrush>
+                <GradientStop Color="{DynamicResource UmCardTop}" Offset="0"/>
+                <GradientStop Color="{DynamicResource UmCardBottom}" Offset="1"/>
+              </RadialGradientBrush>
+            </Button.Background>
+            <controls:BrandMark Kind="Mark" Width="40" Height="40"/>
+          </Button>
+          <Button Grid.Column="3" Classes="mnav" Classes.active="{Binding IsDiscoverGroup}" Command="{Binding SelectSectionCommand}" CommandParameter="Discover">
+            <StackPanel>
+              <Path Data="M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H20 V20 H14 Z"/>
+              <Viewbox StretchDirection="DownOnly">
+                <TextBlock Text="{Binding [mobile.explore], Source={x:Static app:Loc.Instance}}"/>
+              </Viewbox>
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="4" Classes="mnav" Classes.active="{Binding IsSettings}" Command="{Binding SelectSectionCommand}" CommandParameter="Settings">
+            <StackPanel>
+              <Path Data="M12 9 C13.7 9 15 10.3 15 12 C15 13.7 13.7 15 12 15 C10.3 15 9 13.7 9 12 C9 10.3 10.3 9 12 9 Z M12 3 V5.5 M12 18.5 V21 M3 12 H5.5 M18.5 12 H21 M5.6 5.6 L7.4 7.4 M16.6 16.6 L18.4 18.4 M5.6 18.4 L7.4 16.6 M16.6 7.4 L18.4 5.6"/>
+              <Viewbox StretchDirection="DownOnly">
+                <TextBlock Text="{Binding [nav.settings], Source={x:Static app:Loc.Instance}}"/>
+              </Viewbox>
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- Sheets: a dimmed page and a panel rising from the bottom. -->
+    <Panel IsVisible="{Binding IsQuickSheetOpen}">
+      <Button Background="#99000000" BorderThickness="0" CornerRadius="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+              Command="{Binding ToggleQuickSheetCommand}"/>
+      <Border VerticalAlignment="Bottom" CornerRadius="26,26,0,0" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder2}"
+              BorderThickness="0,1,0,0" Padding="18,14,18,28">
+        <StackPanel Spacing="14">
+          <Border Width="44" Height="4" CornerRadius="2" Background="{DynamicResource UmBorder3}" HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding [mobile.quickTitle], Source={x:Static app:Loc.Instance}}" FontSize="17" FontWeight="SemiBold"/>
+          <UniformGrid Columns="3" ColumnSpacing="10" RowSpacing="10">
+            <Button Classes="mtile" Command="{Binding QuickActionCommand}" CommandParameter="Receive">
+              <StackPanel Spacing="8"><Path Data="M12 3 V15 M12 15 L7 10 M12 15 L17 10 M5 20 H19"/>
+                <TextBlock Text="{Binding [nav.receive], Source={x:Static app:Loc.Instance}}"/></StackPanel>
+            </Button>
+            <Button Classes="mtile" Command="{Binding QuickActionCommand}" CommandParameter="Send">
+              <StackPanel Spacing="8"><Path Data="M12 20 V8 M12 8 L7 13 M12 8 L17 13 M5 3.5 H19"/>
+                <TextBlock Text="{Binding [nav.send], Source={x:Static app:Loc.Instance}}"/></StackPanel>
+            </Button>
+            <Button Classes="mtile" Command="{Binding QuickActionCommand}" CommandParameter="Swap">
+              <StackPanel Spacing="8"><Path Data="M5 8 H18 L15 5 M19 16 H6 L9 19"/>
+                <TextBlock Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}"/></StackPanel>
+            </Button>
+            <Button Classes="mtile" Command="{Binding QuickActionCommand}" CommandParameter="Staking">
+              <StackPanel Spacing="8"><Path Data="M5 8 L12 4.5 L19 8 L12 11.5 Z M5 12 L12 15.5 L19 12 M5 16 L12 19.5 L19 16"/>
+                <TextBlock Text="{Binding [nav.staking], Source={x:Static app:Loc.Instance}}"/></StackPanel>
+            </Button>
+            <Button Classes="mtile" Command="{Binding QuickActionCommand}" CommandParameter="Market">
+              <StackPanel Spacing="8"><Path Data="M4 19 L9 13 L13 16 L20 7 M15 7 H20 V12"/>
+                <TextBlock Text="{Binding [nav.market], Source={x:Static app:Loc.Instance}}"/></StackPanel>
+            </Button>
+            <Button Classes="mtile" Command="{Binding QuickActionCommand}" CommandParameter="Connect">
+              <StackPanel Spacing="8"><Path Data="M10 14 L14 10 M9 11 L7 13 C5.6 14.4 5.6 16.6 7 18 C8.4 19.4 10.6 19.4 12 18 L14 16 M15 13 L17 11 C18.4 9.6 18.4 7.4 17 6 C15.6 4.6 13.4 4.6 12 6 L10 8"/>
+                <TextBlock Text="{Binding [nav.connect], Source={x:Static app:Loc.Instance}}"/></StackPanel>
+            </Button>
+          </UniformGrid>
+          <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding LockCommand}"
+                  Content="{Binding [nav.lock], Source={x:Static app:Loc.Instance}}"/>
+        </StackPanel>
+      </Border>
+    </Panel>
+
+    <Panel IsVisible="{Binding IsWalletSheetOpen}">
+      <Button Background="#99000000" BorderThickness="0" CornerRadius="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+              Command="{Binding ToggleWalletSheetCommand}"/>
+      <Border VerticalAlignment="Bottom" CornerRadius="26,26,0,0" Background="{DynamicResource UmBgAlt}" BorderBrush="{DynamicResource UmBorder2}"
+              BorderThickness="0,1,0,0" Padding="18,14,18,28">
+        <StackPanel Spacing="12">
+          <Border Width="44" Height="4" CornerRadius="2" Background="{DynamicResource UmBorder3}" HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding [mobile.walletsTitle], Source={x:Static app:Loc.Instance}}" FontSize="17" FontWeight="SemiBold"/>
+          <ItemsControl ItemsSource="{Binding Wallets}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:WalletListItemViewModel">
+                <Button Classes="msheet" Margin="0,0,0,8"
+                        Command="{Binding #MobileRoot.((vm:MainViewModel)DataContext).SwitchWalletCommand}" CommandParameter="{Binding Id}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Ellipse Width="12" Height="12" Fill="{DynamicResource UmAccentBright}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding TotalLabel}" FontSize="12" Foreground="{DynamicResource UmTextDim}" IsVisible="{Binding HasTotal}"/>
+                    </StackPanel>
+                    <Path Grid.Column="2" Data="M5 12.5 L10 17 L19 7" Stroke="{DynamicResource UmAccentBright}" StrokeThickness="2.2"
+                          StrokeLineCap="Round" StrokeJoin="Round" Width="16" Height="16" Stretch="Uniform" IsVisible="{Binding IsActive}"/>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding OpenWalletsCommand}"
+                  Content="{Binding [settings.walletAddTitle], Source={x:Static app:Loc.Instance}}"/>
+        </StackPanel>
+      </Border>
+    </Panel>
+
+    <!-- Notices, at the top. -->
+    <Border IsHitTestVisible="False" VerticalAlignment="Top" HorizontalAlignment="Center" IsVisible="{Binding ToastVisible}" Margin="16,16,16,0">
+      <Button Classes="ghost" Padding="0" Command="{Binding DismissToastCommand}" IsHitTestVisible="True">
+        <Border CornerRadius="12" Padding="14,10" Background="{DynamicResource UmCard}" BorderThickness="1"
+                BorderBrush="{Binding ToastIsError, Converter={StaticResource ToastBorder}}" BoxShadow="0 8 28 0 #66000000">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{Binding ToastIsError, Converter={StaticResource ToastGlyph}}" FontSize="15" VerticalAlignment="Center"
+                       Foreground="{Binding ToastIsError, Converter={StaticResource ToastBorder}}"/>
+            <TextBlock Text="{Binding Toast}" TextWrapping="Wrap" FontSize="12.5" VerticalAlignment="Center" MaxWidth="300"/>
+          </StackPanel>
+        </Border>
+      </Button>
+    </Border>
+  </Panel>
+</UserControl>

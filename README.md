@@ -27,7 +27,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
-![Android](https://img.shields.io/badge/Android-planned-8A8A9C?logo=android&logoColor=white)
+![Android](https://img.shields.io/badge/Android-beta%20APK-6E5FB8?logo=android&logoColor=white)
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
@@ -70,7 +70,9 @@ UmbrellaWallet/
 
 | If you want to… | Read this first |
 |---|---|
-| Install and use | [Getting started](docs/getting-started.md) |
+| Install and use | [Getting started](docs/getting-started.md) · [User guides](docs/guides/README.md) · [On Android](docs/guides/android.md) |
+| Swap, stake, connect | [Swap](docs/guides/swap.md) · [Staking](docs/guides/staking.md) · [Connect](docs/guides/connect.md) |
+| Read it in Ukrainian | [Посібник користувача](docs/guides/user-guide-uk.md) |
 | Understand the philosophy | [MANIFESTO.md](MANIFESTO.md) |
 | Know security guarantees | [THREAT_MODEL.md](THREAT_MODEL.md) |
 | Report a vulnerability | [SECURITY.md](SECURITY.md) |
@@ -137,6 +139,16 @@ with KuCoin and Bybit behind Binance, so it still draws over Tor.
 <img src="docs/assets/screenshot-market-v410.png" width="80%" alt="Market chart with candles"/>
 </div>
 
+**Stake from the wallet.**
+TRX, SOL and ATOM stake right here — freeze and vote on TRON, a stake account on Solana, a delegation on the
+Cosmos Hub — each built, checked and signed in the wallet and confirmed with your password like a send.
+The transaction TronGrid builds for TRON is decoded and compared with what you asked before it is signed.
+
+**Your balance, point by point.**
+The chart beside the balance follows the pointer: each point is what the coins you hold now were worth at
+that moment, when that was, and the move since the start — real prices, not a smoothed guess. A wallet of
+stablecoins draws as the flat line it is.
+
 **Activity you can scan.**
 Every event has its own icon, the list runs newest first under Today / Yesterday headings, and every
 transfer shows what it is worth.
@@ -196,21 +208,21 @@ is the most common way people lose money.
 | Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address — **and now sendable**, fee in ETH |
 | Litecoin (LTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84, full HD scan |
 | Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | real UTXO spend |
-| Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | — | CashAddr, SIGHASH_FORKID |
-| Monero (XMR) | ✅ | ✅ | ✅ | ✅ | — | local `monero-wallet-rpc`, loopback only |
-| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | — | SPL tokens send too, Token-2022 (PayPal USD) included when its extensions allow |
-| TRON (TRX) | ✅ | ✅ | ✅ | ✅ | — | + every TRC-20 at the same address |
-| USDT (TRC-20) | ✅ | ✅ | ✅ | ✅ | — | same address as TRX; fee paid in TRX |
-| TON | ✅ | ✅ | ✅ | ✅ | — | wallet v4R2, pinned to `@ton/ton` |
-| Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | — | CIP-1852, BIP32-Ed25519 |
-| Zcash (ZEC) | ✅ | ✅ | ✅ | — | — | **transparent `t1…` only** — not shielded |
-| XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | — | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
-| Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | — | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
-| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | — | — | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
-| NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | — | from your implicit account, to any `.near` name or implicit account |
+| Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | ✅ | CashAddr, SIGHASH_FORKID |
+| Monero (XMR) | ✅ | ✅ | ✅ | ✅ | ✅ | local `monero-wallet-rpc`, loopback only |
+| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | ✅ | SPL tokens send too, Token-2022 (PayPal USD) included when its extensions allow |
+| TRON (TRX) | ✅ | ✅ | ✅ | ✅ | ✅ | + every TRC-20 at the same address |
+| USDT (TRC-20) | ✅ | ✅ | ✅ | ✅ | ✅ | same address as TRX; fee paid in TRX |
+| TON | ✅ | ✅ | ✅ | ✅ | 🟡 | wallet v4R2, pinned to `@ton/ton` |
+| Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | ✅ | CIP-1852, BIP32-Ed25519 |
+| Zcash (ZEC) | ✅ | ✅ | ✅ | ✅ | ✅ | **transparent `t1…` only** — not shielded |
+| XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | ✅ | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
+| Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | ✅ | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
+| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | — | ✅ | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
+| NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | 🟡 | from your implicit account, to any `.near` name or implicit account |
 | Polkadot (DOT) | ✅ | ✅ | ✅ | — | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub |
-| Nano (XNO) | ✅ | ✅ | — | — | — | restores in Ledger / Trust / Nault (BIP39); incoming XNO stays *receivable* until a signing wallet pockets it — the balance counts it, sending is not here yet |
-| Decred (DCR) | ✅ | ✅ | — | — | — | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); sending is not here yet |
+| Nano (XNO) | ✅ | ✅ | ✅ | ✅ | ✅ | restores in Ledger / Trust / Nault (BIP39); no fee — a send pockets what it needs first, with proof of work computed on your computer |
+| Decred (DCR) | ✅ | ✅ | — | ✅ | 🟡 | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); received from a swap, sending is not here yet |
 | Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
 | zkSync Era (ETH) | ✅ | ✅ | ✅ | 🟡 | — | the gas comes from zkSync's own estimate, not Ethereum's 21,000 |
 
@@ -218,8 +230,12 @@ Plus the native coin of every major EVM network at the same `0x` address (BNB, M
 and ETH on Arbitrum / Optimism / Base), and NFTs listed by name and count with **no image fetch**, so
 viewing them never leaks your IP.
 
-Swaps are non-custodial via THORChain: your coin goes to a THORChain vault with a signed memo and the
-network delivers to your own address. Nobody holds your funds in between.
+Any coin swaps for any other, each on its own network, and always to your own address. The route is chosen
+by trust and named before you pay: **THORChain** first (nobody holds your coins), then **NEAR Intents** (a
+smart contract holds them for the swap and refunds you if it cannot be filled; +0.25% without a partner
+key), and the **Exolix** exchange only for Monero, Nano and Decred, which nothing decentralised reaches — it
+holds the coins for the minutes of the swap, and the screen says so in a warning colour. 🟡 in the table: a
+route exists but did not quote that coin when this was written.
 
 ## Download
 
@@ -234,13 +250,20 @@ This is the icon you will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | [`PhobiaWallet-Setup-4.10.0-beta.1.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Setup-4.10.0-beta.1.exe) |
-| **Windows portable** | [`PhobiaWallet-4.10.0-beta.1-win-x64-portable.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-4.10.0-beta.1-win-x64-portable.exe) — one file, no install, leaves nothing behind |
-| **Linux** | [`PhobiaWallet-4.10.0-beta.1-linux-x64.tar.gz`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-4.10.0-beta.1-linux-x64.tar.gz) |
-| **Checksums** | [`SHA256SUMS-4.10.0-beta.1.txt`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/SHA256SUMS-4.10.0-beta.1.txt) |
+| **Windows installer** | [`PhobiaWallet-Setup-Beta-1.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Setup-Beta-1.exe) |
+| **Windows portable** | [`PhobiaWallet-Beta-1-win-x64-portable.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-win-x64-portable.exe) — one file, no install, leaves nothing behind |
+| **Linux** | [`PhobiaWallet-Beta-1-linux-x64.tar.gz`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-linux-x64.tar.gz) |
+| **Android** | [`PhobiaWallet-Beta-1-android.apk`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
+| **Checksums** | [`SHA256SUMS-Beta-1.txt`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/SHA256SUMS-Beta-1.txt) |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
+
+**On a phone:** the Android app is the same wallet — the same keys, signing code, coins and screens —
+laid out for a phone. Tor and the Monero service are bundled with Windows and Linux only for now; the
+[Android guide](docs/guides/android.md) says what that changes.
+
+<img src="docs/assets/screenshot-android-home-v410.png" width="32%" alt="Phobia on Android — home"/> <img src="docs/assets/screenshot-android-assets-v410.png" width="32%" alt="Phobia on Android — assets and market"/> <img src="docs/assets/screenshot-android-quick-v410.png" width="32%" alt="Phobia on Android — quick actions"/>
 
 ### Verify what you downloaded
 
@@ -248,12 +271,12 @@ Every release ships `SHA256SUMS-<version>.txt`. Check it before you run anything
 
 ```bash
 # Linux / macOS — run in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-4.10.0-beta.1.txt
+sha256sum -c SHA256SUMS-Beta-1.txt
 ```
 
 ```powershell
 # Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\PhobiaWallet-Setup-4.10.0-beta.1.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-Beta-1.exe -Algorithm SHA256
 ```
 
 If the hash does not match, do not run it. Better still, [build it yourself](docs/building.md) — the
@@ -352,7 +375,7 @@ desktop/
       Theming.cs                     19 palettes
       GuideContent.cs                the in-app guide
   tests/
-    Umbrella.Wallet.Core.Tests/      526 offline tests
+    Umbrella.Wallet.Core.Tests/      about 1,800 offline tests
   installer/                         Inno Setup script
   scripts/                           release, Tor/Monero staging
 docs/                                everything in this README's Docs section
@@ -458,7 +481,8 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🗓 Planned | Android · reproducible builds · external security audit |
+| 🧪 Beta | **Android** (APK; Tor and the Monero service are desktop-only for now) |
+| 🗓 Planned | Tor on Android · reproducible builds · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation
@@ -467,6 +491,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | [docs/INDEX.md](docs/INDEX.md) | **Central documentation hub** — start here |
 | [docs/getting-started.md](docs/getting-started.md) | Install, verify, first wallet |
+| [docs/guides/](docs/guides/README.md) | **User guides** — Android, swap, staking, connect, wallets and settings, and a full guide in Ukrainian |
 | [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to — **do not dilute this tone** |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Attack vectors: what is defended, and where the defence ends |
 | [PRIVACY.md](PRIVACY.md) | Technical privacy: what leaves this machine |
@@ -537,11 +562,11 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 
 <br/>
 
-<a href="https://t.me/UmbrellaWallet">
+<a href="https://t.me/PhobiaStat">
   <img src="docs/assets/logo-telegram-channel.png" width="72" alt="Phobia Wallet on Telegram"/>
 </a>
 
-**[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)** ·
+**[t.me/PhobiaStat](https://t.me/PhobiaStat)** ·
 [GitHub](https://github.com/thefear078/UmbrellaWallet) ·
 [TikTok @thefear078](https://www.tiktok.com/@thefear078) ·
 [Reddit u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004)

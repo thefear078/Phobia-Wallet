@@ -19,7 +19,7 @@ public sealed class SendMaxReserveTests
     public void Every_sendable_coin_reserves_something_for_its_fee()
     {
         var missing = MainViewModel.SendableSymbols
-            .Where(s => !MainViewModel.FeePaidInAnotherCoin.Contains(s))
+            .Where(s => !MainViewModel.FeePaidInAnotherCoin.Contains(s) && !MainViewModel.FeeFree.Contains(s))
             .Where(s => MainViewModel.SendMaxReserveFor(s) <= 0m)
             .OrderBy(s => s, StringComparer.Ordinal)
             .ToList();
@@ -43,7 +43,7 @@ public sealed class SendMaxReserveTests
     {
         // Keeps the exemption list honest: exempting something the wallet cannot send would quietly
         // shrink what the first test checks.
-        foreach (var symbol in MainViewModel.FeePaidInAnotherCoin)
+        foreach (var symbol in MainViewModel.FeePaidInAnotherCoin.Concat(MainViewModel.FeeFree))
         {
             Assert.Contains(symbol, MainViewModel.SendableSymbols);
         }

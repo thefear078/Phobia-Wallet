@@ -38,7 +38,7 @@ Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Questions
 
-[t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) · [CONTACT.md](CONTACT.md)
+[t.me/PhobiaStat](https://t.me/PhobiaStat) · [CONTACT.md](CONTACT.md)
 
 ---
 

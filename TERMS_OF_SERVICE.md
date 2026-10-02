@@ -70,7 +70,7 @@ Your rights under these Terms end if you breach them or the [LICENSE](LICENSE). 
 ## 11. Contact
 
 - Security (vulnerabilities): [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new)
-- Product / community: [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)
+- Product / community: [t.me/PhobiaStat](https://t.me/PhobiaStat)
 - Author: [CONTACT.md](CONTACT.md)
 
 Do not send seed phrases or private keys to any contact channel.

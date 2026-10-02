@@ -1,0 +1,220 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.SwapPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="14" MaxWidth="620" HorizontalAlignment="Left">
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}"/>
+      <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-08.json" Width="42" Height="42" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
+    </StackPanel>
+    <!-- How routes are chosen: a note that closes for good (Settings → Appearance → Interface
+         brings closed notes back). The list of coins is gone: the pickers below are that list. -->
+    <Border Classes="note" IsVisible="{Binding ShowSwapIntro}">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+        <Border Classes="noteMark">
+          <Path Data="M8 7.2 V12 M8 4.3 V4.4" Width="16" Height="16"/>
+        </Border>
+        <TextBlock Grid.Column="1" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5" VerticalAlignment="Center"
+                   Text="{Binding [swap.desc], Source={x:Static app:Loc.Instance}}"/>
+        <Button Grid.Column="2" Classes="noteClose" Content="✕" Command="{Binding DismissNoticeCommand}"
+                CommandParameter="swap.intro" ToolTip.Tip="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"
+                AutomationProperties.Name="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"/>
+      </Grid>
+    </Border>
+
+    <!-- Step 1 · pair & amount. A DEX-style stacked "You pay → You receive" widget with a
+         circular flip button straddling the two panels, like Uniswap. -->
+    <Border Classes="card">
+      <StackPanel Spacing="12">
+        <TextBlock Classes="eyebrow" Text="{Binding [swap.step1], Source={x:Static app:Loc.Instance}}"/>
+
+        <Grid RowDefinitions="Auto,Auto">
+          <!-- You pay -->
+          <Border Background="{DynamicResource UmInput}" BorderBrush="{DynamicResource UmBorder2}"
+                  BorderThickness="1" CornerRadius="16" Padding="16,12,16,14">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
+              <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"
+                         Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
+              <!-- Which wallet pays, on its own line at the top right, never under the coin picker. -->
+              <TextBlock Grid.Column="1" FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapWalletLabel}"
+                         HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+              <TextBox Grid.Row="1" Classes="bare" Text="{Binding SwapAmount}" Watermark="0.0" BorderThickness="0" Padding="0"
+                       MinHeight="0" Background="Transparent" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <!-- What it holds of this coin (click: use it all). -->
+              <Button Grid.Row="2" Classes="ghost" Padding="0" MinHeight="0" HorizontalAlignment="Left" Background="Transparent"
+                      BorderThickness="0" Command="{Binding SwapUseBalanceCommand}"
+                      IsVisible="{Binding SwapFromBalanceLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock FontSize="11.5" Classes="mono" Foreground="{DynamicResource UmAccentBright}" Text="{Binding SwapFromBalanceLabel}"
+                           TextTrimming="CharacterEllipsis"/>
+              </Button>
+              <ComboBox Grid.Row="1" Grid.Column="1" MinWidth="150" MaxWidth="220" VerticalAlignment="Center"
+                        ItemsSource="{Binding SwapFromOptions}" SelectedItem="{Binding SwapFromAsset}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="net:SwapAsset">
+                    <StackPanel Spacing="1" Margin="0,2">
+                      <TextBlock Text="{Binding Symbol}" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </Grid>
+          </Border>
+
+          <!-- Flip button, in the gap between the two panels: it overlaps their edges, not their contents. -->
+          <Border Grid.Row="0" Grid.RowSpan="2" Width="40" Height="40" CornerRadius="20"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="2"
+                  Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="2">
+            <Button Classes="action" Command="{Binding FlipSwapCommand}"
+                    AutomationProperties.Name="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"
+                    Width="40" Height="40">
+              <Path Stroke="{DynamicResource UmAccentBright}" StrokeThickness="2" StrokeLineCap="Round"
+                    StrokeJoin="Round" Fill="Transparent" Width="18" Height="18" Stretch="Uniform"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Data="M8 4 V16 M8 16 L5 13 M8 16 L11 13 M16 20 V8 M16 8 L13 11 M16 8 L19 11"/>
+            </Button>
+          </Border>
+
+          <!-- You receive -->
+          <Border Grid.Row="1" Margin="0,10,0,0" Background="{DynamicResource UmInput}"
+                  BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="16" Padding="16,14,16,12">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="6">
+              <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                         Text="{Binding [swap.to], Source={x:Static app:Loc.Instance}}"/>
+              <Panel Grid.Row="1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding SwapExpectedOut}" FontSize="24" FontWeight="SemiBold"
+                           Foreground="{DynamicResource UmTextDim}" Classes="mono" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding SwapExpectedOut, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <TextBlock Text="≈ 0.0" FontSize="24" FontWeight="SemiBold" Classes="mono"
+                           Foreground="{DynamicResource UmTextMuted}"
+                           IsVisible="{Binding !HasSwapQuote}"/>
+              </Panel>
+              <ComboBox Grid.Row="1" Grid.Column="1" MinWidth="150" MaxWidth="220" VerticalAlignment="Center"
+                        ItemsSource="{Binding SwapToOptions}" SelectedItem="{Binding SwapToAsset}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="net:SwapAsset">
+                    <StackPanel Spacing="1" Margin="0,2">
+                      <TextBlock Text="{Binding Symbol}" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding Network}" FontSize="10.5" Foreground="{DynamicResource UmTextDim}"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <Border IsVisible="{Binding SwapError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="6" Padding="12,9">
+          <TextBlock Text="{Binding SwapError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
+        <Button Classes="primary" Content="{Binding [swap.getQuote], Source={x:Static app:Loc.Instance}}"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                IsEnabled="{Binding !SwapBusy}" Command="{Binding GetSwapQuoteCommand}"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Step 2 · review & confirm -->
+    <Border Classes="card" BorderBrush="#7A6230" IsVisible="{Binding HasSwapQuote}">
+      <StackPanel Spacing="10">
+        <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [swap.step2], Source={x:Static app:Loc.Instance}}"/>
+
+        <!-- You get — the headline figure, matching Send's prominent amount. -->
+        <StackPanel Spacing="2">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [swap.youGet], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Classes="mono" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource UmPos}" Text="{Binding SwapExpectedOut}"/>
+        </StackPanel>
+
+        <!-- Who carries the swap, and what that means for the coins in between. -->
+        <Border CornerRadius="8" Padding="10,8" Background="{DynamicResource UmCardAlt}" BorderThickness="1"
+                BorderBrush="{DynamicResource UmBorder2}" IsVisible="{Binding !SwapRouteCustodial}">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="eyebrow" Text="{Binding [swap.route], Source={x:Static app:Loc.Instance}}"/>
+            <TextBlock Text="{Binding SwapRouteText}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource UmTextSoft}"/>
+          </StackPanel>
+        </Border>
+        <Border CornerRadius="8" Padding="10,8" Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1"
+                IsVisible="{Binding SwapRouteCustodial}">
+          <StackPanel Spacing="2">
+            <TextBlock Classes="eyebrow" Foreground="#E7CA83" Text="{Binding [swap.route], Source={x:Static app:Loc.Instance}}"/>
+            <TextBlock Text="{Binding SwapRouteText}" TextWrapping="Wrap" FontSize="12" Foreground="#E7CA83"/>
+          </StackPanel>
+        </Border>
+
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
+          <TextBlock Grid.Row="0" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.rate], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Grid.Row="0" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapRateText}"/>
+          <TextBlock Grid.Row="1" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.fee], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Grid.Row="1" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapFeeText}"/>
+          <TextBlock Grid.Row="2" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.eta], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Grid.Row="2" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapEtaText}"/>
+        </Grid>
+
+        <!-- Delivered-to address boxed and full, so you can verify where THORChain sends the output. -->
+        <StackPanel Spacing="2">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" Text="{Binding [swap.toYour], Source={x:Static app:Loc.Instance}}"/>
+          <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1"
+                  CornerRadius="8" Padding="10,8">
+            <SelectableTextBlock Classes="mono" FontSize="12" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource UmTextSoft}" Text="{Binding SwapDestination}"/>
+          </Border>
+        </StackPanel>
+
+        <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Text="{Binding SwapExpiryText}"/>
+        <Border IsVisible="{Binding SwapWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="#2A2418" BorderBrush="#7A6230" BorderThickness="1" CornerRadius="6" Padding="12,9">
+          <TextBlock Text="{Binding SwapWarning}" Foreground="#E7CA83" TextWrapping="Wrap" FontSize="11.5"/>
+        </Border>
+        <TextBlock Foreground="#BBAF91" FontSize="12" TextWrapping="Wrap"
+                   Text="{Binding [swap.confirmNote], Source={x:Static app:Loc.Instance}}"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Classes="danger" Content="{Binding SwapConfirmLabel}" IsEnabled="{Binding !SwapBusy}" Command="{Binding ConfirmSwapCommand}"/>
+          <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}" Command="{Binding CancelSwapCommand}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Broadcasting -->
+    <Border Classes="card" IsVisible="{Binding IsBusy}">
+      <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
+        <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/sending.json"
+                       Width="64" Height="64" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}"/>
+        <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource UmTextDim}" FontSize="12.5"
+                   VerticalAlignment="Center" TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Result -->
+    <Border Background="#14231A" BorderBrush="#2F5A3C" BorderThickness="1" CornerRadius="10" Padding="14"
+            IsVisible="{Binding SwapSuccess, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+      <StackPanel Orientation="Horizontal" Spacing="14">
+        <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/money.json"
+                       Width="56" Height="56" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Top"/>
+        <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmPos}" TextWrapping="Wrap"
+                   Text="{Binding SwapSuccess}" VerticalAlignment="Center"/>
+      </StackPanel>
+    </Border>
+    <!-- A paid swap, followed until it ends. -->
+    <Border Classes="card" IsVisible="{Binding HasSwapTrack}">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="eyebrow" Text="{Binding [swap.st.title], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock Text="{Binding SwapTrackTitle}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+        <TextBlock Text="{Binding SwapTrackStatus}" Foreground="{DynamicResource UmAccentBright}" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Classes="ghost" Content="{Binding [swap.st.check], Source={x:Static app:Loc.Instance}}" Command="{Binding RefreshSwapStatusCommand}"/>
+          <Button Classes="ghost" Content="{Binding [swap.track], Source={x:Static app:Loc.Instance}}" Command="{Binding OpenUrlCommand}"
+                  CommandParameter="{Binding SwapTrackUrl}"
+                  IsVisible="{Binding SwapTrackUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+          <Button Classes="ghost" Content="{Binding [common.close], Source={x:Static app:Loc.Instance}}" Command="{Binding DismissSwapTrackCommand}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

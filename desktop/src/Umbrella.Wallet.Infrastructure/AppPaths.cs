@@ -52,6 +52,16 @@ public static class AppPaths
             return overridden;
         }
 
+        // Android: the app's own private storage, which no other app can read and which goes away with
+        // the app. There is no folder "beside the program" there to write to.
+        if (OperatingSystem.IsAndroid())
+        {
+            var android = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Phobia");
+            Directory.CreateDirectory(android);
+            return android;
+        }
+
         var beside = Path.Combine(AppContext.BaseDirectory, "data");
         if (IsWritable(beside))
         {

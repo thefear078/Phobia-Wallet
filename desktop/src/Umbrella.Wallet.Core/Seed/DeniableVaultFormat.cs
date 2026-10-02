@@ -121,13 +121,15 @@ public static class DeniableVaultFormat
         secret = string.Empty;
         if (!IsWellFormed(file)) return false;
 
-        string? found = null;
-        for (var i = 0; i < SlotCount; i++)
+        // Every slot, at the same time. No early exit: returning as soon as slot 0 matches would make a
+        // slot-1 wallet measurably slower to open, which is exactly the kind of tell this format exists
+        // to avoid. Run side by side, the wait is one key derivation instead of one per slot.
+        var opened = new string?[SlotCount];
+        Parallel.For(0, SlotCount, i =>
         {
-            // No early exit: returning as soon as slot 0 matches would make a slot-1 wallet
-            // measurably slower to open, which is exactly the kind of tell this format exists to avoid.
-            if (TryReadSlot(file, i, password, kdf, out var value)) found ??= value;
-        }
+            if (TryReadSlot(file, i, password, kdf, out var value)) opened[i] = value;
+        });
+        var found = opened.FirstOrDefault(v => v is not null);
 
         if (found is null) return false;
         secret = found;

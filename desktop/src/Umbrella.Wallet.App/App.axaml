@@ -14,6 +14,22 @@
     <!-- Brand gradients are the same across every palette (they ARE the Phobia signature), so they
          live here as static resources rather than in the per-theme brush set. -->
     <Application.Resources>
+        <!-- Converters shared by the desktop window, its pages and the Android shell. -->
+        <local:StringEqualsConverter x:Key="StringEquals" />
+        <local:MarketFilterConverter x:Key="MarketFilter" />
+        <local:ToastBorderConverter x:Key="ToastBorder" />
+        <local:ToastGlyphConverter x:Key="ToastGlyph" />
+        <local:ChangeWashConverter x:Key="ChangeWash" />
+        <local:ActivityLabelConverter x:Key="ActivityLabel" />
+        <local:ThemeBrushConverter x:Key="ThemeBrush" />
+        <local:ChartLinePointConverter x:Key="HLineStart" Kind="HStart" />
+        <local:ChartLinePointConverter x:Key="HLineEnd" Kind="HEnd" />
+        <local:ChartLinePointConverter x:Key="VLineStart" Kind="VStart" />
+        <local:ChartLinePointConverter x:Key="VLineEnd" Kind="VEnd" />
+        <local:BoolToWeightConverter x:Key="BoolToWeight" />
+        <local:SmoothLineConverter x:Key="SmoothLine" />
+        <local:SmoothAreaConverter x:Key="SmoothArea" />
+
         <LinearGradientBrush x:Key="UmSignature" StartPoint="0%,0%" EndPoint="100%,100%">
             <GradientStop Offset="0" Color="#24C6FF"/>
             <GradientStop Offset="0.5" Color="#3478FF"/>
@@ -240,6 +256,91 @@
         </Style>
         <Style Selector="Button.navicon.active Path">
             <Setter Property="Stroke" Value="{DynamicResource UmNavActiveIcon}" />
+        </Style>
+
+        <!-- A note a user can close for good: a soft card with an "i" mark and a quiet ✕. -->
+        <Style Selector="Border.note">
+            <Setter Property="Background" Value="{DynamicResource UmCardAlt}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource UmBorder2}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="14,12" />
+        </Style>
+        <Style Selector="Border.noteMark">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="CornerRadius" Value="13" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Background" Value="{DynamicResource UmAccentDim}" />
+        </Style>
+        <Style Selector="Border.noteMark > Path">
+            <Setter Property="Stroke" Value="{DynamicResource UmText}" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="StrokeLineCap" Value="Round" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.noteClose">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource UmTextMuted}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.noteClose:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmBorder2}" />
+            <Setter Property="Foreground" Value="{DynamicResource UmText}" />
+        </Style>
+
+        <!-- Back to top: a round accent button that fades and rises in, and lifts a little under the pointer. -->
+        <Style Selector="Button.scrollTop">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="23" />
+            <Setter Property="Background" Value="{DynamicResource UmPrimaryFill}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="RenderTransform" Value="translateY(16px) scale(0.9)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.24" Easing="CubicEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.28" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.scrollTop /template/ ContentPresenter">
+            <Setter Property="BoxShadow" Value="{DynamicResource UmPrimaryGlow}" />
+        </Style>
+        <Style Selector="Button.scrollTop:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmPrimaryFillHover}" />
+        </Style>
+        <Style Selector="Button.scrollTop:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UmPrimaryFillHover}" />
+        </Style>
+        <Style Selector="Button.scrollTop.shown">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="IsHitTestVisible" Value="True" />
+            <Setter Property="RenderTransform" Value="translateY(0px) scale(1)" />
+        </Style>
+        <Style Selector="Button.scrollTop.shown:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-3px) scale(1.06)" />
+        </Style>
+
+        <!-- A settings card found by the search: its edge lights up for a moment. -->
+        <Style Selector="Border.card.found">
+            <Setter Property="BorderBrush" Value="{DynamicResource UmAccent}" />
         </Style>
 
         <!-- Primary: solid, bold — the single strongest call to action on a screen. -->

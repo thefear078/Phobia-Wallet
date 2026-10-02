@@ -52,8 +52,23 @@ public partial class App : Application
                     main.Show();
                     main.Activate();
                     splash.Close();
-                }, TimeSpan.FromMilliseconds(950));
-            }, TimeSpan.FromMilliseconds(1050));
+                }, TimeSpan.FromMilliseconds(250));
+            }, TimeSpan.FromMilliseconds(350));
+
+            // While the lock screen waits for the password: compile the vault's key derivation and the
+            // address derivation once, off the UI thread, so the first unlock runs warm.
+            Warmup.Start();
+        }
+
+        else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        {
+            // Android: one view, the phone layout, over the same view model as the desktop.
+            UiSettings.LoadAndApply();
+            singleView.MainView = new MobileShell
+            {
+                DataContext = new MainViewModel(new WalletRegistry()),
+            };
+            Warmup.Start();
         }
 
         base.OnFrameworkInitializationCompleted();

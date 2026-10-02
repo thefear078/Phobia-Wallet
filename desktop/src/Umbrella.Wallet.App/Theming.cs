@@ -28,6 +28,7 @@ public static class Theming
         new("phobia", "Phobia · midnight violet"),
         new("umbrella", "Honey gold · light on black"),
         new("navy", "Navy · the classic blue"),
+        new("ice", "Ice · Phobia blue"),
         new("purple", "The fear · monochrome noir"),
         new("signal", "Ember · crimson editorial"),
         new("black", "Void · electric OLED"),
@@ -81,6 +82,16 @@ public static class Theming
         ],
         // Navy — the original signature: deep navy/graphite base (never pure black), matte glass cards,
         // cool-white text and the cyan→blue→violet accent. Kept for everyone who chose it.
+        // Ice — the Android design: deep navy pages, blue-tinted cards on hairline edges, one bright
+        // crystal blue. White labels sit on its accent at 4.8:1.
+        ["ice"] =
+        [
+            "#071021", "#0A1528", "#0E1B31", "#0B172B", "#11223C", "#16294A",
+            "#1A2B47", "#213659", "#2B4672",
+            "#1E6FE0", "#3EA2FF", "#2A7BEE", "#11305A", "#173A6A",
+            "#F2F7FF", "#C7D3E8", "#8FA0BD", "#6E819F", "#3CD989",
+            "#F2F7FF", "#FFFFFF", "#071021",
+        ],
         ["navy"] =
         [
             "#080D16", "#0B1220", "#111927", "#0F1826", "#151E2D", "#1B2740",
@@ -338,8 +349,13 @@ public static class Theming
     public static void Apply(string id)
     {
         if (!Palettes.TryGetValue(id, out var palette)) return;
-        var resources = Application.Current?.Resources;
-        if (resources is null) return;
+        var app = Application.Current?.Resources;
+        if (app is null) return;
+
+        // Built off to the side and swapped in whole. Writing each of the ~50 keys into the application's
+        // resources made every control in the window re-read its resources ~50 times: switching theme
+        // froze the window for most of a second.
+        var resources = new Avalonia.Controls.ResourceDictionary();
 
         for (var i = 0; i < Keys.Length; i++)
         {
@@ -427,8 +443,23 @@ public static class Theming
         PublishSignature(resources, palette, hero, accent);
         if (id == DefaultTheme) PublishPhobiaSignature(resources);
 
+        // The application's own defaults for these keys (App.axaml) would win over a merged dictionary,
+        // so they step aside the first time; from then on the theme lives only in its dictionary.
+        foreach (var key in resources.Keys.ToList())
+        {
+            if (app.ContainsKey(key)) app.Remove(key);
+        }
+
+        var at = _applied is null ? -1 : app.MergedDictionaries.IndexOf(_applied);
+        if (at >= 0) app.MergedDictionaries[at] = resources;
+        else app.MergedDictionaries.Add(resources);
+        _applied = resources;
+
         Current = id;
     }
+
+    /// <summary>The theme dictionary in use, replaced whole by the next <see cref="Apply"/>.</summary>
+    private static Avalonia.Controls.ResourceDictionary? _applied;
 
     /// <summary>
     /// The balance card, the action tiles and the active navigation item: one treatment on every theme,

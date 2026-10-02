@@ -67,7 +67,8 @@ Suggested short body (EN) — same spirit as ROADMAP §9.3.
 | Who holds the user’s funds? | **Nobody except the user.** Keys never leave the device. Phobia cannot freeze, reverse, or recover funds. |
 | How does Phobia make money? | **No cut of transfers.** Optional sponsorship ([GitHub Sponsors](https://github.com/sponsors/thefear078)). Any future in-app service fee (if added) must be disclosed in UI and still non-custodial — see [LICENSE](LICENSE) §3. |
 | Is there fiat on-ramp / card buy? | **Not planned** without proper licensing. Do not advertise “buy crypto with card” in the listing. |
-| Are swaps custody? | **No.** If present, swaps are user-signed transactions to third-party protocols; Phobia never takes possession. |
+| Are swaps custody? | **Phobia never takes possession.** Swaps are user-signed payments to third-party routes and pay out to the user's own address. THORChain holds nothing; NEAR Intents holds the coins in a contract that refunds on failure; Exolix — used only for Monero, Nano and Decred — holds them for the minutes of the swap, and the screen says so before paying. |
+| Is staking custody? | **No.** Native staking on TRON, Solana and the Cosmos Hub, signed with the user's own keys; the coins stay on their own chain under those keys. |
 | Demo account for review? | Provide a **test vault / dry-run path** if requested. **Never** ship a backdoor, hardcoded seed, or bypass of Tor/kill-switch for reviewers. |
 
 ### 5.3. Reviewer notes field (paste-ready)
@@ -167,7 +168,7 @@ Include at least one frame where:
 
 ## 9. Support URL for stores
 
-- Community: https://t.me/UmbrellaWallet  
+- Community: https://t.me/PhobiaStat  
 - Source / releases: https://github.com/thefear078/UmbrellaWallet  
 - Security: https://github.com/thefear078/UmbrellaWallet/security/advisories/new  
 - Trademark / brand: [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)  

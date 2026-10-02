@@ -119,6 +119,20 @@ public sealed class ThorchainSwapClient
             return (null, $"THORChain does not support {toSymbol}.");
         if (string.Equals(fromSymbol, toSymbol, StringComparison.OrdinalIgnoreCase))
             return (null, "Choose two different assets.");
+        return await GetQuoteForAssetsAsync(fromAsset, toAsset, fromSymbol, toSymbol, amountIn, destination, ct);
+    }
+
+    /// <summary>
+    /// A quote between two THORChain asset ids ("TRON.USDT-TR7…", "XRP.XRP", "GAIA.ATOM"…), for the swap
+    /// catalog's coins on every network THORChain trades. <paramref name="toSymbol"/> only shapes the
+    /// destination (Bitcoin Cash without its URI scheme) and labels the quote.
+    /// </summary>
+    public async Task<(SwapQuote? Quote, string? Error)> GetQuoteForAssetsAsync(
+        string fromAsset, string toAsset, string fromSymbol, string toSymbol, decimal amountIn, string destination,
+        CancellationToken ct = default)
+    {
+        if (string.Equals(fromAsset, toAsset, StringComparison.OrdinalIgnoreCase))
+            return (null, "Choose two different assets.");
         if (amountIn <= 0) return (null, "Amount must be positive.");
         if (string.IsNullOrWhiteSpace(destination))
             return (null, "No destination address for the target asset.");

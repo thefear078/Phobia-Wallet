@@ -6,6 +6,20 @@ documentation:
   users:
     - title: Getting Started
       file: getting-started.md
+    - title: User Guides
+      file: guides/README.md
+    - title: Android
+      file: guides/android.md
+    - title: Swap
+      file: guides/swap.md
+    - title: Staking
+      file: guides/staking.md
+    - title: Connect
+      file: guides/connect.md
+    - title: Wallets and Settings
+      file: guides/wallets-and-settings.md
+    - title: User Guide (Ukrainian)
+      file: guides/user-guide-uk.md
     - title: Troubleshooting
       file: troubleshooting.md
     - title: Security Guide

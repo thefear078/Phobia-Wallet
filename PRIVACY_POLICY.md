@@ -38,6 +38,9 @@ A wallet must query a blockchain. When you use balances, history, or send, **you
 | Public addresses | Block explorers / RPC nodes (defaults or ones you choose) | Read balances / history; broadcast signed txs |
 | Signed transactions | Same | Publish to the network |
 | Coin symbols (not your identity) | Price providers (e.g. CoinGecko / exchange public APIs) | Display fiat values |
+| The paying and receiving addresses of a swap | The swap route you confirm (THORChain, NEAR Intents, Exolix) | Carry out the swap — only when you swap |
+| Your TRON, Solana or Cosmos address and staking transactions | The same chain servers that read your balance | Show and change your stake — only when you use Staking |
+| Requests signed with your read-only API key | That exchange only | Read the balances of an account you connected |
 | Update check and download (on by default, can be turned off) | GitHub | Know if a newer release exists, and fetch it for you to install |
 
 **Tor** (if enabled) hides your IP from those servers; it does **not** un-send an address on a public chain.
@@ -77,7 +80,7 @@ We will update the “Last updated” date when this policy changes. Material ch
 
 | | |
 |---|---|
-| Privacy / product questions | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
+| Privacy / product questions | [t.me/PhobiaStat](https://t.me/PhobiaStat) |
 | Security issues (private) | [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) |
 | Author contacts | [CONTACT.md](CONTACT.md) |
 

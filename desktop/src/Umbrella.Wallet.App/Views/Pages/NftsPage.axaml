@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.NftsPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="16">
+    <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
+      <Border Width="4" Height="24" CornerRadius="2" Background="{DynamicResource UmAccentBright}"/>
+      <TextBlock Classes="serif" FontSize="26" Text="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
+      <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/67.json" Width="46" Height="46" VerticalAlignment="Center" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}"/>
+    </StackPanel>
+    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" MaxWidth="560" TextWrapping="Wrap"
+               Text="{Binding [nft.desc], Source={x:Static app:Loc.Instance}}"/>
+
+    <Border Classes="card" Background="{DynamicResource UmCardAlt}" Padding="16,12">
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding [sec.nftOrigin], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
+                   Text="{Binding [sec.nftDesc], Source={x:Static app:Loc.Instance}}"/>
+      </StackPanel>
+    </Border>
+
+    <ItemsControl ItemsSource="{Binding Nfts}" IsVisible="{Binding HasNfts}" x:CompileBindings="False">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Border Classes="card" Margin="0,0,0,10" Padding="16,12">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+              <Border Grid.Column="0" Width="42" Height="42" CornerRadius="11" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Symbol}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UmAccentBright}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="36"/>
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" MinWidth="0">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}">
+                  <Run Text="{Binding Standard}"/><Run Text=" · "/><Run Text="{Binding Network}"/>
+                </TextBlock>
+              </StackPanel>
+              <TextBlock Grid.Column="2" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="15"
+                         Foreground="{DynamicResource UmAccentBright}">
+                <Run Text="×"/><Run Text="{Binding Count}"/>
+              </TextBlock>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <Border Classes="hairline" Padding="40" MinHeight="220" IsVisible="{Binding !HasNfts}">
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+        <Path Classes="tileIcon" Width="46" Height="46" Data="M4 16 L9 11 L13 15 L20 8 M4 5 H20 V19 H4 Z"/>
+        <TextBlock Classes="serif" FontSize="20" Text="{Binding [nft.emptyTitle], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Center"/>
+        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" MaxWidth="420" TextAlignment="Center" TextWrapping="Wrap"
+                   Text="{Binding [nft.emptyBody], Source={x:Static app:Loc.Instance}}"/>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

@@ -14,7 +14,7 @@ The technical detail — threat model, cryptography, what is deliberately not pr
 Please do **not** open a public issue for anything that could put funds at risk. A public report on a
 wallet is a race between the fix and whoever reads it first.
 
-If GitHub advisories are not available to you, contact [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet)
+If GitHub advisories are not available to you, contact [t.me/PhobiaStat](https://t.me/PhobiaStat)
 and ask for a private channel. Do not put details in a public chat.
 
 ### What to include
@@ -83,9 +83,10 @@ There is no funded bounty programme yet. Being straight about that rather than i
 
 | Version | Supported |
 |---|---|
-| 4.6.x | ✅ |
-| 4.5.x | ⚠️ critical fixes only |
-| < 4.5 | ❌ |
+| 4.10.0 betas (Phobia **Beta 1**) | ✅ |
+| 4.9.x | ✅ |
+| 4.8.x | ⚠️ critical fixes only |
+| < 4.8 | ❌ |
 
 Always run the latest release. The wallet looks for one by itself (shortly after start, then twice a
 day), downloads it and keeps it only if its SHA-256 matches **both** the release's `SHA256SUMS` file and

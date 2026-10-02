@@ -2,8 +2,8 @@
 
 This is the **central index** for all official Phobia Wallet documents.
 
-Phobia is a **desktop-only**, non-custodial crypto wallet (.NET 8 + Avalonia; Windows and Linux;
-Android planned). There is no web app and no backend that knows who you are.
+Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Linux**, with an
+**Android** app in beta. There is no web app and no backend that knows who you are.
 
 ---
 
@@ -11,7 +11,8 @@ Android planned). There is no web app and no backend that knows who you are.
 
 | If you want to… | Start here |
 |---|---|
-| Install and use the wallet | [Getting started](getting-started.md) |
+| Install and use the wallet | [Getting started](getting-started.md) · [User guides](guides/README.md) · [On Android](guides/android.md) |
+| Read everything in Ukrainian | [Посібник користувача](guides/user-guide-uk.md) |
 | Follow day-to-day engineering workflow | [WORKFLOW.md](WORKFLOW.md) |
 | Understand the philosophy | [MANIFESTO.md](../MANIFESTO.md) |
 | Know what is defended (and what is not) | [THREAT_MODEL.md](../THREAT_MODEL.md) |
@@ -29,6 +30,12 @@ Android planned). There is no web app and no backend that knows who you are.
 | Document | Description |
 |---|---|
 | [Getting started](getting-started.md) | Download, verify, first wallet, Tor, first send |
+| [Android](guides/android.md) | The phone app: installing the APK, the layout, what it does not do yet |
+| [Swap](guides/swap.md) | Any coin for any coin: routes, review, paying, following a swap |
+| [Staking](guides/staking.md) | Stake TRX, SOL and ATOM from the wallet; claim, unstake, withdraw |
+| [Connect](guides/connect.md) | Watched addresses and read-only exchange keys |
+| [Wallets and settings](guides/wallets-and-settings.md) | Several wallets, restore a removed one, Settings search, interface |
+| [Посібник українською](guides/user-guide-uk.md) | The whole wallet, step by step, in Ukrainian |
 | [Troubleshooting](troubleshooting.md) | Slow balances, Monero sync, failed sends, spam tokens |
 | [SECURITY.md](../SECURITY.md) | Verify downloads, report vulnerabilities |
 | [PRIVACY.md](../PRIVACY.md) | What leaves your device, when, and why |
@@ -109,6 +116,6 @@ UmbrellaWallet/
 
 ---
 
-*Last updated: 2026-09-21 · Wallet version [4.8.2](../VERSION)*
+*Last updated: 2026-10-02 · Wallet version [4.10.0-beta.1](../VERSION) (Phobia Beta 1)*
 
 📖 This page is the documentation hub. Product overview: [README.md](../README.md).

@@ -481,6 +481,23 @@ public sealed class HdAddressDeriver
     }
 
     /// <summary>
+    /// Nano private key (32 bytes) at m/44'/165'/{index}' — the key behind the address
+    /// <see cref="DeriveNano"/> shows, for signing blocks locally (<see cref="NanoBlocks.Sign"/>).
+    /// </summary>
+    public byte[] DeriveNanoPrivateKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var validation = _mnemonicService.Validate(mnemonic);
+        if (!validation.IsValid || validation.NormalizedMnemonic is null)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
+        }
+
+        var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
+        return NanoAccounts.DerivePrivateKey(parsed.DeriveSeed(passphrase), addressIndex);
+    }
+
+    /// <summary>
     /// Stellar ed25519 seed (32 bytes) at m/44'/148'/0' — the SEP-0005 path <see cref="DeriveStellar"/>
     /// shows the address for, so the key signs for exactly the account on screen. Local signing only.
     /// </summary>
@@ -814,4 +831,4 @@ public sealed class HdAddressDeriver
 /// as that app counts it, so the user can be told where the money was found.
 /// </summary>
 public sealed record AlternativeAccount(ChainId Chain, string Path, string Address, string Origin, uint Account);
-
+

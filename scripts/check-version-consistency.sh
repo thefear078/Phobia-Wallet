@@ -11,6 +11,9 @@ if [ -z "$VERSION" ]; then
   echo "::error::VERSION file is empty"; exit 1
 fi
 echo "Expected version: $VERSION"
+# A beta's files carry its beta number ("Beta-1"); a full release's, the version.
+LABEL="$(echo "$VERSION" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+echo "File label:       $LABEL"
 
 fail=0
 require() {
@@ -38,9 +41,12 @@ else
 fi
 # shields.io escapes a hyphen as "--" (4.10.0-beta.1 → version-4.10.0--beta.1-).
 require "README version badge"      "README.md"                                                   "version-${VERSION//-/--}-"
-require "README installer link"     "README.md"                                                   "PhobiaWallet-Setup-${VERSION}.exe"
-require "README portable link"      "README.md"                                                   "PhobiaWallet-${VERSION}-win-x64-portable.exe"
-require "README linux link"         "README.md"                                                   "PhobiaWallet-${VERSION}-linux-x64.tar.gz"
+require "README installer link"     "README.md"                                                   "PhobiaWallet-Setup-${LABEL}.exe"
+require "README portable link"      "README.md"                                                   "PhobiaWallet-${LABEL}-win-x64-portable.exe"
+require "README linux link"         "README.md"                                                   "PhobiaWallet-${LABEL}-linux-x64.tar.gz"
+require "README android link"       "README.md"                                                   "PhobiaWallet-${LABEL}-android.apk"
+# Android's versionName is the numeric part; the beta number rides in versionCode.
+require "android versionName"       "desktop/src/Umbrella.Wallet.Android/Umbrella.Wallet.Android.csproj" "<ApplicationDisplayVersion>${VERSION%%-*}</ApplicationDisplayVersion>"
 require "CHANGELOG entry"           "CHANGELOG.md"                                                 "## [${VERSION}]"
 
 # The release workflow must produce EXACTLY the files the README links to. It did not: the README
@@ -49,14 +55,11 @@ require "CHANGELOG entry"           "CHANGELOG.md"                              
 # uploaded the missing file by hand. Checking the workflow here means the mismatch fails the gate
 # instead of being discovered by a user clicking a dead link.
 WF=".github/workflows/release.yml"
-require "workflow builds the portable exe"  "$WF" 'PhobiaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe'
-require "workflow builds the installer"     "$WF" 'PhobiaWallet-Setup-${{ steps.v.outputs.version }}.exe'
-require "workflow builds the linux tarball" "$WF" 'PhobiaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz'
-# Copies from before the rename look for the Umbrella-era names; the release must still carry them.
-require "workflow keeps the old installer name" "$WF" 'UmbrellaWallet-Setup-${{ steps.v.outputs.version }}.exe'
-require "workflow keeps the old portable name"  "$WF" 'UmbrellaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe'
-require "workflow keeps the old linux name"     "$WF" 'UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz'
-require "workflow names the manifest per version" "$WF" 'SHA256SUMS-${{ steps.v.outputs.version }}.txt'
+require "workflow builds the portable exe"  "$WF" 'PhobiaWallet-${{ steps.v.outputs.label }}-win-x64-portable.exe'
+require "workflow builds the installer"     "$WF" 'PhobiaWallet-Setup-${{ steps.v.outputs.label }}.exe'
+require "workflow builds the linux tarball" "$WF" 'PhobiaWallet-${{ steps.v.outputs.label }}-linux-x64.tar.gz'
+require "workflow builds the android apk"   "$WF" 'PhobiaWallet-${{ steps.v.outputs.label }}-android.apk'
+require "workflow names the manifest per release" "$WF" 'SHA256SUMS-${{ steps.v.outputs.label }}.txt'
 if grep -qF 'UmbrellaWallet-Portable-' "$WF"; then
   echo "::error::workflow still builds a portable ZIP; the README links to a portable EXE"
   fail=1

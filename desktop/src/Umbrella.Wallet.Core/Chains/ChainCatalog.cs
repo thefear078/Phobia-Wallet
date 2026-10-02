@@ -132,16 +132,17 @@ public static class ChainCatalog
                 CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. The balance adds up DOT on Asset Hub and on the relay chain — Polkadot moved balances to Asset Hub in 2025 — and includes DOT locked for staking or governance, which may not all be spendable."),
-            // Nano — receive and balance. SLIP-0010 at m/44'/165'/0' with Nano's ed25519-BLAKE2b public key,
-            // the scheme Ledger, Trust Wallet and Nault's BIP39 mode use, pinned stage by stage to the Nano
-            // documentation's own test vector (NanoReceiveTests). Sending needs signed blocks with proof of
-            // work and stays off until that path is proven; XNO sent here waits as "receivable" until a
-            // wallet that signs pockets it, and the balance counts it so the money is never hidden.
+            // Nano — receive, balance, history and send. SLIP-0010 at m/44'/165'/0' with Nano's
+            // ed25519-BLAKE2b public key, the scheme Ledger, Trust Wallet and Nault's BIP39 mode use, pinned
+            // stage by stage to the Nano documentation's own test vector (NanoReceiveTests). A send pockets
+            // the received payments it needs (receive blocks), then publishes a state send block: hash pinned
+            // to a mainnet block, signature to the Nano documentation's, proof of work computed locally and
+            // checked against BLAKE2b (NanoBlockTests). Verify a first send with a small amount.
             new ChainInfo(
                 ChainId.Nano, "XNO", "Nano", ChainSupportLevel.Supported, "SLIP-0010 · ed25519-blake2b", "m/44'/165'/0'",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
-                PrivacyNote: "Public ledger. Incoming XNO stays \"receivable\" until a signed receive block pockets it; this wallet shows it in the balance but cannot sign Nano blocks yet — restore the phrase in Nault or a Ledger to move it."),
+                PrivacyNote: "Public ledger. Incoming XNO stays \"receivable\" until a receive block pockets it; the balance counts it, and a send pockets what it needs first. No fees: each block carries a few seconds of proof of work computed on this computer."),
             // Decred — receive and balance. BIP44 m/44'/42'/0'/0/0 (Trust Wallet, Ledger, Exodus); a
             // Bitcoin-shaped address with Decred's own hashing: RIPEMD-160 of BLAKE-256 for the key hash
             // and double BLAKE-256 for the checksum, pinned to dcrd's and Trust Wallet's vectors

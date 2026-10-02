@@ -6,7 +6,7 @@ Phobia Wallet is an independent, best-effort project. There is no SLA and **no k
 
 | Need | Where |
 |---|---|
-| Product questions, releases | [t.me/UmbrellaWallet](https://t.me/UmbrellaWallet) |
+| Product questions, releases | [t.me/PhobiaStat](https://t.me/PhobiaStat) |
 | Bugs (non-security) | [GitHub Issues](https://github.com/thefear078/UmbrellaWallet/issues) |
 | Security vulnerabilities | [Private advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) — **not** public issues |
 | Docs map | [docs/INDEX.md](../docs/INDEX.md) |

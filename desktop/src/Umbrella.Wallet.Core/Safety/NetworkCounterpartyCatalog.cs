@@ -71,12 +71,13 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.Automatic, Chain, "DOT (relay chain)"),
         new("polkadot.api.onfinality.io", "OnFinality", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "DOT (relay chain)"),
+        // Nano sends publish their blocks to the node the balance comes from.
         new("rpc.nano.to", "Nano.to", CounterpartyPurpose.Balances,
-            CounterpartyContact.Automatic, Chain, "XNO"),
+            CounterpartyContact.Automatic, ChainAndBroadcast, "XNO"),
         new("nanoslo.0x.no", "NanoSLO", CounterpartyPurpose.Balances,
-            CounterpartyContact.Automatic, Chain, "XNO"),
+            CounterpartyContact.Automatic, ChainAndBroadcast, "XNO"),
         new("node.somenano.com", "SomeNano", CounterpartyPurpose.Balances,
-            CounterpartyContact.Automatic, Chain, "XNO"),
+            CounterpartyContact.Automatic, ChainAndBroadcast, "XNO"),
         new("api.nearblocks.io", "NearBlocks", CounterpartyPurpose.History,
             CounterpartyContact.Automatic, Chain, "NEAR"),
         new("dcrdata.decred.org", "Decred project (dcrdata)", CounterpartyPurpose.Balances,
@@ -185,6 +186,12 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.OnDemand, Chain),
         new("rest.cosmos.directory", "cosmos.directory", CounterpartyPurpose.Swaps,
             CounterpartyContact.OnDemand, Chain),
+        // NEAR Intents and Exolix are given both addresses of a swap: the one paying (as the refund
+        // address) and the one receiving — they are told, in so many words, that both are yours.
+        new("1click.chaindefuser.com", "NEAR Intents (1Click)", CounterpartyPurpose.Swaps,
+            CounterpartyContact.OnDemand, Chain | CounterpartyLearns.WhichCoinsYouHold | CounterpartyLearns.YourWalletAddresses),
+        new("exolix.com", "Exolix (exchange)", CounterpartyPurpose.Swaps,
+            CounterpartyContact.OnDemand, Chain | CounterpartyLearns.WhichCoinsYouHold | CounterpartyLearns.YourWalletAddresses),
 
         // --- Your own exchange accounts. Nothing is sent unless you connect one. ----------------------
         new("api.binance.com/exchange", "Binance", CounterpartyPurpose.ExchangeAccount,

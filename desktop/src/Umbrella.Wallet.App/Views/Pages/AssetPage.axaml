@@ -1,0 +1,164 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.AssetPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+    <Button Classes="ghost" Padding="12,5" MinHeight="0" HorizontalAlignment="Left"
+            Content="{Binding [asset.back], Source={x:Static app:Loc.Instance}}"
+            Command="{Binding SelectSectionCommand}" CommandParameter="Portfolio"/>
+
+    <!-- Identity + price header -->
+    <Border Classes="card" Padding="20,16">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Width="46" Height="46" CornerRadius="23" Background="{Binding AssetBadgeBg}"
+                ClipToBounds="True" VerticalAlignment="Center">
+          <Panel>
+            <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="20" FontWeight="Bold"
+                       Foreground="#FFFFFF" Text="{Binding AssetBadgeGlyph}" IsVisible="{Binding !AssetHasBadgeLogo}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Image Source="{Binding AssetBadgeLogo}" IsVisible="{Binding AssetHasBadgeLogo}" Stretch="Uniform"/>
+          </Panel>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0" Spacing="3" VerticalAlignment="Center">
+          <TextBlock Text="{Binding AssetName}" FontSize="20" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding AssetNetwork}" FontSize="11.5" Foreground="{DynamicResource UmTextDim}"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2" Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+          <TextBlock Classes="mono" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Right"
+                     Text="{Binding AssetPriceLabel}"/>
+          <TextBlock Classes="mono" FontSize="12" HorizontalAlignment="Right"
+                     Text="{Binding AssetChangeLabel}" Foreground="{Binding AssetChangeColor}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Holding. Follows the same hide-balances rule as the rest of the wallet. -->
+    <Border Classes="card" Padding="20,16">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                     Text="{Binding [asset.holding], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Classes="mono" FontSize="24" FontWeight="SemiBold"
+                     Text="{Binding AssetValueLabel}" IsVisible="{Binding AreValuesVisible}"/>
+          <TextBlock Classes="mono" FontSize="24" FontWeight="SemiBold" Text="•••••"
+                     IsVisible="{Binding IsBalanceHidden}"/>
+          <TextBlock Classes="mono" FontSize="12.5" Foreground="{DynamicResource UmTextDim}"
+                     Text="{Binding AssetAmountLabel}" IsVisible="{Binding AreValuesVisible}"/>
+        </StackPanel>
+        <Border Grid.Column="1" Background="Transparent" BorderBrush="{Binding AssetStatusColor}" BorderThickness="1"
+                CornerRadius="7" Padding="9,2" VerticalAlignment="Top">
+          <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding AssetStatusColor}"
+                     Text="{Binding AssetStatusLabel}"/>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- The same coin on each network it sits on (one combined holding above). -->
+    <Border Classes="card" Padding="20,14" IsVisible="{Binding HasAssetNetworks}">
+      <StackPanel Spacing="8">
+        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                   Text="{Binding [asset.byNetwork], Source={x:Static app:Loc.Instance}}"/>
+        <ItemsControl ItemsSource="{Binding AssetNetworks}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:AssetNetworkRow">
+              <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4">
+                <TextBlock Text="{Binding Network}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                           Text="{Binding Amount}" Margin="0,0,16,0" VerticalAlignment="Center"
+                           IsVisible="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).AreValuesVisible}"/>
+                <TextBlock Grid.Column="2" Classes="mono" FontSize="12.5" FontWeight="SemiBold"
+                           Text="{Binding Value}" VerticalAlignment="Center"
+                           IsVisible="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).AreValuesVisible}"/>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <!-- Actions. Each is offered only where this build can really do it. -->
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <Button Classes="ghost" Padding="14,7" MinHeight="0" IsVisible="{Binding AssetHasAddress}"
+              Content="{Binding [asset.capReceive], Source={x:Static app:Loc.Instance}}"
+              Command="{Binding AssetReceiveCommand}"/>
+      <Button Classes="ghost" Padding="14,7" MinHeight="0" IsVisible="{Binding AssetCanSend}"
+              Content="{Binding [asset.capSend], Source={x:Static app:Loc.Instance}}"
+              Command="{Binding AssetSendCommand}"/>
+      <Button Classes="ghost" Padding="14,7" MinHeight="0" IsVisible="{Binding AssetCanSwap}"
+              Content="{Binding [asset.capSwap], Source={x:Static app:Loc.Instance}}"
+              Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
+      <Button Classes="ghost" Padding="14,7" MinHeight="0"
+              Content="{Binding [asset.chart], Source={x:Static app:Loc.Instance}}"
+              Command="{Binding AssetChartCommand}"/>
+    </StackPanel>
+
+    <!-- Address on this device -->
+    <Border Classes="card" Padding="16,14">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                   Text="{Binding [asset.address], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock Classes="mono" FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding AssetHasAddress}"
+                   Foreground="{DynamicResource UmTextSoft}" Text="{Binding AssetAddress}"/>
+        <TextBlock FontSize="11.5" TextWrapping="Wrap" IsVisible="{Binding !AssetHasAddress}"
+                   Foreground="{DynamicResource UmTextDim}"
+                   Text="{Binding [asset.noAddress], Source={x:Static app:Loc.Instance}}"/>
+        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding AssetHasAddress}">
+          <Button Classes="ghost" Padding="12,4" MinHeight="0"
+                  Content="{Binding [common.copyAddress], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding CopyAddressCommand}" CommandParameter="{Binding AssetAddress}"/>
+        </StackPanel>
+        <TextBlock Classes="mono" FontSize="10.5" Foreground="{DynamicResource UmTextMuted}"
+                   IsVisible="{Binding AssetDerivation, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Text="{Binding AssetDerivation}"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Honest capability + privacy lines, straight from the chain catalog. -->
+    <Border Classes="card" Padding="16,14">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                   Text="{Binding [asset.capabilities], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock FontSize="12" TextWrapping="Wrap" Text="{Binding AssetCapabilityLine}"/>
+        <TextBlock Classes="eyebrow" Margin="0,8,0,0" Foreground="{DynamicResource UmTextMuted}"
+                   IsVisible="{Binding AssetPrivacyNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Text="{Binding [asset.privacy], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource UmTextDim}"
+                   IsVisible="{Binding AssetPrivacyNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Text="{Binding AssetPrivacyNote}"/>
+      </StackPanel>
+    </Border>
+
+    <!-- This asset's movements -->
+    <TextBlock Classes="eyebrow" Margin="2,4,0,0" Foreground="{DynamicResource UmTextMuted}"
+               Text="{Binding [asset.activity], Source={x:Static app:Loc.Instance}}"/>
+    <TextBlock FontSize="12" Foreground="{DynamicResource UmTextDim}" Margin="2,0,0,0"
+               IsVisible="{Binding !HasAssetActivity}"
+               Text="{Binding [asset.noActivity], Source={x:Static app:Loc.Instance}}"/>
+    <ItemsControl ItemsSource="{Binding AssetActivity}" IsVisible="{Binding HasAssetActivity}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ActivityRowViewModel">
+          <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                  BorderThickness="1" CornerRadius="12" Padding="16,10" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="96,*,Auto,Auto">
+              <TextBlock Text="{Binding Kind, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                         Text="{Binding Counterparty, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+              <TextBlock Grid.Column="2" Classes="mono" Text="{Binding AmountShort, Converter={StaticResource ActivityLabel}}" Foreground="{Binding KindColor}"
+                         Margin="12,0" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="3" Foreground="{DynamicResource UmTextDim}" FontSize="11"
+                         Text="{Binding When, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center"/>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

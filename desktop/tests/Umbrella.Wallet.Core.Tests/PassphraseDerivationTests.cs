@@ -121,7 +121,7 @@ public class PassphraseDerivationTests
         Assert.NotNull(dir);
 
         var xaml = File.ReadAllText(Path.Combine(
-            dir!.FullName, "desktop", "src", "Umbrella.Wallet.App", "Views", "MainWindow.axaml"));
+            dir!.FullName, "desktop", "src", "Umbrella.Wallet.App", "Views", "Pages", "OnboardingView.axaml"));
 
         Assert.Contains("{Binding UnlockPassphrase}", xaml, StringComparison.Ordinal);
 

@@ -525,6 +525,71 @@ public sealed class MainViewModelTests : IDisposable
     }
 
     /// <summary>
+    /// Removing a wallet takes two presses, and the second only moves it to "Removed wallets", from where
+    /// it comes back with its own vault. One press used to delete a wallet's vault for good.
+    /// </summary>
+    [Fact]
+    public async Task MultiWallet_RemoveNeedsConfirmation_AndCanBeUndone()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var mainId = vm.Wallets.Single(w => w.IsActive).Id;
+        vm.NewWalletLabel = "Savings";
+        vm.BeginAddWalletCommand.Execute(null);
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+        var savingsId = vm.Wallets.Single(w => w.IsActive).Id;
+        await vm.SwitchWalletCommand.ExecuteAsync(mainId);
+
+        vm.RemoveWalletCommand.Execute(savingsId);   // first press: armed, nothing removed
+        Assert.Equal(2, vm.Wallets.Count);
+        Assert.True(vm.Wallets.Single(w => w.Id == savingsId).RemoveArmed);
+
+        vm.RemoveWalletCommand.Execute(savingsId);   // second press: out of the list, kept
+        Assert.Single(vm.Wallets);
+        var removed = Assert.Single(vm.RemovedWallets);
+        Assert.Equal("Savings", removed.Label);
+
+        vm.RestoreRemovedWalletCommand.Execute(removed.Key);
+        Assert.Equal(2, vm.Wallets.Count);
+        Assert.Empty(vm.RemovedWallets);
+
+        await vm.SwitchWalletCommand.ExecuteAsync(vm.Wallets.Single(w => w.Label == "Savings").Id);
+        Assert.True(vm.IsUnlocked);                  // it opens with its own password, as before
+        Assert.Equal("Savings", vm.ActiveWalletLabel);
+    }
+
+    /// <summary>
+    /// Swap offers every coin the open wallet can pay with, and every coin a route delivers to an address
+    /// it has — Monero and the TRON and Cardano coins among them — but never a coin it cannot send yet.
+    /// </summary>
+    [Fact]
+    public async Task Swap_offers_every_payable_coin_and_every_reachable_one()
+    {
+        var vm = NewViewModel();
+        vm.Password = GoodPassword;
+        vm.ConfirmPassword = GoodPassword;
+        await vm.CreateWalletCommand.ExecuteAsync(null);
+        vm.ConfirmPhraseBackupCommand.Execute(null);
+
+        var from = vm.SwapFromOptions.Select(a => a.Key).ToList();
+        Assert.Contains("BTC", from);
+        Assert.Contains("SOL", from);
+        Assert.Contains("ETH@ARB", from);
+        Assert.Contains("XNO", from);         // Nano sends, so it pays for a swap too
+        Assert.DoesNotContain("DCR", from);   // Decred receives from a swap; paying with it waits for its send
+
+        vm.SwapFromSymbol = "BTC";
+        var to = vm.SwapToOptions.Select(a => a.Key).ToList();
+        foreach (var key in new[] { "XMR", "ADA", "USDT@TRON", "XNO", "DCR", "ETH" }) Assert.Contains(key, to);
+        Assert.DoesNotContain("BTC", to);
+        Assert.Equal("BTC", vm.SwapFromAsset?.Key);
+    }
+
+    /// <summary>
     /// A new wallet's recovery phrase is on screen until "I've written it down". Switching away would
     /// lock it and clear the phrase before it was ever confirmed — so neither the switcher, the shortcut
     /// nor the palette may do it.

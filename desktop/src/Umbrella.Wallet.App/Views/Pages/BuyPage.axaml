@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.BuyPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="14">
+    <StackPanel Spacing="4">
+      <TextBlock Classes="serif" FontSize="26" Text="{Binding [section.buyCrypto], Source={x:Static app:Loc.Instance}}"/>
+      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12"
+                 Text="{Binding [sec.buyDesc], Source={x:Static app:Loc.Instance}}"/>
+    </StackPanel>
+
+    <!-- How it works: three steps. The whole card closes for good (Settings → Appearance →
+         Interface brings it back); the address shortcuts under it stay. -->
+    <Border Classes="card" IsVisible="{Binding ShowBuyHowTo}">
+      <StackPanel Spacing="12">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding [sec.howItWorks], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
+          <Button Grid.Column="1" Classes="noteClose" Content="✕" Command="{Binding DismissNoticeCommand}"
+                  CommandParameter="buy.howTo" ToolTip.Tip="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"
+                  AutomationProperties.Name="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"/>
+        </Grid>
+        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14">
+          <StackPanel Spacing="4">
+            <TextBlock Text="{Binding [buy.step1], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+            <TextBlock Text="{Binding [buy.step1body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
+                       Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Text="{Binding [buy.step2], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+            <TextBlock Text="{Binding [buy.step2body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
+                       Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+          </StackPanel>
+          <StackPanel Grid.Column="2" Spacing="4">
+            <TextBlock Text="{Binding [buy.step3], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+            <TextBlock Text="{Binding [buy.step3body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
+                       Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </Border>
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <Button Classes="primary" Content="{Binding [buy.showAddresses], Source={x:Static app:Loc.Instance}}"
+              Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
+      <Button Classes="ghost" Content="{Binding [buy.copyPrimary], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPrimaryAddressCommand}"/>
+    </StackPanel>
+
+    <TextBlock Classes="eyebrow" Text="{Binding [buy.providers], Source={x:Static app:Loc.Instance}}" Margin="2,4,0,0"/>
+
+    <Border Classes="hairline">
+      <ItemsControl ItemsSource="{Binding OnRampVenues}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:P2pVenue">
+            <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="16,14">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                <Border Width="42" Height="42" CornerRadius="12" Background="{Binding Accent}" VerticalAlignment="Top">
+                  <TextBlock Classes="mono" FontSize="10.5" FontWeight="Bold" Foreground="#FFFFFF" Text="{Binding Tag}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding Name}" FontSize="14.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Kind, Converter={StaticResource ActivityLabel}}" FontSize="11" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"/>
+                    <Border Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmAccentDim}" BorderThickness="1"
+                            CornerRadius="5" Padding="6,1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Custody}" FontSize="9.5" Foreground="{DynamicResource UmTextSoft}"/>
+                    </Border>
+                  </StackPanel>
+                  <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                             TextWrapping="Wrap" MaxWidth="620"/>
+                </StackPanel>
+                <Button Grid.Column="2" Classes="ghost" Content="{Binding [common.open], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
+                        Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).OpenUrlCommand}"
+                        CommandParameter="{Binding Url}"/>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <Border Classes="card" Background="{DynamicResource UmCardAlt}">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding [sec.beforeBuy], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
+        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
+                   Text="{Binding [buy.disclaimer], Source={x:Static app:Loc.Instance}}"/>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

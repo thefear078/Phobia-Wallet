@@ -1,0 +1,555 @@
+using System.Buffers.Binary;
+using System.Numerics;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text.Json;
+using Org.BouncyCastle.Crypto.Digests;
+using Umbrella.Wallet.Core.Derivation;
+
+namespace Umbrella.Wallet.Core.Chains;
+
+/// <summary>What a node says an account is: the block to build on, the balance (raw), the representative.</summary>
+public sealed record NanoAccountState(byte[] Frontier, BigInteger Balance, string Representative);
+
+/// <summary>A block sent to the account that it has not pocketed yet.</summary>
+public sealed record NanoReceivable(byte[] Hash, BigInteger Amount);
+
+/// <summary>A signed state block, ready for <c>process</c>.</summary>
+public sealed record NanoStateBlock(
+    string Account, byte[] Previous, string Representative, BigInteger Balance, byte[] Link,
+    byte[] Signature, ulong Work, byte[] Hash);
+
+/// <summary>
+/// Nano state blocks: the hash, the signature and the proof of work — the three things a send or a
+/// receive needs before a node will accept it.
+///
+/// <para>The hash is BLAKE2b-256 over a fixed layout: a 32-byte preamble whose last byte is 6 (the state
+/// block type), then account, previous, representative (32-byte public keys), balance (raw, 16 bytes
+/// big-endian) and link (32 bytes — the destination's public key for a send, the source block's hash
+/// for a receive).</para>
+///
+/// <para>The signature is ed25519 with Nano's hash: BLAKE2b-512 everywhere standard ed25519 uses
+/// SHA-512 (the same substitution that makes the public key, see <see cref="NanoAccounts.PublicKey"/>).
+/// A standard ed25519 signer produces a signature no node will accept.</para>
+///
+/// <para>The work is an 8-byte nonce whose BLAKE2b-64 together with the block's root (previous, or the
+/// account key for an account's first block), read little-endian, reaches the network's threshold.</para>
+///
+/// <para>Pinned by <c>NanoBlockTests</c>: the signature and work to the Nano documentation's signed block,
+/// the hash to a real mainnet block as the node reports it.</para>
+/// </summary>
+public static class NanoBlocks
+{
+    /// <summary>Since the V21 epoch: sends and changes need the higher threshold, receives the lower.</summary>
+    public const ulong SendThreshold = 0xfffffff800000000;
+
+    public const ulong ReceiveThreshold = 0xfffffe0000000000;
+
+    /// <summary>The order of ed25519's base point group.</summary>
+    private static readonly BigInteger L =
+        BigInteger.Parse("7237005577332262213973186563042994240857116359379907606001950938285454250989");
+
+    /// <summary>The hash a state block is signed and identified by.</summary>
+    public static byte[] Hash(byte[] account, byte[] previous, byte[] representative, BigInteger balanceRaw, byte[] link)
+    {
+        Require(account, nameof(account));
+        Require(previous, nameof(previous));
+        Require(representative, nameof(representative));
+        Require(link, nameof(link));
+        if (balanceRaw.Sign < 0 || balanceRaw.GetByteCount(isUnsigned: true) > 16)
+            throw new ArgumentOutOfRangeException(nameof(balanceRaw), "A Nano balance is 0 to 2^128-1 raw.");
+
+        var preamble = new byte[32];
+        preamble[31] = 6;
+        var balance = new byte[16];
+        var raw = balanceRaw.ToByteArray(isUnsigned: true, isBigEndian: true);
+        raw.CopyTo(balance, 16 - raw.Length);
+
+        var digest = new Blake2bDigest(256);
+        foreach (var part in new[] { preamble, account, previous, representative, balance, link })
+            digest.BlockUpdate(part, 0, part.Length);
+        var hash = new byte[32];
+        digest.DoFinal(hash, 0);
+        return hash;
+    }
+
+    /// <summary>
+    /// The 64-byte signature of <paramref name="message"/> (a block hash) by a 32-byte private key:
+    /// h = BLAKE2b-512(key); a = clamp(h[0..32]); r = H(h[32..64] ‖ M) mod L; R = [r]B;
+    /// k = H(R ‖ A ‖ M) mod L; S = (r + k·a) mod L; signature = R ‖ S.
+    /// </summary>
+    public static byte[] Sign(byte[] privateKey, byte[] message)
+    {
+        if (privateKey.Length != 32) throw new ArgumentException("A Nano private key is 32 bytes.", nameof(privateKey));
+        var h = Blake2b512(privateKey);
+        var scalar = h[..32];
+        scalar[0] &= 248;
+        scalar[31] &= 127;
+        scalar[31] |= 64;
+        try
+        {
+            var publicKey = AdaKeys.ScalarMultBase(scalar);
+            var a = LeInt(scalar);
+            var r = LeInt(Blake2b512(Concat(h[32..], message))) % L;
+            var rPoint = AdaKeys.ScalarMultBase(ToLe32(r));
+            var k = LeInt(Blake2b512(Concat(rPoint, publicKey, message))) % L;
+            var s = (r + k * a) % L;
+            return Concat(rPoint, ToLe32(s));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(h);
+            CryptographicOperations.ZeroMemory(scalar);
+        }
+    }
+
+    /// <summary>The value a work nonce reaches for a root: BLAKE2b-64(nonce, little-endian ‖ root),
+    /// read little-endian. The nonce is the 16-hex-digit work string as a big-endian number.</summary>
+    public static ulong WorkValue(ulong work, byte[] root)
+    {
+        Require(root, nameof(root));
+        Span<byte> input = stackalloc byte[40];
+        BinaryPrimitives.WriteUInt64LittleEndian(input, work);
+        root.CopyTo(input[8..]);
+        return WorkValue(input);
+    }
+
+    public static bool IsWorkValid(ulong work, byte[] root, ulong threshold) => WorkValue(work, root) >= threshold;
+
+    /// <summary>
+    /// Finds a work nonce for <paramref name="root"/> on every core. At the send threshold that is
+    /// about 2^29 hashes on average — seconds to a minute on a desktop CPU; receives need 64 times fewer.
+    /// </summary>
+    public static ulong GenerateWork(byte[] root, ulong threshold, CancellationToken ct = default)
+    {
+        Require(root, nameof(root));
+        var found = 0UL;
+        var done = 0;
+        var workers = Math.Max(1, Environment.ProcessorCount);
+        var start = BinaryPrimitives.ReadUInt64LittleEndian(RandomNumberGenerator.GetBytes(8));
+
+        var r0 = BinaryPrimitives.ReadUInt64LittleEndian(root.AsSpan(0, 8));
+        var r1 = BinaryPrimitives.ReadUInt64LittleEndian(root.AsSpan(8, 8));
+        var r2 = BinaryPrimitives.ReadUInt64LittleEndian(root.AsSpan(16, 8));
+        var r3 = BinaryPrimitives.ReadUInt64LittleEndian(root.AsSpan(24, 8));
+
+        Parallel.For(0, workers, new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = workers }, worker =>
+        {
+            // Each worker walks its own stride of the nonce space from a random start.
+            for (var nonce = start + (ulong)worker; Volatile.Read(ref done) == 0; nonce += (ulong)workers)
+            {
+                if (FastWorkValue(nonce, r0, r1, r2, r3) >= threshold)
+                {
+                    if (Interlocked.CompareExchange(ref done, 1, 0) == 0) found = nonce;
+                    return;
+                }
+                if ((nonce & 0xFFFF) == 0 && ct.IsCancellationRequested) return;
+            }
+        });
+
+        ct.ThrowIfCancellationRequested();
+        return found;
+    }
+
+    // --- Talking to a node ------------------------------------------------------------------------
+
+    /// <summary><c>account_info</c> with the representative: the frontier to build on, the balance, and
+    /// the representative a new block keeps.</summary>
+    public static object AccountInfoRequest(string account) =>
+        new { action = "account_info", account, representative = "true" };
+
+    /// <summary>The account's state, or null when the node does not know the account (never opened) or
+    /// the answer is malformed. <paramref name="unopened"/> tells the two apart.</summary>
+    public static NanoAccountState? ParseAccountInfo(JsonElement root, out bool unopened)
+    {
+        unopened = false;
+        if (root.ValueKind != JsonValueKind.Object) return null;
+        if (root.TryGetProperty("error", out var error))
+        {
+            unopened = error.ValueKind == JsonValueKind.String &&
+                       string.Equals(error.GetString(), "Account not found", StringComparison.OrdinalIgnoreCase);
+            return null;
+        }
+
+        var frontier = HexField(root, "frontier");
+        var representative = root.TryGetProperty("representative", out var r) && r.ValueKind == JsonValueKind.String
+            ? r.GetString() : null;
+        if (frontier is null || representative is null || NanoAccounts.TryDecode(representative) is null) return null;
+        if (!root.TryGetProperty("balance", out var b) || b.ValueKind != JsonValueKind.String ||
+            !BigInteger.TryParse(b.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out var balance))
+            return null;
+        return new NanoAccountState(frontier, balance, representative);
+    }
+
+    /// <summary><c>receivable</c>: blocks sent to the account and not pocketed, with their amounts.</summary>
+    public static object ReceivableRequest(string account, int count = 20) =>
+        new { action = "receivable", account, count = count.ToString(CultureInfo.InvariantCulture), threshold = "1" };
+
+    /// <summary>The receivable blocks, largest first. Both answer shapes are read: hash → amount, and
+    /// hash → { amount, source }. A node that still says "pending" is read the same way.</summary>
+    public static IReadOnlyList<NanoReceivable> ParseReceivable(JsonElement root)
+    {
+        var list = new List<NanoReceivable>();
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("blocks", out var blocks) ||
+            blocks.ValueKind != JsonValueKind.Object)
+            return list;   // "blocks": "" is how a node says none
+
+        foreach (var entry in blocks.EnumerateObject())
+        {
+            if (entry.Name.Length != 64) continue;
+            byte[] hash;
+            try { hash = Convert.FromHexString(entry.Name); }
+            catch (FormatException) { continue; }
+
+            var amountText = entry.Value.ValueKind switch
+            {
+                JsonValueKind.String => entry.Value.GetString(),
+                JsonValueKind.Object when entry.Value.TryGetProperty("amount", out var a) && a.ValueKind == JsonValueKind.String
+                    => a.GetString(),
+                _ => null,
+            };
+            if (BigInteger.TryParse(amountText, NumberStyles.None, CultureInfo.InvariantCulture, out var amount) && amount > 0)
+                list.Add(new NanoReceivable(hash, amount));
+        }
+
+        return list.OrderByDescending(r => r.Amount).ToList();
+    }
+
+    /// <summary><c>process</c> for a signed block, in the JSON form a node accepts.</summary>
+    public static object ProcessRequest(NanoStateBlock block, string subtype) => new
+    {
+        action = "process",
+        json_block = "true",
+        subtype,
+        block = new
+        {
+            type = "state",
+            account = block.Account,
+            previous = Convert.ToHexString(block.Previous),
+            representative = block.Representative,
+            balance = block.Balance.ToString(CultureInfo.InvariantCulture),
+            link = Convert.ToHexString(block.Link),
+            signature = Convert.ToHexString(block.Signature),
+            work = WorkHex(block.Work),
+        },
+    };
+
+    /// <summary>The hash a node returns for a block it took, or null with its error.</summary>
+    public static string? ParseProcessed(JsonElement root, out string? error)
+    {
+        error = null;
+        if (root.ValueKind != JsonValueKind.Object) { error = "unreadable answer"; return null; }
+        if (root.TryGetProperty("error", out var e)) { error = e.ValueKind == JsonValueKind.String ? e.GetString() : e.GetRawText(); return null; }
+        return root.TryGetProperty("hash", out var h) && h.ValueKind == JsonValueKind.String && h.GetString()!.Length == 64
+            ? h.GetString()
+            : null;
+    }
+
+    /// <summary>
+    /// A signed block, work attached. <paramref name="previous"/> is all zeros for an account's first
+    /// (open) block; its work root is then the account's own key.
+    /// </summary>
+    public static NanoStateBlock Build(
+        byte[] privateKey, byte[] previous, string representative, BigInteger balance, byte[] link, ulong work)
+    {
+        var publicKey = NanoAccounts.PublicKey(privateKey);
+        var rep = NanoAccounts.TryDecode(representative)
+                  ?? throw new ArgumentException("Not a Nano address.", nameof(representative));
+        var hash = Hash(publicKey, previous, rep, balance, link);
+        return new NanoStateBlock(
+            NanoAccounts.Address(publicKey), previous, NanoAccounts.Normalize(representative)!, balance, link,
+            Sign(privateKey, hash), work, hash);
+    }
+
+    /// <summary>The root a block's work is computed over: previous, or the account key when there is none.</summary>
+    public static byte[] WorkRoot(byte[] previous, byte[] accountPublicKey) =>
+        previous.All(b => b == 0) ? accountPublicKey : previous;
+
+    private static byte[]? HexField(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var p) || p.ValueKind != JsonValueKind.String) return null;
+        var text = p.GetString();
+        if (text is null || text.Length != 64) return null;
+        try { return Convert.FromHexString(text); }
+        catch (FormatException) { return null; }
+    }
+
+    /// <summary>A work nonce as the node prints it: 16 lower-case hex digits, big-endian.</summary>
+    public static string WorkHex(ulong work) => work.ToString("x16");
+
+    public static ulong ParseWork(string hex) =>
+        ulong.Parse(hex, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture);
+
+    // --- BLAKE2b-64 of exactly 40 bytes (nonce ‖ root), unrolled ------------------------------------
+    // The work search hashes the same shape billions of times, so it skips the general digest: one
+    // compression of a single, final 40-byte block with an 8-byte output, the message words read straight
+    // from the nonce and the root. Checked against BouncyCastle's BLAKE2b on random inputs (NanoBlockTests).
+
+    /// <summary>The work value of <paramref name="nonce"/> for a root given as four little-endian words.
+    /// Every round written out over locals (the message words past the fifth are zero and drop out): the
+    /// array-and-span version ran about six million hashes a second on twelve cores, which made a send's
+    /// work a minute and a half on average.</summary>
+    public static ulong FastWorkValue(ulong nonce, ulong r0, ulong r1, ulong r2, ulong r3)
+    {
+        const ulong h0 = 0x6a09e667f3bcc908UL ^ 0x01010008UL;   // digest length 8, no key, fanout 1, depth 1
+        ulong v0 = h0, v1 = 0xbb67ae8584caa73b, v2 = 0x3c6ef372fe94f82b, v3 = 0xa54ff53a5f1d36f1;
+        ulong v4 = 0x510e527fade682d1, v5 = 0x9b05688c2b3e6c1f, v6 = 0x1f83d9abfb41bd6b, v7 = 0x5be0cd19137e2179;
+        ulong v8 = 0x6a09e667f3bcc908, v9 = 0xbb67ae8584caa73b, v10 = 0x3c6ef372fe94f82b, v11 = 0xa54ff53a5f1d36f1;
+        ulong v12 = 0x510e527fade682d1UL ^ 40UL;    // 40 bytes hashed
+        ulong v13 = 0x9b05688c2b3e6c1f;
+        ulong v14 = ~0x1f83d9abfb41bd6bUL;          // the last block
+        ulong v15 = 0x5be0cd19137e2179;
+
+        // round 0
+        v0 += v4 + nonce; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4 + r0; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5 + r1; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5 + r2; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6 + r3; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 1
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5 + r3; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5 + r0; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6 + nonce; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6 + r1; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4 + r2; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 2
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5 + nonce; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6 + r1; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6 + r2; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7 + r0; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4 + r3; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 3
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5 + r2; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5 + r0; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5 + r1; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7 + r3; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7 + nonce; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 4
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4 + nonce; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6 + r1; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6 + r3; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5 + r0; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4 + r2; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 5
+        v0 += v4 + r1; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6 + nonce; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7 + r2; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5 + r3; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4 + r0; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 6
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5 + r0; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7 + r3; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5 + nonce; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6 + r2; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7 + r1; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 7
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6 + r0; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7 + r2; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5 + nonce; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6 + r3; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4 + r1; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 8
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6 + r2; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7 + nonce; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5 + r1; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7 + r0; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7 + r3; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 9
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4 + r1; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5 + r3; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7 + r0; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7 + r2; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4 + nonce; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 10
+        v0 += v4 + nonce; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4 + r0; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5 + r1; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5 + r2; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6 + r3; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+        // round 11
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 32); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 24);
+        v0 += v4; v12 = ulong.RotateRight(v12 ^ v0, 16); v8 += v12; v4 = ulong.RotateRight(v4 ^ v8, 63);
+        v1 += v5 + r3; v13 = ulong.RotateRight(v13 ^ v1, 32); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 24);
+        v1 += v5; v13 = ulong.RotateRight(v13 ^ v1, 16); v9 += v13; v5 = ulong.RotateRight(v5 ^ v9, 63);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 32); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 24);
+        v2 += v6; v14 = ulong.RotateRight(v14 ^ v2, 16); v10 += v14; v6 = ulong.RotateRight(v6 ^ v10, 63);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 32); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 24);
+        v3 += v7; v15 = ulong.RotateRight(v15 ^ v3, 16); v11 += v15; v7 = ulong.RotateRight(v7 ^ v11, 63);
+        v0 += v5 + r0; v15 = ulong.RotateRight(v15 ^ v0, 32); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 24);
+        v0 += v5; v15 = ulong.RotateRight(v15 ^ v0, 16); v10 += v15; v5 = ulong.RotateRight(v5 ^ v10, 63);
+        v1 += v6 + nonce; v12 = ulong.RotateRight(v12 ^ v1, 32); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 24);
+        v1 += v6 + r1; v12 = ulong.RotateRight(v12 ^ v1, 16); v11 += v12; v6 = ulong.RotateRight(v6 ^ v11, 63);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 32); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 24);
+        v2 += v7; v13 = ulong.RotateRight(v13 ^ v2, 16); v8 += v13; v7 = ulong.RotateRight(v7 ^ v8, 63);
+        v3 += v4; v14 = ulong.RotateRight(v14 ^ v3, 32); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 24);
+        v3 += v4 + r2; v14 = ulong.RotateRight(v14 ^ v3, 16); v9 += v14; v4 = ulong.RotateRight(v4 ^ v9, 63);
+
+        return h0 ^ v0 ^ v8;
+    }
+
+    private static ulong WorkValue(ReadOnlySpan<byte> input)
+    {
+        var digest = new Blake2bDigest(64);
+        digest.BlockUpdate(input);
+        Span<byte> output = stackalloc byte[8];
+        digest.DoFinal(output);
+        return BinaryPrimitives.ReadUInt64LittleEndian(output);
+    }
+
+    private static byte[] Blake2b512(byte[] data)
+    {
+        var digest = new Blake2bDigest(512);
+        digest.BlockUpdate(data, 0, data.Length);
+        var output = new byte[64];
+        digest.DoFinal(output, 0);
+        return output;
+    }
+
+    private static void Require(byte[] value, string name)
+    {
+        if (value is null || value.Length != 32) throw new ArgumentException($"{name} must be 32 bytes.", name);
+    }
+
+    private static byte[] Concat(params byte[][] parts)
+    {
+        var result = new byte[parts.Sum(p => p.Length)];
+        var at = 0;
+        foreach (var part in parts)
+        {
+            part.CopyTo(result, at);
+            at += part.Length;
+        }
+        return result;
+    }
+
+    private static BigInteger LeInt(byte[] le) => new(le, isUnsigned: true, isBigEndian: false);
+
+    private static byte[] ToLe32(BigInteger value)
+    {
+        var raw = value.ToByteArray(isUnsigned: true, isBigEndian: false);
+        var le = new byte[32];
+        Array.Copy(raw, le, Math.Min(raw.Length, 32));
+        return le;
+    }
+}

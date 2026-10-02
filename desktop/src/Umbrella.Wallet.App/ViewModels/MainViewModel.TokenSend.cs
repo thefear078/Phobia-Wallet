@@ -189,6 +189,7 @@ public partial class MainViewModel
         }
 
         RefreshSendOptionBalances();
+        RebuildSwapOptions();   // what can pay for a swap is what can be sent
     }
 
     /// <summary>

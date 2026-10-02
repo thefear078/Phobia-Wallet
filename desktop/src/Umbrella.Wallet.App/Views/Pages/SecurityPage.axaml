@@ -1,0 +1,119 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
+             xmlns:app="using:Umbrella.Wallet.App"
+             xmlns:lottie="using:Avalonia.Labs.Lottie"
+             xmlns:net="using:Umbrella.Wallet.Infrastructure.Network"
+             xmlns:infra="using:Umbrella.Wallet.Infrastructure"
+             xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             x:Class="Umbrella.Wallet.App.Views.Pages.SecurityPage"
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
+  <StackPanel Classes="page" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center"
+                 Text="{Binding [sec.title], Source={x:Static app:Loc.Instance}}"/>
+    </StackPanel>
+    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" Margin="2,0,0,4" TextWrapping="Wrap"
+               Text="{Binding [sec.subtitle], Source={x:Static app:Loc.Instance}}"/>
+
+    <!-- Privacy Radar: the wallet's network/metadata anonymity at a glance, privacy-WEIGHTED
+         (Tor is the biggest lever), with the single biggest win named. Distinct from the raw
+         protection count below it. -->
+    <Border Classes="card" Padding="18,14" BorderBrush="#5A6B8C">
+      <Grid ColumnDefinitions="Auto,*">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,18,0">
+          <TextBlock FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"
+                     Foreground="{Binding PrivacyGradeColor}" Text="{Binding PrivacyScoreValue}"/>
+          <TextBlock FontSize="10" Foreground="{DynamicResource UmTextMuted}" HorizontalAlignment="Center"
+                     Text="/ 100"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Text="{Binding [pscore.title], Source={x:Static app:Loc.Instance}}"/>
+            <Border Background="{DynamicResource UmAccentWash}" CornerRadius="5" Padding="7,1" VerticalAlignment="Center">
+              <TextBlock FontSize="11" FontWeight="SemiBold"
+                         Foreground="{Binding PrivacyGradeColor}" Text="{Binding PrivacyGradeLabel}"/>
+            </Border>
+          </StackPanel>
+          <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"
+                     Text="{Binding [pscore.subtitle], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap" Margin="0,2,0,0"
+                     Text="{Binding PrivacyTopFix}"/>
+
+          <!-- Every signal behind the grade, each with what it does NOT do underneath
+               (roadmap P1.11). "Strong" on its own reads as "I am anonymous"; what it
+               means is that the servers being asked see an exit node instead of a home
+               address, and nothing at all about the addresses they were handed. -->
+          <ItemsControl ItemsSource="{Binding PrivacyFindings}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PrivacyFindingVm">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,0,0,7">
+                  <TextBlock Text="{Binding Glyph}" Foreground="{Binding Color}" FontSize="11.5"
+                             FontWeight="Bold" VerticalAlignment="Top" Margin="0,1,0,0"/>
+                  <StackPanel Grid.Column="1" Spacing="1">
+                    <TextBlock Text="{Binding Text}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Limit}" FontSize="11" LineHeight="16" TextWrapping="Wrap"
+                               Foreground="{DynamicResource UmTextMuted}" MaxWidth="560"/>
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Score header: how many switchable protections are on, right now. -->
+    <Border Classes="card" Padding="18,14">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="4">
+          <TextBlock FontSize="20" FontWeight="SemiBold" Foreground="{Binding SecurityScoreColor}"
+                     Text="{Binding SecurityScoreLabel}"/>
+          <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                     Text="{Binding ConnectionLabel}"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Classes="primary" Padding="14,6" MinHeight="0"
+                  Content="{Binding [sec.allOn], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding EnableRecommendedSecurityCommand}"/>
+          <Button Classes="ghost" Padding="14,6" MinHeight="0"
+                  Content="{Binding [sec.refresh], Source={x:Static app:Loc.Instance}}"
+                  Command="{Binding RefreshSecurityCommand}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <ItemsControl ItemsSource="{Binding SecurityChecks}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:SecurityCheckVm">
+          <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
+                  BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="30,*,Auto">
+              <TextBlock Text="{Binding Glyph}" FontSize="15" VerticalAlignment="Top" Margin="0,1,0,0"/>
+              <StackPanel Grid.Column="1" Spacing="3" Margin="6,0,12,0">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding Detail}" FontSize="11.5" TextWrapping="Wrap"
+                           Foreground="{DynamicResource UmTextDim}"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="6" HorizontalAlignment="Right">
+                <Border Background="Transparent" BorderBrush="{Binding StateColor}" BorderThickness="1"
+                        CornerRadius="7" Padding="9,2" HorizontalAlignment="Right">
+                  <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding StateColor}"
+                             Text="{Binding StateLabel}"/>
+                </Border>
+                <!-- The remedy sits on the row that needs it: no hunting through Settings. -->
+                <Button Classes="ghost" Padding="10,4" MinHeight="0" HorizontalAlignment="Right"
+                        IsVisible="{Binding ActionLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        Content="{Binding ActionLabel}"
+                        Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).OpenSecurityActionCommand}"
+                        CommandParameter="{Binding ActionTarget}"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

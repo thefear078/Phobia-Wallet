@@ -1,7 +1,8 @@
 name: Release
 
 # Build the desktop artifacts on their native runners and attach them to the GitHub Release
-# for the pushed tag (e.g. v3.0.1). Windows: installer + portable zip. Linux: self-contained tarball.
+# for the pushed tag (e.g. v3.0.1). Windows: installer + portable exe. Linux: self-contained tarball.
+# Android: one APK.
 on:
   push:
     tags: ["v*"]
@@ -22,7 +23,13 @@ jobs:
       - name: Read version
         id: v
         shell: bash
-        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+        run: |
+          V="$(tr -d ' \t\r\n' < VERSION)"
+          # A beta's files are named by its beta number ("Beta-1"), a full release's by its version.
+          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "label=$L" >> "$GITHUB_OUTPUT"
+          echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
 
       - name: Stage bundled Tor + Monero
         shell: pwsh
@@ -46,26 +53,21 @@ jobs:
           choco install innosetup -y --no-progress
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           $ver = (Get-Content VERSION).Trim()
-          & $iscc "/DAppVersion=$ver" "/DAppNumericVersion=$($ver.Split('-')[0])" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/phobia.iss
+          $label = "${{ steps.v.outputs.label }}"
+          # Shown in Windows as "Phobia Wallet Beta 1"; the file version stays numeric (4.10.0).
+          & $iscc "/DAppVersion=${{ steps.v.outputs.display }}" "/DAppFileLabel=$label" "/DAppNumericVersion=$($ver.Split('-')[0])" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/phobia.iss
           # The README links to a single portable EXE, not an archive. Producing a zip here meant the
           # download link on the front page 404'd on every release until somebody uploaded the exe by
           # hand - which the checksum job below would then reject as a stray artifact.
-          $v = "${{ steps.v.outputs.version }}"
-          Copy-Item "dist/portable/Phobia.exe" "dist/PhobiaWallet-$v-win-x64-portable.exe" -Force
-          # The same two files under their Umbrella-era names, byte for byte: copies of the wallet from
-          # before the rename look for those names when they update themselves.
-          Copy-Item "dist/PhobiaWallet-Setup-$v.exe" "dist/UmbrellaWallet-Setup-$v.exe" -Force
-          Copy-Item "dist/PhobiaWallet-$v-win-x64-portable.exe" "dist/UmbrellaWallet-$v-win-x64-portable.exe" -Force
+          Copy-Item "dist/portable/Phobia.exe" "dist/PhobiaWallet-$label-win-x64-portable.exe" -Force
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
-            dist/PhobiaWallet-Setup-${{ steps.v.outputs.version }}.exe
-            dist/PhobiaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe
-            dist/UmbrellaWallet-Setup-${{ steps.v.outputs.version }}.exe
-            dist/UmbrellaWallet-${{ steps.v.outputs.version }}-win-x64-portable.exe
+            dist/PhobiaWallet-Setup-${{ steps.v.outputs.label }}.exe
+            dist/PhobiaWallet-${{ steps.v.outputs.label }}-win-x64-portable.exe
 
   linux:
     name: linux
@@ -78,7 +80,13 @@ jobs:
 
       - name: Read version
         id: v
-        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+        run: |
+          V="$(tr -d ' \t\r\n' < VERSION)"
+          # A beta's files are named by its beta number ("Beta-1"), a full release's by its version.
+          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "label=$L" >> "$GITHUB_OUTPUT"
+          echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
 
       - name: Build self-contained Linux tarball
         env:
@@ -91,21 +99,95 @@ jobs:
       - name: Normalise artifact name
         run: |
           V="${{ steps.v.outputs.version }}"
-          cp "desktop/dist/linux/phobia-wallet-${V}-linux-x64.tar.gz" "PhobiaWallet-${V}-linux-x64.tar.gz"
-          # And under the Umbrella-era name, for copies from before the rename.
-          cp "PhobiaWallet-${V}-linux-x64.tar.gz" "UmbrellaWallet-${V}-linux-x64.tar.gz"
+          cp "desktop/dist/linux/phobia-wallet-${V}-linux-x64.tar.gz" "PhobiaWallet-${{ steps.v.outputs.label }}-linux-x64.tar.gz"
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
-            PhobiaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
-            UmbrellaWallet-${{ steps.v.outputs.version }}-linux-x64.tar.gz
+            PhobiaWallet-${{ steps.v.outputs.label }}-linux-x64.tar.gz
+
+  android:
+    name: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The android workload installs into the SDK's own folder, so the SDK goes somewhere this user
+      # can write to rather than the runner's root-owned /usr/share/dotnet.
+      - uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
+        with:
+          dotnet-version: "8.0.x"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install the Android workload
+        run: dotnet workload install android
+
+      - name: Read version
+        id: v
+        run: |
+          V="$(tr -d ' \t\r\n' < VERSION)"
+          # A beta's files are named by its beta number ("Beta-1"), a full release's by its version.
+          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "label=$L" >> "$GITHUB_OUTPUT"
+          echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
+
+      # Android installs an update only when it is signed with the same key as the copy already on the
+      # phone. That key lives in two repository secrets; without them this release still ships an APK,
+      # signed with a key made for this run alone, and says so - a later APK will not install over it.
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          KS="$RUNNER_TEMP/phobia.keystore"
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$KS"
+            PASS="$KEYSTORE_PASSWORD"
+            ALIAS="${KEY_ALIAS:-phobia}"
+          else
+            echo "::warning::ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD are not set - this APK is signed with a one-off key, and the next one will not install over it."
+            PASS="$(openssl rand -hex 24)"
+            ALIAS="phobia"
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -alias "$ALIAS" -keyalg RSA -keysize 4096 \
+              -validity 10000 -storepass "$PASS" -keypass "$PASS" -dname "CN=Phobia Wallet, O=the fear"
+          fi
+          echo "::add-mask::$PASS"
+          {
+            echo "ANDROID_KEYSTORE=$KS"
+            echo "ANDROID_KEY_ALIAS=$ALIAS"
+            echo "ANDROID_KEY_PASS=$PASS"
+          } >> "$GITHUB_ENV"
+
+      - name: Build the APK
+        run: |
+          chmod +x desktop/scripts/publish-android.sh
+          ( cd desktop && ./scripts/publish-android.sh )
+          cp "desktop/dist/android/phobia-wallet-${{ steps.v.outputs.version }}-android.apk" "PhobiaWallet-${{ steps.v.outputs.label }}-android.apk"
+
+      # The file people install must carry a v2+ signature from the key above, not the SDK's debug key.
+      - name: Check the signature
+        run: |
+          APKSIGNER="$(ls -d "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*/apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose --print-certs "PhobiaWallet-${{ steps.v.outputs.label }}-android.apk" | tee apksigner.txt
+          if grep -q "CN=Android Debug" apksigner.txt; then echo "::error::APK is signed with the debug key"; exit 1; fi
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
+          files: |
+            PhobiaWallet-${{ steps.v.outputs.label }}-android.apk
 
   checksums:
     name: checksums
-    needs: [windows, linux]
+    needs: [windows, linux, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write        # attach the manifest to the release
@@ -116,9 +198,15 @@ jobs:
 
       - name: Read version
         id: v
-        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+        run: |
+          V="$(tr -d ' \t\r\n' < VERSION)"
+          # A beta's files are named by its beta number ("Beta-1"), a full release's by its version.
+          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "label=$L" >> "$GITHUB_OUTPUT"
+          echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
 
-      # Both build jobs have finished and attached their artifacts to the release; pull them all
+      # Every build job has finished and attached their artifacts to the release; pull them all
       # back and produce ONE SHA256SUMS.txt so downloaders can verify every file.
       - name: Download all release artifacts
         env:
@@ -126,28 +214,26 @@ jobs:
         run: |
           mkdir assets
           gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
-            --pattern "PhobiaWallet-*" --pattern "UmbrellaWallet-*" --dir assets
+            --pattern "PhobiaWallet-*" --dir assets
 
       # Fail closed if the release is incomplete: every platform artifact for THIS version must be
       # present and version-stamped before we publish a checksum manifest — a partial release must
       # never yield a SHA256SUMS.txt that silently omits (or misnames) a file.
       - name: Verify the expected artifacts are all present
         run: |
-          V="${{ steps.v.outputs.version }}"
+          L="${{ steps.v.outputs.label }}"
           expected=(
-            "PhobiaWallet-Setup-${V}.exe"
-            "PhobiaWallet-${V}-win-x64-portable.exe"
-            "PhobiaWallet-${V}-linux-x64.tar.gz"
-            "UmbrellaWallet-Setup-${V}.exe"
-            "UmbrellaWallet-${V}-win-x64-portable.exe"
-            "UmbrellaWallet-${V}-linux-x64.tar.gz"
+            "PhobiaWallet-Setup-${L}.exe"
+            "PhobiaWallet-${L}-win-x64-portable.exe"
+            "PhobiaWallet-${L}-linux-x64.tar.gz"
+            "PhobiaWallet-${L}-android.apk"
           )
           missing=0
           for f in "${expected[@]}"; do
             if [ ! -f "assets/$f" ]; then echo "::error::missing release artifact: $f"; missing=1; fi
           done
           # Reject any stray or wrong-version asset so the manifest is exactly the set.
-          for f in assets/PhobiaWallet-* assets/UmbrellaWallet-*; do
+          for f in assets/PhobiaWallet-*; do
             base="$(basename "$f")"
             keep=0
             for e in "${expected[@]}"; do [ "$base" = "$e" ] && keep=1; done
@@ -155,25 +241,26 @@ jobs:
           done
           [ "$missing" -eq 0 ] || { echo "Release artifact set is incomplete or unexpected."; exit 1; }
 
-      # Named per-version, because that is what the README tells people to run:
-      #   sha256sum -c SHA256SUMS-<version>.txt
+      # Named per release ("SHA256SUMS-Beta-1.txt", "SHA256SUMS-4.10.0.txt"), because that is what the
+      # README tells people to run:
+      #   sha256sum -c SHA256SUMS-<label>.txt
       # An unversioned manifest also meant a later release's file could sit next to an older one's
       # downloads with no way to tell which build it described.
       - name: Generate and self-verify the checksum manifest
         run: |
-          V="${{ steps.v.outputs.version }}"
-          ( cd assets && sha256sum PhobiaWallet-* UmbrellaWallet-* ) > "SHA256SUMS-${V}.txt"
-          echo "----- SHA256SUMS-${V}.txt -----"; cat "SHA256SUMS-${V}.txt"
+          L="${{ steps.v.outputs.label }}"
+          ( cd assets && sha256sum PhobiaWallet-* ) > "SHA256SUMS-${L}.txt"
+          echo "----- SHA256SUMS-${L}.txt -----"; cat "SHA256SUMS-${L}.txt"
           # Prove every line matches the attached file byte-for-byte before we publish it, and that
           # the manifest is not empty - v4.5.0 shipped one that was.
-          [ -s "SHA256SUMS-${V}.txt" ] || { echo "::error::checksum manifest is empty"; exit 1; }
-          ( cd assets && sha256sum -c "../SHA256SUMS-${V}.txt" )
+          [ -s "SHA256SUMS-${L}.txt" ] || { echo "::error::checksum manifest is empty"; exit 1; }
+          ( cd assets && sha256sum -c "../SHA256SUMS-${L}.txt" )
 
       - name: Attach checksums to release
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ contains(steps.v.outputs.version, '-') }}
-          files: SHA256SUMS-${{ steps.v.outputs.version }}.txt
+          files: SHA256SUMS-${{ steps.v.outputs.label }}.txt
 
       # Roadmap R.3. A checksum proves a download matches the manifest on the release page. It says
       # nothing about who put that page there — and an attacker who can replace the artifacts can
@@ -189,5 +276,4 @@ jobs:
         with:
           subject-path: |
             assets/PhobiaWallet-*
-            assets/UmbrellaWallet-*
-            SHA256SUMS-${{ steps.v.outputs.version }}.txt
+            SHA256SUMS-${{ steps.v.outputs.label }}.txt

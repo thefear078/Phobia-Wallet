@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="phobia_bg">#071021</color>
+  <style name="PhobiaTheme" parent="@style/Theme.AppCompat.NoActionBar">
+    <item name="android:windowBackground">@color/phobia_bg</item>
+    <item name="android:statusBarColor">@color/phobia_bg</item>
+    <item name="android:navigationBarColor">@color/phobia_bg</item>
+  </style>
+  <style name="PhobiaTheme.NoActionBar" parent="PhobiaTheme">
+    <item name="windowActionBar">false</item>
+    <item name="windowNoTitle">true</item>
+  </style>
+</resources>

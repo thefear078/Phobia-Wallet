@@ -270,15 +270,58 @@ public sealed record P2pVenue(
     string Name, string Kind, string Custody, string Description, string Url, string Tag, string Accent);
 
 /// <summary>A searchable Settings entry: a label, the pane it lives in, and hidden keywords.</summary>
-public sealed record SettingsShortcut(string Label, string Tab, string Keywords)
+/// <summary>One thing Settings search can find: the string that titles it, its pane, every string the
+/// card shows, and words people type for it that the card does not say.</summary>
+public sealed record SettingsShortcut(string TitleKey, string Tab, IReadOnlyList<string> Keys, string Keywords)
 {
-    public string TabLabel => Tab;
+    /// <summary>The title in the wallet's language. Card headings are written in capitals; a result reads
+    /// as a sentence, with the acronyms kept.</summary>
+    public string Label => SentenceCase(Umbrella.Wallet.App.Loc.Instance[TitleKey]);
+
+    /// <summary>The string that names the pane on its tab.</summary>
+    public string TabKey => Tab switch
+    {
+        "Wallets" => "settings.tabWallets",
+        "Security" => "settings.security",
+        "Privacy" => "settings.privacy",
+        "Backup" => "settings.backup",
+        "Guide" => "settings.guide",
+        "Danger" => "settings.danger",
+        _ => "settings.appearance",
+    };
+
+    public string TabLabel => Umbrella.Wallet.App.Loc.Instance[TabKey];
+
+    private static readonly HashSet<string> Acronyms = new(StringComparer.Ordinal)
+    {
+        "IP", "IPV4", "IPV6", "SOCKS5", "PSBT", "QR", "API", "XMR", "BTC", "ETH", "RPC", "KYC", "PIN", "URL",
+        "HD", "UTXO", "NFT", "ID", "EVM", "USD", "SHA256", "PGP", "GPG", "CSV", "PDF",
+    };
+
+    public static string SentenceCase(string text)
+    {
+        if (string.IsNullOrEmpty(text) || text.Any(char.IsLower)) return text;
+        var words = text.Split(' ');
+        for (var i = 0; i < words.Length; i++)
+        {
+            var bare = new string(words[i].Where(char.IsLetterOrDigit).ToArray());
+            if (Acronyms.Contains(bare)) continue;
+            words[i] = bare == "TOR" ? words[i].Replace("TOR", "Tor") : words[i].ToLowerInvariant();
+        }
+        var joined = string.Join(' ', words);
+        var first = joined.IndexOf(joined.FirstOrDefault(char.IsLetter));
+        return first < 0 ? joined : joined[..first] + char.ToUpperInvariant(joined[first]) + joined[(first + 1)..];
+    }
 }
 
 /// <summary>One wallet in the multi-wallet switcher.</summary>
 public sealed record WalletListItemViewModel(
-    string Id, string Label, bool IsActive, bool IsLegacy, string? Color = null, string? TotalLabel = null)
+    string Id, string Label, bool IsActive, bool IsLegacy, string? Color = null, string? TotalLabel = null,
+    bool RemoveArmed = false)
 {
+    /// <summary>"Remove", or — after the first press — "Confirm removal", for a few seconds.</summary>
+    public string RemoveLabel => Umbrella.Wallet.App.Loc.Instance[RemoveArmed ? "wallets.removeConfirm" : "settings.walletRemove"];
+
     /// <summary>The wallet's balance in the switcher, when that option is on.</summary>
     public bool HasTotal => !string.IsNullOrEmpty(TotalLabel);
 
@@ -304,6 +347,9 @@ public static class CoinKinds
 
     public static bool IsToken(string symbol) => Tokens.Contains(symbol);
 }
+
+/// <summary>A wallet taken out of the list whose vault is still on this device.</summary>
+public sealed record RemovedWalletRow(string Key, string Label, string When);
 
 /// <summary>A network chip (Receive's "which network"), lit when chosen.</summary>
 public sealed record NetworkChip(string Name, bool IsActive);
@@ -663,6 +709,7 @@ public sealed record ActivityRowViewModel(
         "Received" => ReceivedGlyph,
         "Sent" => SentGlyph,
         "Swap" => SwapGlyph,
+        "Staked" => StakeGlyph,
         "Connected" => LinkGlyph,
         "Settings" => GearGlyph,
         "Security" => Asset switch
@@ -712,7 +759,7 @@ public sealed record ActivityRowViewModel(
     public bool HasLink => !string.IsNullOrWhiteSpace(Explorer);
 
     /// <summary>True for money movements (used by the Transactions section and the "Transactions" filter).</summary>
-    public bool IsTransaction => Kind is "Sent" or "Received" or "Swap";
+    public bool IsTransaction => Kind is "Sent" or "Received" or "Swap" or "Staked";
 
     /// <summary>The glyph on the home screen's recent transactions: in, out, swap, or anything else.</summary>
     public Avalonia.Media.Geometry KindGeometry => Kind switch
@@ -726,12 +773,14 @@ public sealed record ActivityRowViewModel(
     private static readonly Avalonia.Media.Geometry ReceivedGlyph = Avalonia.Media.StreamGeometry.Parse("M12 6 V18 M6 12 L12 18 L18 12");
     private static readonly Avalonia.Media.Geometry SentGlyph = Avalonia.Media.StreamGeometry.Parse("M7 17 L17 7 M9 7 H17 V15");
     private static readonly Avalonia.Media.Geometry SwapGlyph = Avalonia.Media.StreamGeometry.Parse("M6 8 H17 L14 5 M18 16 H7 L10 19");
+    private static readonly Avalonia.Media.Geometry StakeGlyph = Avalonia.Media.StreamGeometry.Parse(
+        "M5 8 L12 4.5 L19 8 L12 11.5 Z M5 12 L12 15.5 L19 12 M5 16 L12 19.5 L19 16");
     private static readonly Avalonia.Media.Geometry OtherGlyph = Avalonia.Media.StreamGeometry.Parse("M12 7 V13 M12 16.5 V17");
 
     /// <summary>Which activity filter tab this row belongs to.</summary>
     public string Category => Kind switch
     {
-        "Sent" or "Received" or "Swap" => "Transactions",
+        "Sent" or "Received" or "Swap" or "Staked" => "Transactions",
         "Connected" => "Connections",
         "Theme" or "Settings" => "Settings",
         _ => "System",
@@ -745,6 +794,7 @@ public sealed record ActivityRowViewModel(
         "Received" => "#5AC8B4",
         "Connected" => "#5AC8B4",
         "Swap" => "#8A5FD6",
+        "Staked" => "#5FA8D3",
         "Theme" => "#E7CA83",
         _ => "#8A9099",
     };

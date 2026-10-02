@@ -82,8 +82,12 @@ public sealed class UpdateServiceTests
         Assert.True(b10 > b2);      // numbers, not text
         Assert.True(release > b10); // the release supersedes every beta of it
         Assert.True(b1 > older);
-        Assert.Equal("PhobiaWallet-Setup-4.10.0-beta.1.exe", UpdateService.AssetNameFor(InstallKind.WindowsInstaller, b1));
-        Assert.Equal("SHA256SUMS-4.10.0-beta.1.txt", UpdateService.SumsNameFor(b1));
+        // A beta's files are named by its beta number — what people call it — not by 4.10.0-beta.1.
+        Assert.Equal("PhobiaWallet-Setup-Beta-1.exe", UpdateService.AssetNameFor(InstallKind.WindowsInstaller, b1));
+        Assert.Equal("PhobiaWallet-Beta-10-win-x64-portable.exe", UpdateService.AssetNameFor(InstallKind.WindowsPortable, b10));
+        Assert.Equal("PhobiaWallet-Beta-2-linux-x64.tar.gz", UpdateService.AssetNameFor(InstallKind.Linux, b2));
+        Assert.Equal("SHA256SUMS-Beta-1.txt", UpdateService.SumsNameFor(b1));
+        Assert.Equal("SHA256SUMS-4.10.0.txt", UpdateService.SumsNameFor(release));   // a full release keeps its number
     }
 
     [Theory]
@@ -139,9 +143,9 @@ public sealed class UpdateServiceTests
         if (root is null) return;
         var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
-        Assert.Contains("PhobiaWallet-Setup-", workflow);
-        // Copies from before the rename look for these; the release keeps attaching them.
-        Assert.Contains("UmbrellaWallet-Setup-", workflow);
+        Assert.Contains("PhobiaWallet-Setup-${{ steps.v.outputs.label }}.exe", workflow);
+        // The workflow names files by the same label the wallet looks for ("Beta-1" for a beta).
+        Assert.Contains(@"-beta\.([0-9]+)$/Beta-\1/", workflow);
         Assert.Contains("-win-x64-portable.exe", workflow);
         Assert.Contains("-linux-x64.tar.gz", workflow);
         Assert.Contains("SHA256SUMS-", workflow);
