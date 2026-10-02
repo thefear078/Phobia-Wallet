@@ -37,7 +37,7 @@
 | **ATOM** | Cosmos Hub | ✅ | ✅ | — | With a memo for exchange deposits. The balance is *available* ATOM — staked ATOM is not counted |
 | **NEAR** | NEAR Protocol | ✅ | ✅ | — | Your implicit account (the 64-character hex id), to any `.near` name or implicit account. Named accounts of your own and staked NEAR are not shown |
 | **DOT** | Polkadot | ✅ | ✅ | — | sr25519 like Polkadot.js / Nova; balance adds Asset Hub and the relay chain; sends go from Asset Hub, where balances now live |
-| **XNO** | Nano | — | ✅ | — | Receive and balance. Restores in Ledger / Trust Wallet / Nault (BIP39). Incoming XNO waits as "receivable" until a wallet that signs pockets it; the balance includes it. Sending is not here yet |
+| **XNO** | Nano | ✅ | ✅ | — | No fee: a send pockets the received payments it needs, then sends, with a few seconds of proof of work computed on your computer. Restores in Ledger / Trust Wallet / Nault (BIP39); "receivable" XNO is counted in the balance |
 | **DCR** | Decred | — | ✅ | — | Receive and balance. The BIP44 account Trust Wallet / Ledger / Exodus use — Decrediton derives differently and will not show it. Sending is not here yet |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its

@@ -2798,6 +2798,11 @@ public partial class MainViewModel : ViewModelBase
     public static IReadOnlySet<string> FeePaidInAnotherCoin { get; } =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "USDT" };
 
+    /// <summary>Sendable symbols with no fee at all: a Nano block pays with proof of work computed here,
+    /// so Max is the whole balance.</summary>
+    public static IReadOnlySet<string> FeeFree { get; } =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "XNO" };
+
     [RelayCommand]
     private void SetMaxAmount()
     {
