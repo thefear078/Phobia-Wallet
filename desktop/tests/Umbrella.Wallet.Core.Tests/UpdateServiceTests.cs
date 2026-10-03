@@ -24,10 +24,10 @@ public sealed class UpdateServiceTests
           "assets": [
             { "name": "SHA256SUMS-4.9.0.txt", "size": 309,
               "digest": "sha256:0617be2b2d7a59da5332ada676f897b605fbbb81cb5608adefaad3388aa7f168",
-              "browser_download_url": "https://github.com/thefear078/UmbrellaWallet/releases/download/v4.9.0/SHA256SUMS-4.9.0.txt" },
+              "browser_download_url": "https://github.com/thefear078/Phobia-Wallet/releases/download/v4.9.0/SHA256SUMS-4.9.0.txt" },
             { "name": "UmbrellaWallet-Setup-4.9.0.exe", "size": 54740820,
               "digest": "sha256:91f88decda26a7e23332514feea3ec7f536fe14de53a1dd6d7b40b290342624f",
-              "browser_download_url": "https://github.com/thefear078/UmbrellaWallet/releases/download/v4.9.0/UmbrellaWallet-Setup-4.9.0.exe" }
+              "browser_download_url": "https://github.com/thefear078/Phobia-Wallet/releases/download/v4.9.0/UmbrellaWallet-Setup-4.9.0.exe" }
           ]
         }
         """;
@@ -113,9 +113,9 @@ public sealed class UpdateServiceTests
     }
 
     [Theory]
-    [InlineData("https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.9.0", "v4.9.0")]
-    [InlineData("https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.10.1/", "v4.10.1")]
-    [InlineData("https://github.com/thefear078/UmbrellaWallet/releases", null)]
+    [InlineData("https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.9.0", "v4.9.0")]
+    [InlineData("https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.1/", "v4.10.1")]
+    [InlineData("https://github.com/thefear078/Phobia-Wallet/releases", null)]
     public void The_release_page_redirect_names_the_tag(string url, string? tag) =>
         Assert.Equal(tag, UpdateService.TagFromReleaseUrl(url));
 
@@ -195,12 +195,14 @@ public sealed class UpdateServiceTests
     }
 
     [Theory]
-    [InlineData("https://github.com/thefear078/UmbrellaWallet/releases/download/v4.9.0/x.exe", true)]
+    [InlineData("https://github.com/thefear078/Phobia-Wallet/releases/download/v4.9.0/x.exe", true)]
+    [InlineData("https://github.com/thefear078/UmbrellaWallet/releases/download/v4.9.0/x.exe", true)] // pre-rename URL / redirect
     [InlineData("https://objects.githubusercontent.com/github-production-release-asset/1/2", true)]
     [InlineData("https://release-assets.githubusercontent.com/github-production-release-asset/1/2", true)]
+    [InlineData("https://github.com/someone-else/Phobia-Wallet/releases/download/v4.9.0/x.exe", false)]
     [InlineData("https://github.com/someone-else/UmbrellaWallet/releases/download/v4.9.0/x.exe", false)]
-    [InlineData("http://github.com/thefear078/UmbrellaWallet/releases/download/v4.9.0/x.exe", false)]
-    [InlineData("https://github.com.evil.example/thefear078/UmbrellaWallet/releases/download/v4.9.0/x.exe", false)]
+    [InlineData("http://github.com/thefear078/Phobia-Wallet/releases/download/v4.9.0/x.exe", false)]
+    [InlineData("https://github.com.evil.example/thefear078/Phobia-Wallet/releases/download/v4.9.0/x.exe", false)]
     [InlineData("https://objects.githubusercontent.com.evil.example/x", false)]
     public void Only_this_projects_release_downloads_are_trusted(string url, bool trusted) =>
         Assert.Equal(trusted, UpdateService.IsTrustedDownload(new Uri(url)));
@@ -211,7 +213,7 @@ public sealed class UpdateServiceTests
         var release = UpdateService.ParseRelease(ReleaseJson)!;
         var url = UpdateService.DownloadUrl(release, "UmbrellaWallet-Setup-4.9.0.exe");
 
-        Assert.Equal("https://github.com/thefear078/UmbrellaWallet/releases/download/v4.9.0/UmbrellaWallet-Setup-4.9.0.exe", url);
+        Assert.Equal("https://github.com/thefear078/Phobia-Wallet/releases/download/v4.9.0/UmbrellaWallet-Setup-4.9.0.exe", url);
         Assert.True(UpdateService.IsTrustedDownload(new Uri(url)));
     }
 

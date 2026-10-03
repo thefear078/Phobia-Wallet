@@ -123,5 +123,5 @@ public partial class MainViewModel
 
     /// <summary>The guide that explains what to do with these, and how to check the rest.</summary>
     public string VerifyGuideUrl =>
-        "https://github.com/thefear078/UmbrellaWallet/blob/main/docs/VERIFY_YOUR_WALLET.md";
+        "https://github.com/thefear078/Phobia-Wallet/blob/main/docs/VERIFY_YOUR_WALLET.md";
 }

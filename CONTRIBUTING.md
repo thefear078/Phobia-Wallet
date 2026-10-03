@@ -14,8 +14,8 @@ Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## What we welcome
 
-- **Bug reports** — [GitHub Issues](https://github.com/thefear078/UmbrellaWallet/issues) with version, OS, steps.
-- **Security reports** — privately via [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) only.
+- **Bug reports** — [GitHub Issues](https://github.com/thefear078/Phobia-Wallet/issues) with version, OS, steps.
+- **Security reports** — privately via [GitHub Security Advisories](https://github.com/thefear078/Phobia-Wallet/security/advisories/new) only.
 - **Pull requests** — small, tested, phase-aligned with [docs/ROADMAP.md](docs/ROADMAP.md) /
   [docs/WORKFLOW.md](docs/WORKFLOW.md). Prefer discussing large features in an issue first.
 - **Coin proposals** — use the “Add a new coin” issue template.

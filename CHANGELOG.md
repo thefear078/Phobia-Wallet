@@ -1015,7 +1015,7 @@ not read never reads as zero, and a send never leaves by a route you did not cho
   a named commit, recorded in a public transparency log.
 
   ```bash
-  gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+  gh attestation verify UmbrellaWallet-Setup-<version>.exe --repo thefear078/Phobia-Wallet
   ```
 
 - A checksum only ever proved that a download matches the manifest on the release page — and whoever

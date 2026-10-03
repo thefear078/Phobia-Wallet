@@ -37,7 +37,7 @@ platform. Decisions aim to protect users first.
 ## Reporting
 
 - **Conduct / abuse:** open a private note via [CONTACT.md](CONTACT.md) or Telegram admins.
-- **Vulnerabilities:** [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) only.
+- **Vulnerabilities:** [GitHub Security Advisories](https://github.com/thefear078/Phobia-Wallet/security/advisories/new) only.
 
 Do not send seeds or keys when reporting anything.
 

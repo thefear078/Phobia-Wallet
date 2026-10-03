@@ -20,7 +20,7 @@ safely.
 ## 1. Download
 
 The current build is **Beta 1**, a GitHub *pre-release*: get it from its
-**[release page](https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.10.0-beta.1)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
+**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
 full 4.10.0 is out.)
 
 | Platform | File |

@@ -36,7 +36,7 @@
 #endif
 
 #define AppUrl "https://t.me/PhobiaStat"
-#define AppReleases "https://github.com/thefear078/UmbrellaWallet/releases"
+#define AppReleases "https://github.com/thefear078/Phobia-Wallet/releases"
 
 [Setup]
 ; The AppId is the Umbrella-era one on purpose: it is what makes this an upgrade of the installed wallet

@@ -116,7 +116,7 @@ page there** — somebody who can replace the artifacts can replace the manifest
 release from the next one on also carries a build attestation:
 
 ```bash
-gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/Phobia-Wallet
 ```
 
 That checks against a public transparency log — not against us — that these exact bytes came out of

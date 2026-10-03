@@ -34,7 +34,7 @@ Beta 1**. Новини, релізи й допомога — лише в офі�
 
 ## 2. Завантаження й перевірка
 
-Файли Beta 1 — на [сторінці релізу](https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.10.0-beta.1):
+Файли Beta 1 — на [сторінці релізу](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1):
 
 | Система | Файл |
 |---|---|

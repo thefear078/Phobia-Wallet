@@ -19,7 +19,7 @@ name. It does **not** replace the [LICENSE](LICENSE).
 - Refer to Phobia Wallet by name in articles, reviews, and security research **with clear
   attribution** and without implying endorsement.
 - Build **compatible** tools or research harnesses under a **different** name and branding.
-- Link to the official repository and releases: https://github.com/thefear078/UmbrellaWallet
+- Link to the official repository and releases: https://github.com/thefear078/Phobia-Wallet
 
 ## You may not (without prior written permission)
 

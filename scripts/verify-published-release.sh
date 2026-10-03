@@ -18,7 +18,7 @@
 set -euo pipefail
 
 TAG="${1:-}"
-REPO="${GH_REPO:-thefear078/UmbrellaWallet}"
+REPO="${GH_REPO:-thefear078/Phobia-Wallet}"
 
 command -v gh > /dev/null || { echo "gh is required (https://cli.github.com)"; exit 2; }
 
