@@ -169,8 +169,8 @@ Include at least one frame where:
 ## 9. Support URL for stores
 
 - Community: https://t.me/PhobiaStat  
-- Source / releases: https://github.com/thefear078/UmbrellaWallet  
-- Security: https://github.com/thefear078/UmbrellaWallet/security/advisories/new  
+- Source / releases: https://github.com/thefear078/Phobia-Wallet  
+- Security: https://github.com/thefear078/Phobia-Wallet/security/advisories/new  
 - Trademark / brand: [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)  
 - Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)  
 - Pre-beta gate: [docs/PRE_BETA_CHECKLIST.md](docs/PRE_BETA_CHECKLIST.md)

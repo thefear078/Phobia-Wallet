@@ -4,13 +4,13 @@
 
 | Channel | Link |
 |---|---|
-| **GitHub (source & releases)** | [github.com/thefear078/UmbrellaWallet](https://github.com/thefear078/UmbrellaWallet) |
+| **GitHub (source & releases)** | [github.com/thefear078/Phobia-Wallet](https://github.com/thefear078/Phobia-Wallet) |
 | **GitHub profile** | [github.com/thefear078](https://github.com/thefear078) |
 | **GitHub Sponsors** | [github.com/sponsors/thefear078](https://github.com/sponsors/thefear078) |
 | **Telegram (official product)** | [t.me/PhobiaStat](https://t.me/PhobiaStat) |
 | **TikTok** | [@thefear078](https://www.tiktok.com/@thefear078) |
 | **Reddit** | [u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004) |
-| **Security (private)** | [Security advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) |
+| **Security (private)** | [Security advisories](https://github.com/thefear078/Phobia-Wallet/security/advisories/new) |
 
 ## Rules
 

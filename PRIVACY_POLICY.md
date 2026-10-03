@@ -81,7 +81,7 @@ We will update the “Last updated” date when this policy changes. Material ch
 | | |
 |---|---|
 | Privacy / product questions | [t.me/PhobiaStat](https://t.me/PhobiaStat) |
-| Security issues (private) | [GitHub Security Advisories](https://github.com/thefear078/UmbrellaWallet/security/advisories/new) |
+| Security issues (private) | [GitHub Security Advisories](https://github.com/thefear078/Phobia-Wallet/security/advisories/new) |
 | Author contacts | [CONTACT.md](CONTACT.md) |
 
 **Never** send a recovery phrase or private key to any contact.

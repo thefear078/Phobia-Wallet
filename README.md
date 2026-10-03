@@ -16,10 +16,10 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 <br/>
 
-![CI](https://github.com/thefear078/UmbrellaWallet/actions/workflows/ci.yml/badge.svg)
-![CodeQL](https://github.com/thefear078/UmbrellaWallet/actions/workflows/codeql.yml/badge.svg)
-![Security](https://github.com/thefear078/UmbrellaWallet/actions/workflows/security.yml/badge.svg)
-![Release](https://img.shields.io/github/v/release/thefear078/UmbrellaWallet?label=release)
+![CI](https://github.com/thefear078/Phobia-Wallet/actions/workflows/ci.yml/badge.svg)
+![CodeQL](https://github.com/thefear078/Phobia-Wallet/actions/workflows/codeql.yml/badge.svg)
+![Security](https://github.com/thefear078/Phobia-Wallet/actions/workflows/security.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?label=release)
 ![License](https://img.shields.io/badge/license-MIT-4B3F86)
 ![Version](https://img.shields.io/badge/version-4.10.0--beta.1-2F6BEF)
 ![Tests](https://img.shields.io/badge/tests-1190%2B%20offline-7DCF8F)
@@ -31,7 +31,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download Beta 1](https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.10.0-beta.1)** ·
+**[⬇ Download Beta 1](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1)** ·
 [Verify your download](#verify-what-you-downloaded) ·
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
@@ -54,7 +54,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 Official docs are one web: root philosophy/legal files + `docs/` deep-dives. **Hub:** [docs/INDEX.md](docs/INDEX.md).
 
 ```
-UmbrellaWallet/
+Phobia-Wallet/
 ├── README.md                 ← you are here
 ├── MANIFESTO.md              ← core philosophy (THE RULES)
 ├── SECURITY.md · PRIVACY.md · THREAT_MODEL.md
@@ -241,20 +241,20 @@ route exists but did not quote that coin when this was written.
 
 <img src="docs/assets/logo-phobia.png" width="64" align="left" alt="" hspace="14"/>
 
-The current build is **Beta 1** — its [release page](https://github.com/thefear078/UmbrellaWallet/releases/tag/v4.10.0-beta.1) has every file below. It is a
+The current build is **Beta 1** — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1) has every file below. It is a
 pre-release, so GitHub’s “Latest” label on the right still points at 4.9.0; older builds are on the
-[releases page](https://github.com/thefear078/UmbrellaWallet/releases).
+[releases page](https://github.com/thefear078/Phobia-Wallet/releases).
 This is the icon you will see once it is installed.
 
 <br clear="left"/>
 
 | | |
 |---|---|
-| **Windows installer** | [`PhobiaWallet-Setup-Beta-1.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Setup-Beta-1.exe) |
-| **Windows portable** | [`PhobiaWallet-Beta-1-win-x64-portable.exe`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-win-x64-portable.exe) — one file, no install, leaves nothing behind |
-| **Linux** | [`PhobiaWallet-Beta-1-linux-x64.tar.gz`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-linux-x64.tar.gz) |
-| **Android** | [`PhobiaWallet-Beta-1-android.apk`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
-| **Checksums** | [`SHA256SUMS-Beta-1.txt`](https://github.com/thefear078/UmbrellaWallet/releases/download/v4.10.0-beta.1/SHA256SUMS-Beta-1.txt) |
+| **Windows installer** | [`PhobiaWallet-Setup-Beta-1.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Setup-Beta-1.exe) |
+| **Windows portable** | [`PhobiaWallet-Beta-1-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-win-x64-portable.exe) — one file, no install, leaves nothing behind |
+| **Linux** | [`PhobiaWallet-Beta-1-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-linux-x64.tar.gz) |
+| **Android** | [`PhobiaWallet-Beta-1-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
+| **Checksums** | [`SHA256SUMS-Beta-1.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/SHA256SUMS-Beta-1.txt) |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
@@ -386,8 +386,8 @@ docs/                                everything in this README's Docs section
 You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Nothing else.
 
 ```bash
-git clone https://github.com/thefear078/UmbrellaWallet.git
-cd UmbrellaWallet
+git clone https://github.com/thefear078/Phobia-Wallet.git
+cd Phobia-Wallet
 dotnet build desktop/Umbrella.Wallet.sln -c Release
 ```
 
@@ -469,7 +469,7 @@ The short version:
 The long version, including the threat model and what Phobia explicitly does **not** protect you
 from, is in **[SECURITY.md](SECURITY.md)**.
 
-Found a vulnerability? [Report it privately](https://github.com/thefear078/UmbrellaWallet/security/advisories/new).
+Found a vulnerability? [Report it privately](https://github.com/thefear078/Phobia-Wallet/security/advisories/new).
 Please don't open a public issue for anything that could put funds at risk.
 
 ## Roadmap
@@ -567,7 +567,7 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 </a>
 
 **[t.me/PhobiaStat](https://t.me/PhobiaStat)** ·
-[GitHub](https://github.com/thefear078/UmbrellaWallet) ·
+[GitHub](https://github.com/thefear078/Phobia-Wallet) ·
 [TikTok @thefear078](https://www.tiktok.com/@thefear078) ·
 [Reddit u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004)
 

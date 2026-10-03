@@ -1,7 +1,7 @@
 # Repository hardening status
 
 **Last verified:** 2026-09-15  
-**Repo:** [thefear078/UmbrellaWallet](https://github.com/thefear078/UmbrellaWallet)
+**Repo:** [thefear078/Phobia-Wallet](https://github.com/thefear078/Phobia-Wallet)
 
 Closes stale audits that claim “missing LICENSE / CODEOWNERS / Dependabot / trademark”. Those items
 are **present**. Code licence is **MIT**; brand protection is [TRADEMARK_POLICY.md](../TRADEMARK_POLICY.md).

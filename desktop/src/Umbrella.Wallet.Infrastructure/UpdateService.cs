@@ -106,14 +106,18 @@ public sealed record VerifiedUpdate(ReleaseInfo Release, InstallKind Kind, strin
 /// </summary>
 public static class UpdateService
 {
-    public const string ReleasesUrl = "https://github.com/thefear078/UmbrellaWallet/releases";
-    private const string LatestApi = "https://api.github.com/repos/thefear078/UmbrellaWallet/releases/latest";
+    public const string ReleasesUrl = "https://github.com/thefear078/Phobia-Wallet/releases";
+    private const string LatestApi = "https://api.github.com/repos/thefear078/Phobia-Wallet/releases/latest";
 
     /// <summary>The newest releases including pre-releases — what a beta copy reads, since "latest"
     /// on GitHub never names a pre-release.</summary>
-    private const string RecentApi = "https://api.github.com/repos/thefear078/UmbrellaWallet/releases?per_page=20";
-    private const string LatestPage = "https://github.com/thefear078/UmbrellaWallet/releases/latest";
-    private const string DownloadPrefix = "https://github.com/thefear078/UmbrellaWallet/releases/download/";
+    private const string RecentApi = "https://api.github.com/repos/thefear078/Phobia-Wallet/releases?per_page=20";
+    private const string LatestPage = "https://github.com/thefear078/Phobia-Wallet/releases/latest";
+    private const string DownloadPrefix = "https://github.com/thefear078/Phobia-Wallet/releases/download/";
+
+    /// <summary>Pre-rename download URLs still resolve (GitHub redirect). Accept both so a redirected
+    /// response is not refused as "not from this project".</summary>
+    private const string LegacyDownloadPrefix = "https://github.com/thefear078/UmbrellaWallet/releases/download/";
 
     /// <summary>Where GitHub serves release files from after its redirect. A download that ends anywhere
     /// else is refused, whatever its hash.</summary>
@@ -347,7 +351,8 @@ public static class UpdateService
         url is not null && url.Scheme == Uri.UriSchemeHttps &&
         DownloadHosts.Any(h => url.AbsoluteUri.StartsWith(h, StringComparison.OrdinalIgnoreCase)) &&
         (!url.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
-         url.AbsoluteUri.StartsWith(DownloadPrefix, StringComparison.OrdinalIgnoreCase));
+         url.AbsoluteUri.StartsWith(DownloadPrefix, StringComparison.OrdinalIgnoreCase) ||
+         url.AbsoluteUri.StartsWith(LegacyDownloadPrefix, StringComparison.OrdinalIgnoreCase));
 
     // --- checksums -----------------------------------------------------------------------------------
 

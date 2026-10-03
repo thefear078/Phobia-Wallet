@@ -9,7 +9,7 @@ The technical detail — threat model, cryptography, what is deliberately not pr
 ## Reporting a vulnerability
 
 **Report privately:**
-**[github.com/thefear078/UmbrellaWallet/security/advisories/new](https://github.com/thefear078/UmbrellaWallet/security/advisories/new)**
+**[github.com/thefear078/Phobia-Wallet/security/advisories/new](https://github.com/thefear078/Phobia-Wallet/security/advisories/new)**
 
 Please do **not** open a public issue for anything that could put funds at risk. A public report on a
 wallet is a race between the fix and whoever reads it first.
@@ -154,7 +154,7 @@ Each release should include:
 Verify an attestation with the GitHub CLI:
 
 ```bash
-gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/UmbrellaWallet
+gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/Phobia-Wallet
 ```
 
 It checks, against a public transparency log rather than against anything we say, that those exact
