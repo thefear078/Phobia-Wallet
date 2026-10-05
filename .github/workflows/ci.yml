@@ -96,7 +96,7 @@ jobs:
         run: |
           chmod +x desktop/scripts/publish-android.sh
           ( cd desktop && ./scripts/publish-android.sh )
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: phobia-android-check-build
           path: desktop/dist/android/*.apk
