@@ -72,6 +72,18 @@ jobs:
         run: |
           ./desktop/scripts/fetch-tor.ps1 -RequireSignature -Destination "$env:RUNNER_TEMP/tor"
           ./desktop/scripts/fetch-monero.ps1 -RequireSignature -Destination "$env:RUNNER_TEMP/monero"
+      # The verified daemon is here anyway, so prove against the real thing what the offline suite can
+      # only prove against a copy of its protocol: it writes the random login the wallet reads, the
+      # wallet gets in with it, and a caller without it (a web page, another account) gets a 401.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: The Monero service's login, against the real daemon
+        shell: pwsh
+        run: |
+          $env:PHOBIA_MONERO_RPC = Join-Path $env:RUNNER_TEMP "monero/monero-wallet-rpc.exe"
+          if (-not (Test-Path $env:PHOBIA_MONERO_RPC)) { Get-ChildItem -Recurse "$env:RUNNER_TEMP/monero" | Select-Object FullName; throw "monero-wallet-rpc.exe was not staged where expected" }
+          dotnet test desktop/tests/Umbrella.Wallet.Core.Tests/Umbrella.Wallet.Core.Tests.csproj --verbosity minimal --filter "Category=MoneroDaemon"
 
   android:
     name: android

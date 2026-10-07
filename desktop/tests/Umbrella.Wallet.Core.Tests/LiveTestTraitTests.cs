@@ -42,9 +42,10 @@ public sealed class LiveTestTraitTests
     /// <summary>
     /// Every category the CI workflow filters on, spelled exactly as the workflow spells it:
     /// "Live" is excluded from the main run, "Isolation" is the kill-switch gate that runs as its
-    /// own job (roadmap P0.8).
+    /// own job (roadmap P0.8), and "MoneroDaemon" runs in the supply-chain job against the
+    /// signature-checked monero-wallet-rpc it has just fetched (elsewhere those tests return at once).
     /// </summary>
-    private static readonly string[] KnownCategories = ["Live", "Isolation"];
+    private static readonly string[] KnownCategories = ["Live", "Isolation", "MoneroDaemon"];
 
     [Fact]
     public void The_trait_value_is_spelled_the_way_the_ci_filter_expects()
