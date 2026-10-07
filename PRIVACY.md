@@ -67,7 +67,9 @@ behind the code: the build fails if a host appears in the source without appeari
   request that would go over clearnet does not go at all. Over Tor, requests are split across
   **separate circuits by purpose** — the exit relay that saw your address is not the one that receives
   your transaction.
-- **A SOCKS5 proxy** of your own instead.
+- **A SOCKS5 proxy** of your own instead — on Android, Orbot (`127.0.0.1:9050`), with the kill-switch
+  kept armed while it is set. The destination always goes to the proxy as a name, so this machine's
+  DNS never hears which servers the wallet uses.
 - **Which server answers for each chain** — Bitcoin, Litecoin, Bitcoin Cash, Dogecoin, Ethereum,
   Solana, TON, Tron, Cardano, Monero. Pick a different company, or point the wallet at a node you run.
   A `.onion` node is accepted and will only ever be used with Tor on.

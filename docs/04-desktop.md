@@ -149,7 +149,11 @@ the password like a send, and reads the position again afterwards.
 ## Bundled Monero (`MoneroRpcService`)
 
 - `monero-wallet-rpc` ships in `Assets/monero/`, drives XMR as a full coin.
-- JSON-RPC on port 18099; restores the wallet from Phobia's derived keys via `generate_from_keys`.
+- JSON-RPC on `127.0.0.1:18099` behind HTTP Digest: started with neither `--rpc-login` nor
+  `--disable-rpc-login`, the daemon writes a random login to `monero-wallet-rpc.18099.login` (owner-only)
+  in its working directory, and the wallet reads it before asking anything. A leftover copy of the
+  bundled daemon is ended first; a port held by anything else is refused, since the next call carries the
+  keys. Restores the wallet from Phobia's derived keys via `generate_from_keys`.
 - Balance only exists after scanning with the view key (`get_balance` + sync height), so the UI can
   say "still syncing" instead of a wrong 0.
 - Readiness wait is 90 s (a 39 MB unsigned binary can spend that long in an antivirus scan on first
@@ -166,7 +170,7 @@ compile and simply skip it.
 
 ## Themes, languages, layout
 
-- **`Theming.cs`** — 10 palettes as `DynamicResource` brushes; `Apply(id)` repaints live. The QR
+- **`Theming.cs`** — 15 themes as `DynamicResource` brushes; `Apply(id)` repaints live. The QR
   plate and danger-reds are deliberately never themed (a tinted QR won't scan; red must stay red).
 - **`Localization.cs`** — an indexer-bound `Loc` singleton; raising a null-name PropertyChanged
   re-reads every bound string, so language switches with no restart. Missing keys fall back to

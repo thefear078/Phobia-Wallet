@@ -10,11 +10,33 @@ namespace Umbrella.Wallet.App;
 /// </summary>
 public static class Fx
 {
-    /// <summary>USD → selected currency. 1.0 while the currency is USD or the rate hasn't loaded.</summary>
+    /// <summary>USD → the currency figures are shown in. 1.0 while that is US dollars.</summary>
     public static decimal Rate { get; set; } = 1m;
 
-    /// <summary>The selected currency's symbol (e.g. "$", "€", "₴").</summary>
+    /// <summary>The symbol of the currency figures are shown in (e.g. "$", "€", "₴").</summary>
     public static string Symbol { get; set; } = "$";
+
+    /// <summary>The currency figures are actually shown in: the chosen one once its rate is known, US
+    /// dollars until then. Captions name this, not the chosen one, so they never claim a conversion that
+    /// has not happened.</summary>
+    public static string Code { get; private set; } = "USD";
+
+    /// <summary>
+    /// Switches every figure to <paramref name="code"/> at <paramref name="rate"/> units per US dollar —
+    /// symbol, rate and code together, so no figure can be drawn with one currency's symbol and another's
+    /// amount. Without a usable rate the figures stay in US dollars and say so: "¥104,32" for 104 dollars
+    /// (a rate that failed to load used to be taken as 1.0) is worse than "$104,32".
+    /// </summary>
+    public static void Use(string code, decimal? rate)
+    {
+        var known = Currencies.Any(c => c.Code == code);
+        if (!known || code == "USD" || rate is not > 0m)
+        {
+            (Code, Symbol, Rate) = ("USD", "$", 1m);
+            return;
+        }
+        (Code, Symbol, Rate) = (code, SymbolFor(code), rate.Value);
+    }
 
     /// <summary>Locale used to format FIAT amounts (digit grouping + decimal separator), so a
     /// German/Ukrainian user sees "1.234,56" / "1 234,56" rather than the US "1,234.56". Crypto amounts

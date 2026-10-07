@@ -67,11 +67,28 @@ From top to bottom:
 
 The phone starts in the **Ice** theme (Phobia blue). Settings → Appearance has all the others.
 
+## Tor on the phone, through Orbot
+
+Tor is not bundled in the APK yet. Without it every chain is read directly, so the servers the wallet
+asks see your IP address — Settings says so at the top. [Orbot](https://orbot.app) (the Tor Project's own
+Android app) fixes that:
+
+1. Install **Orbot** from the Play Store, F-Droid or orbot.app, open it and press **Start**.
+2. In Phobia: **Settings → Privacy → Custom proxy (SOCKS5)**, switch to **Use my proxy**, enter
+   `127.0.0.1:9050` and press **Apply**. The connection chip turns to **PROXY**.
+3. Turn on **Tor-only (block clearnet)** on the same tab. With it on, a request that cannot go through
+   Orbot does not go at all — if Orbot is stopped, the wallet shows *Blocked* instead of quietly going
+   direct. The switch stays on across restarts while the proxy is set.
+4. **Verify Tor** (same page) asks check.torproject.org through the wallet's own route and says whether
+   it really left through Tor.
+
+Through Orbot the wallet keeps its circuit separation: address lookups, broadcasts, prices and swaps each
+get their own Tor circuit. Do not use Orbot's VPN mode *and* the proxy at once —
+the proxy alone is enough, and it is what lets the kill-switch know whether Tor is there.
+
 ## What the phone does not do yet
 
-- **No Tor.** Tor is bundled with the Windows and Linux builds only. On the phone every chain is read
-  directly, so the servers it asks see your IP address — Settings says so at the top. If that matters
-  for a payment, make it from the desktop with Tor on.
+- **No bundled Tor** — use Orbot as above.
 - **No Monero wallet service.** Monero balances and sends need Monero's own wallet program, which ships
   with the desktop builds. On the phone XMR has its address; its balance and sends need the desktop for
   now.

@@ -375,7 +375,7 @@ public partial class MainViewModel : ViewModelBase
     /// so the very first line of the wallet stayed in English no matter the language, and the
     /// translated values had "· USD" baked in, which was simply wrong once the display currency was
     /// anything else.</summary>
-    public string TotalBalanceCaption => $"{Loc.Instance["common.total"]} · {_uiSettings.Currency}";
+    public string TotalBalanceCaption => $"{Loc.Instance["common.total"]} · {Fx.Code}";
 
     /// <summary>Fiat to show balances in. Prices stay USD internally; <see cref="Fx"/> converts.</summary>
     public string CurrencyCode
@@ -392,17 +392,76 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Loads the USD→currency rate and repaints every money figure in the new currency.</summary>
+    private readonly FxRateCache _fxCache = new();
+
+    /// <summary>
+    /// Shows the chosen currency at once from the rates this device last read — no network in between —
+    /// then reads fresh rates. Until a rate for it is known the figures stay in US dollars and the
+    /// caption says USD: a rate that failed to load used to be taken as 1.0, and dollars were drawn under
+    /// the yuan's or the hryvnia's symbol.
+    /// </summary>
     private async Task ApplyCurrencyAsync()
     {
-        Fx.Symbol = Fx.SymbolFor(_uiSettings.Currency);
-        Fx.Rate = await _rates.GetFiatRateAsync(_uiSettings.Currency);
+        UseCachedCurrency();
+        await RefreshFxRatesAsync(force: true);
+    }
+
+    /// <summary>The chosen currency from the saved rates (or dollars), applied and repainted now.</summary>
+    private void UseCachedCurrency()
+    {
+        Fx.Use(_uiSettings.Currency, _fxCache.RateFor(_uiSettings.Currency));
+        RepaintMoney();
+    }
+
+    private int _fxReading;
+
+    /// <summary>
+    /// Reads fresh USD→fiat rates when the shown ones are older than an hour, or are not yet the chosen
+    /// currency's — called with every market refresh, so a rate that could not be read (Tor still
+    /// starting, the kill-switch holding, a server down) is asked for again within a minute instead of
+    /// never. A failed read changes nothing on screen.
+    /// </summary>
+    private async Task RefreshFxRatesAsync(bool force = false)
+    {
+        var wanted = _uiSettings.Currency;
+        if (wanted == "USD")
+        {
+            if (Fx.Code != "USD") { Fx.Use("USD", 1m); RepaintMoney(); }
+            return;
+        }
+        if (!force && Fx.Code == wanted && DateTimeOffset.UtcNow - _fxCache.At < TimeSpan.FromHours(1)) return;
+        if (Interlocked.Exchange(ref _fxReading, 1) == 1) return;
+        try
+        {
+            var rates = await _rates.GetFiatRatesAsync();
+            if (rates is null) return;
+            _fxCache.Save(rates);
+            var code = _uiSettings.Currency;   // the user may have picked another while this was out
+            var before = (Fx.Code, Fx.Rate);
+            Fx.Use(code, rates.TryGetValue(code, out var r) ? r : null);
+            if ((Fx.Code, Fx.Rate) != before) RepaintMoney();
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _fxReading, 0);
+        }
+    }
+
+    /// <summary>Every money figure redrawn in the current <see cref="Fx"/> currency from the prices and
+    /// balances already held — no network call, so a currency change shows in the same frame.</summary>
+    private void RepaintMoney()
+    {
         OnPropertyChanged(nameof(CurrencySymbol));
         OnPropertyChanged(nameof(TotalBalanceCaption));
         NotifyPortfolioPoints();   // the chart's values under the pointer, in the new currency
-        RefreshHoldings();   // rebuild Holdings rows so their Fx-based labels re-read the new rate
+        RefreshHoldings();         // holdings rows re-read the rate
         RecalcBalance();
-        _ = RefreshMarketAsync(); // market rows re-read prices in the new currency
+        // Market rows format their price when drawn; handing the list a copy of each makes it draw again.
+        for (var i = 0; i < Market.Count; i++) Market[i] = Market[i] with { };
+        ApplyMarketHoldings();
+        RebuildMarketOverview();
+        RepaintOpenChart();
+        NotifyFiatEntry();
     }
 
     /// <summary>Selected colour theme; repaints every themed surface immediately.</summary>
@@ -638,7 +697,9 @@ public partial class MainViewModel : ViewModelBase
             if (IsUnlocked) PushActivity("Security", "Tor-only", value ? "on" : "off",
                 value ? "clearnet blocked" : "clearnet allowed", "now");
             // Turning it on with Tor still off would block everything until Tor connects — so start Tor.
-            if (value && !TorEnabled && !CustomProxyEnabled)
+            // Not on the phone, which has no Tor to start: there the switch blocks until the user's own
+            // SOCKS proxy (Orbot) is set, and the chip says so instead of claiming Tor is on.
+            if (value && !TorEnabled && !CustomProxyEnabled && HasBundledServices)
             {
                 TorEnabled = true;
                 if (StartTorAutomatically) _ = ApplyTorAsync();
@@ -649,10 +710,14 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>One-line explanation shown under the Tor-only toggle.</summary>
-    public string TorOnlyStatus => TorOnly
-        ? (TorEnabled ? Loc.Instance["priv.torOnlyOn"] : Loc.Instance["priv.torOnlyBlocked"])
-        : Loc.Instance["priv.torOnlyOff"];
+    /// <summary>One-line explanation shown under the Tor-only toggle. A proxy of the user's own (Orbot on
+    /// the phone) carries the traffic as surely as the bundled Tor, and is named as such rather than as
+    /// "blocked until Tor connects".</summary>
+    public string TorOnlyStatus => !TorOnly
+        ? Loc.Instance["priv.torOnlyOff"]
+        : TorEnabled ? Loc.Instance["priv.torOnlyOn"]
+        : EffectiveCustomProxy() is not null ? Loc.Instance["priv.torOnlyProxy"]
+        : Loc.Instance["priv.torOnlyBlocked"];
 
     // ---- Verify Tor: prove the wallet's traffic really exits through Tor (read-only check) ----
     [ObservableProperty] private string _torCheckStatus = string.Empty;
@@ -702,18 +767,9 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Normalises "host:port" or a socks URI into a canonical socks URI, or null if invalid.</summary>
-    private static string? NormalizeProxyUri(string? raw)
-    {
-        var s = (raw ?? string.Empty).Trim();
-        if (s.Length == 0) return null;
-        if (!s.Contains("://", StringComparison.Ordinal)) s = "socks5://" + s;
-        if (!Uri.TryCreate(s, UriKind.Absolute, out var uri)) return null;
-        var scheme = uri.Scheme.ToLowerInvariant();
-        if (scheme is not ("socks5" or "socks5h" or "socks4" or "socks4a")) return null;
-        if (uri.Port <= 0 || string.IsNullOrEmpty(uri.Host)) return null;
-        return $"{scheme}://{uri.Host}:{uri.Port}";
-    }
+    /// <summary>Normalises "host:port" or a socks URI into one that resolves names at the proxy, or null
+    /// if invalid (see <see cref="PublicHttp.NormalizeProxy"/>).</summary>
+    private static string? NormalizeProxyUri(string? raw) => PublicHttp.NormalizeProxy(raw);
 
     /// <summary>The custom proxy URI if it's enabled and valid, otherwise null.</summary>
     private string? EffectiveCustomProxy() =>
@@ -722,6 +778,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void ApplyCustomProxy()
     {
+        OnPropertyChanged(nameof(TorOnlyStatus));   // it names the proxy as the route when there is one
         if (!CustomProxyEnabled)
         {
             // Hand routing back to Tor (its proxy if on, else direct).
@@ -1405,6 +1462,17 @@ public partial class MainViewModel : ViewModelBase
         BuildGuide();
         LoadProfileImages();
 
+        // The phone has no bundled Tor, so "Tor on" cannot be honoured there. The kill-switch can: with
+        // the user's own SOCKS proxy (Orbot) it stays armed — it is exactly what keeps the wallet from
+        // going direct when that proxy is switched off. Without one it would refuse every request, so it
+        // is disarmed. Settled BEFORE the switch is applied below: disarming it afterwards left the
+        // transport refusing everything for the session while the setting already read "off".
+        if (!HasBundledServices && (_uiSettings.TorOnlyMode || _uiSettings.TorEnabled))
+        {
+            _uiSettings.TorEnabled = false;
+            if (EffectiveCustomProxy() is null) _uiSettings.TorOnlyMode = false;
+            _uiSettings.Save();
+        }
         // Apply saved privacy routing before any network call goes out.
         PublicHttp.SetIpPreference(PublicHttp.ParseIpMode(_uiSettings.IpMode));
         // Tor-only kill-switch first: if it was left on, clearnet stays blocked until Tor connects, so
@@ -1418,13 +1486,6 @@ public partial class MainViewModel : ViewModelBase
         LoadMoneroNodeChoice();
         BuildCounterparties();   // who this wallet talks to, from the catalog the tests pin
         Activity.CollectionChanged += (_, _) => NotifyUnreadActivity();
-        // Tor-only without a Tor to route through would refuse every request; the phone has none.
-        if (!HasBundledServices && (_uiSettings.TorOnlyMode || _uiSettings.TorEnabled))
-        {
-            _uiSettings.TorOnlyMode = false;
-            _uiSettings.TorEnabled = false;
-            _uiSettings.Save();
-        }
         // Connect lists what is watched and connected the moment either list changes.
         WatchAddresses.CollectionChanged += (_, _) => RebuildConnectRows();
         Exchanges.CollectionChanged += (_, _) => RebuildConnectRows();
@@ -1452,9 +1513,11 @@ public partial class MainViewModel : ViewModelBase
         if (!TorEnabled && !CustomProxyEnabled) TorStatus = Loc.Instance["torstat.direct"];
         RefreshConnectionChip();
 
-        Fx.Symbol = Fx.SymbolFor(_uiSettings.Currency); // right symbol immediately; rate loads next
+        // The chosen currency from the rates saved last time — symbol and rate together, never one without
+        // the other; dollars (and "USD" in the caption) until a rate for it has been read once.
+        Fx.Use(_uiSettings.Currency, _fxCache.RateFor(_uiSettings.Currency));
         _ = LoadWatchAddressesAsync();
-        if (FetchCurrencyOnStart) _ = ApplyCurrencyAsync(); // fetches the USD→currency rate, then refreshes market/holdings
+        if (FetchCurrencyOnStart) _ = RefreshMarketAsync(); // live prices, and fresh currency rates with them
         RefreshHoldings();
         RecalcBalance();
         StartAutoRefresh();
@@ -1474,8 +1537,9 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public static bool StartTorAutomatically { get; set; } = !OperatingSystem.IsAndroid();
 
-    /// <summary>The bundled Tor and Monero programs ship with the Windows and Linux builds only.</summary>
-    public static bool HasBundledServices => !OperatingSystem.IsAndroid();
+    /// <summary>The bundled Tor and Monero programs ship with the Windows and Linux builds only. Settable
+    /// so the suite can run the phone's start-up rules on a desktop.</summary>
+    public static bool HasBundledServices { get; set; } = !OperatingSystem.IsAndroid();
 
     /// <summary>
     /// Whether a new view model reads the currency rate (and then rebuilds the asset list) in the
@@ -2493,21 +2557,27 @@ public partial class MainViewModel : ViewModelBase
     /// would silently do nothing.</summary>
     public bool FiatInputAvailable => PriceForSelected() > 0m;
 
-    /// <summary>"= 0.00063 BTC" under the fiat field: the coin amount the typed USD converts to.</summary>
+    /// <summary>"= 0.00063 BTC" under the fiat field: the coin amount the typed figure converts to.</summary>
     public string SendFiatCoinEquiv
     {
         get
         {
-            var coin = FiatConvert.FiatToCoinAmount(SendFiatAmount, PriceForSelected());
+            var coin = FiatConvert.FiatToCoinAmount(SendFiatAmount, PriceForSelected() * Fx.Rate);
             return coin.Length == 0 ? string.Empty : $"= {coin} {SelectedSendAsset?.DisplayTicker}";
         }
     }
+
+    /// <summary>"Or enter an amount in CNY": the field takes the currency every figure is shown in. It took
+    /// dollars whatever was shown, so "100" typed beside yuan figures sent a hundred DOLLARS' worth.</summary>
+    public string SendFiatPlaceholder => string.Format(Loc.Instance["send.fiatPlaceholder"], Fx.Code);
+
+    public string ReceiveFiatPlaceholder => string.Format(Loc.Instance["receive.fiatPlaceholder"], Fx.Code);
 
     partial void OnSendFiatAmountChanged(string value)
     {
         // Fiat only fills the coin field; an empty/invalid fiat value leaves the coin amount untouched, so
         // it can never silently wipe a coin amount the user typed directly.
-        var coin = FiatConvert.FiatToCoinAmount(value, PriceForSelected());
+        var coin = FiatConvert.FiatToCoinAmount(value, PriceForSelected() * Fx.Rate);
         if (coin.Length > 0) SendAmount = coin;
         OnPropertyChanged(nameof(SendFiatCoinEquiv));
     }
@@ -3305,20 +3375,18 @@ public partial class MainViewModel : ViewModelBase
             : $"Scanning… {balance.PercentSynced}% ({balance.ScannedHeight:N0}/{balance.ChainHeight:N0})";
         MoneroStatusColor = balance.Synced ? "#8FCB9B" : "#E7CA83";
 
-        var (usd, change) = (0m, 0m);
-        var prices = await _rates.GetUsdPricesAsync(new[] { "XMR" }, CancellationToken.None);
-        if (prices.TryGetValue("XMR", out var xmrPrice)) (usd, change) = xmrPrice;
+        // The shared price list, not a request for Monero alone: that one request said "this machine runs a
+        // Monero wallet" to the price source, every few seconds while it synced.
+        var prices = await PricesAsync();
 
         var existing = Accounts.FirstOrDefault(a => a.Symbol == "XMR");
         if (existing is not null)
         {
-            Accounts[Accounts.IndexOf(existing)] = existing with
+            Accounts[Accounts.IndexOf(existing)] = WithPrice(existing, prices) with
             {
                 // Only a synced wallet may claim a balance.
                 SupportStatus = balance.Synced ? "Ready" : "Receive only",
                 Amount = (double)balance.Total,
-                Price = (double)usd,
-                Change24h = (double)change,
                 // A synced daemon is a real reading; a still-scanning one is a partial view of the
                 // chain, so it is presented as the last known figure rather than the current one.
                 Balance = balance.Synced ? BalanceRead.Live : BalanceRead.Cached,
@@ -4387,15 +4455,59 @@ public partial class MainViewModel : ViewModelBase
                 : new MarketCache.Entry(m.Symbol, m.Price, m.Change24h)));
     }
 
+    /// <summary>The coins every price request asks for — the same for every wallet, whatever it holds.</summary>
+    private static IReadOnlyList<string> PriceUniverse => _priceUniverse ??=
+        PublicMarketRatesClient.PricedSymbols
+            .Union(ChainCatalog.All.Select(c => c.Symbol), StringComparer.OrdinalIgnoreCase)
+            .Union(ExtraMarketCoins.Select(e => e.Symbol), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static IReadOnlyList<string>? _priceUniverse;
+
+    private Task<IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)>>? _pricesInFlight;
+    private (DateTimeOffset At, IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> Map)? _pricesLast;
+
+    /// <summary>
+    /// Every price, for the market list and the balances alike: one request shared by whoever asks while
+    /// it is out, and its answer reused for twenty seconds. The two used to ask separately, with different
+    /// lists, a few seconds apart — twice the requests to the same rate-limited sources (a refused one
+    /// is a price the screen does not get), and each list told the source something different.
+    /// </summary>
+    private Task<IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)>> PricesAsync()
+    {
+        if (_pricesLast is { } last && last.Map.Count > 0 && DateTimeOffset.UtcNow - last.At < TimeSpan.FromSeconds(20))
+            return Task.FromResult(last.Map);
+        if (_pricesInFlight is { } running) return running;
+        var fetch = FetchAsync();
+        // A fetch that finished on the spot has already run its finally; holding it would serve its answer
+        // for ever.
+        if (!fetch.IsCompleted) _pricesInFlight = fetch;
+        return fetch;
+
+        async Task<IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)>> FetchAsync()
+        {
+            try
+            {
+                var map = await _rates.GetUsdPricesAsync(PriceUniverse, CancellationToken.None);
+                if (map.Count > 0) _pricesLast = (DateTimeOffset.UtcNow, map);
+                return map;
+            }
+            finally
+            {
+                _pricesInFlight = null;
+            }
+        }
+    }
+
     [RelayCommand]
     private async Task RefreshMarketAsync()
     {
+        // The currency rates ride along with every market refresh (they ask the network only when stale or
+        // not yet read), so a rate that could not be read at start is read as soon as the route is up.
+        _ = RefreshFxRatesAsync();
         try
         {
-            var symbols = ChainCatalog.All.Select(c => c.Symbol)
-                .Concat(ExtraMarketCoins.Select(e => e.Symbol))
-                .ToList();
-            var prices = await _rates.GetUsdPricesAsync(symbols, CancellationToken.None);
+            var prices = await PricesAsync();
             if (prices.Count == 0)
             {
                 MarketStatus = Loc.Instance["market.unreachable"];
@@ -4406,15 +4518,19 @@ public partial class MainViewModel : ViewModelBase
             {
                 var idx = Market.ToList().FindIndex(m => m.Symbol == chain.Symbol);
                 if (idx < 0) continue;
-                var (usd, change) = prices.GetValueOrDefault(chain.Symbol);
+                // A coin this answer left out keeps the price it had: the sources fall back one after
+                // another and now and then miss a coin, and a row blinking to "—" for a minute (and its
+                // holding to zero) is not news about the coin.
+                var existing = Market[idx];
+                if (!prices.TryGetValue(chain.Symbol, out var quote)) continue;
                 // Keep any sparkline we already fetched so the row doesn't blink empty on refresh —
                 // and the watch star, so the row never passes through "unwatched" between here and
                 // ApplyWatchlist below.
-                var existing = Market[idx];
-                Market[idx] = MarketRowViewModel.Live(chain, (double)usd, (double)change) with
+                Market[idx] = MarketRowViewModel.Live(chain, (double)quote.Item1, (double)quote.Item2) with
                 {
                     Spark = existing.Spark,
                     IsWatched = existing.IsWatched,
+                    Held = existing.Held,
                 };
             }
 
@@ -4422,12 +4538,13 @@ public partial class MainViewModel : ViewModelBase
             {
                 var idx = Market.ToList().FindIndex(m => m.Symbol == sym);
                 if (idx < 0) continue;
-                var (usd, change) = prices.GetValueOrDefault(sym);
                 var existing = Market[idx];
-                Market[idx] = MarketRowViewModel.LiveCoin(sym, name, (double)usd, (double)change, holdable) with
+                if (!prices.TryGetValue(sym, out var quote)) continue;
+                Market[idx] = MarketRowViewModel.LiveCoin(sym, name, (double)quote.Item1, (double)quote.Item2, holdable) with
                 {
                     Spark = existing.Spark,
                     IsWatched = existing.IsWatched,
+                    Held = existing.Held,
                 };
             }
 
@@ -4435,6 +4552,12 @@ public partial class MainViewModel : ViewModelBase
             SaveMarketCache();
             ApplyWatchlist();
             ApplyMarketHoldings();
+            // The open coin's headline price follows the list; it was set once, when the coin was opened.
+            if (HasChart && Market.FirstOrDefault(m => m.Symbol == SelectedMarketSymbol) is { HasPrice: true } open)
+            {
+                SelectedMarketPriceLabel = open.PriceLabel;
+                SelectedMarketChangeLabel = open.ChangeLabel;
+            }
             _ = LoadSparklinesAsync();
         }
         catch (Exception ex)
@@ -4711,6 +4834,38 @@ public partial class MainViewModel : ViewModelBase
         if (ShowAllWalletTotals) RefreshWalletList();   // the open wallet's figure in the switcher
     }
 
+    /// <summary>
+    /// Where an account's row is now. Rows are records, replaced on every update, so a row held across an
+    /// await may have been swapped for a newer copy of itself; that copy is found by what identifies the
+    /// account (coin, address, kind, network). -1 when the account has left the list.
+    /// </summary>
+    private int IndexOfAccount(WalletAccountViewModel row)
+    {
+        var at = Accounts.IndexOf(row);
+        if (at >= 0) return at;
+        for (var i = 0; i < Accounts.Count; i++)
+        {
+            var a = Accounts[i];
+            if (a.Symbol == row.Symbol && a.Address == row.Address && a.SupportStatus == row.SupportStatus
+                && a.Chain == row.Chain && a.Contract == row.Contract)
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// The row at the price in <paramref name="prices"/> — or unchanged when that answer did not include
+    /// the coin. Writing the missing price as 0 is what made a holding (and the total) drop for a minute
+    /// whenever one price source skipped a coin, then jump back at the next refresh.
+    /// </summary>
+    private static WalletAccountViewModel WithPrice(
+        WalletAccountViewModel row, IReadOnlyDictionary<string, (decimal, decimal)>? prices)
+    {
+        if (prices is null || !prices.TryGetValue(row.Symbol, out var quote) || quote.Item1 <= 0m) return row;
+        var (usd, change) = ((double)quote.Item1, (double)quote.Item2);
+        return row.Price == usd && row.Change24h == change ? row : row with { Price = usd, Change24h = change };
+    }
+
     [RelayCommand]
     private async Task RefreshLiveDataAsync()
     {
@@ -4723,22 +4878,12 @@ public partial class MainViewModel : ViewModelBase
         StatusMessage = Loc.Instance["status.refreshingLive"];
         try
         {
-            // Price every symbol we will show, including the chains behind watch-only addresses.
-            // Those rows are appended later in this method, so pricing only the current Accounts
-            // list would leave a freshly linked wallet unpriced — and therefore worth $0.
-            var symbols = Accounts.Select(a => a.Symbol)
-                .Concat(WatchAddresses
-                    .Select(w => ParseChain(w.Chain))
-                    .Where(c => c is not null)
-                    .Select(c => SymbolFor(c!.Value)))
-                .Concat(["USDT", "BNB", "MATIC", "AVAX", "FTM", "CRO"])
-                .Distinct()
-                .ToList();
             // Prices and balances are INDEPENDENT network calls — only the display joins them back up.
             // Awaiting prices first made every balance wait behind a price round-trip (up to the 20s
             // client timeout, more over Tor). Started together, the wait is the SLOWER of the two
-            // instead of their sum.
-            var pricesTask = _rates.GetUsdPricesAsync(symbols, ct);
+            // instead of their sum. The prices are the market list's own (one fixed list for every
+            // wallet, shared and reused for a few seconds), never a list built from what this wallet holds.
+            var pricesTask = PricesAsync();
 
             // Fetch every account's balance CONCURRENTLY, then apply on the UI thread. Sequential
             // awaits here were the main reason the total took many seconds to appear after unlock /
@@ -4752,44 +4897,53 @@ public partial class MainViewModel : ViewModelBase
                 .Where(a => a.SupportStatus is "Ready" or "Receive only" && ParseChain(a.Symbol) is not null
                             && !UtxoScanChains.Contains(a.Symbol, StringComparer.OrdinalIgnoreCase))
                 .ToList();
-            var balancesTask = Task.WhenAll(
-                balanceTargets.Select(a => _balances.GetBalanceAsync(ParseChain(a.Symbol)!.Value, a.Address, ct)));
 
-            await Task.WhenAll(pricesTask, balancesTask);
+            // Each balance is shown the moment its chain answers — at the newest price known then — rather
+            // than after the slowest chain AND the price round-trip, which over Tor could hold every figure
+            // back by most of a minute. Every continuation resumes on the UI thread, one at a time.
+            IReadOnlyDictionary<string, (decimal, decimal)>? freshPrices = null;
+            async Task ShowBalanceWhenRead(WalletAccountViewModel target)
+            {
+                ChainBalance? read;
+                try { read = await _balances.GetBalanceAsync(ParseChain(target.Symbol)!.Value, target.Address, ct); }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
+                catch { read = null; }   // a reader that threw is a reader that did not answer
+                if (ct.IsCancellationRequested) return;
+                var idx = IndexOfAccount(target);
+                if (idx < 0) return;
+                var current = Accounts[idx];
+                // A null result is a FAILED READ, never a zero balance — the client only returns null
+                // when nobody answered. Keeping the old number and marking the row is the difference
+                // between "we could not ask" and "there is nothing there" (MANIFESTO §4 / P0.6).
+                var (amount, state) = BalanceReadout.Apply(read?.NativeAmount, current.Amount, current.Balance);
+                Accounts[idx] = WithPrice(current with { Amount = amount, Balance = state }, freshPrices);
+                RefreshHoldings();
+                RecalcBalance();
+            }
+            var balancesTask = Task.WhenAll(balanceTargets.Select(ShowBalanceWhenRead));
+
             var prices = await pricesTask;
-            var balanceResults = await balancesTask;
 
             // Every write below goes into THIS wallet's account list. A lock or a switch cancels this
             // token, and answers that arrive after it belong to a wallet no longer on screen — they are
             // dropped here and after each later await, never written into the next wallet's list.
             ct.ThrowIfCancellationRequested();
 
+            freshPrices = prices;
             _priceUsd = prices; // snapshot for the Send fiat estimate
             OnPropertyChanged(nameof(SendAmountFiat));
             OnPropertyChanged(nameof(FiatInputAvailable)); // the fiat quick-entry appears once priced
             OnPropertyChanged(nameof(SendFiatCoinEquiv));
             NotifyReceiveFiat();                           // same for the Receive screen's USD field
 
-            for (var k = 0; k < balanceTargets.Count; k++)
+            // The new prices onto this refresh's coin rows, balances read yet or not. (Token rows are
+            // priced by their own passes below.)
+            foreach (var target in balanceTargets)
             {
-                var account = balanceTargets[k];
-                // A null result is a FAILED READ, never a zero balance — the client only returns null
-                // when nobody answered. Keeping the old number and marking the row is the difference
-                // between "we could not ask" and "there is nothing there" (MANIFESTO §4 / P0.6).
-                var (amount, state) = BalanceReadout.Apply(
-                    balanceResults[k]?.NativeAmount, account.Amount, account.Balance);
-                var (usd, change) = prices.GetValueOrDefault(account.Symbol);
-                var idx = Accounts.IndexOf(account);
-                if (idx >= 0)
-                {
-                    Accounts[idx] = account with
-                    {
-                        Amount = amount,
-                        Price = (double)usd,
-                        Change24h = (double)change,
-                        Balance = state,
-                    };
-                }
+                var at = IndexOfAccount(target);
+                if (at < 0) continue;
+                var repriced = WithPrice(Accounts[at], prices);
+                if (!ReferenceEquals(repriced, Accounts[at])) Accounts[at] = repriced;
             }
             // Monero is read by its own local service, not by this refresh: with the service off the
             // row must say so rather than inherit "the server did not answer".
@@ -4847,7 +5001,9 @@ public partial class MainViewModel : ViewModelBase
                 RecalcBalance();
             }
 
-            await Task.WhenAll(steps.Select(ShowWhenDone));
+            // The single-address balances still on their way are one more step: the scans above started
+            // without waiting for them.
+            await Task.WhenAll(steps.Select(ShowWhenDone).Append(ShowWhenDone(balancesTask)));
             ct.ThrowIfCancellationRequested();
 
             // Watch-only. The balance calls run CONCURRENTLY — awaiting them one address at a time made
@@ -5074,11 +5230,20 @@ public partial class MainViewModel : ViewModelBase
 
         foreach (var tok in tokens)
         {
-            // Price known tokens from the live feed; treat the major stablecoins as $1; an unknown
-            // token shows its real amount at $0 rather than an invented price.
-            var usd = prices.TryGetValue(tok.Symbol, out var pr)
-                ? (double)pr.Usd
-                : tok.Symbol is "USDT" or "USDC" or "DAI" or "TUSD" or "USDD" ? 1.0 : 0.0;
+            // A ticker is a string anybody can set: a token copying "USDT" (or the network's own coin)
+            // on any contract but the real one is worth nothing here and folds away — the fake-balance
+            // scam priced a million worthless "USDT" at a million dollars and, being priced, was exempt
+            // from the spam check.
+            var identity = Umbrella.Wallet.Core.Safety.TokenIdentity.Judge(chain, tok.Symbol, tok.Contract);
+            var impersonation = identity == Umbrella.Wallet.Core.Safety.TokenIdentityVerdict.Impersonation;
+
+            // Price known tokens from the live feed; the real stablecoins sit at $1 when the feed has no
+            // quote; an unknown token shows its real amount at $0 rather than an invented price.
+            var usd = impersonation ? 0.0
+                : prices.TryGetValue(tok.Symbol, out var pr) && pr.Usd > 0m ? (double)pr.Usd
+                : identity == Umbrella.Wallet.Core.Safety.TokenIdentityVerdict.Genuine
+                  && tok.Symbol is "USDT" or "USDC" or "DAI" ? 1.0
+                : 0.0;
 
             // Unsolicited airdrop tokens arrive in every TRON/Ethereum account and their NAME is the
             // attack — a lure to a site that asks for a seed phrase. Flag them so Holdings can fold
@@ -5087,7 +5252,7 @@ public partial class MainViewModel : ViewModelBase
                 .Inspect(tok.Name, tok.Symbol, hasMarketPrice: usd > 0);
             // An SPL mint the wallet cannot identify, with no market price, folds away with the
             // suspected spam — it stays one tap from view, but not beside the real holdings.
-            var suspected = spam.IsSuspected || (tok.Unverified && usd <= 0);
+            var suspected = spam.IsSuspected || impersonation || (tok.Unverified && usd <= 0);
 
             // A jetton this build can actually send says "Ready"; one with no jetton-wallet address
             // keeps the honest "Receive only", because the row would otherwise promise a send the
@@ -5139,8 +5304,9 @@ public partial class MainViewModel : ViewModelBase
 
             if (result.Assets.Count == 0) continue;
 
-            var prices = await _rates.GetUsdPricesAsync(
-                result.Assets.Select(a => a.Symbol).Distinct().ToList(), ct);
+            // The shared, fixed price list: asking for exactly what sits on the exchange account would tell
+            // the price source what that account holds.
+            var prices = await PricesAsync();
             ct.ThrowIfCancellationRequested();
 
             foreach (var asset in result.Assets)
@@ -5576,23 +5742,26 @@ public partial class MainViewModel : ViewModelBase
     /// once a price exists to convert with — otherwise typing in it would silently do nothing.</summary>
     public bool ReceiveFiatAvailable => CanRequestAmount && PriceForReceive() > 0m;
 
-    /// <summary>"= 0.00063 BTC" under the USD field: the coin amount the typed USD converts to.</summary>
+    /// <summary>"= 0.00063 BTC" under the fiat field: the coin amount the typed figure converts to.</summary>
     public string ReceiveFiatCoinEquiv
     {
         get
         {
-            var coin = FiatConvert.FiatToCoinAmount(ReceiveFiatAmount, PriceForReceive());
+            var coin = FiatConvert.FiatToCoinAmount(ReceiveFiatAmount, PriceForReceive() * Fx.Rate);
             return coin.Length == 0 ? string.Empty : $"= {coin} {SelectedReceiveSymbol}";
         }
     }
 
-    /// <summary>"≈ $42.10" under the coin field, so a requested amount typed in coin is also readable in USD.</summary>
+    /// <summary>"≈ ¥298,40" under the coin field, so a requested amount typed in coin is also readable in
+    /// the currency on screen (it said "$" whatever that was).</summary>
     public string ReceiveAmountFiat
     {
         get
         {
-            var fiat = FiatConvert.CoinToFiatText(ReceiveAmount, PriceForReceive());
-            return fiat.Length == 0 ? string.Empty : $"≈ ${fiat}";
+            var fiat = FiatConvert.CoinToFiatText(ReceiveAmount, PriceForReceive() * Fx.Rate);
+            if (fiat.Length == 0) return string.Empty;
+            var value = decimal.Parse(fiat, CultureInfo.InvariantCulture);
+            return $"≈ {Fx.Symbol}{value.ToString(value >= 0.01m ? "N2" : "0.########", Fx.Culture)}";
         }
     }
 
@@ -5600,7 +5769,7 @@ public partial class MainViewModel : ViewModelBase
     {
         // Fiat only fills the coin field; an empty/invalid fiat value leaves the requested amount untouched,
         // so it can never silently wipe an amount the user typed directly in coin.
-        var coin = FiatConvert.FiatToCoinAmount(value, PriceForReceive());
+        var coin = FiatConvert.FiatToCoinAmount(value, PriceForReceive() * Fx.Rate);
         if (coin.Length > 0) ReceiveAmount = coin;
         OnPropertyChanged(nameof(ReceiveFiatCoinEquiv));
     }
@@ -5610,6 +5779,16 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(ReceiveFiatAvailable));
         OnPropertyChanged(nameof(ReceiveFiatCoinEquiv));
         OnPropertyChanged(nameof(ReceiveAmountFiat));
+    }
+
+    /// <summary>The Send and Receive fiat helpers re-read in a newly shown currency.</summary>
+    private void NotifyFiatEntry()
+    {
+        OnPropertyChanged(nameof(SendFiatPlaceholder));
+        OnPropertyChanged(nameof(ReceiveFiatPlaceholder));
+        OnPropertyChanged(nameof(SendAmountFiat));
+        OnPropertyChanged(nameof(SendFiatCoinEquiv));
+        NotifyReceiveFiat();
     }
 
     /// <summary>Encodes the receive target as a wallet payment URI. With a valid requested amount on a
@@ -6280,6 +6459,24 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>What the wallet's total is made of: every holding with a known balance — not just the
     /// rows the asset list's filter or search leaves on screen.</summary>
+    /// <summary>
+    /// The 24h move of these holdings: what they are worth now against what the same coins were worth a
+    /// day ago — each row's value then is its value now over (1 + its change). Percent of the value then,
+    /// and the move in US dollars. The card used the current total times the value-weighted average
+    /// change, which overstates a gain (+10% shown as +11% of today's figure) and understates a loss.
+    /// </summary>
+    public static (double Percent, double MoveUsd) Move24h(IEnumerable<(double Value, double Change)> rows)
+    {
+        double now = 0, then = 0;
+        foreach (var (value, change) in rows)
+        {
+            if (value <= 0 || change <= -100) continue;
+            now += value;
+            then += value / (1 + change / 100.0);
+        }
+        return then > 0 ? ((now - then) / then * 100, now - then) : (0, 0);
+    }
+
     private List<(double Value, double Change)> WalletValueRows() =>
         Accounts
             .Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only"
@@ -6306,24 +6503,17 @@ public partial class MainViewModel : ViewModelBase
         // The split has to be on the locale's own decimal separator, not a literal '.', or a Ukrainian
         // total would never split at all and the cents would read "00".
         ShowTotal(displayTotal);
-        double weighted = 0;
-        double weight = 0;
-        foreach (var (value, change) in valued)
-        {
-            if (value <= 0) continue;
-            weighted += change * value;
-            weight += value;
-        }
 
-        var avg = weight > 0 ? weighted / weight : 0;
-        var delta = displayTotal * (avg / 100.0);
+        var (avg, moveUsd) = Move24h(valued);
+        var delta = moveUsd * (double)Fx.Rate;
         Change24hLabel = Holdings.Count == 0
             ? "· unlock for live rates"
-            : $"{(avg >= 0 ? "▲" : "▼")} {Math.Abs(avg):0.00}%   {(delta >= 0 ? "+" : "-")}{Fx.Symbol}{Math.Abs(delta):N2} · 24h";
-        PortfolioChangePercent = weight <= 0
+            : $"{(avg >= 0 ? "▲" : "▼")} {Math.Abs(avg).ToString("0.00", Fx.Culture)}%   {(delta >= 0 ? "+" : "-")}{Fx.Symbol}{Math.Abs(delta).ToString("N2", Fx.Culture)} · 24h";
+        var priced = valued.Any(v => v.Value > 0);
+        PortfolioChangePercent = !priced
             ? "—"
-            : $"{(avg >= 0 ? "▲" : "▼")} {Math.Abs(avg):0.00}%";
-        PortfolioChangeColor = weight <= 0 ? "#8A9099" : avg >= 0 ? "#7DCF8F" : "#E08A8A";
+            : $"{(avg >= 0 ? "▲" : "▼")} {Math.Abs(avg).ToString("0.00", Fx.Culture)}%";
+        PortfolioChangeColor = !priced ? "#8A9099" : avg >= 0 ? "#7DCF8F" : "#E08A8A";
         OnPropertyChanged(nameof(BalanceDisplayMain));
         OnPropertyChanged(nameof(BalanceDisplayCents));
 

@@ -4,6 +4,7 @@
              xmlns:local="using:Umbrella.Wallet.App"
              xmlns:lottie="using:Avalonia.Labs.Lottie"
              xmlns:controls="using:Umbrella.Wallet.App.Controls"
+             xmlns:vm="using:Umbrella.Wallet.App.ViewModels"
              RequestedThemeVariant="Dark"
              Name="Phobia Wallet">
 
@@ -29,6 +30,33 @@
         <local:BoolToWeightConverter x:Key="BoolToWeight" />
         <local:SmoothLineConverter x:Key="SmoothLine" />
         <local:SmoothAreaConverter x:Key="SmoothArea" />
+
+        <!-- One coin in a short market list: the home page's side rail and the Market page's movers and
+             watchlist. It lives here because both use it; kept on the Market page alone, the home page's
+             reference resolved to nothing and its rows printed as "MarketRowViewModel { Symbol = BTC… }".
+             The command is found through the list, whose DataContext is the wallet in both places. -->
+        <DataTemplate x:Key="MarketMoverRow" x:DataType="vm:MarketRowViewModel" x:CompileBindings="True">
+            <Button Classes="row" CornerRadius="10" Padding="6,6" Margin="0,1" MinHeight="0"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                    AutomationProperties.Name="{Binding Name}"
+                    Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
+                    CommandParameter="{Binding}">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                    <Border Width="26" Height="26" CornerRadius="13" Background="{Binding BadgeBg}" ClipToBounds="True" VerticalAlignment="Center">
+                        <Panel>
+                            <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="12.5" FontWeight="Bold"
+                                       Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
+                        </Panel>
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="{Binding Symbol}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Classes="mono" FontSize="12" Text="{Binding PriceLabel}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="3" Classes="mono" FontSize="11.5" Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}"
+                               MinWidth="64" TextAlignment="Right" VerticalAlignment="Center"/>
+                </Grid>
+            </Button>
+        </DataTemplate>
 
         <LinearGradientBrush x:Key="UmSignature" StartPoint="0%,0%" EndPoint="100%,100%">
             <GradientStop Offset="0" Color="#24C6FF"/>

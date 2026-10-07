@@ -45,13 +45,13 @@ public sealed class AssetDetailsTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(vm.AssetPrivacyNote));
     }
 
-    /// <summary>Monero is receive-only here; the page must not offer a swap for it.</summary>
+    /// <summary>No route trades Polkadot on its own network; the page must not offer a swap for it.</summary>
     [Fact]
-    public void A_receive_only_coin_does_not_advertise_a_swap()
+    public void A_coin_no_route_trades_does_not_advertise_a_swap()
     {
         var vm = NewViewModel();
 
-        vm.OpenAssetDetailsCommand.Execute("XMR");
+        vm.OpenAssetDetailsCommand.Execute("DOT");
 
         Assert.False(vm.AssetCanSwap);
         Assert.DoesNotContain(Loc.Instance["asset.capSwap"], vm.AssetCapabilityLine);

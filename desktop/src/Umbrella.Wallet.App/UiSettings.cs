@@ -217,7 +217,9 @@ public sealed class UiSettings
         try
         {
             Directory.CreateDirectory(AppPaths.DataRoot);
-            File.WriteAllText(Path, JsonSerializer.Serialize(this));
+            // Atomic: a crash or a full disk mid-write used to leave an empty file, and the next start
+            // came up with every setting back at its default.
+            AtomicFile.WriteAllText(Path, JsonSerializer.Serialize(this));
         }
         catch
         {

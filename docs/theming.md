@@ -1,6 +1,6 @@
 # Theming
 
-20 themes. Adding one is about twenty lines of colour — but the tests will hold you to a standard,
+15 themes. Adding one is about twenty lines of colour — but the tests will hold you to a standard,
 and the standard exists because a wallet you cannot read is a wallet that loses you money.
 
 ## Where

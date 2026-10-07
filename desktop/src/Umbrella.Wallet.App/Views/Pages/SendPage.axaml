@@ -172,7 +172,7 @@
              signed — this only fills it in, so the user always confirms the coin amount. -->
         <StackPanel Spacing="3" Margin="0,2,0,0" IsVisible="{Binding FiatInputAvailable}">
           <TextBox Text="{Binding SendFiatAmount}"
-                   Watermark="{Binding [send.fiatPlaceholder], Source={x:Static app:Loc.Instance}}"/>
+                   Watermark="{Binding SendFiatPlaceholder}"/>
           <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" Margin="2,0,0,0"
                      IsVisible="{Binding SendFiatCoinEquiv, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                      Text="{Binding SendFiatCoinEquiv}"/>

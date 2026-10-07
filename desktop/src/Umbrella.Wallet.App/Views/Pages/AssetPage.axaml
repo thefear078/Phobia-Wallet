@@ -94,7 +94,7 @@
               Command="{Binding AssetSendCommand}"/>
       <Button Classes="ghost" Padding="14,7" MinHeight="0" IsVisible="{Binding AssetCanSwap}"
               Content="{Binding [asset.capSwap], Source={x:Static app:Loc.Instance}}"
-              Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
+              Command="{Binding AssetSwapCommand}"/>
       <Button Classes="ghost" Padding="14,7" MinHeight="0"
               Content="{Binding [asset.chart], Source={x:Static app:Loc.Instance}}"
               Command="{Binding AssetChartCommand}"/>

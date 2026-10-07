@@ -1,8 +1,8 @@
 # Phobia Wallet — documentation
 
-Phobia is a **desktop-only**, self-custody crypto wallet (.NET 8 + Avalonia; Windows and Linux,
-Android planned). There is **no web app and no backend server** — nothing to sign in to and nothing
-that knows you exist.
+Phobia is a self-custody crypto wallet (.NET 8 + Avalonia) for **Windows and Linux, with an Android
+beta** built from the same code. There is **no web app and no backend server** — nothing to sign in to
+and nothing that knows you exist.
 
 **Start here:** **[INDEX.md](INDEX.md)** — full documentation map.
 

@@ -88,7 +88,10 @@ than assumed.
 ## Monero specifics
 
 Monero runs the real `monero-wallet-rpc` as a local child process bound to **loopback only**. It is
-never exposed on a network interface. Balance computation happens on your machine because no explorer
+never exposed on a network interface, and loopback is not trusted either: until 4.10.0-beta.2 it ran
+with `--disable-rpc-login`, so a web page could have sent the open wallet a `sweep_all` through a
+cross-site POST, which browsers send to 127.0.0.1 without asking. It now runs behind a random HTTP Digest
+login that the daemon writes to a file only your account can read. Balance computation happens on your machine because no explorer
 can do it for you — which is exactly why Monero is private, and why its balance is slower to appear
 than the others.
 

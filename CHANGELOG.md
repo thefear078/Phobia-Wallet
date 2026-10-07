@@ -6,6 +6,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+A readiness audit of Beta 1 (2026-10-07): the network privacy the wallet claimed, checked on the wire,
+and the places it was not true fixed.
+
+### Security and privacy
+
+- **Tor circuits are really separated now.** Address lookups, broadcasts, prices, swaps and the rest were
+  meant to reach Tor under different SOCKS usernames, so that the exit that saw your address is not the
+  one that sees you spend from it. The label was written where .NET's SOCKS client never reads it, so every
+  request arrived with no username and shared one circuit. A test now runs a SOCKS5 server on loopback and
+  reads the username off the handshake. (A circuit per server as well was tried and measured: Tor could not
+  build thirty at once quickly enough to finish the Bitcoin-family balance scans, so it is per purpose.)
+- **The local Monero service has a login.** It ran with `--disable-rpc-login` on a fixed loopback port:
+  anything that could reach it — a web page included, through a cross-site POST the browser sends without
+  asking — could have told the open wallet to send. It now makes a random login that only your account can
+  read, and the wallet answers its Digest challenge. A copy of the service left behind by a crash is ended
+  first, and a port taken by something else is refused rather than handed the wallet's keys.
+- **A custom proxy never resolves names on this machine.** `socks4://` (which makes .NET look every server
+  up in your own DNS first) is used as SOCKS4a; `socks5h://`, the spelling curl and Tor's docs use, is
+  accepted (it used to fail every request).
+- **Android with Orbot keeps its kill-switch.** The phone switched Tor-only off at every start — even with
+  Orbot set as the proxy, the one setup it protects — and disarmed it only after arming the transport, so
+  that session refused every request while the switch read "off". The status line now says "through your
+  proxy". [How to set up Orbot](docs/guides/android.md#tor-on-the-phone-through-orbot).
+
+### Swap
+
+- **Every coin that swaps offers "Swap" on its page again**, opening the swap with that coin already chosen
+  (for Decred, which this wallet cannot send yet, as the coin to buy). Thirteen chains had the button hidden
+  because the chain list still said they could not swap.
+- **Polkadot is no longer offered**, and TON goes through NEAR Intents only: checked live, the Exolix
+  exchange lists neither on its own network, so those pairs could only ever fail.
+
+### Documentation
+
+- `docs/TOR.md` described the deleted web server; it now describes the wallet's Tor, kill-switch, circuits,
+  custom proxy, Orbot and Monero routing. README, threat model, privacy page, roadmap and pre-beta checklist
+  brought up to date (chains, themes and test counts, Android, the swap routes, what still is not done).
+
 ## [4.10.0-beta.1] — Beta 1 (a GitHub pre-release; installed beta copies update to newer betas by themselves) — Umbrella is now Phobia; Monero seeds in every language
 
 Published as a **beta**: a GitHub pre-release. A 4.9.0 copy does not update to it by itself (download it

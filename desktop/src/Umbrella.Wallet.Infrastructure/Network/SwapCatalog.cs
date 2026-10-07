@@ -51,8 +51,9 @@ public sealed record SwapAsset(
 ///
 /// <para>The order of preference is the order of trust: THORChain first (nobody holds the coins), then
 /// NEAR Intents (a contract holds them, refunds to the payer), then Exolix (an exchange holds them for
-/// the minutes of the swap). A pair uses the first route that trades both sides — so Exolix is only ever
-/// the route for Monero, Nano and Decred, which nothing decentralised reaches.</para>
+/// the minutes of the swap). A pair is quoted on the first route that trades both sides, and goes to the
+/// next only when that one cannot quote it — so Exolix is the route for Monero, Nano, Decred and NEAR,
+/// which nothing decentralised reaches, and otherwise only a last resort the review marks as custodial.</para>
 ///
 /// <para>Paying through THORChain needs a deposit this wallet can build with a memo: Bitcoin, Litecoin,
 /// Dogecoin and Bitcoin Cash carry it as an OP_RETURN, Ethereum as router calldata, Cosmos as the
@@ -105,13 +106,17 @@ public static class SwapCatalog
         new("XRP", "XRP", "XRP Ledger", "XRP", "XRP", null, "XRP.XRP", ("xrp", "XRP"), ("XRP", "XRP")),
         new("ADA", "ADA", "Cardano", "ADA", "ADA", null, null, ("cardano", "ADA"), ("ADA", "ADA")),
         new("XLM", "XLM", "Stellar", "XLM", "XLM", null, null, ("stellar", "XLM"), ("XLM", "XLM")),
-        // Toncoin trades as GRAM on NEAR Intents since TON's 2026 rename.
-        new("TON", "TON", "TON", "TON", "TON", null, null, ("ton", "GRAM"), ("TON", "TON")),
+        // Toncoin trades as GRAM on NEAR Intents since TON's 2026 rename. Exolix lists TON only as a
+        // token on Solana (checked 2026-10-07), never on its own network, so it is no route for it.
+        new("TON", "TON", "TON", "TON", "TON", null, null, ("ton", "GRAM"), null),
         new("USDT@TON", "USDT", "TON", "TON", null, "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs",
             null, ("ton", "USDT"), null),
         new("ATOM", "ATOM", "Cosmos Hub", "ATOM", "ATOM", null, "GAIA.ATOM", null, ("ATOM", "ATOM")),
+        // NEAR Intents carries NEAR only as the wrap.near token, which this wallet does not send.
         new("NEAR", "NEAR", "NEAR Protocol", "NEAR", "NEAR", null, null, null, ("NEAR", "NEAR")),
-        new("DOT", "DOT", "Polkadot", "DOT", "DOT", null, null, null, ("DOT", "DOT")),
+        // Polkadot is not here: no route trades DOT on its own network (Exolix lists only wrapped DOT on
+        // BSC and Ethereum, checked 2026-10-07), and a coin the pickers offered that never quotes is a promise
+        // the swap screen could not keep.
 
         // --- Reached only through an exchange -------------------------------------------------------
         new("XMR", "XMR", "Monero", "XMR", "XMR", null, null, null, ("XMR", "XMR")),

@@ -19,17 +19,8 @@ public partial class MainViewModel
     {
         get
         {
-            // The same arithmetic as the balance card's 24h label: the value-weighted average move.
-            var valued = WalletValueRows();
-            var shown = (double)Fx.Rate * valued.Sum(v => v.Value);
-            double weighted = 0, weight = 0;
-            foreach (var (value, change) in valued)
-            {
-                if (value <= 0) continue;
-                weighted += change * value;
-                weight += value;
-            }
-            var move = weight > 0 ? shown * (weighted / weight / 100.0) : 0;
+            // The same arithmetic as the balance card's 24h label.
+            var move = Move24h(WalletValueRows()).MoveUsd * (double)Fx.Rate;
             return IsBalanceHidden
                 ? "•••"
                 : $"{(move >= 0 ? "+" : "-")}{Fx.Symbol}{Math.Abs(move).ToString("N2", Fx.Culture)} (24h)";

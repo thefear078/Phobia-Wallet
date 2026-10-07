@@ -1,0 +1,18 @@
+# Findings in OLD commits that the weekly full-history scan reports and that are not secrets.
+# Each line is a gitleaks fingerprint (commit:file:rule:line). Only add a line after reading the
+# flagged text yourself; a real secret is rotated, never ignored here.
+
+# "umbrella-monero-v1": the domain-separation string of the Monero key derivation, a public constant.
+7a31c493b595a93bb4792e45a96305253c462717:desktop/src/Umbrella.Wallet.Core/Chains/ChainCatalog.cs:generic-api-key:60
+
+# Removed web stack (deleted in v3.0.1): names of localStorage keys, not values.
+5a51721475866cd2b12b2a89a3ec0bc934e9169e:src/lib/platformFee.ts:generic-api-key:17
+
+# Removed NestJS backend: the NAMES of environment variables read at runtime, not their values.
+c4cf437a4089073c80c5bb22be6f05d535120964:backend/src/webhooks/webhooks.controller.ts:umbrella-generic-api-key:29
+c4cf437a4089073c80c5bb22be6f05d535120964:backend/src/webhooks/webhooks.controller.ts:umbrella-generic-api-key:49
+c4cf437a4089073c80c5bb22be6f05d535120964:backend/src/linked-bank-accounts/linked-bank-accounts.service.ts:umbrella-generic-api-key:99
+c4cf437a4089073c80c5bb22be6f05d535120964:backend/src/telegram/telegram-webhook.controller.ts:umbrella-generic-api-key:21
+
+# Removed web demo mode: the published demo account's password ("demo12345"), shown on its login page.
+c4cf437a4089073c80c5bb22be6f05d535120964:src/lib/api/demo.ts:umbrella-password-in-config:8

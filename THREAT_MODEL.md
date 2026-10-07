@@ -6,8 +6,11 @@ A threat model that only lists wins is marketing. Each vector below states the a
 wallet actually does, and what remains true afterwards. Where the honest answer is "this does not
 help", it says so.
 
-**Scope.** Phobia is a desktop wallet for Windows and Linux, .NET 8 / Avalonia. There is no server,
-no account and no backend: nothing about a user exists anywhere except on their own machine.
+**Scope.** Phobia is a wallet for Windows and Linux, .NET 8 / Avalonia, with an Android beta built from
+the same code. There is no server, no account and no backend: nothing about a user exists anywhere
+except on their own device. Where the phone differs — no bundled Tor (Orbot can carry its traffic, see
+[Vector 4](#vector-4--the-network-operator-isp-café-wi-fi-hostile-country)), no Monero service — the
+vector says so.
 
 ## Contents
 
@@ -157,14 +160,35 @@ fallback is a classic wallet vulnerability and this one does not have it.
 Requests are also **split across separate Tor circuits by purpose**. On one circuit a single exit
 relay sees the wallet ask an explorer "what is the balance of bc1q…" and then, minutes later, hand
 over a transaction spending it — and can tie the two together by timing alone. Chain data, broadcasts,
-prices, swap quotes, an exchange account and maintenance traffic each get their own circuit, so the
-relay that saw an address is not the relay that receives the spend. Tor keys a circuit on the SOCKS5
-credential pair, so this needs no extra dependency.
+prices, swap quotes, an exchange account, PayJoin and maintenance traffic each get their own circuit,
+so the relay that saw an address is not the relay that receives the spend. Tor keys a circuit on the
+SOCKS5 username/password, so this needs no extra dependency.
+
+Until 4.10.0-beta.2 this was claimed and not true: the per-purpose label was written into the proxy
+URI, which .NET's SOCKS client ignores, so every request reached Tor with no credentials and shared
+one circuit. `SocksHandshakeTests` now runs a SOCKS5 server on loopback and reads the username and the
+destination type off the wire — including that the destination goes to Tor as a **name**, never as an
+address this machine looked up in its own DNS.
+
+A circuit per *server* as well (Tor Browser's per-site isolation) was built and measured, and not
+shipped: a fresh wallet asks some thirty servers at once, and with a circuit to build for each, Tor
+left the Bitcoin-family balance scans unfinished after four minutes. So within one purpose, one exit at
+a time sees the lookups the wallet sends to different explorers; two explorers that pooled their logs
+could join them on that exit and the minute.
 
 Every per-purpose client is built from the same proxy and kill-switch state as the shared one and torn
 down whenever that state changes. A cached client outliving the kill-switch being armed would be a
 hole in the kill-switch itself — worse than not isolating — so `TorStreamIsolationTests` pins it, and
 the assertion was verified by removing the teardown and watching the test fail.
+
+**On Android** there is no bundled Tor. Orbot's SOCKS port (`127.0.0.1:9050`) set as the custom proxy
+carries every request, with the same per-purpose circuits, and the kill-switch stays
+armed across restarts while that proxy is set — so Orbot stopping means "no request", not "direct".
+Without Orbot the phone talks to every server directly, and Settings says so.
+
+A custom proxy typed as `socks4://` is used as SOCKS4a and `socks5h://` as SOCKS5: plain SOCKS4 makes
+.NET resolve the server's name in this machine's DNS first, which would name every explorer the wallet
+uses to whoever runs that DNS.
 
 **Where the defence ends.** Traffic timing and volume are still observable. A `.onion` node removes
 the exit node; a clearnet node over Tor does not. Isolation splits *who sees what*; it does not hide

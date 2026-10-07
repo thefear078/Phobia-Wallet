@@ -59,6 +59,25 @@ public sealed class SwapRoutesTests
             Assert.True(SwapCatalog.CanSwap(A("BTC"), asset), $"nothing swaps BTC for {asset.Key}");
     }
 
+    /// <summary>
+    /// The coin page offers "Swap" from the chain catalog, and the swap screen trades what this catalog
+    /// routes. They had drifted: the catalog still said "no swap" for thirteen chains the swap screen
+    /// traded (Bitcoin Cash, Solana, Monero…), so their pages hid the button. Each claim now has to be the
+    /// other's.
+    /// </summary>
+    [Fact]
+    public void The_chain_catalog_offers_a_swap_exactly_where_a_route_trades_the_coin()
+    {
+        foreach (var chain in ChainCatalog.All)
+        {
+            var native = SwapCatalog.Find(chain.Symbol);
+            var routed = native is not null && SwapCatalog.All.Any(other =>
+                SwapCatalog.CanSwap(native, other) || SwapCatalog.CanSwap(other, native));
+            Assert.True(chain.CanSwap == routed,
+                $"{chain.Symbol}: the catalog says CanSwap={chain.CanSwap}, the swap routes say {routed}");
+        }
+    }
+
     [Fact]
     public void Thorchain_ids_are_pools_that_trade_today()
     {

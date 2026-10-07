@@ -61,7 +61,7 @@ public sealed class BalanceStore
 
             wrapper.Wallets[walletId] = entries.ToList();
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            File.WriteAllText(_path, JsonSerializer.Serialize(wrapper));
+            Umbrella.Wallet.Infrastructure.AtomicFile.WriteAllText(_path, JsonSerializer.Serialize(wrapper));
         }
         catch
         {

@@ -81,12 +81,55 @@ public sealed class MoneroRpcService : IDisposable
     /// implying the chosen one was reached.</summary>
     public string ActiveNode { get; private set; } = string.Empty;
 
-    // The daemon is on loopback. A default HttpClient honours the system proxy, which can
-    // route or block 127.0.0.1 — and would send local RPC through Tor once Tor is on.
-    private readonly HttpClient _http = new(new HttpClientHandler { UseProxy = false })
+    /// <summary>
+    /// The login the running monero-wallet-rpc made for itself, read from <see cref="LoginFile"/>.
+    ///
+    /// The service used to run with <c>--disable-rpc-login</c> on a fixed port. Anything able to reach
+    /// 127.0.0.1:18099 could then call <c>transfer</c> or <c>sweep_all</c> on the open wallet — including a
+    /// web page: a browser sends a "simple" cross-site POST to a loopback address without asking, and
+    /// Monero's server reads a JSON body whatever its content type. With the login on, every call needs
+    /// HTTP Digest credentials that exist only in a file the daemon creates readable by this user alone,
+    /// so a page (or another account on the machine) gets a 401 and nothing else.
+    /// </summary>
+    private readonly System.Net.NetworkCredential _rpcLogin = new();
+
+    private readonly HttpClient _http;
+
+    public MoneroRpcService() => _http = CreateRpcClient(_rpcLogin);
+
+    /// <summary>
+    /// The client for the local daemon. It never uses a proxy: a default HttpClient honours the system
+    /// proxy, which can route or block 127.0.0.1 — and would send local RPC through Tor once Tor is on.
+    /// It answers the daemon's Digest challenge with <paramref name="login"/>, which is filled in once the
+    /// daemon has written its login file (the object is read at each challenge, so it can be late).
+    /// </summary>
+    public static HttpClient CreateRpcClient(System.Net.ICredentials login) =>
+        new(new HttpClientHandler { UseProxy = false, Credentials = login })
+        {
+            Timeout = TimeSpan.FromMinutes(3),
+        };
+
+    /// <summary>
+    /// Where monero-wallet-rpc writes the random login it makes when started with neither
+    /// <c>--rpc-login</c> nor <c>--disable-rpc-login</c>: "monero-wallet-rpc.&lt;port&gt;.login" in its working
+    /// directory, created readable by this user only and removed when it exits. The password never
+    /// appears on a command line, where any account on the machine could read it from the process list.
+    /// </summary>
+    public static string LoginFile => LoginFileIn(WalletDirectory, RpcPort);
+
+    /// <summary>The login file a daemon started in <paramref name="directory"/> on <paramref name="port"/> writes.</summary>
+    public static string LoginFileIn(string directory, int port) =>
+        Path.Combine(directory, $"monero-wallet-rpc.{port}.login");
+
+    /// <summary>"user:password" from a login file, or null when it is not one.</summary>
+    public static System.Net.NetworkCredential? ParseLogin(string? text)
     {
-        Timeout = TimeSpan.FromMinutes(3),
-    };
+        var line = (text ?? string.Empty).Trim();
+        var colon = line.IndexOf(':');
+        if (colon <= 0 || colon == line.Length - 1 || line.Contains('\n')) return null;
+        return new System.Net.NetworkCredential(line[..colon], line[(colon + 1)..]);
+    }
+
     private Process? _process;
     private readonly object _gate = new();
     private string? _walletName;
@@ -335,6 +378,28 @@ public sealed class MoneroRpcService : IDisposable
         var node = chosen.Address;
         ActiveNode = node;
 
+        // Something else already answering on the service's port would be handed the wallet's keys by the
+        // restore call that follows, so its presence is a refusal. A copy of this wallet's OWN daemon left
+        // running by a crash is ended first (as Tor's is); then the port gets a moment to come free.
+        StopLeftoverDaemon();
+        var free = IsPortFree(RpcPort);
+        for (var i = 0; !free && i < 10; i++)
+        {
+            await Task.Delay(300, ct);
+            free = IsPortFree(RpcPort);
+        }
+        if (!free)
+        {
+            return (false, $"Port {RpcPort} on this computer is already in use by another program, so the Monero " +
+                "service cannot start safely. Close that program (or another copy of Phobia) and try again.");
+        }
+
+        // A login file left by a copy that was killed rather than closed would stop the new daemon: it
+        // refuses to overwrite one. It is ours, it is stale, and nothing else reads it.
+        try { if (File.Exists(LoginFile)) File.Delete(LoginFile); } catch { /* the daemon will say why */ }
+        _rpcLogin.UserName = string.Empty;
+        _rpcLogin.Password = string.Empty;
+
         var startInfo = new ProcessStartInfo
         {
             FileName = ExecutablePath,
@@ -349,7 +414,8 @@ public sealed class MoneroRpcService : IDisposable
         };
         startInfo.ArgumentList.Add("--rpc-bind-ip=127.0.0.1");
         startInfo.ArgumentList.Add($"--rpc-bind-port={RpcPort}");
-        startInfo.ArgumentList.Add("--disable-rpc-login");
+        // No --disable-rpc-login and no --rpc-login: the daemon then makes a random login and writes it
+        // to LoginFile (see _rpcLogin for why the service must not run open).
         startInfo.ArgumentList.Add($"--wallet-dir={WalletDirectory}");
         startInfo.ArgumentList.Add($"--daemon-address={node}");
         startInfo.ArgumentList.Add($"--log-file={Path.Combine(WalletDirectory, "monero-wallet-rpc.log")}");
@@ -401,8 +467,18 @@ public sealed class MoneroRpcService : IDisposable
             }
 
             await Task.Delay(500, ct);
-            var probe = await CallAsync("get_version", new { }, ct);
-            if (probe.Result is not null) return (true, "Monero service ready");
+            // Nothing is asked of the port until OUR daemon has written its login: a call before that
+            // could only be answered by something else.
+            if (string.IsNullOrEmpty(_rpcLogin.Password) && ReadLoginFile() is { } login)
+            {
+                _rpcLogin.UserName = login.UserName;
+                _rpcLogin.Password = login.Password;
+            }
+            if (!string.IsNullOrEmpty(_rpcLogin.Password))
+            {
+                var probe = await CallAsync("get_version", new { }, ct);
+                if (probe.Result is not null) return (true, "Monero service ready");
+            }
 
             if (i % 20 == 19)
             {
@@ -411,7 +487,75 @@ public sealed class MoneroRpcService : IDisposable
         }
 
         Stop();
-        return (false, $"monero-wallet-rpc did not become ready in 90 s. {Tail(output)}");
+        var why = string.IsNullOrEmpty(_rpcLogin.Password) ? " It never wrote its login file." : string.Empty;
+        return (false, $"monero-wallet-rpc did not become ready in 90 s.{why} {Tail(output)}");
+    }
+
+    /// <summary>
+    /// Ends a monero-wallet-rpc this wallet started earlier and did not stop — a running copy of this
+    /// wallet's OWN bundled program file. One the user runs themselves is a different file and is never
+    /// touched, and neither is another account's.
+    /// </summary>
+    private static void StopLeftoverDaemon()
+    {
+        foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(ExecutablePath)))
+        {
+            try
+            {
+                if (string.Equals(p.MainModule?.FileName, ExecutablePath,
+                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
+                    && !p.HasExited)
+                {
+                    p.Kill(entireProcessTree: true);
+                    p.WaitForExit(5000);
+                }
+            }
+            catch
+            {
+                // Another user's process, or one that just exited.
+            }
+            finally
+            {
+                p.Dispose();
+            }
+        }
+    }
+
+    private static System.Net.NetworkCredential? ReadLoginFile() => ReadLoginFileAt(LoginFile);
+
+    /// <summary>
+    /// The login in a daemon's login file, or null while there is none to read. The daemon keeps the file
+    /// open for writing for as long as it runs, so it is opened here sharing read AND write: a plain
+    /// File.ReadAllText asks that nobody else may write, which Windows refuses while the daemon holds it
+    /// — the login was never read and the service never came up.
+    /// </summary>
+    public static System.Net.NetworkCredential? ReadLoginFileAt(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return null;
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            return ParseLogin(reader.ReadToEnd());
+        }
+        catch (IOException) { return null; }          // still being written
+        catch (UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>True when nothing on this machine is listening on 127.0.0.1:<paramref name="port"/>.</summary>
+    private static bool IsPortFree(int port)
+    {
+        try
+        {
+            var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, port);
+            probe.Start();
+            probe.Stop();
+            return true;
+        }
+        catch (System.Net.Sockets.SocketException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Last few lines the daemon printed, for a message the user can act on.</summary>
