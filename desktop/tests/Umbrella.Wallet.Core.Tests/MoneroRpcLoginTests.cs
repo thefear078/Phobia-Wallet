@@ -90,6 +90,37 @@ public sealed class MoneroRpcLoginTests
     }
 
     [Fact]
+    public void The_login_file_is_read_while_the_daemon_still_holds_it_open_for_writing()
+    {
+        // The daemon keeps its login file open for writing as long as it runs. Read the way
+        // File.ReadAllText reads (asking that nobody else may write), Windows refuses it — the real
+        // daemon in CI showed the wallet never getting its login. Simulated here with a writer that,
+        // like the daemon, lets others read.
+        var path = Path.Combine(Path.GetTempPath(), $"umbrella-login-{Guid.NewGuid():N}.login");
+        try
+        {
+            using var daemon = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+            daemon.Write("monero:Q2hhbmdlZE9uRWFjaFN0YXJ0=="u8);
+            daemon.Flush();
+
+            var login = MoneroRpcService.ReadLoginFileAt(path);
+
+            Assert.NotNull(login);
+            Assert.Equal("monero", login!.UserName);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void No_file_is_no_login()
+    {
+        Assert.Null(MoneroRpcService.ReadLoginFileAt(Path.Combine(Path.GetTempPath(), $"absent-{Guid.NewGuid():N}")));
+    }
+
+    [Fact]
     public void The_service_is_never_started_with_its_login_switched_off()
     {
         // Pinned in the source, because the daemon cannot run here: an ArgumentList line that turns the

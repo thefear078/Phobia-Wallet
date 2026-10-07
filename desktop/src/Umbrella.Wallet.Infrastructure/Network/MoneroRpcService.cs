@@ -521,9 +521,23 @@ public sealed class MoneroRpcService : IDisposable
         }
     }
 
-    private static System.Net.NetworkCredential? ReadLoginFile()
+    private static System.Net.NetworkCredential? ReadLoginFile() => ReadLoginFileAt(LoginFile);
+
+    /// <summary>
+    /// The login in a daemon's login file, or null while there is none to read. The daemon keeps the file
+    /// open for writing for as long as it runs, so it is opened here sharing read AND write: a plain
+    /// File.ReadAllText asks that nobody else may write, which Windows refuses while the daemon holds it
+    /// — the login was never read and the service never came up.
+    /// </summary>
+    public static System.Net.NetworkCredential? ReadLoginFileAt(string path)
     {
-        try { return File.Exists(LoginFile) ? ParseLogin(File.ReadAllText(LoginFile)) : null; }
+        try
+        {
+            if (!File.Exists(path)) return null;
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            return ParseLogin(reader.ReadToEnd());
+        }
         catch (IOException) { return null; }          // still being written
         catch (UnauthorizedAccessException) { return null; }
     }

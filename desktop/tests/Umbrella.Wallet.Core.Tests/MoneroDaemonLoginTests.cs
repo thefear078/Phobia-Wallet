@@ -66,29 +66,39 @@ public sealed class MoneroDaemonLoginTests : IDisposable
         start.ArgumentList.Add($"--wallet-dir={_dir}");
         start.ArgumentList.Add("--daemon-address=127.0.0.1:1");
         start.ArgumentList.Add("--log-level=0");
-        _daemon = Process.Start(start)!;
+        var output = new System.Text.StringBuilder();
+        _daemon = new Process { StartInfo = start };
+        _daemon.OutputDataReceived += (_, e) => { if (e.Data is not null) lock (output) output.AppendLine(e.Data); };
+        _daemon.ErrorDataReceived += (_, e) => { if (e.Data is not null) lock (output) output.AppendLine(e.Data); };
+        _daemon.Start();
         _daemon.BeginOutputReadLine();
         _daemon.BeginErrorReadLine();
 
+        // Read exactly as the wallet reads it (the daemon holds the file open for writing).
         var file = MoneroRpcService.LoginFileIn(_dir, port);
+        var (seen, listening) = (false, false);
         for (var i = 0; i < 240; i++)
         {
-            Assert.False(_daemon.HasExited, "monero-wallet-rpc exited during start-up");
-            if (File.Exists(file))
-            {
-                try
-                {
-                    if (MoneroRpcService.ParseLogin(await File.ReadAllTextAsync(file)) is { } login && await Listening(port))
-                        return login;
-                }
-                catch (IOException)
-                {
-                    // still being written
-                }
-            }
+            Assert.False(_daemon.HasExited, $"monero-wallet-rpc exited during start-up:\n{Tail(output)}");
+            seen |= File.Exists(file);
+            var login = MoneroRpcService.ReadLoginFileAt(file);
+            listening = await Listening(port);
+            if (login is not null && listening) return login;
             await Task.Delay(500);
         }
-        throw new TimeoutException($"no login file at {file} after two minutes");
+        var files = string.Join(", ", Directory.EnumerateFiles(_dir).Select(Path.GetFileName));
+        throw new TimeoutException(
+            $"no readable login at {file} after two minutes (file seen: {seen}, port listening: {listening}, " +
+            $"files: {files})\n{Tail(output)}");
+    }
+
+    private static string Tail(System.Text.StringBuilder output)
+    {
+        lock (output)
+        {
+            var lines = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            return string.Join("\n", lines.TakeLast(25));
+        }
     }
 
     private static async Task<bool> Listening(int port)
