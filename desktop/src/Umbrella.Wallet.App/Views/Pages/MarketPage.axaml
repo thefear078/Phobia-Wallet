@@ -10,28 +10,7 @@
              x:DataType="vm:MainViewModel"
              x:CompileBindings="True">
   <UserControl.Resources>
-    <DataTemplate x:Key="MarketMoverRow" x:DataType="vm:MarketRowViewModel">
-      <Button Classes="row" CornerRadius="10" Padding="6,6" Margin="0,1" MinHeight="0"
-              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-              AutomationProperties.Name="{Binding Name}"
-              Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SelectMarketCoinCommand}"
-              CommandParameter="{Binding}">
-        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
-          <Border Width="26" Height="26" CornerRadius="13" Background="{Binding BadgeBg}" ClipToBounds="True" VerticalAlignment="Center">
-            <Panel>
-              <TextBlock FontFamily="Segoe UI Symbol, Segoe UI Variable, Segoe UI" FontSize="12.5" FontWeight="Bold"
-                         Foreground="#FFFFFF" Text="{Binding BadgeGlyph}" IsVisible="{Binding !HasBadgeLogo}"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              <Image Source="{Binding BadgeLogo}" IsVisible="{Binding HasBadgeLogo}" Stretch="Uniform"/>
-            </Panel>
-          </Border>
-          <TextBlock Grid.Column="1" Text="{Binding Symbol}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center"/>
-          <TextBlock Grid.Column="2" Classes="mono" FontSize="12" Text="{Binding PriceLabel}" VerticalAlignment="Center"/>
-          <TextBlock Grid.Column="3" Classes="mono" FontSize="11.5" Text="{Binding ChangeLabel}" Foreground="{Binding ChangeColor}"
-                     MinWidth="64" TextAlignment="Right" VerticalAlignment="Center"/>
-        </Grid>
-      </Button>
-    </DataTemplate>
+    <!-- MarketMoverRow (the movers and the watchlist) is in App.axaml: the home page uses it too. -->
     <!-- One coin in the Market list: shared by the Blockchains and the Tokens sections. -->
     <DataTemplate x:Key="MarketCoinRow" x:DataType="vm:MarketRowViewModel">
       <Button Classes="row" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0"

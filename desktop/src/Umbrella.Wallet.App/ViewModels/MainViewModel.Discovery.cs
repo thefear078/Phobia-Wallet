@@ -69,7 +69,7 @@ public partial class MainViewModel
         {
             var file = FoundFile(walletId);
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-            File.WriteAllText(file, JsonSerializer.Serialize(found, new JsonSerializerOptions { WriteIndented = true }));
+            AtomicFile.WriteAllText(file, JsonSerializer.Serialize(found, new JsonSerializerOptions { WriteIndented = true }));
         }
         catch
         {

@@ -42,7 +42,7 @@ public sealed class ActivityStore
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            File.WriteAllText(_path, JsonSerializer.Serialize(entries.ToList()));
+            Umbrella.Wallet.Infrastructure.AtomicFile.WriteAllText(_path, JsonSerializer.Serialize(entries.ToList()));
         }
         catch
         {

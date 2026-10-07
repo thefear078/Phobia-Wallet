@@ -908,55 +908,58 @@ public partial class MainViewModel
             }
         }
 
-        var scans = await Task.WhenAll(targets.Select(t => ScanOrNullAsync(t.Symbol, t.Chain)));
-        ct.ThrowIfCancellationRequested();   // scanned for a wallet that may no longer be open
-
-        for (var i = 0; i < targets.Count; i++)
+        // Each chain is shown the moment ITS walk finishes: waiting for all of them held a fast Litecoin
+        // scan back behind a slow Bitcoin one. Continuations resume on the UI thread one at a time, so
+        // Accounts and the address index are still never written from two places at once.
+        async Task ScanAndShowAsync((string Symbol, WalletAccountViewModel Account, ChainId Chain) target)
         {
-            var (symbol, account, _) = targets[i];
-            var scan = scans[i];
-            if (scan is null)
-            {
-                // The walk failed outright. Whatever is on the row is the last thing we knew, and it
-                // must stop presenting itself as current — a rate-limited explorer is not a zero
-                // balance (MANIFESTO §4 / P0.6).
-                var (_, failedState) = BalanceReadout.Apply(null, account.Amount, account.Balance);
-                var at = Accounts.IndexOf(account);
-                if (at >= 0) Accounts[at] = account with { Balance = failedState };
-                continue;
-            }
-
-            if (!scan.Partial)
-            {
-                _lastUtxoScan[symbol] = DateTimeOffset.UtcNow;
-                if (fullWalk[symbol]) _lastFullUtxoScan[symbol] = DateTimeOffset.UtcNow;
-            }
-
-            // A partial (network-degraded) scan must not lower a balance we already trust.
-            if (scan.Partial && _utxoScans.ContainsKey(symbol)) continue;
-
-            _utxoScans[symbol] = scan;
-            _addrIndex.RecordScan(walletId, symbol, scan);
-
-            var amount = scan.TotalSat / 100_000_000m;
-            var (usd, change) = prices.GetValueOrDefault(symbol);
-            var idx = Accounts.IndexOf(account);
-            if (idx >= 0)
-            {
-                Accounts[idx] = account with
-                {
-                    Amount = (double)amount,
-                    Price = (double)usd,
-                    Change24h = (double)change,
-                    // A partial scan reached some addresses and not others: the figure is a floor,
-                    // not the balance, so it is labelled as the last known one rather than current.
-                    Balance = scan.Partial ? BalanceRead.Cached : BalanceRead.Live,
-                };
-            }
+            var scan = await ScanOrNullAsync(target.Symbol, target.Chain);
+            if (ct.IsCancellationRequested) return;   // scanned for a wallet that may no longer be open
+            ApplyUtxoScan(target.Symbol, target.Account, scan, fullWalk[target.Symbol], walletId, prices);
+            RefreshHoldings();
+            RecalcBalance();
         }
 
-        RefreshHoldings();
-        RecalcBalance();
+        await Task.WhenAll(targets.Select(ScanAndShowAsync));
+        ct.ThrowIfCancellationRequested();
+    }
+
+    private void ApplyUtxoScan(string symbol, WalletAccountViewModel account, UtxoScanResult? scan, bool fullWalk,
+        string walletId, IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices)
+    {
+        var at = IndexOfAccount(account);
+        if (at < 0) return;
+        var current = Accounts[at];
+        if (scan is null)
+        {
+            // The walk failed outright. Whatever is on the row is the last thing we knew, and it
+            // must stop presenting itself as current — a rate-limited explorer is not a zero
+            // balance (MANIFESTO §4 / P0.6).
+            var (_, failedState) = BalanceReadout.Apply(null, current.Amount, current.Balance);
+            Accounts[at] = current with { Balance = failedState };
+            return;
+        }
+
+        if (!scan.Partial)
+        {
+            _lastUtxoScan[symbol] = DateTimeOffset.UtcNow;
+            if (fullWalk) _lastFullUtxoScan[symbol] = DateTimeOffset.UtcNow;
+        }
+
+        // A partial (network-degraded) scan must not lower a balance we already trust.
+        if (scan.Partial && _utxoScans.ContainsKey(symbol)) return;
+
+        _utxoScans[symbol] = scan;
+        _addrIndex.RecordScan(walletId, symbol, scan);
+
+        var amount = scan.TotalSat / 100_000_000m;
+        Accounts[at] = WithPrice(current with
+        {
+            Amount = (double)amount,
+            // A partial scan reached some addresses and not others: the figure is a floor,
+            // not the balance, so it is labelled as the last known one rather than current.
+            Balance = scan.Partial ? BalanceRead.Cached : BalanceRead.Live,
+        }, prices);
     }
 
     private static string Fmt(decimal value) =>

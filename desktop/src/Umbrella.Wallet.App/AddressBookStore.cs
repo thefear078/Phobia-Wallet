@@ -123,7 +123,8 @@ public sealed class AddressBookStore
             ciphertext.CopyTo(blob, nonce.Length + tag.Length);
 
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            File.WriteAllBytes(_path, blob);
+            // Atomic: a write cut short left a sealed book that no longer opened — every contact gone.
+            Umbrella.Wallet.Infrastructure.AtomicFile.WriteAllBytes(_path, blob);
         }
         catch
         {

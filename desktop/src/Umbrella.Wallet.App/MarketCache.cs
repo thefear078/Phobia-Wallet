@@ -42,7 +42,7 @@ public sealed class MarketCache
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            File.WriteAllText(_path, JsonSerializer.Serialize(entries.ToList()));
+            AtomicFile.WriteAllText(_path, JsonSerializer.Serialize(entries.ToList()));
         }
         catch
         {

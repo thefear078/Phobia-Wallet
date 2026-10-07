@@ -232,22 +232,24 @@ public static class VaultBackup
 
             Directory.CreateDirectory(AppPaths.DataRoot);
 
+            // The current vault is COPIED aside, then replaced in one move: moving it away first and
+            // writing the new one after left no vault at all whenever that write failed.
             if (File.Exists(AppPaths.VaultFile))
             {
                 var aside = $"{AppPaths.VaultFile}.replaced-{DateTime.UtcNow:yyyyMMddHHmmss}";
-                File.Move(AppPaths.VaultFile, aside);
+                File.Copy(AppPaths.VaultFile, aside);
             }
 
-            await File.WriteAllBytesAsync(AppPaths.VaultFile, vaultBytes, ct);
+            await AtomicFile.WriteAllBytesAsync(AppPaths.VaultFile, vaultBytes, ct);
 
             if (bundle.TryGetValue("watchAddresses", out var watch) && !string.IsNullOrWhiteSpace(watch))
             {
-                await File.WriteAllTextAsync(AppPaths.WatchAddressesFile, watch, ct);
+                await AtomicFile.WriteAllTextAsync(AppPaths.WatchAddressesFile, watch, ct);
             }
 
             if (bundle.TryGetValue("exchanges", out var exchanges) && !string.IsNullOrWhiteSpace(exchanges))
             {
-                await File.WriteAllBytesAsync(
+                await AtomicFile.WriteAllBytesAsync(
                     Path.Combine(AppPaths.DataRoot, "exchanges.bin"), Convert.FromBase64String(exchanges), ct);
             }
 

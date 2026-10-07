@@ -1719,6 +1719,16 @@ public sealed class PublicMarketRatesClient
     /// fiat value as $0.00 — the ChainPriceCoverage test keeps a new chain from shipping like that.</summary>
     public static bool HasPriceSource(string symbol) => CoinIds.ContainsKey(symbol) || BinancePairs.ContainsKey(symbol);
 
+    /// <summary>
+    /// Every coin this client can price, in a fixed order. The wallet asks for all of them every time, so
+    /// a price request is the same from every wallet: asking for the coins ONE wallet holds — its rows,
+    /// its tokens — made the list a fingerprint a price API could recognise from one Tor circuit to the
+    /// next. A coin outside this list never had a price source anyway, so nothing is lost.
+    /// </summary>
+    public static IReadOnlyList<string> PricedSymbols { get; } =
+        BinancePairs.Keys.Union(CoinIds.Keys, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s, StringComparer.Ordinal).ToList();
+
     /// <summary>Chart windows offered in the Market view.</summary>
     public static IReadOnlyList<string> ChartRanges { get; } = ["1H", "24H", "7D", "30D", "1Y"];
 
@@ -2230,34 +2240,49 @@ public sealed class PublicMarketRatesClient
     }
 
     /// <summary>
-    /// USD → <paramref name="code"/> fiat rate (EUR, UAH, RUB, …), so balances can display in the user's
-    /// currency. Keyless via open.er-api.com; returns 1 on any failure so amounts degrade to USD rather
-    /// than vanish.
+    /// Every USD → fiat rate (EUR, UAH, CNY, …) in one answer, keyless via open.er-api.com — or null when
+    /// it could not be read.
+    ///
+    /// Null, never 1: the old single-rate call answered a failure with 1.0, and the wallet then drew dollar
+    /// figures under the chosen currency's symbol — 104 USDT shown as "¥104,32". The caller keeps what it
+    /// had, or shows dollars as dollars, and asks again.
     /// </summary>
-    public async Task<decimal> GetFiatRateAsync(string code, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyDictionary<string, decimal>?> GetFiatRatesAsync(CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(code) || string.Equals(code, "USD", StringComparison.OrdinalIgnoreCase))
-            return 1m;
-
         try
         {
             using var res = await Http.GetAsync("https://open.er-api.com/v6/latest/USD", cancellationToken);
-            if (!res.IsSuccessStatusCode) return 1m;
-            using var doc = await JsonDocument.ParseAsync(
-                await res.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
-            if (doc.RootElement.TryGetProperty("rates", out var rates) &&
-                rates.TryGetProperty(code.ToUpperInvariant(), out var r) &&
-                r.TryGetDecimal(out var rate) && rate > 0m)
-            {
-                return rate;
-            }
+            if (!res.IsSuccessStatusCode) return null;
+            return ParseFiatRates(await res.Content.ReadAsStringAsync(cancellationToken));
         }
         catch
         {
-            // fall through to 1.0 (USD)
+            return null;
         }
+    }
 
-        return 1m;
+    /// <summary>The "rates" object of an open.er-api.com answer: code → units per US dollar, positive
+    /// values only. Null when the answer holds none.</summary>
+    public static IReadOnlyDictionary<string, decimal>? ParseFiatRates(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("rates", out var rates) || rates.ValueKind != JsonValueKind.Object)
+                return null;
+            var map = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in rates.EnumerateObject())
+            {
+                if (p.Value.ValueKind == JsonValueKind.Number && p.Value.TryGetDecimal(out var rate) && rate > 0m)
+                    map[p.Name.ToUpperInvariant()] = rate;
+            }
+            map["USD"] = 1m;
+            return map.Count > 1 ? map : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static async Task<Dictionary<string, (decimal, decimal)>> TryCoinGeckoAsync(
@@ -2442,12 +2467,8 @@ public sealed class WatchAddressStore
         return rows ?? [];
     }
 
-    public async Task SaveAsync(IEnumerable<WatchAddress> rows, CancellationToken ct = default)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        await using var stream = File.Create(_path);
-        await JsonSerializer.SerializeAsync(stream, rows.ToList(), JsonOptions, ct);
-    }
+    public Task SaveAsync(IEnumerable<WatchAddress> rows, CancellationToken ct = default) =>
+        AtomicFile.WriteAllTextAsync(_path, JsonSerializer.Serialize(rows.ToList(), JsonOptions), ct);
 }
 
 public sealed record WatchAddress(string Chain, string Address, string Label);

@@ -390,15 +390,31 @@ public partial class MainViewModel
         };
     }
 
-    /// <summary>Price-axis labels, in the same locale as every other money figure. They were
-    /// InvariantCulture, so the axis read "3 519 010.80" while the 24h-high card directly beneath it
-    /// read "₴3 519 010,80".</summary>
-    private static string FormatPrice(double value) => value switch
+    /// <summary>
+    /// A price on the chart (axis, last-price tag, crosshair, O H L C), in the currency every other figure
+    /// is in. Candles arrive in US dollars; these labels showed those dollars beside a market list and a
+    /// 24h-high card in hryvnia or yuan, so the chart and the row above it disagreed by the exchange rate.
+    /// Same locale and the same precision rule as <see cref="Fx.Price"/>: cents from one unit up (whole
+    /// units only past 100 000, where cents are noise), four significant digits below one.
+    /// </summary>
+    public static string FormatPrice(double usd)
     {
-        >= 1000 => value.ToString("N0", Fx.Culture),
-        >= 1 => value.ToString("N2", Fx.Culture),
-        _ => value.ToString("N6", Fx.Culture),
-    };
+        if (double.IsNaN(usd) || double.IsInfinity(usd)) return "—";
+        var v = (decimal)usd * Fx.Rate;
+        var decimals = Math.Abs(v) >= 100_000m ? 0 : Fx.PriceDecimals(Math.Abs(v));
+        return v.ToString("N" + decimals, Fx.Culture);
+    }
+
+    /// <summary>The open chart's labels and the selected coin's price redrawn in the current currency
+    /// from the candles already drawn — no fetch.</summary>
+    private void RepaintOpenChart()
+    {
+        OnPropertyChanged(nameof(ChartCaption));
+        if (!HasChart || string.IsNullOrEmpty(SelectedMarketSymbol)) return;
+        if (Market.FirstOrDefault(m => m.Symbol == SelectedMarketSymbol) is { } row) SelectedMarketPriceLabel = row.PriceLabel;
+        if (_detailCandles.Count > 1) BuildDetailChart(_detailCandles);
+        if (PublicMarketRatesClient.PeekMarketStats(SelectedMarketSymbol) is { } stats) ShowMarketStats(stats);
+    }
 
     /// <summary>Evenly spaced ticks labelled for the selected window, oldest on the left.</summary>
     private static string[] TimeAxisLabels(string range) => range switch
@@ -423,7 +439,8 @@ public partial class MainViewModel
     private string _chartRange = "24H";
 
     /// <summary>"Ціна за 24H · USD" over the chart — the candles are USD pairs whatever the display currency.</summary>
-    public string ChartCaption => string.Format(Loc.Instance["chart.caption"], ChartRange);
+    /// <summary>"BTC price · CNY": the currency the chart's labels are in — it said "USD" whatever they were.</summary>
+    public string ChartCaption => string.Format(Loc.Instance["chart.caption"], ChartRange, Fx.Code);
 
     public IReadOnlyList<string> ChartRanges => PublicMarketRatesClient.ChartRanges;
 
