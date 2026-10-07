@@ -283,7 +283,9 @@ public sealed class InterfaceAndSearchTests : IDisposable
         vm.RecomputeHoldingsForTest();
 
         Assert.Equal(["TRX", "SOL", "ATOM"], vm.StakeChains.Select(c => c.Symbol).ToArray());
-        Assert.DoesNotContain(vm.StakingRows, r => r.Symbol is "TRX" or "SOL" or "ATOM");   // the rest stay described
+        // A snapshot: with no UI thread in a test, the new wallet's background refresh can rebuild the list
+        // while it is read ("Collection was modified"); CopyTo does not check for that.
+        Assert.DoesNotContain(vm.StakingRows.ToArray(), r => r.Symbol is "TRX" or "SOL" or "ATOM");   // the rest stay described
 
         await vm.OpenStakeActionCommand.ExecuteAsync("TRX|claim");
         Assert.True(vm.StakeActionOpen);
