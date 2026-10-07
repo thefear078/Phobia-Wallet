@@ -53,8 +53,8 @@ if [ ! -f "${OUT}/tor/tor" ]; then
 fi
 
 # --- monero-wallet-rpc (official CLI bundle, linux-x64) ---
-MONERO_VERSION="${MONERO_VERSION:-v0.18.5.1}"
-MONERO_SHA256="${MONERO_SHA256:-22a7dda7b0cb699fdd6b7674c3b4a4465b337cc98a54983523b759e1e7cc9958}"
+MONERO_VERSION="${MONERO_VERSION:-v0.18.5.3}"
+MONERO_SHA256="${MONERO_SHA256:-3333d0e04c9cbe3023e7e2b6dd369c407f36bb8df5b05fb0a19d7685b3d56dfc}"
 if [ ! -f "${OUT}/monero/monero-wallet-rpc" ]; then
     echo "Fetching Monero ${MONERO_VERSION}…"
     if mkdir -p "${OUT}/monero" /tmp/umbrella-monero \
