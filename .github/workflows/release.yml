@@ -211,9 +211,12 @@ jobs:
             echo "ANDROID_KEY_PASS=$PASS"
           } >> "$GITHUB_ENV"
 
+      # Tor and monero-wallet-rpc for both ABIs, pinned and hash-checked; a release APK without them fails.
       - name: Build the APK
+        env:
+          REQUIRE_HELPERS: "1"
         run: |
-          chmod +x desktop/scripts/publish-android.sh
+          chmod +x desktop/scripts/publish-android.sh desktop/scripts/fetch-android-helpers.sh
           ( cd desktop && ./scripts/publish-android.sh )
           cp "desktop/dist/android/phobia-wallet-${{ steps.v.outputs.version }}-android.apk" "PhobiaWallet-${{ steps.v.outputs.label }}-android.apk"
 

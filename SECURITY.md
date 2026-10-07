@@ -177,6 +177,7 @@ Process: **[SECURITY/COORDINATED_DISCLOSURE.md](SECURITY/COORDINATED_DISCLOSURE.
 | 2026-10-07 | PHB-2026-03 — token ticker impersonation valued | Medium | next release (#143) |
 | 2026-10-07 | PHB-2026-04 — Android kill-switch reset with Orbot | Medium | next release (#143) |
 | 2026-10-07 | PHB-2026-05…07 — price-list fingerprint, `socks4://` local DNS, fiat field currency | Low | next release (#143) |
+| 2026-10-07 | PHB-2026-08 — balance chart named the coins held | Low | next release (#145) |
 
 All found by the project's own review, none reported from outside; details and affected versions in
 the full log. Disclosed reports will be added the same way, with links to advisories.

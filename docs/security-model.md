@@ -12,7 +12,7 @@ Phobia is built for someone who assumes the network is hostile and the service i
 | Adversary | Covered? | How |
 |---|---|---|
 | A service that wants your identity | ✅ | There is no service. No account, email, phone, or KYC. |
-| A block explorer profiling you by IP | ✅ | Bundled Tor (Orbot on Android) + a kill-switch that fails closed; a separate circuit per kind of request. |
+| A block explorer profiling you by IP | ✅ | Bundled Tor (in the APK too, from Beta 2) + a kill-switch that fails closed; a separate circuit per kind of request. |
 | Someone who steals the vault file | ✅ | Argon2id (m=64 MiB) → AES-256-GCM. Brute force is expensive by design. |
 | Someone who steals the whole laptop, locked | ✅ | Auto-lock on idle and on minimise; the seed is not at rest in memory. |
 | Screen recording / screenshots of your seed | ✅ | Seed and key screens set `WDA_EXCLUDEFROMCAPTURE` (Windows) and `FLAG_SECURE` (Android). |

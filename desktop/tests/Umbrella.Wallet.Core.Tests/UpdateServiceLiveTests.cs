@@ -48,9 +48,11 @@ public sealed class UpdateServiceLiveTests
 
         foreach (var kind in new[] { InstallKind.WindowsInstaller, InstallKind.WindowsPortable, InstallKind.Linux })
         {
-            var name = UpdateService.AssetNameFor(kind, release.Version);
-            var asset = Assert.Single(release.Assets, a => a.Name == name);
-            var (hash, error) = UpdateService.ExpectedHash(sums, name, asset.Sha256);
+            // A release from before the rename (the newest full release is still 4.9.0) carries only the
+            // Umbrella-era names, and DownloadAsync falls back to them the same way.
+            var names = new[] { UpdateService.AssetNameFor(kind, release.Version), UpdateService.LegacyAssetNameFor(kind, release.Version) };
+            var asset = release.Assets.FirstOrDefault(a => a.Name == names[0]) ?? Assert.Single(release.Assets, a => a.Name == names[1]);
+            var (hash, error) = UpdateService.ExpectedHash(sums, asset.Name, asset.Sha256);
             Assert.True(hash is not null, error);
         }
     }

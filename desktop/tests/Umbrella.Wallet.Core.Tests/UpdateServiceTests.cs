@@ -124,6 +124,7 @@ public sealed class UpdateServiceTests
     [InlineData(InstallKind.WindowsFolder, "PhobiaWallet-Setup-4.10.0.exe")]
     [InlineData(InstallKind.WindowsPortable, "PhobiaWallet-4.10.0-win-x64-portable.exe")]
     [InlineData(InstallKind.Linux, "PhobiaWallet-4.10.0-linux-x64.tar.gz")]
+    [InlineData(InstallKind.Android, "PhobiaWallet-4.10.0-android.apk")]
     public void Each_install_gets_the_file_the_release_process_names_for_it(InstallKind kind, string name) =>
         Assert.Equal(name, UpdateService.AssetNameFor(kind, new ReleaseVersion(4, 10, 0)));
 

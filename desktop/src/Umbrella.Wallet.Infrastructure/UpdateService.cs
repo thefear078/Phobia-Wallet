@@ -19,8 +19,13 @@ public enum InstallKind
     /// and the person installs it.</summary>
     WindowsFolder,
 
-    /// <summary>The Linux tarball: the new one is downloaded, verified and unpacked beside the data.</summary>
+    /// <summary>The Linux tarball: the new one is downloaded, verified, and on the click unpacked over this
+    /// folder (the data folder is not in it) and started.</summary>
     Linux,
+
+    /// <summary>The Android app: the check says a newer APK is out and opens its download; Android itself
+    /// installs it, and only over a copy signed with the same key.</summary>
+    Android,
 }
 
 /// <summary>One file attached to a release, with the SHA-256 GitHub computed for it.</summary>
@@ -308,6 +313,7 @@ public static class UpdateService
     /// <summary>How the running copy was installed.</summary>
     public static InstallKind DetectInstallKind()
     {
+        if (OperatingSystem.IsAndroid()) return InstallKind.Android;
         if (!OperatingSystem.IsWindows()) return InstallKind.Linux;
 
         // The setup program leaves its uninstaller beside the app.
@@ -335,6 +341,7 @@ public static class UpdateService
         {
             InstallKind.WindowsPortable => $"{product}-{v}-win-x64-portable.exe",
             InstallKind.Linux => $"{product}-{v}-linux-x64.tar.gz",
+            InstallKind.Android => $"{product}-{v}-android.apk",
             _ => $"{product}-Setup-{v}.exe",
         };
     }
@@ -556,8 +563,16 @@ public static class UpdateService
                 case InstallKind.WindowsPortable:
                     return ReplacePortable(update.FilePath);
 
+                case InstallKind.Linux:
+                {
+                    var folder = AppContext.BaseDirectory;
+                    var program = UnpackOver(update.FilePath, folder);
+                    Process.Start(new ProcessStartInfo(program) { UseShellExecute = false, ArgumentList = { "--after-update", Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture) } });
+                    return (true, null);
+                }
+
                 default:
-                    return (false, "On Linux the new version is downloaded and verified; unpack it over this folder to finish.");
+                    return (false, "This kind of install is updated outside the wallet.");
             }
         }
         catch (Exception ex)
@@ -610,6 +625,52 @@ public static class UpdateService
             throw;
         }
     }
+
+    /// <summary>
+    /// Linux: unpacks a verified release tarball over <paramref name="appFolder"/> and returns the path of
+    /// the new program. Every file is first written beside its target under a temporary name and then
+    /// renamed over it - a rename is atomic, and Linux allows it while the old program (and its Tor) still
+    /// run from the old file. The tarball holds the program, Tor and Monero and nothing else: the data
+    /// folder is not in it and is never touched. Entries that would land outside the folder are refused by
+    /// the tar reader itself.
+    /// </summary>
+    public static string UnpackOver(string tarball, string appFolder)
+    {
+        var unpacked = Path.Combine(Path.GetDirectoryName(tarball)!, "unpacked");
+        if (Directory.Exists(unpacked)) Directory.Delete(unpacked, recursive: true);
+        Directory.CreateDirectory(unpacked);
+        try
+        {
+            using (var file = File.OpenRead(tarball))
+            using (var gz = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionMode.Decompress))
+            {
+                System.Formats.Tar.TarFile.ExtractToDirectory(gz, unpacked, overwriteFiles: true);
+            }
+
+            // The tarball holds one folder, phobia-wallet-<version>-linux-x64, with the program in it.
+            var root = Directory.GetDirectories(unpacked).SingleOrDefault(d => File.Exists(Path.Combine(d, LinuxProgram)))
+                ?? throw new InvalidDataException($"The release tarball has no {LinuxProgram} in it.");
+
+            foreach (var source in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            {
+                var target = Path.Combine(appFolder, Path.GetRelativePath(root, source));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                var staged = target + ".new";
+                File.Copy(source, staged, overwrite: true);
+                if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(staged, File.GetUnixFileMode(source));
+                File.Move(staged, target, overwrite: true);
+            }
+
+            return Path.Combine(appFolder, LinuxProgram);
+        }
+        finally
+        {
+            try { Directory.Delete(unpacked, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>The Linux build's program file (publish-linux.sh names it).</summary>
+    public const string LinuxProgram = "phobia-wallet";
 
     /// <summary>Removes what a previous portable update left behind. Safe to call on every start.</summary>
     public static void CleanUpAfterUpdate()

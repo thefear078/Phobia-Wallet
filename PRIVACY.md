@@ -35,7 +35,7 @@ means saying your address.
 | Your wallet addresses | Block explorers and RPC nodes | To read balances and history |
 | A signed transaction | The same | To broadcast it |
 | One fixed list of coin symbols, the same for every wallet | CoinGecko, Binance; KuCoin and Bybit for what those refuse | To price coins. The list does not depend on what you hold, so the request says nothing about you |
-| The coin a chart is for | Binance, then KuCoin, Bybit or CoinGecko | To draw the chart you open — **and the Home balance chart asks for each coin you hold**, one request per coin |
+| The coin a chart is for | Binance, then KuCoin, Bybit or CoinGecko | To draw the chart you open. The Home balance chart asks for the whole market list, in the same order from every wallet — never for "the coins this wallet holds" |
 | Nothing but the request | open.er-api.com | Currency rates (USD → EUR, UAH, …) when you show a currency other than dollars, at most once an hour; kept on disk so figures appear at once |
 | The address you pay from and the address you receive at | The swap route you confirm: THORChain, NEAR Intents (1Click) or Exolix | To carry out a swap — only when you swap |
 | Your TRON, Solana or Cosmos address, and the staking transaction | TronGrid, the Solana RPC node, the Cosmos Hub REST node (the same servers that read your balance) | To read your stake and broadcast a staking action — only when you open Staking or stake |
@@ -71,10 +71,11 @@ behind the code: the build fails if a host appears in the source without appeari
   your transaction, and the one that prices coins sees neither. Each purpose reaches Tor under its own
   SOCKS username, and a test reads that username off a real SOCKS5 handshake (before 2026-10-07 it was
   not sent, and everything shared one circuit — see the
-  [vulnerability history](SECURITY/VULNERABILITY_HISTORY.md)). Requests of one purpose share a circuit,
-  so a price service can see that the balance chart's requests come from one place.
-- **A SOCKS5 proxy** of your own instead — on Android, Orbot (`127.0.0.1:9050`), with the kill-switch
-  kept armed while it is set. The destination always goes to the proxy as a name, so this machine's
+  [vulnerability history](SECURITY/VULNERABILITY_HISTORY.md)). Requests of one purpose share a circuit.
+- **Tor on Android too**: from Beta 2 the APK carries the same Tor, so the phone has the same switch,
+  kill-switch and circuits.
+- **A SOCKS5 proxy** of your own instead — Orbot (`127.0.0.1:9050`) on Android, for example — with the
+  kill-switch kept armed while it is set. The destination always goes to the proxy as a name, so this machine's
   DNS never hears which servers the wallet uses.
 - **Which server answers for each chain** — Bitcoin, Litecoin, Bitcoin Cash, Dogecoin, Ethereum,
   Solana, TON, Tron, Cardano, Monero. Pick a different company, or point the wallet at a node you run.
@@ -99,7 +100,7 @@ Being direct about this is the point of the document.
 - **Malware on your machine defeats all of it.** See [THREAT_MODEL.md](THREAT_MODEL.md), Vector 1.
 - **There is no CoinJoin and no Dandelion++ yet**, and PayJoin works only as the sender, with a
   receiver that offers it. Taproot is in since 4.8. Real gaps, on the roadmap, not implied away.
-- **The local Monero service** (`monero-wallet-rpc`, desktop only) listens on this machine alone and
+- **The local Monero service** (`monero-wallet-rpc`, on the desktop and from Beta 2 on Android) listens on this device alone and
   answers only to a random login it makes at each start, in a file only your account can read. Before
   2026-10-07 it had no login.
 
@@ -156,9 +157,10 @@ what it learns, and each chain's server replaceable by your own.
 **Can I use my own node or proxy?** Yes: your own server per chain, your own Monero node, your own
 SOCKS5 proxy (Orbot on Android), or the bundled Tor.
 
-**Can a price service tell what I hold?** Not from the price list — it is the same for everyone. From
-the charts, yes: opening a coin's chart names that coin, and the Home balance chart asks for each coin
-you hold. Over Tor it sees an exit's address, not yours, and it never sees a wallet address.
+**Can a price service tell what I hold?** Not from the price list, nor from the Home balance chart:
+both ask for the same fixed list from every wallet (until 2026-10-07 the balance chart asked for exactly
+the coins held). Opening one coin's chart does name that coin. Over Tor it sees an exit's address, not
+yours, and it never sees a wallet address.
 
 ---
 

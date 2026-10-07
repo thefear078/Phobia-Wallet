@@ -9,6 +9,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 A readiness audit of Beta 1 (2026-10-07): the network privacy the wallet claimed, checked on the wire,
 and the places it was not true fixed.
 
+### Android
+
+- **The phone has its own Tor.** The APK carries the Tor Project's own Android build of Tor (checked
+  against their signed sums, like the desktop's) and runs it the way Tor Browser for Android does, from the
+  app's native-library folder. Settings → Privacy → Tor works as on the desktop: the same kill-switch, the
+  same circuit per purpose. Android may stop Tor while the app is in the background; it starts again when
+  you come back, and nothing goes out directly in between. Orbot still works instead.
+- **Monero on the phone.** The APK carries the Monero project's Android `monero-wallet-rpc` too (checked
+  against binaryFate's signed `hashes.txt`), so XMR shows its balance and sends on the phone, with the same
+  random login as on the desktop.
+- **The phone looks for updates.** When a newer release is out, a strip on Home says so and *Download*
+  opens that release's APK; Android installs it, only over a copy signed with the same key.
+- A CI job installs the APK on an Android emulator and proves it starts, draws its first screen and that
+  its Tor bootstraps; another runs the Linux build on a virtual display and asks check.torproject.org
+  through its Tor. Screenshots are kept with each run.
+
+### Updates
+
+- **Linux installs its update with one click**, like Windows: the verified tarball is unpacked over the
+  program's folder (each file renamed into place; the data folder is not touched) and the new version
+  starts. It used to stop at "unpack it over this folder yourself".
+
 ### Security and privacy
 
 - **Tor circuits are really separated now.** Address lookups, broadcasts, prices, swaps and the rest were
@@ -28,13 +50,18 @@ and the places it was not true fixed.
 - **Android with Orbot keeps its kill-switch.** The phone switched Tor-only off at every start — even with
   Orbot set as the proxy, the one setup it protects — and disarmed it only after arming the transport, so
   that session refused every request while the switch read "off". The status line now says "through your
-  proxy". [How to set up Orbot](docs/guides/android.md#tor-on-the-phone-through-orbot).
+  proxy". [How to set up Orbot](docs/guides/android.md#or-through-orbot).
 - **A token is priced on its contract, not its name.** A token calling itself "USDT" (or ETH, TRX, BTC)
   from any other contract was counted at the real coin's price; it is now worth nothing and folded away
   with the spam.
 - **Every wallet asks for the same price list.** The list used to include the tokens you hold — and a
   Monero-only request when you held Monero — so the price service could tell wallets apart by what they
   asked for. Now it is one fixed list, one shared request, reused for 20 seconds.
+- **The balance chart no longer names your coins.** To draw the Home chart the wallet asked the price
+  service for the history of exactly the coins held. It now asks for the whole market list, in the same
+  order from every wallet, and draws as soon as the coins it needs have arrived (at once from what is
+  already on the device). Settings → Privacy now also says that KuCoin, a chart fallback, learns which
+  coin a chart you open is for.
 
 ### Market, currency and balances
 

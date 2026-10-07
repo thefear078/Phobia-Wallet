@@ -38,7 +38,7 @@ A wallet must query a blockchain. When you use balances, history, or send, **you
 | Public addresses | Block explorers / RPC nodes (defaults or ones you choose) | Read balances / history; broadcast signed txs |
 | Signed transactions | Same | Publish to the network |
 | A fixed list of coin symbols, the same for every user | Price providers (CoinGecko, Binance, KuCoin, Bybit public APIs) | Display fiat values |
-| The coin whose chart is drawn — including each coin you hold, for the balance chart | The same price providers | Draw price and balance charts |
+| The coin whose chart you open; for the balance chart, the whole fixed market list | The same price providers | Draw price and balance charts |
 | Nothing identifying | open.er-api.com | Currency exchange rates, when you show a currency other than US dollars |
 | The paying and receiving addresses of a swap | The swap route you confirm (THORChain, NEAR Intents, Exolix) | Carry out the swap — only when you swap |
 | Your TRON, Solana or Cosmos address and staking transactions | The same chain servers that read your balance | Show and change your stake — only when you use Staking |

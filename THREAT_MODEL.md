@@ -8,9 +8,8 @@ help", it says so.
 
 **Scope.** Phobia is a wallet for Windows and Linux, .NET 8 / Avalonia, with an Android beta built from
 the same code. There is no server, no account and no backend: nothing about a user exists anywhere
-except on their own device. Where the phone differs — no bundled Tor (Orbot can carry its traffic, see
-[Vector 4](#vector-4--the-network-operator-isp-café-wi-fi-hostile-country)), no Monero service — the
-vector says so.
+except on their own device. Where the phone differs — Android may stop its Tor in the background (see
+[Vector 4](#vector-4--the-network-operator-isp-café-wi-fi-hostile-country)) — the vector says so.
 
 ## Contents
 
@@ -181,10 +180,11 @@ down whenever that state changes. A cached client outliving the kill-switch bein
 hole in the kill-switch itself — worse than not isolating — so `TorStreamIsolationTests` pins it, and
 the assertion was verified by removing the teardown and watching the test fail.
 
-**On Android** there is no bundled Tor. Orbot's SOCKS port (`127.0.0.1:9050`) set as the custom proxy
-carries every request, with the same per-purpose circuits, and the kill-switch stays
-armed across restarts while that proxy is set — so Orbot stopping means "no request", not "direct".
-Without Orbot the phone talks to every server directly, and Settings says so.
+**On Android** (from Beta 2) the APK carries the same Tor, run from the native-library folder, with the
+same switch, kill-switch and per-purpose circuits; CI's `device-check` job proves on an emulator that it
+starts and bootstraps. Android may stop it while the app is in the background: the wallet starts it again
+on return, and until then requests are refused, never direct. Orbot's SOCKS port (`127.0.0.1:9050`) as
+the custom proxy remains an alternative, with the kill-switch kept armed across restarts while it is set.
 
 A custom proxy typed as `socks4://` is used as SOCKS4a and `socks5h://` as SOCKS5: plain SOCKS4 makes
 .NET resolve the server's name in this machine's DNS first, which would name every explorer the wallet

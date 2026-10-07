@@ -155,8 +155,8 @@ public static class NetworkCounterpartyCatalog
         new("zksync.drpc.org", "dRPC", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "ETH on zkSync Era"),
 
-        // --- Prices. No addresses here. The price list is one fixed list, the same for every wallet, but
-        // a chart is asked for the coin it shows - and the balance chart asks for each coin you hold. ----
+        // --- Prices. No addresses here. The price list and the balance chart's history are one fixed list,
+        // the same for every wallet; a chart you open is asked for the coin it shows. ------------------
         new("api.coingecko.com", "CoinGecko", CounterpartyPurpose.Prices,
             CounterpartyContact.Automatic,
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline

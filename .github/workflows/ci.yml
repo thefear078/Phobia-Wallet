@@ -72,6 +72,10 @@ jobs:
         run: |
           ./desktop/scripts/fetch-tor.ps1 -RequireSignature -Destination "$env:RUNNER_TEMP/tor"
           ./desktop/scripts/fetch-monero.ps1 -RequireSignature -Destination "$env:RUNNER_TEMP/monero"
+      # The APK's Tor and Monero (Android builds, pinned in fetch-android-helpers.sh), the same way.
+      - name: Android Tor + Monero pins (signatures required)
+        shell: pwsh
+        run: ./desktop/scripts/verify-android-pins.ps1 -RequireSignature
       # The verified daemon is here anyway, so prove against the real thing what the offline suite can
       # only prove against a copy of its protocol: it writes the random login the wallet reads, the
       # wallet gets in with it, and a caller without it (a web page, another account) gets a 401.
@@ -105,8 +109,10 @@ jobs:
         run: dotnet workload install android
       # Signed with the SDK's debug key: this proves the phone app still builds, it is not a release.
       - name: Build the APK
+        env:
+          REQUIRE_HELPERS: "1"
         run: |
-          chmod +x desktop/scripts/publish-android.sh
+          chmod +x desktop/scripts/publish-android.sh desktop/scripts/fetch-android-helpers.sh
           ( cd desktop && ./scripts/publish-android.sh )
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

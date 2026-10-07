@@ -35,8 +35,24 @@
     <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
   </PropertyGroup>
 
+  <!-- The emulator check (CI only, -p:PhobiaSelfTest=true): starts the bundled Tor at launch and logs
+       the outcome. Never part of a release build. -->
+  <PropertyGroup Condition="'$(PhobiaSelfTest)' == 'true'">
+    <DefineConstants>$(DefineConstants);PHOBIA_SELFTEST</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia.Android" Version="11.3.18" />
+  </ItemGroup>
+
+  <!-- Tor and monero-wallet-rpc, staged by scripts/fetch-android-helpers.sh (pinned, hash-checked). They
+       ship as lib*.so so Android unpacks them into the native-library folder, the one place an app may
+       run a program from; MainActivity tells the wallet where they are. A build without them still
+       works and says so: no Tor of its own (Orbot instead), no Monero balance on the phone. -->
+  <ItemGroup>
+    <AndroidNativeLibrary Include="natives/arm64-v8a/*.so" Abi="arm64-v8a" />
+    <AndroidNativeLibrary Include="natives/armeabi-v7a/*.so" Abi="armeabi-v7a" />
+    <AndroidNativeLibrary Include="natives/x86_64/*.so" Abi="x86_64" />
   </ItemGroup>
 
   <ItemGroup>

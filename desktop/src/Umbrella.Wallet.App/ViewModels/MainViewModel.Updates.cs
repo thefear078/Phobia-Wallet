@@ -108,8 +108,6 @@ public partial class MainViewModel
     /// </summary>
     private void ScheduleUpdateChecks()
     {
-        // The Android app is updated by installing the next APK; its update check comes later.
-        if (OperatingSystem.IsAndroid()) return;
         try
         {
             UpdateService.CleanUpAfterUpdate();
@@ -201,6 +199,9 @@ public partial class MainViewModel
             if (newVersion) UpdateBannerDismissed = false;
             UpdateStatus = string.Format(Loc.Instance["update.available"], UpdateLatestVersion, CurrentVersion);
 
+            // The phone never fetches by itself: its "Download" opens the APK in the browser, which only
+            // the person should start.
+            if (UpdateService.DetectInstallKind() == InstallKind.Android) return;
             if (!UpdateReady && (userAsked || AutoUpdateDownload)) await DownloadUpdateAsync();
         }
         finally
@@ -215,6 +216,16 @@ public partial class MainViewModel
     private async Task DownloadUpdateAsync()
     {
         if (_latestRelease is null || IsUpdateDownloading || UpdateReady) return;
+
+        // Android installs an APK itself, and only over a copy signed with the same key - a stronger check
+        // than anything this app could add. The browser fetches it from this project's release page.
+        if (UpdateService.DetectInstallKind() == InstallKind.Android)
+        {
+            OpenUrl(UpdateService.DownloadUrl(_latestRelease,
+                UpdateService.AssetNameFor(InstallKind.Android, _latestRelease.Version)));
+            return;
+        }
+
         var stale = false;
 
         IsUpdateDownloading = true;
@@ -247,7 +258,7 @@ public partial class MainViewModel
             _verifiedUpdate = update;
             UpdateReady = true;
             UpdateStatus = string.Format(Loc.Instance["update.ready"], UpdateLatestVersion) + " " +
-                           Loc.Instance[kind == InstallKind.Linux ? "update.linuxNote" : "update.verifiedNote"];
+                           Loc.Instance["update.verifiedNote"];
         }
         catch (OperationCanceledException)
         {
@@ -288,12 +299,6 @@ public partial class MainViewModel
     {
         if (_verifiedUpdate is null) return;
 
-        if (_verifiedUpdate.Kind == InstallKind.Linux)
-        {
-            OpenUpdateFolder();
-            return;
-        }
-
         // Locked BEFORE anything is started: the new copy must never run beside an unlocked old one.
         LockVault();
         var (started, error) = UpdateService.Install(_verifiedUpdate);
@@ -318,7 +323,7 @@ public partial class MainViewModel
         SelectSection("Settings");
     }
 
-    /// <summary>Shows the folder a downloaded update is in (Linux, or when installing it failed).</summary>
+    /// <summary>Shows the folder a downloaded update is in (when installing it failed).</summary>
     [RelayCommand]
     private void OpenUpdateFolder()
     {

@@ -45,10 +45,22 @@ public sealed class EmbeddedTorService : IDisposable
     /// <summary>Latest bootstrap percentage parsed from Tor's log (0–100).</summary>
     public int BootstrapPercent { get; private set; }
 
-    /// <summary>Where the bundled Tor lives once published next to the executable.</summary>
-    public static string TorExecutablePath =>
+    /// <summary>
+    /// Where the phone keeps its Tor. Android runs a program only from the app's native-library folder,
+    /// so the APK carries Tor there as <c>libTor.so</c> (the Tor Project's own Android build, an executable
+    /// despite the name) and the Android host sets this before the wallet starts. Null on the desktop.
+    /// </summary>
+    public static string? ExecutableOverride { get; set; }
+
+    /// <summary>Where the bundled Tor lives: published next to the executable, or the phone's copy.</summary>
+    public static string TorExecutablePath => ExecutableOverride ??
         Path.Combine(AppContext.BaseDirectory, "tor",
             OperatingSystem.IsWindows() ? "tor.exe" : "tor");
+
+    /// <summary>The process name the bundled Tor runs under: "tor" here, "libTor.so" on the phone (Windows
+    /// drops the extension from a process name, Linux and Android do not).</summary>
+    public static string ProcessNameOf(string path) =>
+        OperatingSystem.IsWindows() ? Path.GetFileNameWithoutExtension(path) : Path.GetFileName(path);
 
     public static bool IsBundlePresent => File.Exists(TorExecutablePath);
 
@@ -213,7 +225,9 @@ public sealed class EmbeddedTorService : IDisposable
                 int.TryParse(File.ReadAllText(PidFilePath).Trim(), out var pid) && pid != Environment.ProcessId)
             {
                 var p = Process.GetProcessById(pid);
-                if (p.ProcessName.Equals("tor", StringComparison.OrdinalIgnoreCase)) leftovers.Add(p);
+                if (p.ProcessName.Equals("tor", StringComparison.OrdinalIgnoreCase)
+                    || p.ProcessName.Equals(ProcessNameOf(TorExecutablePath), StringComparison.OrdinalIgnoreCase))
+                    leftovers.Add(p);
                 else p.Dispose();
             }
         }
@@ -222,7 +236,7 @@ public sealed class EmbeddedTorService : IDisposable
             // No such process any more — nothing to stop.
         }
 
-        foreach (var p in Process.GetProcessesByName("tor"))
+        foreach (var p in Process.GetProcessesByName(ProcessNameOf(TorExecutablePath)))
         {
             if (leftovers.Any(l => l.Id == p.Id)) { p.Dispose(); continue; }
             try

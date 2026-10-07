@@ -78,6 +78,8 @@ desktop/dist/
 # Tor (~35 MB) — restage with desktop/scripts/fetch-tor.ps1; the README is tracked.
 desktop/src/Umbrella.Wallet.App/tor/*
 !desktop/src/Umbrella.Wallet.App/tor/README.md
+# Tor and monero-wallet-rpc for the APK — staged by desktop/scripts/fetch-android-helpers.sh.
+desktop/src/Umbrella.Wallet.Android/natives/
 # monero-wallet-rpc (~39 MB) — staged by scripts; the README is tracked.
 desktop/src/Umbrella.Wallet.App/monero/*
 !desktop/src/Umbrella.Wallet.App/monero/README.md

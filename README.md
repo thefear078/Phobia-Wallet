@@ -264,8 +264,9 @@ Portable mode matters if you don't want the wallet to be installed on the machin
 from the file you downloaded and keeps its data next to it.
 
 **On a phone:** the Android app is the same wallet — the same keys, signing code, coins and screens —
-laid out for a phone. Tor and the Monero service are bundled with Windows and Linux only for now; on the
-phone, [Orbot](https://orbot.app) carries the wallet's traffic over Tor instead. The
+laid out for a phone. From Beta 2 the APK carries Tor and the Monero service too — the projects' own
+Android builds, checked against their signed sums — so the phone has the same Tor switch, kill-switch and
+Monero balance as the desktop ([Orbot](https://orbot.app) works as well). The
 [Android guide](docs/guides/android.md) says how, and what else differs.
 
 <img src="docs/assets/screenshot-android-home-v410.png" width="32%" alt="Phobia on Android — home"/> <img src="docs/assets/screenshot-android-assets-v410.png" width="32%" alt="Phobia on Android — assets and market"/> <img src="docs/assets/screenshot-android-quick-v410.png" width="32%" alt="Phobia on Android — quick actions"/>
@@ -505,7 +506,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | ✅ Shipped | 18 chains, Tor + kill-switch with per-purpose circuits, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations · signed Windows and Android builds, SBOM, immutable release tags |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🧪 Beta | **Android** (APK; Tor through Orbot; the Monero service is desktop-only for now) |
+| 🧪 Beta | **Android** (APK with its own Tor and Monero service from Beta 2; checks for updates, Android installs them) |
 | 🗓 Planned | Tor bundled on Android · Decred sending · reproducible builds · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
