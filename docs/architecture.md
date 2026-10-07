@@ -99,7 +99,7 @@ Three things in the App project are worth knowing about before you edit anything
 | File | Rule |
 |---|---|
 | `Localization.cs` | Every user-facing string. Six languages, kept at parity by a test. |
-| `Theming.cs` | 19 palettes. A contrast test fails the build if a theme becomes unreadable. |
+| `Theming.cs` | 15 themes. A contrast test fails the build if a theme becomes unreadable. |
 | `GuideContent.cs` | The in-app guide, English + Ukrainian, kept at parity by a test. |
 
 XAML uses `x:CompileBindings`, so a typo in a binding is a **build error**, not a blank label at

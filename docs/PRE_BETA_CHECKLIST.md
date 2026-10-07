@@ -1,6 +1,6 @@
 # Pre-beta checklist
 
-**Last verified:** 2026-09-20 · Wallet [4.7.0](../VERSION)  
+**Last verified:** 2026-10-07 · Wallet [4.10.0-beta.1](../VERSION) (Beta 1)  
 **Repo:** [thefear078/Phobia-Wallet](https://github.com/thefear078/Phobia-Wallet)
 
 This replaces stale audits that still claim “missing LICENSE / CODEOWNERS / CoC / Dependabot”.
@@ -86,7 +86,18 @@ Do **not** call a public beta “fund-safe” until these are green:
 | **P0.7** | Send-path transport gate (Tor settings enforced) | ✅ refused at Review **and** Confirm when the live route is not the chosen one |
 | **P0.8** | Network isolation CI (Tor-only cannot clearnet) | ✅ own CI job; a loopback listener proves no socket is opened |
 | L.1–L.3, L.8 | First-run disclaimer + 18+ + ToS/Privacy accept in UI | ✅ shipped — gates create/import/unlock, versioned acceptance, 6 languages |
-| Tests | `dotnet test` green on CI | ✅ on `main` PRs |
+| P0.1–P0.5 | HD history judged against the whole address set; Tor/Monero signed-sum pins; published-release check; one capability matrix; zkSync sends | ✅ see [ROADMAP.md](ROADMAP.md) §3 |
+| Net | Tor circuits really separated per purpose, Monero service behind a login | ✅ 2026-10-07 — `SocksHandshakeTests`, `MoneroRpcLoginTests` |
+| Tests | `dotnet test` green on CI | ✅ on `main` PRs — 1,810 offline tests on 2026-10-07 |
+
+## E2. Release artifacts — check before telling anyone to download
+
+| Item | Status |
+|------|--------|
+| Windows installer + portable exe, Linux tar.gz, Android APK, `SHA256SUMS-<label>.txt` on the release page | ✅ Beta 1 — the sums match GitHub's own digests, every file has a build attestation |
+| Android APK signed with a **stable** key (repository secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`) | ❌ not set — each release APK has a one-off key, so an update needs uninstall + re-import |
+| Windows code signing (SmartScreen) | ❌ R.2 / R.6 — the exe is unsigned; checksums + attestations are the proof |
+| Tags point at the commit each release was built from | ⚠ on 2026-10-03 every tag was moved to `6a533d4` and every release page re-received Beta 1 files — see the readiness audit; restore before the next release |
 
 Track in [ROADMAP.md](ROADMAP.md) §3.
 
@@ -106,7 +117,8 @@ Track in [ROADMAP.md](ROADMAP.md) §3.
 |-------|-------------------------|
 | Docs / legal / GitHub hardening | **Yes** |
 | Philosophy consistency | **Yes** |
-| Fund-safety P0 code + first-run UI | **Yes** for P0.0 / P0.6–P0.8 and the first-run UI; P0.1–P0.5 (supply-chain pins, checksum CI, capability matrix) remain |
+| Fund-safety P0 code + first-run UI | **Yes** — P0.0–P0.8 and the first-run UI are done |
+| Release artifacts | **Yes for a GitHub beta**; a stable Android signing key and Windows code signing are still missing |
 | Store submission (Apple/Play/MS) | **Not yet** — the in-app disclaimers are done; a legal entity and code signing are not |
 
 **Private / friends beta** on GitHub Releases is fine **today** if testers accept experimental risk and never put more than they can lose — and if CONTACT / SECURITY channels are used for bugs.

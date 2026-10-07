@@ -4,25 +4,25 @@
 
 # Phobia Wallet
 
-**A self-custody desktop crypto wallet that never asks who you are.**
+**A self-custody crypto wallet for Windows, Linux and Android that never asks who you are.**
 
 No account. No email. No phone number. No KYC. No tracking. No fee on your transfers.
 
 <sub>an independent project by <b>the fear</b></sub>
 
 > **Umbrella Wallet is now Phobia Wallet.** Same code, same keys, same encrypted vault — a new name and
-> a new look. Installed copies update in place: each release also carries its files under the old
-> `UmbrellaWallet-` names, so copies from before the rename still find their update.
+> a new look. Phobia is in **beta**, and a stable copy (4.9.0 and older) is never offered a beta by
+> itself: install Beta 1 from its release page over the old copy, and it keeps the vault and settings.
 
 <br/>
 
 ![CI](https://github.com/thefear078/Phobia-Wallet/actions/workflows/ci.yml/badge.svg)
 ![CodeQL](https://github.com/thefear078/Phobia-Wallet/actions/workflows/codeql.yml/badge.svg)
 ![Security](https://github.com/thefear078/Phobia-Wallet/actions/workflows/security.yml/badge.svg)
-![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?label=release)
+![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release)
 ![License](https://img.shields.io/badge/license-MIT-4B3F86)
 ![Version](https://img.shields.io/badge/version-4.10.0--beta.1-2F6BEF)
-![Tests](https://img.shields.io/badge/tests-1190%2B%20offline-7DCF8F)
+![Tests](https://img.shields.io/badge/tests-1800%2B%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
@@ -83,14 +83,15 @@ Phobia-Wallet/
 
 ## What this is
 
-Phobia is a desktop wallet for Windows and Linux that holds your keys and nothing else of yours.
+Phobia is a wallet for Windows and Linux — with an Android beta built from the same code — that holds
+your keys and nothing else of yours.
 
 Your 24-word seed is generated on your machine, encrypted into a local vault with your password
 (Argon2id → AES-256-GCM), and never leaves the device. There is no server that knows you exist. There
 is no account to create, nothing to verify, and no way for us — or anyone holding this software — to
 freeze, seize, or recover your funds.
 
-It holds sixteen chains in one vault — plus the Ethereum networks that share your 0x address —
+It holds eighteen chains in one vault — plus the Ethereum networks that share your 0x address —
 including Monero as a **full** wallet rather than a receive-only stub, and ships Tor inside the binary
 so your balance lookups don't hand your IP address to a block explorer. What each chain can do today,
 receive, balance or send, is in [Coins](#coins) — nothing is listed as working before it does.
@@ -118,8 +119,10 @@ machine because no explorer can compute it for you.
 **Tor is bundled, not assumed.**
 One switch. The wallet starts its own Tor client on port 9250 (or the next free port) — separate from
 a Tor Browser you may already be running — and routes every balance lookup, price fetch and broadcast
-through it. There is also a kill-switch: when it's on, a request that cannot go through Tor does not go
-at all, and the wallet brings Tor up by itself on launch so that never leaves you offline.
+through it, each kind of request on a circuit of its own, so the exit that saw your address is not the
+one that sees you spend from it. There is also a kill-switch: when it's on, a request
+that cannot go through Tor does not go at all, and the wallet brings Tor up by itself on launch so that
+never leaves you offline. On Android, point it at Orbot — see [Phobia on Android](docs/guides/android.md).
 
 **The Security Center tells you the truth, not a promise.**
 It reads live settings and reports what is *actually* protecting the wallet right now. If Tor is off,
@@ -187,7 +190,7 @@ You pay the network's miner/validator fee and nothing else. See [What this costs
 The default look is **Phobia's midnight violet** — bold and quiet: a near-black page, charcoal cards,
 one violet accent, clean type, crystal mountains on the horizon and the large crystal on the balance card.
 Motion is Phobia's own and each piece has a switch: crystals floating up behind the page, glints
-twinkling across it, a sweep of light over the balance card. **21 themes**
+twinkling across it, a sweep of light over the balance card. **15 themes**
 share that design in their own colours — the glow behind the page, the mountains and both logos take the
 theme's hue — and the gold that was Umbrella's default is still there as **Honey gold**:
 
@@ -219,10 +222,10 @@ is the most common way people lose money.
 | XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | ✅ | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
 | Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | ✅ | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
 | Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | — | ✅ | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
-| NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | 🟡 | from your implicit account, to any `.near` name or implicit account |
-| Polkadot (DOT) | ✅ | ✅ | ✅ | — | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub |
-| Nano (XNO) | ✅ | ✅ | ✅ | ✅ | ✅ | restores in Ledger / Trust / Nault (BIP39); no fee — a send pockets what it needs first, with proof of work computed on your computer |
-| Decred (DCR) | ✅ | ✅ | — | ✅ | 🟡 | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); received from a swap, sending is not here yet |
+| NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | ✅ | from your implicit account, to any `.near` name or implicit account; swaps through the Exolix exchange |
+| Polkadot (DOT) | ✅ | ✅ | ✅ | — | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub; no route trades native DOT, so no swap |
+| Nano (XNO) | ✅ | ✅ | ✅ | ✅ | ✅ | restores in Ledger / Trust / Nault (BIP39); no fee — a send pockets what it needs first, with proof of work computed on your device |
+| Decred (DCR) | ✅ | ✅ | — | ✅ | ✅ | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); bought through a swap, sending is not here yet |
 | Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
 | zkSync Era (ETH) | ✅ | ✅ | ✅ | 🟡 | — | the gas comes from zkSync's own estimate, not Ethereum's 21,000 |
 
@@ -230,19 +233,20 @@ Plus the native coin of every major EVM network at the same `0x` address (BNB, M
 and ETH on Arbitrum / Optimism / Base), and NFTs listed by name and count with **no image fetch**, so
 viewing them never leaks your IP.
 
-Any coin swaps for any other, each on its own network, and always to your own address. The route is chosen
+Coins swap for one another, each on its own network, and always to your own address. The route is chosen
 by trust and named before you pay: **THORChain** first (nobody holds your coins), then **NEAR Intents** (a
 smart contract holds them for the swap and refunds you if it cannot be filled; +0.25% without a partner
-key), and the **Exolix** exchange only for Monero, Nano and Decred, which nothing decentralised reaches — it
-holds the coins for the minutes of the swap, and the screen says so in a warning colour. 🟡 in the table: a
-route exists but did not quote that coin when this was written.
+key), and the **Exolix** exchange last — the route for Monero, Nano, Decred and NEAR, which nothing
+decentralised reaches, and otherwise only when the other two cannot quote the pair. It holds the coins for
+the minutes of the swap, and the screen says so in a warning colour. 🟡 in the table: a route exists but
+did not quote that coin when this was written.
 
 ## Download
 
 <img src="docs/assets/logo-phobia.png" width="64" align="left" alt="" hspace="14"/>
 
 The current build is **Beta 1** — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1) has every file below. It is a
-pre-release, so GitHub’s “Latest” label on the right still points at 4.9.0; older builds are on the
+pre-release, so GitHub does not label it “Latest”; older builds are on the
 [releases page](https://github.com/thefear078/Phobia-Wallet/releases).
 This is the icon you will see once it is installed.
 
@@ -260,8 +264,9 @@ Portable mode matters if you don't want the wallet to be installed on the machin
 from the file you downloaded and keeps its data next to it.
 
 **On a phone:** the Android app is the same wallet — the same keys, signing code, coins and screens —
-laid out for a phone. Tor and the Monero service are bundled with Windows and Linux only for now; the
-[Android guide](docs/guides/android.md) says what that changes.
+laid out for a phone. Tor and the Monero service are bundled with Windows and Linux only for now; on the
+phone, [Orbot](https://orbot.app) carries the wallet's traffic over Tor instead. The
+[Android guide](docs/guides/android.md) says how, and what else differs.
 
 <img src="docs/assets/screenshot-android-home-v410.png" width="32%" alt="Phobia on Android — home"/> <img src="docs/assets/screenshot-android-assets-v410.png" width="32%" alt="Phobia on Android — assets and market"/> <img src="docs/assets/screenshot-android-quick-v410.png" width="32%" alt="Phobia on Android — quick actions"/>
 
@@ -293,7 +298,9 @@ build is deterministic enough that you can compare your own binary against the p
 4. Send a **small test amount** to any new address first. A blockchain transfer is final.
 
 While your seed phrase or Monero keys are on screen, the window is excluded from screenshots and
-screen sharing. A camera pointed at the screen still works, so reveal them alone.
+screen sharing on Windows, and from screenshots, recording and the recent-apps preview on Android. Linux
+has no such switch for an app to throw, and the Security Center says so. A camera pointed at the screen
+still works everywhere, so reveal them alone.
 
 ## Architecture
 
@@ -303,7 +310,7 @@ flowchart TB
         V["Views (XAML)"]
         VM["MainViewModel (partial classes)"]
         LOC["Localization · 6 languages"]
-        THEME["Theming · 19 palettes"]
+        THEME["Theming · 15 themes"]
     end
 
     subgraph CORE["Umbrella.Wallet.Core — pure, offline, testable"]
@@ -372,7 +379,7 @@ desktop/
       Views/                         XAML
       ViewModels/                    MainViewModel, split by feature
       Localization.cs                every user-facing string, 6 languages
-      Theming.cs                     19 palettes
+      Theming.cs                     15 themes
       GuideContent.cs                the in-app guide
   tests/
     Umbrella.Wallet.Core.Tests/      about 1,800 offline tests
@@ -398,7 +405,7 @@ dotnet run --project desktop/src/Umbrella.Wallet.App
 
 ```bash
 # the full offline test suite — no network required
-dotnet test desktop/Umbrella.Wallet.sln -c Release --filter 'FullyQualifiedName!~LiveExplorer'
+dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"
 ```
 
 Producing installers, the portable build and checksums is documented in
@@ -406,7 +413,7 @@ Producing installers, the portable build and checksums is documented in
 
 ## Tests
 
-More than 1,190 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there
+More than 1,800 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there
 for a badge — several classes of them exist because the alternative is losing money:
 
 - **Derivation** is pinned byte-for-byte to official test vectors and to the reference libraries
@@ -461,10 +468,14 @@ The short version:
 - Seed generated with the OS CSPRNG, 256-bit entropy, BIP39.
 - Vault: Argon2id (m=64 MiB, t=4, p=2) → AES-256-GCM with versioned associated data.
 - Keys are decrypted into memory only for the moment they are used, then zeroed.
-- Seed and key screens set `WDA_EXCLUDEFROMCAPTURE`, so screenshots and screen sharing see nothing.
+- Seed and key screens set `WDA_EXCLUDEFROMCAPTURE` on Windows and `FLAG_SECURE` on Android, so
+  screenshots and screen sharing see nothing.
 - Auto-lock on idle and on minimise; `Ctrl+L` locks instantly.
 - Every network call goes through one Tor-aware client; the kill-switch makes "no Tor" mean "no
-  request", not "quietly direct".
+  request", not "quietly direct". Over Tor, each purpose (address lookups, broadcasts, prices, swaps…)
+  gets its own circuit, and names are resolved by Tor, never by this machine's DNS.
+- The local Monero service runs with a random login only this user can read, so neither a web page nor
+  another account on the machine can ask it to send.
 
 The long version, including the threat model and what Phobia explicitly does **not** protect you
 from, is in **[SECURITY.md](SECURITY.md)**.
@@ -479,10 +490,10 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 
 | | |
 |---|---|
-| ✅ Shipped | 11+ chains, Tor + kill-switch, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
+| ✅ Shipped | 18 chains, Tor + kill-switch with per-purpose circuits, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🧪 Beta | **Android** (APK; Tor and the Monero service are desktop-only for now) |
-| 🗓 Planned | Tor on Android · reproducible builds · external security audit |
+| 🧪 Beta | **Android** (APK; Tor through Orbot; the Monero service is desktop-only for now) |
+| 🗓 Planned | Tor bundled on Android · Decred sending · reproducible builds · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation

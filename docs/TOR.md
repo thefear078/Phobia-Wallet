@@ -1,52 +1,99 @@
 # Phobia Wallet over Tor
 
-Phobia is anonymous-first: the web client makes **zero third-party requests**
-for ordinary visitors (Telegram's script loads only inside the Telegram client,
-WalletConnect only when the user links a wallet). This document covers running
-the full stack as a Tor v3 hidden service.
+How the wallet reaches the network without handing your IP address to every explorer it asks — and
+exactly where that protection ends. The code is `PublicHttp` (`desktop/src/Umbrella.Wallet.Infrastructure/
+Network/PublicChainClients.cs`) and `EmbeddedTorService`; the tests named below pin each claim.
 
-## Quick start (self-hosted onion)
+## The bundled Tor (Windows and Linux)
 
-```bash
-cp .env.tor.example .env.tor          # fill in real secrets
-docker compose -f docker-compose.tor.yml --env-file .env.tor up -d --build
-docker compose -f docker-compose.tor.yml exec tor cat /var/lib/tor/umbrella/hostname
-```
+- The Windows and Linux builds ship Tor itself, taken from the Tor Browser bundle at a pinned version and
+  checked against the Tor Project's **signed** checksums before it is packaged (`desktop/scripts/
+  fetch-tor.ps1`, `publish-linux.sh`; see [BUILD_VERIFY.md](BUILD_VERIFY.md)).
+- **Settings → Privacy → Tor** starts it as a child process on `127.0.0.1:9250` (or the next free port up to
+  9259) — never 9050/9150, so a Tor Browser or system Tor you run is left alone. Its torrc is written by
+  the wallet: `ClientOnly 1`, `AvoidDiskWrites 1`, a data directory inside the wallet's own data folder.
+- Tor is told which process owns it (`__OwningControllerProcess`), so it exits with the wallet; a copy
+  left behind by a crash is found by its pid file and ended at the next start.
+- Turned on once, Tor comes back by itself at the next launch.
 
-The printed `…onion` address serves the whole product: the web container
-proxies `/auth`, `/p2p`, `/rates`, … to the API (see `src/server.ts`), so one
-`HiddenServicePort 80 web:3000` covers app + API. Keys persist in the
-`umbra_tor_keys` volume — back it up; it _is_ your address.
+## The kill-switch (Tor-only)
 
-## What the app does differently on .onion
+**Settings → Privacy → Tor-only (block clearnet).** With it on, a request that cannot go through the
+proxy is refused inside the HTTP client's connect step — **before DNS, before a socket** — so a dropped or
+disabled Tor means "no request", never "quietly direct". Turning it on also starts Tor.
 
-| Concern      | Behaviour                                                                                                                                |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Privacy mode | Auto-enabled when `hostname` ends in `.onion` (`src/lib/privacyMode.ts`); users elsewhere can toggle it in Settings → Privacy (Tor) mode |
-| Telegram     | Login button hidden; `telegram-web-app.js` never injected                                                                                |
-| CSP          | `upgrade-insecure-requests` dropped (onion speaks HTTP inside Tor)                                                                       |
-| HSTS         | Not sent on onion responses                                                                                                              |
-| Cookies      | `COOKIE_SECURE=false` in the onion compose — refresh cookie works over onion-HTTP                                                        |
-| Rates        | Always proxied through our API (`/rates`), CoinGecko is never called from the client                                                     |
+- `NetworkIsolationTests` puts a listener on loopback and proves that with the switch armed nothing
+  reaches it, and that without the switch the same client does (so the test measures the switch).
+- No `HttpClient` may be built anywhere but `PublicHttp` (one named exception, the loopback Monero
+  client) — a test scans the source, because a client built elsewhere would not obey the switch.
+- Sends are gated too: the Review and the Confirm step both refuse when the live route is not the one
+  chosen in Settings (`SendTransportGate`).
 
-## Advertising the mirror from clearnet
+## Separate circuits
 
-On the **clearnet** web deployment set:
+Tor puts two connections on different circuits when their SOCKS5 username/password differ. The wallet
+gives Tor a different username for every **purpose** — chain data, broadcasts, prices, swaps, maintenance,
+a connected exchange account, PayJoin — so the exit relay that saw the wallet ask about an address is not
+the one that sees the transaction spending it.
 
-```
-ONION_LOCATION=http://<your-address>.onion
-```
+Destinations always go to Tor as **names**: Tor resolves them at the exit, and this machine's DNS server
+never hears which explorers the wallet uses.
 
-Tor Browser shows a ".onion available" pill via the `Onion-Location` header
-(sent by `src/server.ts` on non-onion HTML responses).
+`SocksHandshakeTests` runs a SOCKS5 server on loopback and reads all of this off the wire. (Before
+4.10.0-beta.2 the circuit label was written where .NET's SOCKS client never reads it, and every request
+reached Tor with no credentials — one circuit for everything. The test exists so that cannot recur.)
 
-## Hardening notes
+Not per server: a circuit for every explorer was built and measured — a fresh wallet asks some thirty
+servers at once, and Tor left the Bitcoin-family balance scans unfinished after four minutes, where one
+circuit per purpose read every chain. Within a purpose, then, one exit at a time carries the lookups to
+different explorers.
 
-- The tor image is built locally from `alpine` (`docker/tor/Dockerfile`) — no
-  third-party registry trust required.
-- Consider `HiddenServiceNonAnonymousMode`/single-hop only if you do NOT need
-  server-location anonymity (faster, weaker).
-- For production add `HiddenServicePoWDefensesEnabled 1` (tor ≥ 0.4.8) to the
-  torrc to resist introduction-flood DoS.
-- The Telegram bot is a clearnet service by nature; leave `TELEGRAM_BOT_TOKEN`
-  empty in the onion deployment unless you accept that trade-off.
+## Verify it
+
+**Settings → Privacy → Verify Tor** asks `check.torproject.org` through the wallet's own route and says
+whether the exit really is Tor — or, with the kill-switch armed and Tor down, that the request was
+blocked. The connection chip in the sidebar (TOR / PROXY / DIRECT / BLOCKED) reads the same live state
+the send gate uses.
+
+## Your own proxy instead
+
+**Settings → Privacy → Custom proxy (SOCKS5)** routes everything through a proxy you run — another Tor,
+an SSH tunnel, a VPN's SOCKS port. It and the bundled Tor are mutually exclusive.
+
+- `host:port`, `socks5://` and `socks5h://` all mean SOCKS5 with the name resolved by the proxy.
+- `socks4://` is used as **SOCKS4a**: plain SOCKS4 cannot carry a name, so .NET would look the server up
+  in this machine's DNS first.
+- Anything that is not SOCKS (`http://…`) is refused rather than guessed.
+
+## Android: Orbot
+
+The APK has no bundled Tor yet. Install [Orbot](https://orbot.app), start it, and set the custom proxy to
+`127.0.0.1:9050`; then turn on Tor-only. The phone keeps the kill-switch armed across restarts while the
+proxy is set (it is switched off at start-up only when there is no proxy, since it would then block
+everything). The same per-purpose circuits apply. Step by step:
+[Phobia on Android](guides/android.md#tor-on-the-phone-through-orbot).
+
+## Monero
+
+Monero's balance and sends go through the local `monero-wallet-rpc`, which talks to a Monero node:
+
+- With Tor (or your proxy) on, the daemon is started with `--proxy`, so the node sees an exit, not you.
+- With the kill-switch armed and no proxy, the daemon is **not started at all**.
+- A `.onion` node is only ever used over Tor and is never swapped for a clearnet one.
+- The daemon listens on loopback only and runs with a random login it writes to a file only your account
+  can read; a web page or another account on the machine gets "401" and nothing else
+  (`MoneroRpcLoginTests`).
+
+## Where this ends
+
+- Tor hides **who** is asking, not **what** is asked. An explorer still sees the addresses it is asked
+  about; on a transparent chain that is the whole point of asking. Choosing which server answers for each
+  chain (Settings → Privacy) is the other half — see [PRIVACY.md](../PRIVACY.md).
+- Timing and volume are observable. A clearnet server over Tor still has an exit in front of it; a
+  `.onion` server does not.
+- Every Phobia request carries the same User-Agent, so a server can tell it is talking to this wallet.
+- Without Tor or a proxy, every server sees your IP address — the Security Center says so plainly.
+
+---
+
+📖 Back to [Documentation Index](INDEX.md) · [Threat model](../THREAT_MODEL.md) · [Privacy](../PRIVACY.md)
