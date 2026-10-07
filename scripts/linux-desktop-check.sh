@@ -5,7 +5,7 @@
 #   - with Tor on, its bundled Tor starts and carries traffic: check.torproject.org, asked through the
 #     wallet's own SOCKS port, says the request came from Tor.
 #
-# Needs: xvfb, imagemagick (import), curl. Used by .github/workflows/device-check.yml.
+# Needs: xvfb, curl; imagemagick (import) for screenshots if present. Used by .github/workflows/device-check.yml.
 set -euo pipefail
 
 OUT="${OUT:-device-check}"
@@ -18,6 +18,13 @@ cat > "${DATA}/ui-settings.json" <<'JSON'
 {"Language":"en","TorEnabled":true,"TorOnlyMode":true,"AcceptedTermsVersion":1}
 JSON
 
+# A screenshot when ImageMagick is there; the proof below does not depend on it.
+shot() {
+    if command -v import > /dev/null; then import -window root "$1" || true
+    else echo "(no screenshot $1: ImageMagick not installed)"; fi
+}
+
+command -v Xvfb > /dev/null || { echo "::error::Xvfb not found"; exit 1; }
 export DISPLAY=:99
 Xvfb :99 -screen 0 1400x900x24 > /dev/null 2>&1 &
 XVFB=$!
@@ -29,7 +36,7 @@ APP=$!
 
 sleep 15
 kill -0 "${APP}" 2>/dev/null || { cat "${OUT}/linux-stdout.txt"; echo "::error::the Linux build exited at start"; exit 1; }
-import -window root "${OUT}/linux-first-screen.png"
+shot "${OUT}/linux-first-screen.png"
 
 answer=""
 for i in $(seq 1 48); do   # up to four minutes for a cold Tor bootstrap
@@ -39,7 +46,7 @@ for i in $(seq 1 48); do   # up to four minutes for a cold Tor bootstrap
     done
     sleep 5
 done
-import -window root "${OUT}/linux-after-tor.png" || true
+shot "${OUT}/linux-after-tor.png"
 ps -eo pid,args | grep -E "[t]or/tor|[p]hobia-wallet" > "${OUT}/linux-processes.txt" || true
 cat "${OUT}/linux-processes.txt"
 

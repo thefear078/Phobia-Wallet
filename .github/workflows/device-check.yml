@@ -91,16 +91,21 @@ jobs:
         run: |
           chmod +x desktop/scripts/publish-linux.sh
           ( cd desktop && ./scripts/publish-linux.sh )
-      # Xvfb and ImageMagick are usually on the runner already; installed only if missing, without the
-      # man-db rebuild that made a plain apt-get install sit for the whole job.
+      # Xvfb is on the runner image; ImageMagick (screenshots only) usually is not. Whatever is missing is
+      # installed with every apt call time-boxed: twice apt hung for the whole step on a busy mirror. If it
+      # still fails the run goes on - without screenshots, or failing clearly at "Xvfb not found".
       - name: Virtual display
-        timeout-minutes: 10
+        timeout-minutes: 8
+        continue-on-error: true
         run: |
-          if command -v Xvfb > /dev/null && command -v import > /dev/null; then exit 0; fi
+          need=""
+          command -v Xvfb > /dev/null || need="$need xvfb"
+          command -v import > /dev/null || need="$need imagemagick"
+          [ -n "$need" ] || exit 0
           echo "set man-db/auto-update false" | sudo debconf-communicate > /dev/null 2>&1 || true
           sudo rm -f /var/lib/man-db/auto-update
-          sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends xvfb imagemagick libice6 libsm6 libfontconfig1 > /dev/null
+          sudo timeout 240 apt-get -o DPkg::Lock::Timeout=60 -o Acquire::Retries=3 update -qq || true
+          sudo DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o DPkg::Lock::Timeout=60 install -y -qq --no-install-recommends $need libice6 libsm6 libfontconfig1 > /dev/null
       - name: Run it
         run: bash scripts/linux-desktop-check.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
