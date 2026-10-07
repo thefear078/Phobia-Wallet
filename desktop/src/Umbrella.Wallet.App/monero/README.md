@@ -23,7 +23,7 @@ pwsh desktop/scripts/fetch-monero.ps1
 Downloads the official CLI bundle from `downloads.getmonero.org`, extracts just
 `monero-wallet-rpc.exe`, and verifies it runs.
 
-Verified with **Monero 'Fluorine Fermi' v0.18.5.1**.
+Verified with **Monero 'Fluorine Fermi' v0.18.5.3**.
 
 ## How it is used
 

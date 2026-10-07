@@ -32,10 +32,10 @@ project’s own signed hashes file — never a random mirror.
 | | |
 |---|---|
 | Component | `monero-wallet-rpc.exe` (from the Windows x64 CLI archive) |
-| Version | 0.18.5.1 |
-| Archive | `monero-win-x64-v0.18.5.1.zip` |
-| Source URL | https://downloads.getmonero.org/cli/monero-win-x64-v0.18.5.1.zip |
-| SHA-256 | `cf2ae8273977697d9ef2031c7337b781e6e5936578f602444b2990a173a2437d` |
+| Version | 0.18.5.3 |
+| Archive | `monero-win-x64-v0.18.5.3.zip` |
+| Source URL | https://downloads.getmonero.org/cli/monero-win-x64-v0.18.5.3.zip |
+| SHA-256 | `f58f8f803f0141c77f40f327c516e4721f61d112084eb3d6644028cb9680b82a` |
 | Hash source | https://www.getmonero.org/downloads/hashes.txt (clearsigned) |
 | Signing key | `81AC591FE9C4B65C5806AFC3F0AF4D462A0BDF92` — binaryFate ([in-repo copy](https://raw.githubusercontent.com/monero-project/monero/master/utils/gpg_keys/binaryfate.asc)) |
 | License | BSD 3-Clause (Monero project upstream `LICENSE`) |
@@ -44,7 +44,7 @@ project’s own signed hashes file — never a random mirror.
 
 ```powershell
 Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.24.tar.gz
-Get-FileHash -Algorithm SHA256 .\monero-win-x64-v0.18.5.1.zip
+Get-FileHash -Algorithm SHA256 .\monero-win-x64-v0.18.5.3.zip
 ```
 
 For the strongest guarantee, verify the upstream hashes file’s PGP signature before trusting the hash.
