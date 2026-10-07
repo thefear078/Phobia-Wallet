@@ -52,7 +52,7 @@ whose secrets hold any other key, or no key, fails instead of publishing.
 **Windows** (PowerShell):
 
 ```powershell
-Get-AuthenticodeSignature .\PhobiaWallet-Setup-Beta-2.exe |
+Get-AuthenticodeSignature .\PhobiaWallet-Setup-Beta-3.exe |
   Format-List Status, @{n='Thumbprint';e={$_.SignerCertificate.Thumbprint}}, @{n='Timestamped';e={[bool]$_.TimeStamperCertificate}}
 ```
 
@@ -65,7 +65,7 @@ developer) will replace it; this page will say so, with the new thumbprint.
 **Android** (any machine with the Android SDK's build-tools):
 
 ```bash
-apksigner verify --print-certs PhobiaWallet-Beta-2-android.apk
+apksigner verify --print-certs PhobiaWallet-Beta-3-android.apk
 ```
 
 `Signer #1 certificate SHA-256 digest` must equal the fingerprint above. Android itself enforces it from
@@ -78,7 +78,7 @@ transparency log). It states that those exact bytes came out of this repository'
 specific commit — checked against the log, not against anything this project says.
 
 ```bash
-gh attestation verify PhobiaWallet-Setup-Beta-2.exe --repo thefear078/Phobia-Wallet
+gh attestation verify PhobiaWallet-Setup-Beta-3.exe --repo thefear078/Phobia-Wallet
 ```
 
 Each release also carries `PhobiaWallet-<label>-sbom.spdx.json`: every package that release builds from,

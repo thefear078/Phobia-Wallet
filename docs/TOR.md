@@ -40,7 +40,7 @@ Destinations always go to Tor as **names**: Tor resolves them at the exit, and t
 never hears which explorers the wallet uses.
 
 `SocksHandshakeTests` runs a SOCKS5 server on loopback and reads all of this off the wire. (Before
-4.10.0-beta.2 the circuit label was written where .NET's SOCKS client never reads it, and every request
+4.10.0-beta.3 the circuit label was written where .NET's SOCKS client never reads it, and every request
 reached Tor with no credentials — one circuit for everything. The test exists so that cannot recur.)
 
 Not per server: a circuit for every explorer was built and measured — a fresh wallet asks some thirty
@@ -67,7 +67,7 @@ an SSH tunnel, a VPN's SOCKS port. It and the bundled Tor are mutually exclusive
 
 ## Android
 
-From Beta 2 the APK carries Tor: the Tor Project's own Android build (`tor-expert-bundle-android-*`,
+From Beta 3 the APK carries Tor: the Tor Project's own Android build (`tor-expert-bundle-android-*`,
 checked against the same signed sums as the desktop's), shipped as `libTor.so` in the native-library
 folder — the one place Android lets an app run a program from, and the way Tor Browser for Android runs
 its own Tor. Everything above applies unchanged: the same switch, kill-switch, port range and circuits.
