@@ -39,27 +39,27 @@ public static class ChainCatalog
                 PrivacyNote: "Public ledger — use Tor and a fresh address per receive to reduce linking."),
             new ChainInfo(
                 ChainId.Tron, "TRX", "TRON", ChainSupportLevel.Supported, "BIP44", "m/44'/195'/0'/0/{index}",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: true, Maturity: ChainMaturity.Stable,
                 PrivacyNote: "Public ledger; a new account burns TRX for energy on its first USDT transfer."),
             new ChainInfo(
                 ChainId.Sol, "SOL", "Solana", ChainSupportLevel.Supported, "SLIP-0010 ed25519", "m/44'/501'/0'/{index}'",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: true, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger; history is best-effort via the public RPC (rate-limited)."),
             new ChainInfo(
                 ChainId.Ton, "TON", "TON", ChainSupportLevel.Supported, "SLIP-0010 ed25519 · wallet v4R2", "m/44'/607'/0'",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger; use a fresh flow per counterparty to reduce linking."),
             new ChainInfo(
                 ChainId.Ada, "ADA", "Cardano", ChainSupportLevel.Supported, "Icarus CIP-1852 · BIP32-Ed25519", "m/1852'/1815'/0'/0/0",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger; a reused address links your activity."),
             new ChainInfo(
                 ChainId.Xmr, "XMR", "Monero", ChainSupportLevel.ReceiveOnly, "Monero ed25519 · restore-from-keys", "umbrella-monero-v1",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Private by default. Send and balance need the bundled Monero service running."),
             // Bitcoin Cash — a UTXO chain like BTC/LTC/DOGE (BIP44, P2PKH, CashAddr). Send is a real UTXO
@@ -67,11 +67,11 @@ public static class ChainCatalog
             // NBitcoin's SIGHASH_FORKID — the FORKID signature + change path are pinned by tests. Newly
             // enabled: verify with a small amount before trusting. HasHistory: on — the Activity feed pulls
             // real BCH history over Haskoin (transactions/full) across every issued address, same net-effect
-            // parse as BTC/LTC, pinned by ParseHaskoinFull tests. CanSwap: BCH is a swap TARGET via
-            // THORChain (in ReceivableTo), but not a source, so this stays false.
+            // parse as BTC/LTC, pinned by ParseHaskoinFull tests. Swaps both ways through THORChain, the
+            // memo riding as an OP_RETURN.
             new ChainInfo(
                 ChainId.Bch, "BCH", "Bitcoin Cash", ChainSupportLevel.Supported, "BIP44", "m/44'/145'/0'/0/{index}",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger — use Tor and a fresh address per receive to reduce linking."),
             // Zcash — TRANSPARENT (t-addr) only. A t-addr is a normal P2PKH (BIP44 coinType 133) with
@@ -83,7 +83,7 @@ public static class ChainCatalog
             // balance's own sources (Blockchair, then 3xpl), pinned by CoinHistoryTests.
             new ChainInfo(
                 ChainId.Zec, "ZEC", "Zcash", ChainSupportLevel.Supported, "BIP44 · transparent", "m/44'/133'/0'/0/{index}",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Transparent address — this is Zcash's PUBLIC ledger, not a shielded z-address. Use Tor and a fresh address per receive."),
             // XRP Ledger — receive and balance (roadmap N.4). BIP44 coin type 144, secp256k1, the same
@@ -93,7 +93,7 @@ public static class ChainCatalog
             // destination tag, pinned byte-for-byte to xrpl.js (XrpSendTests).
             new ChainInfo(
                 ChainId.Xrp, "XRP", "XRP Ledger", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/144'/0'/0/0",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. An XRP address only becomes an account once it has received the network's reserve, which then stays locked while the account exists — a smaller first payment is refused by the network."),
             // Stellar — receive, balance and send (roadmap N.5). SEP-0005: SLIP-0010 ed25519 at
@@ -103,7 +103,7 @@ public static class ChainCatalog
             // One account per seed for the same reason as XRP: an account locks a minimum balance.
             new ChainInfo(
                 ChainId.Xlm, "XLM", "Stellar", ChainSupportLevel.Supported, "SEP-0005 · ed25519", "m/44'/148'/0'",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. A Stellar address only becomes an account once someone funds it with the network's minimum balance, which stays locked while the account exists."),
             // Cosmos Hub — receive, balance and send (roadmap N.6). BIP44 coin type 118, secp256k1, the
@@ -111,7 +111,7 @@ public static class ChainCatalog
             // sends one bank MsgSend, pinned byte-for-byte to cosmjs's signing vectors (CosmosSendTests).
             new ChainInfo(
                 ChainId.Atom, "ATOM", "Cosmos Hub", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/118'/0'/0/0",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. The balance shown is available ATOM only — ATOM you have staked with a validator is not included."),
             // NEAR — receive and balance (roadmap N.7). SLIP-0010 ed25519 at m/44'/397'/0', the path
@@ -119,7 +119,7 @@ public static class ChainCatalog
             // account — the hex of the public key — so nothing has to be registered to receive.
             new ChainInfo(
                 ChainId.Near, "NEAR", "NEAR Protocol", ChainSupportLevel.Supported, "SLIP-0010 · ed25519", "m/44'/397'/0'",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. This is your implicit account — the 64-character id is your public key. Named accounts (you.near) and NEAR staked with a pool are not shown."),
             // Polkadot — receive, balance and send (roadmap N.8). substrate-bip39 + sr25519, the scheme of
@@ -140,7 +140,7 @@ public static class ChainCatalog
             // checked against BLAKE2b (NanoBlockTests). Verify a first send with a small amount.
             new ChainInfo(
                 ChainId.Nano, "XNO", "Nano", ChainSupportLevel.Supported, "SLIP-0010 · ed25519-blake2b", "m/44'/165'/0'",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. Incoming XNO stays \"receivable\" until a receive block pockets it; the balance counts it, and a send pockets what it needs first. No fees: each block carries a few seconds of proof of work computed on this computer."),
             // Decred — receive and balance. BIP44 m/44'/42'/0'/0/0 (Trust Wallet, Ledger, Exodus); a
@@ -151,7 +151,7 @@ public static class ChainCatalog
             // (dcrwallet / Decrediton) uses a different seed scheme and will NOT show this account.
             new ChainInfo(
                 ChainId.Dcr, "DCR", "Decred", ChainSupportLevel.Supported, "BIP44 · secp256k1 · BLAKE-256", "m/44'/42'/0'/0/{index}",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
+                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. This is the BIP44 account Trust Wallet, Ledger and Exodus use — Decred's own wallet (Decrediton) derives differently and will not show it. Sending is not available here yet."),
         ];

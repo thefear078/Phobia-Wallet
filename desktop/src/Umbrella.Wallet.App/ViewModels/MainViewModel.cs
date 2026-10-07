@@ -638,7 +638,9 @@ public partial class MainViewModel : ViewModelBase
             if (IsUnlocked) PushActivity("Security", "Tor-only", value ? "on" : "off",
                 value ? "clearnet blocked" : "clearnet allowed", "now");
             // Turning it on with Tor still off would block everything until Tor connects — so start Tor.
-            if (value && !TorEnabled && !CustomProxyEnabled)
+            // Not on the phone, which has no Tor to start: there the switch blocks until the user's own
+            // SOCKS proxy (Orbot) is set, and the chip says so instead of claiming Tor is on.
+            if (value && !TorEnabled && !CustomProxyEnabled && HasBundledServices)
             {
                 TorEnabled = true;
                 if (StartTorAutomatically) _ = ApplyTorAsync();
@@ -649,10 +651,14 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>One-line explanation shown under the Tor-only toggle.</summary>
-    public string TorOnlyStatus => TorOnly
-        ? (TorEnabled ? Loc.Instance["priv.torOnlyOn"] : Loc.Instance["priv.torOnlyBlocked"])
-        : Loc.Instance["priv.torOnlyOff"];
+    /// <summary>One-line explanation shown under the Tor-only toggle. A proxy of the user's own (Orbot on
+    /// the phone) carries the traffic as surely as the bundled Tor, and is named as such rather than as
+    /// "blocked until Tor connects".</summary>
+    public string TorOnlyStatus => !TorOnly
+        ? Loc.Instance["priv.torOnlyOff"]
+        : TorEnabled ? Loc.Instance["priv.torOnlyOn"]
+        : EffectiveCustomProxy() is not null ? Loc.Instance["priv.torOnlyProxy"]
+        : Loc.Instance["priv.torOnlyBlocked"];
 
     // ---- Verify Tor: prove the wallet's traffic really exits through Tor (read-only check) ----
     [ObservableProperty] private string _torCheckStatus = string.Empty;
@@ -702,18 +708,9 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Normalises "host:port" or a socks URI into a canonical socks URI, or null if invalid.</summary>
-    private static string? NormalizeProxyUri(string? raw)
-    {
-        var s = (raw ?? string.Empty).Trim();
-        if (s.Length == 0) return null;
-        if (!s.Contains("://", StringComparison.Ordinal)) s = "socks5://" + s;
-        if (!Uri.TryCreate(s, UriKind.Absolute, out var uri)) return null;
-        var scheme = uri.Scheme.ToLowerInvariant();
-        if (scheme is not ("socks5" or "socks5h" or "socks4" or "socks4a")) return null;
-        if (uri.Port <= 0 || string.IsNullOrEmpty(uri.Host)) return null;
-        return $"{scheme}://{uri.Host}:{uri.Port}";
-    }
+    /// <summary>Normalises "host:port" or a socks URI into one that resolves names at the proxy, or null
+    /// if invalid (see <see cref="PublicHttp.NormalizeProxy"/>).</summary>
+    private static string? NormalizeProxyUri(string? raw) => PublicHttp.NormalizeProxy(raw);
 
     /// <summary>The custom proxy URI if it's enabled and valid, otherwise null.</summary>
     private string? EffectiveCustomProxy() =>
@@ -722,6 +719,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void ApplyCustomProxy()
     {
+        OnPropertyChanged(nameof(TorOnlyStatus));   // it names the proxy as the route when there is one
         if (!CustomProxyEnabled)
         {
             // Hand routing back to Tor (its proxy if on, else direct).
@@ -1405,6 +1403,17 @@ public partial class MainViewModel : ViewModelBase
         BuildGuide();
         LoadProfileImages();
 
+        // The phone has no bundled Tor, so "Tor on" cannot be honoured there. The kill-switch can: with
+        // the user's own SOCKS proxy (Orbot) it stays armed — it is exactly what keeps the wallet from
+        // going direct when that proxy is switched off. Without one it would refuse every request, so it
+        // is disarmed. Settled BEFORE the switch is applied below: disarming it afterwards left the
+        // transport refusing everything for the session while the setting already read "off".
+        if (!HasBundledServices && (_uiSettings.TorOnlyMode || _uiSettings.TorEnabled))
+        {
+            _uiSettings.TorEnabled = false;
+            if (EffectiveCustomProxy() is null) _uiSettings.TorOnlyMode = false;
+            _uiSettings.Save();
+        }
         // Apply saved privacy routing before any network call goes out.
         PublicHttp.SetIpPreference(PublicHttp.ParseIpMode(_uiSettings.IpMode));
         // Tor-only kill-switch first: if it was left on, clearnet stays blocked until Tor connects, so
@@ -1418,13 +1427,6 @@ public partial class MainViewModel : ViewModelBase
         LoadMoneroNodeChoice();
         BuildCounterparties();   // who this wallet talks to, from the catalog the tests pin
         Activity.CollectionChanged += (_, _) => NotifyUnreadActivity();
-        // Tor-only without a Tor to route through would refuse every request; the phone has none.
-        if (!HasBundledServices && (_uiSettings.TorOnlyMode || _uiSettings.TorEnabled))
-        {
-            _uiSettings.TorOnlyMode = false;
-            _uiSettings.TorEnabled = false;
-            _uiSettings.Save();
-        }
         // Connect lists what is watched and connected the moment either list changes.
         WatchAddresses.CollectionChanged += (_, _) => RebuildConnectRows();
         Exchanges.CollectionChanged += (_, _) => RebuildConnectRows();
@@ -1474,8 +1476,9 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public static bool StartTorAutomatically { get; set; } = !OperatingSystem.IsAndroid();
 
-    /// <summary>The bundled Tor and Monero programs ship with the Windows and Linux builds only.</summary>
-    public static bool HasBundledServices => !OperatingSystem.IsAndroid();
+    /// <summary>The bundled Tor and Monero programs ship with the Windows and Linux builds only. Settable
+    /// so the suite can run the phone's start-up rules on a desktop.</summary>
+    public static bool HasBundledServices { get; set; } = !OperatingSystem.IsAndroid();
 
     /// <summary>
     /// Whether a new view model reads the currency rate (and then rebuilds the asset list) in the

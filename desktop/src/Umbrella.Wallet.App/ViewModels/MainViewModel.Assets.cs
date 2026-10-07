@@ -181,6 +181,28 @@ public partial class MainViewModel
         if (option is not null) SelectedSendAsset = option;
     }
 
+    /// <summary>Swap this exact coin — opens Swap paying with it, or, for a coin this wallet receives only
+    /// through a swap (Decred), buying it with the first coin that can.</summary>
+    [RelayCommand]
+    private void AssetSwap()
+    {
+        if (Umbrella.Wallet.Infrastructure.Network.SwapCatalog.Find(AssetSymbol) is { } asset)
+        {
+            RebuildSwapOptions();
+            if (SwapFromOptions.Contains(asset))
+            {
+                SwapFromSymbol = asset.Key;
+            }
+            else if (SwapFromOptions.FirstOrDefault(from =>
+                         Umbrella.Wallet.Infrastructure.Network.SwapCatalog.CanSwap(from, asset)) is { } payer)
+            {
+                SwapFromSymbol = payer.Key;
+                if (SwapToOptions.Contains(asset)) SwapToSymbol = asset.Key;
+            }
+        }
+        SelectSection("Swap");
+    }
+
     /// <summary>Opens this coin's chart on the Market page.</summary>
     [RelayCommand]
     private async Task AssetChartAsync() => await OpenAssetChartAsync(AssetSymbol);
