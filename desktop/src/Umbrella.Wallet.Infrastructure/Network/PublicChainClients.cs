@@ -88,29 +88,28 @@ public static class PublicHttp
         var proxy = ActiveProxy;
         if (string.IsNullOrWhiteSpace(proxy)) return _shared;
 
-        return Isolated.GetOrAdd(purpose, p => Build(IsolatedProxyUri(proxy!, p), _requireProxy));
+        return Isolated.GetOrAdd(purpose, p => Build(proxy, _requireProxy, p.ToString().ToLowerInvariant()));
     }
 
     /// <summary>
-    /// The proxy URI with per-purpose SOCKS5 credentials. Tor treats a distinct username/password as
-    /// a distinct circuit; the values are fixed labels, not secrets, and never leave the loopback
-    /// connection to Tor itself.
+    /// The proxy for one purpose: the SOCKS server, and a username Tor will see for this purpose alone.
+    ///
+    /// Tor puts streams on separate circuits only when their SOCKS username/password differ
+    /// (IsolateSOCKSAuth, on by default). The first version wrote the label into the proxy URI's
+    /// user-info, which .NET's SOCKS client never reads — it takes credentials only from
+    /// <see cref="System.Net.IWebProxy.Credentials"/> — so every purpose reached Tor with no credentials
+    /// and shared one circuit. The handshake tests read the username off the wire so that cannot recur.
+    ///
+    /// Per purpose, not per server: a circuit for every explorer (as Tor Browser does per site) was tried
+    /// and measured — a fresh wallet asks some thirty servers at once, and with a circuit to build for
+    /// each, Tor left the Bitcoin-family balance scans unfinished after four minutes where one circuit per
+    /// purpose read them all. The labels are not secrets; they only travel the loopback link to Tor.
     /// </summary>
-    private static string IsolatedProxyUri(string socks5Uri, NetworkPurpose purpose)
-    {
-        try
+    private static System.Net.WebProxy PurposeProxy(Uri proxy, string label) =>
+        new(new UriBuilder(proxy) { UserName = "", Password = "" }.Uri)
         {
-            var uri = new Uri(socks5Uri);
-            var label = purpose.ToString().ToLowerInvariant();
-            return $"{uri.Scheme}://umbrella-{label}:{label}@{uri.Host}:{uri.Port}";
-        }
-        catch
-        {
-            // A proxy string we cannot parse is used as-is rather than dropped: losing the proxy
-            // would send the request direct, which is the one outcome that must never happen here.
-            return socks5Uri;
-        }
-    }
+            Credentials = new System.Net.NetworkCredential($"phobia-{label}", label),
+        };
 
     /// <summary>Disposes every per-purpose client. Called whenever the routing changes, so no client
     /// can outlive the settings it was built from.</summary>
@@ -211,6 +210,32 @@ public static class PublicHttp
         }
     }
 
+    /// <summary>
+    /// A SOCKS proxy as the user typed it ("127.0.0.1:9050", "socks5h://…"), made into one the handler
+    /// can use WITHOUT resolving names on this machine — or null when it is not a SOCKS proxy at all.
+    ///
+    /// Two spellings needed changing, both for the same reason. "socks5h" (curl's and Tor's way of
+    /// saying "the proxy resolves the name") is not a scheme .NET knows, so every request failed; its
+    /// socks5 already sends the name, so the two are one. Plain "socks4" cannot carry a name, and .NET
+    /// answers that by looking the explorer up in this machine's DNS first — a query in clear naming
+    /// every server the wallet uses. SOCKS4a carries the name, and Tor speaks it.
+    /// </summary>
+    public static string? NormalizeProxy(string? raw)
+    {
+        var s = (raw ?? string.Empty).Trim();
+        if (s.Length == 0) return null;
+        if (!s.Contains("://", StringComparison.Ordinal)) s = "socks5://" + s;
+        if (!Uri.TryCreate(s, UriKind.Absolute, out var uri)) return null;
+        var scheme = uri.Scheme.ToLowerInvariant() switch
+        {
+            "socks5" or "socks5h" => "socks5",
+            "socks4" or "socks4a" => "socks4a",
+            _ => null,
+        };
+        if (scheme is null || uri.IsDefaultPort || uri.Port <= 0 || string.IsNullOrEmpty(uri.Host)) return null;
+        return $"{scheme}://{uri.Host.ToLowerInvariant()}:{uri.Port}";
+    }
+
     /// <summary>Parses "auto" / "ipv4" / "ipv6" (case-insensitive) into an <see cref="IpMode"/>.</summary>
     public static IpMode ParseIpMode(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
     {
@@ -246,7 +271,7 @@ public static class PublicHttp
     /// </summary>
     public static HttpClient CreateProbeClient(string? proxy, bool requireProxy) => Build(proxy, requireProxy);
 
-    private static HttpClient Build(string? socks5Uri, bool requireProxy)
+    private static HttpClient Build(string? socks5Uri, bool requireProxy, string label = "shared")
     {
         var handler = new SocketsHttpHandler
         {
@@ -255,8 +280,12 @@ public static class PublicHttp
         };
         if (!string.IsNullOrWhiteSpace(socks5Uri))
         {
-            // .NET 6+ SocketsHttpHandler understands socks5:// proxies via WebProxy.
-            handler.Proxy = new System.Net.WebProxy(socks5Uri);
+            // .NET 6+ SocketsHttpHandler speaks SOCKS itself, sending the destination as a NAME for
+            // socks5 and socks4a. A proxy string that cannot be parsed is still used as-is rather than
+            // dropped: losing the proxy would send the request direct, the one outcome never allowed here.
+            handler.Proxy = Uri.TryCreate(socks5Uri, UriKind.Absolute, out var proxyUri)
+                ? PurposeProxy(proxyUri, label)
+                : new System.Net.WebProxy(socks5Uri);
             handler.UseProxy = true;
         }
         else if (requireProxy)
