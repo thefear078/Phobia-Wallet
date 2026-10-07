@@ -45,8 +45,19 @@ if [ ! -f "${OUT}/tor/tor" ]; then
         && echo "${TOR_SHA256}  /tmp/umbrella-tor/${TOR_ARCHIVE}" | sha256sum -c - \
         && tar -xzf "/tmp/umbrella-tor/${TOR_ARCHIVE}" -C /tmp/umbrella-tor; then
         cp /tmp/umbrella-tor/tor/tor "${OUT}/tor/tor" && chmod +x "${OUT}/tor/tor"
+        # Tor's own libevent and OpenSSL ship beside it in the bundle, and tor has no RPATH: the wallet
+        # starts it with LD_LIBRARY_PATH on this folder (EmbeddedTorService). Leaving them out made Tor
+        # exit at once on any system without exactly these libraries.
+        cp /tmp/umbrella-tor/tor/*.so* "${OUT}/tor/"
         cp /tmp/umbrella-tor/data/geoip  "${OUT}/tor/geoip"  2>/dev/null || true
         cp /tmp/umbrella-tor/data/geoip6 "${OUT}/tor/geoip6" 2>/dev/null || true
+        # Proof it runs from here, the way the wallet will start it.
+        if tor_version="$(LD_LIBRARY_PATH="${OUT}/tor" "${OUT}/tor/tor" --version 2>&1)"; then
+            printf '  %s\n' "${tor_version}" | sed -n 1p
+        else
+            echo "${tor_version}"
+            helper_missing "the staged Tor does not run"
+        fi
     else
         helper_missing "could not fetch or verify Tor ${TOR_VERSION}"
     fi

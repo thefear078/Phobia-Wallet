@@ -4,10 +4,40 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [4.10.0-beta.2] — Beta 2 (a GitHub pre-release) — the phone gets its own Tor and Monero; signed, attested builds with an SBOM; privacy fixes from the readiness audit
 
 A readiness audit of Beta 1 (2026-10-07): the network privacy the wallet claimed, checked on the wire,
 and the places it was not true fixed.
+
+### Android
+
+- **The phone has its own Tor.** The APK carries the Tor Project's own Android build of Tor (checked
+  against their signed sums, like the desktop's) and runs it the way Tor Browser for Android does, from the
+  app's native-library folder. Settings → Privacy → Tor works as on the desktop: the same kill-switch, the
+  same circuit per purpose. Android may stop Tor while the app is in the background; it starts again when
+  you come back, and nothing goes out directly in between. Orbot still works instead.
+- **Monero on the phone.** The APK carries the Monero project's Android `monero-wallet-rpc` too (checked
+  against binaryFate's signed `hashes.txt`), so XMR shows its balance and sends on the phone, with the same
+  random login as on the desktop.
+- **The phone looks for updates.** When a newer release is out, a strip on Home says so and *Download*
+  opens that release's APK; Android installs it, only over a copy signed with the same key.
+- A CI job installs the APK on an Android emulator and proves it starts, draws its first screen and that
+  its Tor bootstraps; another runs the Linux build on a virtual display and asks check.torproject.org
+  through its Tor. Screenshots are kept with each run.
+
+### Linux
+
+- **Tor on Linux starts.** The Tor Project's Linux Tor needs its own libevent and OpenSSL, which ship
+  beside it in their bundle; the tarball carried Tor without them, so on any system lacking exactly those
+  libraries Tor exited at once ("Tor failed"; with Tor-only on, the wallet then refused every request
+  rather than going direct). The libraries ship now, Tor is started with them, the build proves the staged
+  Tor runs, and a CI job runs the Linux build and asks check.torproject.org through its Tor.
+
+### Updates
+
+- **Linux installs its update with one click**, like Windows: the verified tarball is unpacked over the
+  program's folder (each file renamed into place; the data folder is not touched) and the new version
+  starts. It used to stop at "unpack it over this folder yourself".
 
 ### Security and privacy
 
@@ -28,7 +58,51 @@ and the places it was not true fixed.
 - **Android with Orbot keeps its kill-switch.** The phone switched Tor-only off at every start — even with
   Orbot set as the proxy, the one setup it protects — and disarmed it only after arming the transport, so
   that session refused every request while the switch read "off". The status line now says "through your
-  proxy". [How to set up Orbot](docs/guides/android.md#tor-on-the-phone-through-orbot).
+  proxy". [How to set up Orbot](docs/guides/android.md#or-through-orbot).
+- **A token is priced on its contract, not its name.** A token calling itself "USDT" (or ETH, TRX, BTC)
+  from any other contract was counted at the real coin's price; it is now worth nothing and folded away
+  with the spam.
+- **Every wallet asks for the same price list.** The list used to include the tokens you hold — and a
+  Monero-only request when you held Monero — so the price service could tell wallets apart by what they
+  asked for. Now it is one fixed list, one shared request, reused for 20 seconds.
+- **The balance chart no longer names your coins.** To draw the Home chart the wallet asked the price
+  service for the history of exactly the coins held. It now asks for the whole market list, in the same
+  order from every wallet, and draws as soon as the coins it needs have arrived (at once from what is
+  already on the device). Settings → Privacy now also says that KuCoin, a chart fallback, learns which
+  coin a chart you open is for.
+
+### Market, currency and balances
+
+- **The Home market card shows coins, not code.** It printed `MarketRowViewModel { Symbol = BTC… }`: its
+  row layout was defined on the Market page only. A test now draws every screen, desktop and phone, and
+  fails on any such text.
+- **Figures are always in the currency they are labelled with.** A rate that failed to load was taken as
+  1.0 and never asked for again, so dollar figures stood under ¥ or ₴. Rates are kept on disk and applied
+  together with the symbol; without a rate, figures stay in dollars and say USD. The chart's axis, candles,
+  crosshair and caption follow the chosen currency, and the fiat field in Send and Receive now takes that
+  currency (it took dollars: "100" beside yuan figures meant $100).
+- **Balances appear as each chain answers**, a price missing from one answer no longer zeroes a holding,
+  and the 24-hour change is exact.
+- **Settings, balances, address book, activity, market data, the watch list and a vault restore are
+  written atomically**, so a crash or power cut mid-save leaves the previous copy, never half a file.
+
+### Release integrity
+
+- **Windows executables and the installer are signed** (Authenticode, SHA-256, RFC 3161 timestamp) by the
+  author's key, and **the APK is signed with one stable key** from now on. Fingerprints in
+  [SECURITY.md](SECURITY.md#verifying-what-you-run). The Windows certificate is self-signed for now.
+  Beta 1's APK had a key of its own, so moving from it to Beta 2 on Android takes one reinstall (back up
+  the 24 words first).
+- **Each release carries an SBOM** (`PhobiaWallet-<label>-sbom.spdx.json`), covered by the sums file and
+  the build attestation.
+- **Release tags are immutable.** The `v*` tags moved on 2026-10-03 are back on the commits they were
+  built from, and a repository ruleset now forbids moving or deleting a release tag. The release workflow
+  refuses to build into a release that already has files.
+- **Every GitHub Action is pinned to a commit**, and an OpenSSF Scorecard of the repository is published
+  every week.
+- **Bundled Monero is 0.18.5.3** (0.18.5.1 was withdrawn from the signed hash list).
+- **Screens are tested as drawn.** A new test project renders every section, desktop and phone, with the
+  real styles, and fails if any of them shows an object's name instead of words.
 
 ### Swap
 
@@ -43,6 +117,10 @@ and the places it was not true fixed.
 - `docs/TOR.md` described the deleted web server; it now describes the wallet's Tor, kill-switch, circuits,
   custom proxy, Orbot and Monero routing. README, threat model, privacy page, roadmap and pre-beta checklist
   brought up to date (chains, themes and test counts, Android, the swap routes, what still is not done).
+- [BUILD_VERIFY.md](docs/BUILD_VERIFY.md) rewritten: checksum, signature, attestation and building it
+  yourself, with exact commands and what is and is not bit-for-bit reproducible. Security policy,
+  vulnerability history (the issues above, found by our own review), audit status, privacy pages, Tor,
+  architecture and the in-app guide's technology section updated to match.
 
 ## [4.10.0-beta.1] — Beta 1 (a GitHub pre-release; installed beta copies update to newer betas by themselves) — Umbrella is now Phobia; Monero seeds in every language
 

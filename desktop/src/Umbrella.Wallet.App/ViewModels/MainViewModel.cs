@@ -1537,9 +1537,25 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public static bool StartTorAutomatically { get; set; } = !OperatingSystem.IsAndroid();
 
-    /// <summary>The bundled Tor and Monero programs ship with the Windows and Linux builds only. Settable
-    /// so the suite can run the phone's start-up rules on a desktop.</summary>
+    /// <summary>Whether this build carries its own Tor (and Monero service). The Windows and Linux builds
+    /// always do; the Android host turns it on when the APK carries them (it sets the programs' paths
+    /// first). Settable so the suite can run the phone's start-up rules on a desktop.</summary>
     public static bool HasBundledServices { get; set; } = !OperatingSystem.IsAndroid();
+
+    /// <summary>For the phone's note that this build has no Tor of its own (so Orbot is the way).</summary>
+    public bool LacksBundledServices => !HasBundledServices;
+
+    /// <summary>
+    /// Tor was on and its process is gone — the phone ends background programs of an app it is not
+    /// showing, and any Tor can crash. Started again here (on return to the window, and with each refresh
+    /// tick). Until it is back, requests still go to its port and are refused: never quietly direct.
+    /// </summary>
+    private void EnsureTorAlive()
+    {
+        if (!TorEnabled || TorStarting || !StartTorAutomatically || !EmbeddedTorService.IsBundlePresent) return;
+        if (_tor.IsRunning) return;
+        _ = ApplyTorAsync();
+    }
 
     /// <summary>
     /// Whether a new view model reads the currency rate (and then rebuilds the asset list) in the
@@ -1558,6 +1574,7 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public void OnWindowActivated()
     {
+        EnsureTorAlive();
         if (!IsUnlocked || PendingPhraseBackup || IsBusy || IsRefreshing) return;
         if (DateTimeOffset.UtcNow - _lastLiveRefresh < TimeSpan.FromSeconds(30)) return;
         _lastLiveRefresh = DateTimeOffset.UtcNow;   // one read per return, however often the window is clicked
@@ -1574,6 +1591,7 @@ public partial class MainViewModel : ViewModelBase
             };
             _autoRefreshTimer.Tick += async (_, _) =>
             {
+                EnsureTorAlive();
                 await RefreshMarketAsync();
                 // Balances every other tick. The free explorers this wallet reads rate-limit hard — one
                 // IP-blacklisted this machine for a day — and a refused read is a balance the user cannot

@@ -45,10 +45,22 @@ public sealed class EmbeddedTorService : IDisposable
     /// <summary>Latest bootstrap percentage parsed from Tor's log (0–100).</summary>
     public int BootstrapPercent { get; private set; }
 
-    /// <summary>Where the bundled Tor lives once published next to the executable.</summary>
-    public static string TorExecutablePath =>
+    /// <summary>
+    /// Where the phone keeps its Tor. Android runs a program only from the app's native-library folder,
+    /// so the APK carries Tor there as <c>libTor.so</c> (the Tor Project's own Android build, an executable
+    /// despite the name) and the Android host sets this before the wallet starts. Null on the desktop.
+    /// </summary>
+    public static string? ExecutableOverride { get; set; }
+
+    /// <summary>Where the bundled Tor lives: published next to the executable, or the phone's copy.</summary>
+    public static string TorExecutablePath => ExecutableOverride ??
         Path.Combine(AppContext.BaseDirectory, "tor",
             OperatingSystem.IsWindows() ? "tor.exe" : "tor");
+
+    /// <summary>The process name the bundled Tor runs under: "tor" here, "libTor.so" on the phone (Windows
+    /// drops the extension from a process name, Linux and Android do not).</summary>
+    public static string ProcessNameOf(string path) =>
+        OperatingSystem.IsWindows() ? Path.GetFileNameWithoutExtension(path) : Path.GetFileName(path);
 
     public static bool IsBundlePresent => File.Exists(TorExecutablePath);
 
@@ -97,6 +109,8 @@ public sealed class EmbeddedTorService : IDisposable
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        if (LibraryPathFor(torDir, Environment.GetEnvironmentVariable("LD_LIBRARY_PATH")) is { } libraryPath)
+            startInfo.Environment["LD_LIBRARY_PATH"] = libraryPath;
         startInfo.ArgumentList.Add("-f");
         startInfo.ArgumentList.Add(torrcPath);
         // Tor exits by itself (within seconds) once this process is gone, so a wallet that dies without
@@ -213,7 +227,9 @@ public sealed class EmbeddedTorService : IDisposable
                 int.TryParse(File.ReadAllText(PidFilePath).Trim(), out var pid) && pid != Environment.ProcessId)
             {
                 var p = Process.GetProcessById(pid);
-                if (p.ProcessName.Equals("tor", StringComparison.OrdinalIgnoreCase)) leftovers.Add(p);
+                if (p.ProcessName.Equals("tor", StringComparison.OrdinalIgnoreCase)
+                    || p.ProcessName.Equals(ProcessNameOf(TorExecutablePath), StringComparison.OrdinalIgnoreCase))
+                    leftovers.Add(p);
                 else p.Dispose();
             }
         }
@@ -222,7 +238,7 @@ public sealed class EmbeddedTorService : IDisposable
             // No such process any more — nothing to stop.
         }
 
-        foreach (var p in Process.GetProcessesByName("tor"))
+        foreach (var p in Process.GetProcessesByName(ProcessNameOf(TorExecutablePath)))
         {
             if (leftovers.Any(l => l.Id == p.Id)) { p.Dispose(); continue; }
             try
@@ -260,6 +276,18 @@ public sealed class EmbeddedTorService : IDisposable
                 p.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// LD_LIBRARY_PATH for the Linux Tor: its folder first. The Tor Project's Linux build finds its own
+    /// libevent and OpenSSL (shipped beside it) only through this variable - it has no RPATH - and exited at
+    /// once on a system without exactly those libraries. Null on Windows (DLLs load from the exe's folder)
+    /// and on Android (the phone's Tor needs none).
+    /// </summary>
+    public static string? LibraryPathFor(string torDir, string? existing)
+    {
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsAndroid()) return null;
+        return string.IsNullOrEmpty(existing) ? torDir : $"{torDir}:{existing}";
     }
 
     /// <summary>Tor's own words for why it could not run, without the timestamp and log level.</summary>

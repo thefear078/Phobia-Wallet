@@ -4,7 +4,10 @@ using Android.OS;
 using Android.Views;
 using Avalonia;
 using Avalonia.Android;
+using Avalonia.Controls.ApplicationLifetimes;
+using Umbrella.Wallet.App.ViewModels;
 using Umbrella.Wallet.App.Views;
+using Umbrella.Wallet.Infrastructure.Network;
 
 namespace Umbrella.Wallet.Mobile;
 
@@ -29,9 +32,55 @@ public class MainActivity : AvaloniaMainActivity<Umbrella.Wallet.App.App>
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        UseBundledServices();   // before base.OnCreate: that is where the wallet starts
         MobileShell.SecretOnScreenChanged += ProtectScreen;
         base.OnCreate(savedInstanceState);
         ProtectScreen(MobileShell.IsSecretOnScreen);
+#if PHOBIA_SELFTEST
+        _ = SelfTestAsync();
+#endif
+    }
+
+#if PHOBIA_SELFTEST
+    /// <summary>The emulator check: run the bundled Tor from the native-library folder, the way a user's
+    /// "Tor on" does, and log how far it got. CI reads the "PHOBIA-SELFTEST" lines from logcat.</summary>
+    private static async Task SelfTestAsync()
+    {
+        const string tag = "PHOBIA-SELFTEST";
+        Android.Util.Log.Info(tag, $"tor path {EmbeddedTorService.TorExecutablePath} present={EmbeddedTorService.IsBundlePresent}");
+        Android.Util.Log.Info(tag, $"monero path {MoneroRpcService.ExecutablePath} present={MoneroRpcService.IsBundlePresent}");
+        using var tor = new EmbeddedTorService();
+        var progress = new Progress<string>(m => Android.Util.Log.Info(tag, m));
+        var (ok, message) = await tor.StartAsync(progress);
+        Android.Util.Log.Info(tag, ok ? $"TOR-OK {message}" : $"TOR-FAIL {message}");
+    }
+#endif
+
+    /// <summary>
+    /// Tor and monero-wallet-rpc ship inside the APK as lib*.so in the native-library folder — the one
+    /// place Android lets an app run a program from (its own files are mounted no-exec), the way Tor
+    /// Browser and Orbot run Tor. Android unpacks them there at install; the wallet is told where.
+    /// </summary>
+    private void UseBundledServices()
+    {
+        var libs = ApplicationInfo?.NativeLibraryDir;
+        if (string.IsNullOrEmpty(libs)) return;
+        var tor = Path.Combine(libs, "libTor.so");
+        var monero = Path.Combine(libs, "libmonero-wallet-rpc.so");
+        if (File.Exists(monero)) MoneroRpcService.ExecutableOverride = monero;
+        if (!File.Exists(tor)) return;
+        EmbeddedTorService.ExecutableOverride = tor;
+        MainViewModel.HasBundledServices = true;
+        MainViewModel.StartTorAutomatically = true;
+    }
+
+    /// <summary>Back to the front: the same as a desktop window regaining focus — Tor restarted if the
+    /// phone ended it in the background, stale balances read again.</summary>
+    protected override void OnResume()
+    {
+        base.OnResume();
+        var view = (Avalonia.Application.Current?.ApplicationLifetime as ISingleViewApplicationLifetime)?.MainView;
+        (view?.DataContext as MainViewModel)?.OnWindowActivated();
     }
 
     protected override void OnDestroy()

@@ -8,9 +8,8 @@ help", it says so.
 
 **Scope.** Phobia is a wallet for Windows and Linux, .NET 8 / Avalonia, with an Android beta built from
 the same code. There is no server, no account and no backend: nothing about a user exists anywhere
-except on their own device. Where the phone differs — no bundled Tor (Orbot can carry its traffic, see
-[Vector 4](#vector-4--the-network-operator-isp-café-wi-fi-hostile-country)), no Monero service — the
-vector says so.
+except on their own device. Where the phone differs — Android may stop its Tor in the background (see
+[Vector 4](#vector-4--the-network-operator-isp-café-wi-fi-hostile-country)) — the vector says so.
 
 ## Contents
 
@@ -181,10 +180,11 @@ down whenever that state changes. A cached client outliving the kill-switch bein
 hole in the kill-switch itself — worse than not isolating — so `TorStreamIsolationTests` pins it, and
 the assertion was verified by removing the teardown and watching the test fail.
 
-**On Android** there is no bundled Tor. Orbot's SOCKS port (`127.0.0.1:9050`) set as the custom proxy
-carries every request, with the same per-purpose circuits, and the kill-switch stays
-armed across restarts while that proxy is set — so Orbot stopping means "no request", not "direct".
-Without Orbot the phone talks to every server directly, and Settings says so.
+**On Android** (from Beta 2) the APK carries the same Tor, run from the native-library folder, with the
+same switch, kill-switch and per-purpose circuits; CI's `device-check` job proves on an emulator that it
+starts and bootstraps. Android may stop it while the app is in the background: the wallet starts it again
+on return, and until then requests are refused, never direct. Orbot's SOCKS port (`127.0.0.1:9050`) as
+the custom proxy remains an alternative, with the kill-switch kept armed across restarts while it is set.
 
 A custom proxy typed as `socks4://` is used as SOCKS4a and `socks5h://` as SOCKS5: plain SOCKS4 makes
 .NET resolve the server's name in this machine's DNS first, which would name every explorer the wallet
@@ -245,16 +245,31 @@ roadmap rather than implied away.
 **Attacker.** Someone who replaces the download, or compromises the build.
 
 **What the wallet does.** Releases are built in public CI from a tagged commit. A per-version
-`SHA256SUMS-<version>.txt` is generated from the attached artifacts, self-verified before publishing,
+`SHA256SUMS-<label>.txt` is generated from the attached artifacts, self-verified before publishing,
 and refuses to publish if empty. The artifact set is checked for completeness and for strays, so a
 partial release cannot yield a manifest that silently omits a file. Dependencies are pinned, scanned
-by Dependabot, and the source is analysed by CodeQL on every PR.
+by Dependabot, and the source is analysed by CodeQL on every PR. Since 2026-10-07 also:
 
-**Where the defence ends.** The binaries are **not code-signed** and the build is **not reproducible**.
-A user verifying the checksum is verifying against the same GitHub release an attacker would have had
-to compromise. Both are on the roadmap and neither is done.
+- **Signatures.** Every Windows executable and the installer carry the author's Authenticode signature,
+  timestamped, and the APK is signed with one stable key; the release workflow refuses a signature from
+  any other certificate. Fingerprints in [SECURITY.md](SECURITY.md#verifying-what-you-run).
+- **Provenance.** Every file and the sums file carry a keyless build attestation (since 4.8.0), checked
+  against the public Sigstore log rather than against this repository, and each release ships an SBOM.
+- **Reproducible core.** The managed assemblies — the code that derives keys, signs and routes — are
+  built twice in CI from different paths and must be byte-identical; anyone can build the tag and compare.
+- **The build itself.** Every GitHub Action is pinned to a commit SHA, release tags are immutable (a
+  ruleset forbids moving or deleting them), and a published release is never rebuilt. Bundled Tor and
+  Monero are checked against their projects' signed sums on every PR.
 
-**Residual risk: MEDIUM.** Do not let anyone tell you otherwise until those two ship.
+**Where the defence ends.** The Windows certificate is **self-signed**: it proves a file is unchanged
+since the release workflow signed it, not who the publisher is, and Windows still warns. The installer,
+apphost and APK are not bit-for-bit reproducible. Signing keys live in the repository's encrypted
+secrets, so whoever controls the GitHub account controls the signatures — the attestation then still
+names the workflow and commit, and an immutable tag makes a quiet swap visible. A CA-issued certificate
+and an external audit are on the roadmap.
+
+**Residual risk: LOW–MEDIUM** for a user who checks the signature or the attestation; **MEDIUM** for one
+who checks nothing.
 
 ---
 

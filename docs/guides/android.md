@@ -10,6 +10,8 @@ It is a **beta**, installed from the release page (an APK), not from a store.
 - [Install](#install)
 - [The home screen](#the-home-screen)
 - [Moving around](#moving-around)
+- [Tor on the phone](#tor-on-the-phone)
+- [Monero on the phone](#monero-on-the-phone)
 - [What the phone does not do yet](#what-the-phone-does-not-do-yet)
 - [Security on a phone](#security-on-a-phone)
 - [Updating](#updating)
@@ -31,7 +33,8 @@ It is a **beta**, installed from the release page (an APK), not from a store.
    sha256sum -c SHA256SUMS-Beta-1.txt --ignore-missing
    gh attestation verify PhobiaWallet-Beta-1-android.apk --repo thefear078/Phobia-Wallet
    ```
-   then copy the checked file to the phone.
+   then copy the checked file to the phone. From Beta 2 the APK is also signed with the author's key —
+   see [Updating](#updating) for its fingerprint.
 3. Open the APK. Android asks once whether your browser or file manager may install apps — allow it
    for that app, install, and you can switch the permission off again afterwards.
 4. Open **Phobia**, set a vault password, and create a wallet or import your recovery phrase — exactly
@@ -67,11 +70,25 @@ From top to bottom:
 
 The phone starts in the **Ice** theme (Phobia blue). Settings → Appearance has all the others.
 
-## Tor on the phone, through Orbot
+## Tor on the phone
 
-Tor is not bundled in the APK yet. Without it every chain is read directly, so the servers the wallet
-asks see your IP address — Settings says so at the top. [Orbot](https://orbot.app) (the Tor Project's own
-Android app) fixes that:
+From Beta 2 the APK carries Tor itself — the Tor Project's own Android build, checked against their signed
+checksums like the desktop's — so nothing else needs installing:
+
+1. **Settings → Privacy → Tor**: switch it on. The first start takes about half a minute; the chip then
+   reads **TOR**.
+2. Turn on **Tor-only (block clearnet)** as well. With it on, a request that cannot go through Tor does
+   not go at all, and both stay on across restarts.
+3. **Verify Tor** (same page) asks check.torproject.org through the wallet's own route.
+
+Address lookups, broadcasts, prices and swaps each get their own Tor circuit, as on the desktop. Android
+may stop Tor while Phobia sits in the background; it starts again as soon as you come back, and until then
+nothing goes out directly.
+
+### Or through Orbot
+
+If you already run [Orbot](https://orbot.app) (the Tor Project's Android app), the wallet can use it
+instead of its own Tor:
 
 1. Install **Orbot** from the Play Store, F-Droid or orbot.app, open it and press **Start**.
 2. In Phobia: **Settings → Privacy → Custom proxy (SOCKS5)**, switch to **Use my proxy**, enter
@@ -86,13 +103,17 @@ Through Orbot the wallet keeps its circuit separation: address lookups, broadcas
 get their own Tor circuit. Do not use Orbot's VPN mode *and* the proxy at once —
 the proxy alone is enough, and it is what lets the kill-switch know whether Tor is there.
 
+## Monero on the phone
+
+From Beta 2 the APK also carries `monero-wallet-rpc`, the Monero project's own Android build (checked
+against their signed `hashes.txt`), so XMR shows its balance and sends on the phone as on the desktop. The
+first sync scans the chain from the wallet's birthday and takes a while on mobile data — keep the app open
+until the balance appears. It goes through Tor when Tor is on, and runs only while the app is open.
+
 ## What the phone does not do yet
 
-- **No bundled Tor** — use Orbot as above.
-- **No Monero wallet service.** Monero balances and sends need Monero's own wallet program, which ships
-  with the desktop builds. On the phone XMR has its address; its balance and sends need the desktop for
-  now.
-- **No automatic updates.** Install a newer APK over the old one (see below).
+- **No installing by itself.** The wallet looks for a newer release and says so; *Download* opens the APK
+  in your browser, and Android installs it — only over a copy signed with the same key (see below).
 - **Not in a store.** Only the release page carries the APK. A "Phobia" in any app store is not this
   one.
 
@@ -109,13 +130,26 @@ the proxy alone is enough, and it is what lets the kill-switch know whether Tor 
 
 ## Updating
 
-Download the newer APK from its release page, check it the same way, and open it: Android installs it
-over the old one and the wallet keeps its data.
+From Beta 2 the wallet looks for a newer release by itself, shortly after it starts and twice a day
+(Settings → Updates turns that off; it goes through Tor when Tor is on). When one is out, a strip on
+Home says so, and **Download** opens that release's APK in your browser. Open the downloaded file:
+Android installs it over the old one and the wallet keeps its data. You can also download it from the
+release page yourself and check it as in [Install](#install).
 
-Android only installs an update that is **signed with the same key** as the copy on the phone. If
-Android says the app "conflicts with an existing package", the new APK was signed with a different key:
-make sure your recovery phrase is written down, uninstall Phobia, install the new APK and import the
-phrase. The release notes say when that is needed.
+Android only installs an update that is **signed with the same key** as the copy on the phone — which
+is also the proof that the update is ours. From Beta 2 every APK is signed with one key, the author's:
+
+```
+SHA-256  C3:80:0E:C6:34:F3:C1:6C:84:4E:62:0B:BB:92:28:81:B6:34:C0:2B:17:40:68:D4:80:F8:9A:DA:A8:95:72:D1
+```
+
+Check it on a computer with `apksigner verify --print-certs <file>.apk` (Android SDK build-tools), or on
+the phone with an app that shows signing certificates. Anything else is not an official build.
+
+**Beta 1 → Beta 2 needs one reinstall.** Beta 1's APK was signed with a key made for that one build, so
+Android refuses Beta 2 over it ("conflicts with an existing package"). Make sure your recovery phrase is
+written down, uninstall Phobia, install Beta 2 and import the phrase. Every update after that installs
+over the old copy and keeps its data.
 
 ## Questions
 

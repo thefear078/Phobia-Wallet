@@ -65,30 +65,47 @@ an SSH tunnel, a VPN's SOCKS port. It and the bundled Tor are mutually exclusive
   in this machine's DNS first.
 - Anything that is not SOCKS (`http://…`) is refused rather than guessed.
 
-## Android: Orbot
+## Android
 
-The APK has no bundled Tor yet. Install [Orbot](https://orbot.app), start it, and set the custom proxy to
-`127.0.0.1:9050`; then turn on Tor-only. The phone keeps the kill-switch armed across restarts while the
-proxy is set (it is switched off at start-up only when there is no proxy, since it would then block
-everything). The same per-purpose circuits apply. Step by step:
-[Phobia on Android](guides/android.md#tor-on-the-phone-through-orbot).
+From Beta 2 the APK carries Tor: the Tor Project's own Android build (`tor-expert-bundle-android-*`,
+checked against the same signed sums as the desktop's), shipped as `libTor.so` in the native-library
+folder — the one place Android lets an app run a program from, and the way Tor Browser for Android runs
+its own Tor. Everything above applies unchanged: the same switch, kill-switch, port range and circuits.
+Two differences, both from Android:
+
+- Android may stop Tor while the app sits in the background. The wallet starts it again when it comes
+  back to the front (and checks on every refresh tick); until then requests go to Tor's port and are
+  refused — never direct.
+- A CI job (`device-check`) installs the APK on an Android emulator and proves that Tor starts from the
+  native-library folder and bootstraps.
+
+[Orbot](https://orbot.app) still works instead: set the custom proxy to `127.0.0.1:9050` and turn on
+Tor-only; the kill-switch stays armed across restarts while the proxy is set. Step by step:
+[Phobia on Android](guides/android.md#tor-on-the-phone).
 
 ## Monero
 
 Monero's balance and sends go through the local `monero-wallet-rpc`, which talks to a Monero node:
 
 - With Tor (or your proxy) on, the daemon is started with `--proxy`, so the node sees an exit, not you.
+- On Android it is the Monero project's Android build, shipped as `libmonero-wallet-rpc.so` beside Tor,
+  started and logged in to exactly as on the desktop.
 - With the kill-switch armed and no proxy, the daemon is **not started at all**.
 - A `.onion` node is only ever used over Tor and is never swapped for a clearnet one.
 - The daemon listens on loopback only and runs with a random login it writes to a file only your account
   can read; a web page or another account on the machine gets "401" and nothing else
-  (`MoneroRpcLoginTests`).
+  (`MoneroRpcLoginTests`, and `MoneroDaemonLoginTests` against the real `monero-wallet-rpc` in CI).
 
 ## Where this ends
 
 - Tor hides **who** is asking, not **what** is asked. An explorer still sees the addresses it is asked
   about; on a transparent chain that is the whole point of asking. Choosing which server answers for each
   chain (Settings → Privacy) is the other half — see [PRIVACY.md](../PRIVACY.md).
+- What the price circuit carries: one fixed price list, the same for every wallet (it used to include
+  the tokens you hold, which told wallets apart), currency rates, the history of the whole market list
+  for the Home balance chart (it used to ask for exactly the coins held), and a chart for each coin you
+  open. Those requests share one circuit, so that exit and the price service can tell they come from
+  one wallet, though not whose.
 - Timing and volume are observable. A clearnet server over Tor still has an exit in front of it; a
   `.onion` server does not.
 - Every Phobia request carries the same User-Agent, so a server can tell it is talking to this wallet.

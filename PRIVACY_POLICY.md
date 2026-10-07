@@ -1,6 +1,6 @@
 # Privacy Policy (store / public distribution)
 
-**Last updated:** 2026-09-15  
+**Last updated:** 2026-10-07  
 **Applies to:** Phobia Wallet app listings and public downloads  
 **Publisher:** the fear (thefear078)
 
@@ -11,7 +11,7 @@ For the honest technical breakdown (what each server learns), see **[PRIVACY.md]
 
 ## 1. Who we are
 
-Phobia Wallet is non-custodial desktop software. There is **no Phobia account server**, no customer database of users, and no analytics backend operated by us.
+Phobia Wallet is non-custodial software for Windows, Linux and Android. There is **no Phobia account server**, no customer database of users, and no analytics backend operated by us.
 
 ## 2. Data we collect
 
@@ -37,7 +37,9 @@ A wallet must query a blockchain. When you use balances, history, or send, **you
 |---|---|---|
 | Public addresses | Block explorers / RPC nodes (defaults or ones you choose) | Read balances / history; broadcast signed txs |
 | Signed transactions | Same | Publish to the network |
-| Coin symbols (not your identity) | Price providers (e.g. CoinGecko / exchange public APIs) | Display fiat values |
+| A fixed list of coin symbols, the same for every user | Price providers (CoinGecko, Binance, KuCoin, Bybit public APIs) | Display fiat values |
+| The coin whose chart you open; for the balance chart, the whole fixed market list | The same price providers | Draw price and balance charts |
+| Nothing identifying | open.er-api.com | Currency exchange rates, when you show a currency other than US dollars |
 | The paying and receiving addresses of a swap | The swap route you confirm (THORChain, NEAR Intents, Exolix) | Carry out the swap — only when you swap |
 | Your TRON, Solana or Cosmos address and staking transactions | The same chain servers that read your balance | Show and change your stake — only when you use Staking |
 | Requests signed with your read-only API key | That exchange only | Read the balances of an account you connected |
@@ -51,8 +53,8 @@ Bundled components (Tor, `monero-wallet-rpc`) run locally under their own licenc
 
 - **Our servers:** we retain nothing about you — there is no user database.  
 - **Your device:** data remains until you delete the app and its data directory, or use in-app wipe (Danger zone).  
-  - Windows (typical): `%APPDATA%\UmbrellaWallet`  
-  - Linux (typical): `~/.config/UmbrellaWallet` or `data/` beside a portable build  
+  - Windows / Linux: `data/` beside the program, or `%APPDATA%\UmbrellaWallet` / `~/.config/UmbrellaWallet` when that is read-only  
+  - Android: the app's private storage, removed when you uninstall; Android backup is disabled  
 - **Encrypted backups** you export persist until **you** delete those files.
 
 ## 6. Children’s privacy

@@ -12,15 +12,18 @@ Phobia is built for someone who assumes the network is hostile and the service i
 | Adversary | Covered? | How |
 |---|---|---|
 | A service that wants your identity | ✅ | There is no service. No account, email, phone, or KYC. |
-| A block explorer profiling you by IP | ✅ | Bundled Tor + a kill-switch that fails closed. |
+| A block explorer profiling you by IP | ✅ | Bundled Tor (in the APK too, from Beta 2) + a kill-switch that fails closed; a separate circuit per kind of request. |
 | Someone who steals the vault file | ✅ | Argon2id (m=64 MiB) → AES-256-GCM. Brute force is expensive by design. |
 | Someone who steals the whole laptop, locked | ✅ | Auto-lock on idle and on minimise; the seed is not at rest in memory. |
-| Screen recording / screenshots of your seed | ✅ | Seed and key screens set `WDA_EXCLUDEFROMCAPTURE`. |
+| Screen recording / screenshots of your seed | ✅ | Seed and key screens set `WDA_EXCLUDEFROMCAPTURE` (Windows) and `FLAG_SECURE` (Android). |
 | Chain analysis linking your coins | ⚠️ Partly | Coin control, fresh change addresses, Privacy Radar warns you. It informs; it cannot undo a public ledger. |
 | Address-poisoning / lookalike addresses | ⚠️ Partly | Poisoning defence, EIP-55 checksum warnings, first-time-recipient notice. |
+| A fake token posing as USDT, ETH, … | ✅ | Tokens are priced on their contract, never their ticker; an impostor is worth nothing and folded away with the spam. |
+| A swapped or forged download | ⚠️ Mostly | Signed builds (Windows self-signed for now, Android stable key), build attestations, SBOM, immutable release tags — if you check them. See [BUILD_VERIFY.md](BUILD_VERIFY.md). |
+| A web page talking to the local Monero service | ✅ | Random Digest login since 2026-10-07; before that there was none. |
 | Malware already running as you | ❌ | See below. |
 | Someone who has your 24 words | ❌ | Those *are* the wallet. |
-| $5 wrench | ❌ | A duress password is on the roadmap. It is not shipped. |
+| $5 wrench | ⚠️ Partly | A duress password opens a decoy wallet. It does not hide that other wallets exist on the machine, nor help if you are watched typing. |
 
 ## Cryptography
 

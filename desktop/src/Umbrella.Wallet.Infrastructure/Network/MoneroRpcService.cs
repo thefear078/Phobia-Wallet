@@ -134,7 +134,14 @@ public sealed class MoneroRpcService : IDisposable
     private readonly object _gate = new();
     private string? _walletName;
 
-    public static string ExecutablePath =>
+    /// <summary>
+    /// Where the phone keeps monero-wallet-rpc: the APK carries the Monero project's Android build as
+    /// <c>libmonero-wallet-rpc.so</c> in the native-library folder, the one place Android runs a program
+    /// from, and the Android host sets this before the wallet starts. Null on the desktop.
+    /// </summary>
+    public static string? ExecutableOverride { get; set; }
+
+    public static string ExecutablePath => ExecutableOverride ??
         Path.Combine(AppContext.BaseDirectory, "monero",
             OperatingSystem.IsWindows() ? "monero-wallet-rpc.exe" : "monero-wallet-rpc");
 
@@ -498,7 +505,7 @@ public sealed class MoneroRpcService : IDisposable
     /// </summary>
     private static void StopLeftoverDaemon()
     {
-        foreach (var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(ExecutablePath)))
+        foreach (var p in Process.GetProcessesByName(EmbeddedTorService.ProcessNameOf(ExecutablePath)))
         {
             try
             {

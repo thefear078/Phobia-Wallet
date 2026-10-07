@@ -162,15 +162,16 @@ public partial class MainViewModel
     }
 
     /// <summary>
-    /// Price history for EVERY coin in the market list, whatever this wallet holds. Asking only for the
-    /// coins you own would tell the price server which coins those are; asking for the whole list tells
-    /// it nothing it could not see from any other copy of this wallet.
+    /// Price history for EVERY coin in the market list, whatever this wallet holds, asked for in the same
+    /// order by every copy of the wallet (alphabetical). Asking only for the coins you own - or asking for
+    /// them first - would tell the price server which coins those are; this tells it nothing it could not
+    /// see from any other copy. <paramref name="progress"/> gets what has arrived so far after each answer,
+    /// so a caller can draw as soon as the coins it needs are in.
     /// </summary>
     private async Task<Dictionary<string, IReadOnlyList<double>>> MarketSeriesAsync(
-        string marketRange, IReadOnlyCollection<string>? only = null)
+        string marketRange, Action<IReadOnlyDictionary<string, IReadOnlyList<double>>>? progress = null)
     {
-        var wanted = (only ?? Market.Select(m => m.Symbol).ToList())
-            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var wanted = MarketSeriesSymbols();
         if (_seriesByRange.TryGetValue(marketRange, out var cached) &&
             DateTimeOffset.UtcNow - cached.At < SeriesReuse &&
             wanted.All(s => cached.Series.ContainsKey(s) || Market.FirstOrDefault(m => m.Symbol == s) is not { HasPrice: true }))
@@ -182,15 +183,25 @@ public partial class MainViewModel
             ? new Dictionary<string, IReadOnlyList<double>>(previous, StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, IReadOnlyList<double>>(StringComparer.OrdinalIgnoreCase);
 
-        // Four at a time, and only what is asked for: the balance chart needs the coins held, not every
-        // coin in the market list fetched one after another.
+        // Four at a time, in the list's fixed order.
         using var gate = new SemaphoreSlim(4);
+        var arrived = new object();
         var results = await Task.WhenAll(wanted.Where(s => !fetched.ContainsKey(s)).Select(async symbol =>
         {
             await gate.WaitAsync();
             try
             {
                 var series = await _rates.GetPriceSeriesAsync(symbol, marketRange, CancellationToken.None);
+                if (progress is not null && series.Count > 1)
+                {
+                    Dictionary<string, IReadOnlyList<double>> soFar;
+                    lock (arrived)
+                    {
+                        fetched[symbol] = series;
+                        soFar = new Dictionary<string, IReadOnlyList<double>>(fetched, StringComparer.OrdinalIgnoreCase);
+                    }
+                    progress(soFar);
+                }
                 return (symbol, series);
             }
             catch
@@ -211,6 +222,12 @@ public partial class MainViewModel
         _seriesByRange[marketRange] = (DateTimeOffset.UtcNow, fetched);
         return fetched;
     }
+
+    /// <summary>The coins whose price history the wallet ever asks for: the market list, which is the same
+    /// in every copy, in alphabetical order. Never "the coins this wallet holds".</summary>
+    public List<string> MarketSeriesSymbols() =>
+        Market.Select(m => m.Symbol).Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s, StringComparer.Ordinal).ToList();
 
     /// <summary>
     /// Today's holdings valued at each moment's price across the window. This is not a record of past
@@ -245,7 +262,18 @@ public partial class MainViewModel
         var known = PeekSeries(marketRange, symbols);
         if (known.Count == symbols.Count) DrawPortfolio(holdings, known);
 
-        var series = await MarketSeriesAsync(marketRange, symbols);
+        // The whole market list is asked for (see MarketSeriesAsync); the chart is drawn the moment the
+        // coins held are all in, not when the last coin of the list arrives.
+        var drawnEarly = false;
+        var series = await MarketSeriesAsync(marketRange, soFar =>
+        {
+            if (drawnEarly || version != _portfolioChartVersion || !symbols.All(soFar.ContainsKey)) return;
+            drawnEarly = true;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (version == _portfolioChartVersion) DrawPortfolio(holdings, soFar);
+            });
+        });
         if (version != _portfolioChartVersion) return;   // a newer request superseded this one
         DrawPortfolio(holdings, series);
     }

@@ -1,6 +1,6 @@
 # Trademark policy
 
-**Last updated:** 2026-09-15  
+**Last updated:** 2026-10-07  
 **Owner:** the fear (thefear078) — see [CONTACT.md](CONTACT.md)
 
 “**Phobia Wallet**”, “**Phobia**” (in the wallet product sense), “**the fear**” as publisher brand,
@@ -28,6 +28,19 @@ name. It does **not** replace the [LICENSE](LICENSE).
 - Ship a modified client that still looks like official Phobia (icons, splash, store listing copy).
 - Imply affiliation, partnership, or endorsement by thefear078 / the fear / Phobia Wallet.
 - Register domains, social handles, or store listings that impersonate this project.
+
+## How to tell an official build
+
+Only files attached to a release at https://github.com/thefear078/Phobia-Wallet/releases are official,
+and from the release after 2026-10-07 each one is signed by the author:
+
+| Platform | Fingerprint |
+|---|---|
+| Windows (Authenticode) | SHA-1 `89C2D871C195D57C14D1911B6C47629DE052C553` |
+| Android APK | SHA-256 `C3:80:0E:C6:34:F3:C1:6C:84:4E:62:0B:BB:92:28:81:B6:34:C0:2B:17:40:68:D4:80:F8:9A:DA:A8:95:72:D1` |
+
+A binary carrying the Phobia name and any other signature — or none, for a release after that date —
+is not ours. How to check: [docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md).
 
 ## Forks and derivatives
 

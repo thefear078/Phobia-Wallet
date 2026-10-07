@@ -16,13 +16,16 @@
     <ApplicationId>com.thefear.phobia</ApplicationId>
     <ApplicationTitle>Phobia</ApplicationTitle>
     <!-- versionCode, which Android needs to rise for an update to install: major·1000000 + minor·10000
-         + patch·100 + the beta number (99 for the full release). 4.10.0-beta.1 → 4100001. PhoneLayoutTests
+         + patch·100 + the beta number (99 for the full release). 4.10.0-beta.2 → 4100002. PhoneLayoutTests
          keeps it in step with VERSION. -->
-    <ApplicationVersion>4100001</ApplicationVersion>
+    <ApplicationVersion>4100002</ApplicationVersion>
     <ApplicationDisplayVersion>4.10.0</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <!-- Phones: 64-bit ARM, and 32-bit ARM for older ones. One APK carries both. -->
     <RuntimeIdentifiers>android-arm64;android-arm</RuntimeIdentifiers>
+    <!-- The emulator check builds x86_64 only (-p:PhobiaAndroidRids=android-x64). A property of its own:
+         RuntimeIdentifiers given on the command line would reach the library projects too and break them. -->
+    <RuntimeIdentifiers Condition="'$(PhobiaAndroidRids)' != ''">$(PhobiaAndroidRids)</RuntimeIdentifiers>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <!-- Nothing is trimmed: the wallet reads its own files with reflection-based JSON, and trimming
          also switches that serializer off by default - a settings file would silently fail to load. -->
@@ -35,8 +38,24 @@
     <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
   </PropertyGroup>
 
+  <!-- The emulator check (CI only, -p:PhobiaSelfTest=true): starts the bundled Tor at launch and logs
+       the outcome. Never part of a release build. -->
+  <PropertyGroup Condition="'$(PhobiaSelfTest)' == 'true'">
+    <DefineConstants>$(DefineConstants);PHOBIA_SELFTEST</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Avalonia.Android" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Android" Version="11.3.22" />
+  </ItemGroup>
+
+  <!-- Tor and monero-wallet-rpc, staged by scripts/fetch-android-helpers.sh (pinned, hash-checked). They
+       ship as lib*.so so Android unpacks them into the native-library folder, the one place an app may
+       run a program from; MainActivity tells the wallet where they are. A build without them still
+       works and says so: no Tor of its own (Orbot instead), no Monero balance on the phone. -->
+  <ItemGroup>
+    <AndroidNativeLibrary Include="natives/arm64-v8a/*.so" Abi="arm64-v8a" />
+    <AndroidNativeLibrary Include="natives/armeabi-v7a/*.so" Abi="armeabi-v7a" />
+    <AndroidNativeLibrary Include="natives/x86_64/*.so" Abi="x86_64" />
   </ItemGroup>
 
   <ItemGroup>

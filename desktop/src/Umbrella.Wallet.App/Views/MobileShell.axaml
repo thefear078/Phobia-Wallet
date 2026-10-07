@@ -177,6 +177,21 @@
       <ScrollViewer x:Name="MobileScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
         <StackPanel Margin="16,14,16,28" Spacing="14">
 
+          <!-- A newer release is out. On the phone "Download" opens its APK in the browser; Android installs
+               it, and only over a copy signed with the same key. Closing this hides it for the session. -->
+          <Border IsVisible="{Binding ShowUpdateBanner}" Background="{DynamicResource UmCardAlt}"
+                  BorderBrush="{DynamicResource UmAccent}" BorderThickness="1" CornerRadius="12" Padding="12,10">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding UpdateBannerText}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="primary" Content="{Binding [update.download], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding DownloadUpdateCommand}" IsVisible="{Binding CanDownloadUpdate}"/>
+                <Button Classes="ghost" Content="{Binding [update.later], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding DismissUpdateBannerCommand}"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
           <!-- ======================= Home ======================= -->
           <StackPanel IsVisible="{Binding IsPortfolio}" Spacing="14">
 
@@ -444,10 +459,12 @@
                 <TextBlock Text="{Binding [mobile.back], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
               </StackPanel>
             </Button>
-            <Border Classes="note" IsVisible="{Binding IsSettings}">
-              <TextBlock Text="{Binding [mobile.noTor], Source={x:Static app:Loc.Instance}}" FontSize="12" TextWrapping="Wrap"
-                         Foreground="{DynamicResource UmTextDim}"/>
-            </Border>
+            <Panel IsVisible="{Binding LacksBundledServices}">
+              <Border Classes="note" IsVisible="{Binding IsSettings}">
+                <TextBlock Text="{Binding [mobile.noTor], Source={x:Static app:Loc.Instance}}" FontSize="12" TextWrapping="Wrap"
+                           Foreground="{DynamicResource UmTextDim}"/>
+              </Border>
+            </Panel>
             <pages:ReceivePage IsVisible="{Binding IsReceive}"/>
             <pages:SendPage IsVisible="{Binding IsSend}"/>
             <pages:SwapPage IsVisible="{Binding IsSwap}"/>
