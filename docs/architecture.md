@@ -8,8 +8,14 @@ this way. Most of these boundaries exist because crossing them is how wallets lo
 ```
 Umbrella.Wallet.Core             pure logic. No network. No UI. No file system.
 Umbrella.Wallet.Infrastructure   everything that does I/O.
-Umbrella.Wallet.App              Avalonia UI and view models.
+Umbrella.Wallet.App              Avalonia UI and view models — desktop and phone layouts.
+Umbrella.Wallet.Android          the Android head: an activity that hosts App. No wallet logic of its own.
 ```
+
+Two test projects sit beside them: `Umbrella.Wallet.Core.Tests` (signing vectors, parsing, routing,
+the source scans listed at the end of this page) and `Umbrella.Wallet.UiTests`, which draws every
+section of the real app, desktop and phone, headless with the real styles and fails if any of them shows
+an object's type name instead of words.
 
 The dependency arrows only ever point one way:
 
@@ -46,6 +52,7 @@ define an interface in `Core` and implement it in `Infrastructure` — that is w
 | Address checks | `Chains/AddressInspector` | EIP-55, Base58Check, Bech32, CashAddr |
 | Privacy analysis | `Safety/PrivacyScoreInspector` | wallet-wide score |
 | Spam detection | `Safety/SpamTokenInspector` | unsolicited airdrop tokens |
+| Token identity | `Safety/TokenIdentity` | a token is priced on its contract, never its ticker — a fake "USDT" is worth nothing |
 
 ### `AmountInput` is not optional
 
@@ -70,6 +77,8 @@ Infrastructure/
     EmbeddedTorService          the bundled Tor process
     MoneroRpcService            the local monero-wallet-rpc
   EncryptedFileSeedVault        Argon2id → AES-256-GCM
+  AtomicFile                    temp file + flush + rename: a crash never leaves half a file
+  AppPaths                      the one data folder (beside the program, %APPDATA%, or Android's private storage)
   DeveloperFeeConfig            the platform fee (currently zero)
 ```
 
@@ -87,6 +96,10 @@ A new `new HttpClient()` anywhere else is a privacy bug, not a style issue.
 Monero hides amounts on-chain, so no explorer can report a balance. The wallet therefore ships and
 runs the real `monero-wallet-rpc` as a child process, bound to loopback only, and asks it. This is why
 the Monero balance takes longer to appear than the others — it is a wallet syncing, not an API call.
+
+The daemon makes a random login at each start and the wallet answers its HTTP Digest challenge
+(`MoneroRpcService.CreateRpcClient`). Never start it with `--disable-rpc-login`: a loopback port with no
+login is reachable from any web page through a cross-site POST, and the open wallet would obey it.
 
 ## The UI layer
 
@@ -122,13 +135,13 @@ sequenceDiagram
     VM->>VM: restore cached balances — shown instantly
     VM->>C: derive addresses
     par prices and balances start together
-        VM->>H: prices
-        VM->>H: balances
+        VM->>H: prices (one fixed list, shared, 20 s)
+        VM->>H: balances, per chain
     end
-    H->>E: (through Tor when on)
+    H->>E: (through Tor when on, a circuit per purpose)
     E-->>H: data
     H-->>VM: data
-    VM->>VM: apply on the UI thread, one row at a time
+    VM->>VM: apply on the UI thread, each chain as it answers
 ```
 
 Two details that are easy to undo by accident:
@@ -137,6 +150,10 @@ Two details that are easy to undo by accident:
    immediately instead of flashing `$0`.
 2. **Prices and balances are started together.** They are independent; only the display joins them. If
    you `await` one before starting the other, you have just doubled the time to first balance.
+3. **The price list never depends on the wallet.** `PriceUniverse` is the same for every user; asking
+   for "the tokens this wallet holds" would tell the price service who is asking.
+4. **Money is shown in one currency at a time.** `Fx.Use(code, rate)` sets both together; without a rate
+   the figures stay in dollars and say USD. Never multiply by a rate you might not have.
 
 ## Concurrency rules
 
@@ -159,6 +176,11 @@ These are not lint rules; they are tests that exist because each one was a real 
 - A theme whose text falls below WCAG AA contrast.
 - A binding typo in XAML.
 - Two themes that resolve to the same palette.
+- A `StaticResource` that is not reachable from the place it is used, or a screen that draws a type
+  name (`MarketRowViewModel { … }`) instead of its content.
+- An `HttpClient` built anywhere but `PublicHttp`, or a server contacted that the privacy list in
+  Settings does not name.
+- A file the wallet writes that the wipe does not remove.
 
 ## See also
 

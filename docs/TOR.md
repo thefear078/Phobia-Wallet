@@ -82,13 +82,17 @@ Monero's balance and sends go through the local `monero-wallet-rpc`, which talks
 - A `.onion` node is only ever used over Tor and is never swapped for a clearnet one.
 - The daemon listens on loopback only and runs with a random login it writes to a file only your account
   can read; a web page or another account on the machine gets "401" and nothing else
-  (`MoneroRpcLoginTests`).
+  (`MoneroRpcLoginTests`, and `MoneroDaemonLoginTests` against the real `monero-wallet-rpc` in CI).
 
 ## Where this ends
 
 - Tor hides **who** is asking, not **what** is asked. An explorer still sees the addresses it is asked
   about; on a transparent chain that is the whole point of asking. Choosing which server answers for each
   chain (Settings → Privacy) is the other half — see [PRIVACY.md](../PRIVACY.md).
+- What the price circuit carries: one fixed price list, the same for every wallet (it used to include
+  the tokens you hold, which told wallets apart), currency rates, and a chart for each coin you open —
+  plus the Home balance chart, which asks for each coin you hold. Those requests share one circuit, so
+  that exit and the price service can tell they come from one wallet, though not whose.
 - Timing and volume are observable. A clearnet server over Tor still has an exit in front of it; a
   `.onion` server does not.
 - Every Phobia request carries the same User-Agent, so a server can tell it is talking to this wallet.

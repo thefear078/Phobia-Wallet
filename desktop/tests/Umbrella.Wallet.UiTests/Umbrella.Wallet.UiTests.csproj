@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The wallet's real windows, rendered off-screen (Avalonia's headless platform with Skia). A separate
+    project from Umbrella.Wallet.Core.Tests on purpose: starting Avalonia in a test process changes how
+    the view models behave (a dispatcher exists), and the 1,800 view-model tests are written for a
+    process without one.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Skia" Version="11.3.18" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Umbrella.Wallet.App\Umbrella.Wallet.App.csproj" />
+  </ItemGroup>
+</Project>

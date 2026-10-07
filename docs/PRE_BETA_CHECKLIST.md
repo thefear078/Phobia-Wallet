@@ -95,9 +95,10 @@ Do **not** call a public beta “fund-safe” until these are green:
 | Item | Status |
 |------|--------|
 | Windows installer + portable exe, Linux tar.gz, Android APK, `SHA256SUMS-<label>.txt` on the release page | ✅ Beta 1 — the sums match GitHub's own digests, every file has a build attestation |
-| Android APK signed with a **stable** key (repository secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`) | ❌ not set — each release APK has a one-off key, so an update needs uninstall + re-import |
-| Windows code signing (SmartScreen) | ❌ R.2 / R.6 — the exe is unsigned; checksums + attestations are the proof |
-| Tags point at the commit each release was built from | ⚠ on 2026-10-03 every tag was moved to `6a533d4` and every release page re-received Beta 1 files — see the readiness audit; restore before the next release |
+| Android APK signed with a **stable** key (repository secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`) | ✅ set 2026-10-07 — from Beta 2 every APK carries the key in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); Beta 1 → Beta 2 is one reinstall |
+| Windows code signing (SmartScreen) | 🟡 from Beta 2 every exe and the installer are signed and timestamped (`WINDOWS_CERT_PFX_B64` / `WINDOWS_CERT_PASSWORD`), but self-signed — SmartScreen still warns until a CA-issued certificate replaces it (R.2) |
+| Tags point at the commit each release was built from | ✅ restored 2026-10-07 (moved to `6a533d4` on 2026-10-03; the Beta 1 copies attached to old release pages were deleted). A ruleset now forbids moving or deleting `v*` tags, and the release workflow refuses a release that already has files |
+| SBOM on the release page | ✅ from Beta 2 — `PhobiaWallet-<label>-sbom.spdx.json`, in the sums and the attestation |
 
 Track in [ROADMAP.md](ROADMAP.md) §3.
 
@@ -118,7 +119,7 @@ Track in [ROADMAP.md](ROADMAP.md) §3.
 | Docs / legal / GitHub hardening | **Yes** |
 | Philosophy consistency | **Yes** |
 | Fund-safety P0 code + first-run UI | **Yes** — P0.0–P0.8 and the first-run UI are done |
-| Release artifacts | **Yes for a GitHub beta**; a stable Android signing key and Windows code signing are still missing |
+| Release artifacts | **Yes for a GitHub beta** — signed (Windows self-signed), attested, with an SBOM; a CA-issued Windows certificate is still missing |
 | Store submission (Apple/Play/MS) | **Not yet** — the in-app disclaimers are done; a legal entity and code signing are not |
 
 **Private / friends beta** on GitHub Releases is fine **today** if testers accept experimental risk and never put more than they can lose — and if CONTACT / SECURITY channels are used for bugs.

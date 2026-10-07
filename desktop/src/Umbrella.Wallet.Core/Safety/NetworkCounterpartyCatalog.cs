@@ -155,7 +155,8 @@ public static class NetworkCounterpartyCatalog
         new("zksync.drpc.org", "dRPC", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, Chain, "ETH on zkSync Era"),
 
-        // --- Prices. No addresses here - but the symbols asked about are the coins you hold. ---------
+        // --- Prices. No addresses here. The price list is one fixed list, the same for every wallet, but
+        // a chart is asked for the coin it shows - and the balance chart asks for each coin you hold. ----
         new("api.coingecko.com", "CoinGecko", CounterpartyPurpose.Prices,
             CounterpartyContact.Automatic,
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline
@@ -165,10 +166,12 @@ public static class NetworkCounterpartyCatalog
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline
             | CounterpartyLearns.WhichCoinsYouHold),
         // Fallbacks when Binance refuses — it blocks many Tor exits (403), which left a Tor-only wallet
-        // with two prices out of twenty-seven. Asked only for what is still missing.
+        // with two prices out of twenty-seven. Asked only for what is still missing - which for a chart
+        // is the coin it shows.
         new("api.kucoin.com", "KuCoin", CounterpartyPurpose.Prices,
             CounterpartyContact.Automatic,
-            CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline),
+            CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline
+            | CounterpartyLearns.WhichCoinsYouHold),
         new("api.bybit.com", "Bybit", CounterpartyPurpose.Prices,
             CounterpartyContact.Automatic,
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline

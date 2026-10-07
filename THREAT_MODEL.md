@@ -245,16 +245,31 @@ roadmap rather than implied away.
 **Attacker.** Someone who replaces the download, or compromises the build.
 
 **What the wallet does.** Releases are built in public CI from a tagged commit. A per-version
-`SHA256SUMS-<version>.txt` is generated from the attached artifacts, self-verified before publishing,
+`SHA256SUMS-<label>.txt` is generated from the attached artifacts, self-verified before publishing,
 and refuses to publish if empty. The artifact set is checked for completeness and for strays, so a
 partial release cannot yield a manifest that silently omits a file. Dependencies are pinned, scanned
-by Dependabot, and the source is analysed by CodeQL on every PR.
+by Dependabot, and the source is analysed by CodeQL on every PR. Since 2026-10-07 also:
 
-**Where the defence ends.** The binaries are **not code-signed** and the build is **not reproducible**.
-A user verifying the checksum is verifying against the same GitHub release an attacker would have had
-to compromise. Both are on the roadmap and neither is done.
+- **Signatures.** Every Windows executable and the installer carry the author's Authenticode signature,
+  timestamped, and the APK is signed with one stable key; the release workflow refuses a signature from
+  any other certificate. Fingerprints in [SECURITY.md](SECURITY.md#verifying-what-you-run).
+- **Provenance.** Every file and the sums file carry a keyless build attestation (since 4.8.0), checked
+  against the public Sigstore log rather than against this repository, and each release ships an SBOM.
+- **Reproducible core.** The managed assemblies — the code that derives keys, signs and routes — are
+  built twice in CI from different paths and must be byte-identical; anyone can build the tag and compare.
+- **The build itself.** Every GitHub Action is pinned to a commit SHA, release tags are immutable (a
+  ruleset forbids moving or deleting them), and a published release is never rebuilt. Bundled Tor and
+  Monero are checked against their projects' signed sums on every PR.
 
-**Residual risk: MEDIUM.** Do not let anyone tell you otherwise until those two ship.
+**Where the defence ends.** The Windows certificate is **self-signed**: it proves a file is unchanged
+since the release workflow signed it, not who the publisher is, and Windows still warns. The installer,
+apphost and APK are not bit-for-bit reproducible. Signing keys live in the repository's encrypted
+secrets, so whoever controls the GitHub account controls the signatures — the attestation then still
+names the workflow and commit, and an immutable tag makes a quiet swap visible. A CA-issued certificate
+and an external audit are on the roadmap.
+
+**Residual risk: LOW–MEDIUM** for a user who checks the signature or the attestation; **MEDIUM** for one
+who checks nothing.
 
 ---
 

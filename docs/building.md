@@ -58,10 +58,16 @@ Two false leads are worth recording, because both produced confident wrong numbe
 `global.json` pins the SDK to the patch level. A different compiler version produces different output,
 so a verifier must use the same one.
 
-### What is still missing
+### Signatures
 
-Signed binaries. Reproducibility proves the binary matches the source; a signature proves the release
-came from whoever holds the key. They answer different questions and the wallet has only the first.
+Reproducibility proves the binary matches the source; a signature proves the release came from whoever
+holds the key. They answer different questions, so a release has both. The release workflow signs
+`Phobia.exe`, the portable exe and the installer with `desktop/scripts/sign-windows.ps1` (Authenticode,
+SHA-256, RFC 3161 timestamp from DigiCert or Sectigo), from the `WINDOWS_CERT_PFX_B64` and
+`WINDOWS_CERT_PASSWORD` repository secrets, and refuses a signature made by any other certificate. The
+certificate is the author's own, self-signed, until a CA-issued one takes its place in the same two
+secrets. Fingerprints and how to check them: [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature). A local
+build without the secrets is simply unsigned.
 
 ## Requirements
 

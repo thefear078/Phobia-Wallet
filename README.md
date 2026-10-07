@@ -22,7 +22,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release)
 ![License](https://img.shields.io/badge/license-MIT-4B3F86)
 ![Version](https://img.shields.io/badge/version-4.10.0--beta.1-2F6BEF)
-![Tests](https://img.shields.io/badge/tests-1800%2B%20offline-7DCF8F)
+![Tests](https://img.shields.io/badge/tests-1850%2B%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
@@ -284,8 +284,13 @@ sha256sum -c SHA256SUMS-Beta-1.txt
 Get-FileHash .\PhobiaWallet-Setup-Beta-1.exe -Algorithm SHA256
 ```
 
-If the hash does not match, do not run it. Better still, [build it yourself](docs/building.md) — the
-build is deterministic enough that you can compare your own binary against the published one.
+If the hash does not match, do not run it. From Beta 2 every Windows executable and the APK are also
+signed by the author — Windows thumbprint `89C2D871C195D57C14D1911B6C47629DE052C553`, Android
+certificate SHA-256 `C3:80:0E:…:95:72:D1` (in full in [SECURITY.md](SECURITY.md#verifying-what-you-run)).
+The Windows certificate is self-signed for now, so Windows still names no publisher: check the thumbprint.
+Every file also has a build attestation (`gh attestation verify <file> --repo thefear078/Phobia-Wallet`)
+and each release an SBOM. All four checks, and building it yourself — the managed assemblies that derive
+keys and sign come out byte-identical — are in **[docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md)**.
 
 ## Get started
 
@@ -369,22 +374,25 @@ desktop/
       Chains/                        chain catalog, address validation
       Derivation/                    BIP32 / SLIP-0010 / Ed25519 derivation
       Utxo/                          HD scan, spend planner, fee levels
-      Safety/                        Privacy Radar, spam detection
+      Safety/                        Privacy Radar, spam detection, token identity
       Amounts/                       locale-safe amount parsing
       Chart/                         candle aggregation
     Umbrella.Wallet.Infrastructure/  everything that does I/O
       Network/                       explorers, RPC, senders, Tor
       EncryptedFileSeedVault.cs      Argon2id → AES-256-GCM vault
-    Umbrella.Wallet.App/             Avalonia UI
+      AtomicFile.cs                  every save is all-or-nothing
+    Umbrella.Wallet.App/             Avalonia UI, desktop and phone layouts
       Views/                         XAML
       ViewModels/                    MainViewModel, split by feature
       Localization.cs                every user-facing string, 6 languages
       Theming.cs                     15 themes
       GuideContent.cs                the in-app guide
+    Umbrella.Wallet.Android/         the Android head (hosts the App project)
   tests/
-    Umbrella.Wallet.Core.Tests/      about 1,800 offline tests
+    Umbrella.Wallet.Core.Tests/      about 1,850 offline tests
+    Umbrella.Wallet.UiTests/         every screen drawn headless, desktop and phone
   installer/                         Inno Setup script
-  scripts/                           release, Tor/Monero staging
+  scripts/                           release, signing, Tor/Monero staging
 docs/                                everything in this README's Docs section
 ```
 
@@ -413,7 +421,7 @@ Producing installers, the portable build and checksums is documented in
 
 ## Tests
 
-More than 1,800 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there
+More than 1,850 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there
 for a badge — several classes of them exist because the alternative is losing money:
 
 - **Derivation** is pinned byte-for-byte to official test vectors and to the reference libraries
@@ -430,6 +438,11 @@ for a badge — several classes of them exist because the alternative is losing 
   wallet's own output.
 - **Busy explorers** are pinned too: a timeout is not a cancel, a 429 is waited out, and an unread
   balance is never shown as zero.
+- **Privacy on the wire**: a SOCKS5 server on loopback reads each request's circuit label off the
+  handshake, a listener proves the kill-switch opens no socket, and the Monero service's login is
+  checked against the real `monero-wallet-rpc`.
+- **Screens as drawn**: every section, desktop and phone, is rendered headless with the real styles, and
+  a screen that shows an object's type name instead of words fails the build.
 
 `--filter "Category!=Live"` excludes the handful of tests that hit real explorers, so the default run
 is fully offline and deterministic.
@@ -490,7 +503,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 
 | | |
 |---|---|
-| ✅ Shipped | 18 chains, Tor + kill-switch with per-purpose circuits, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations |
+| ✅ Shipped | 18 chains, Tor + kill-switch with per-purpose circuits, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations · signed Windows and Android builds, SBOM, immutable release tags |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
 | 🧪 Beta | **Android** (APK; Tor through Orbot; the Monero service is desktop-only for now) |
 | 🗓 Planned | Tor bundled on Android · Decred sending · reproducible builds · external security audit |

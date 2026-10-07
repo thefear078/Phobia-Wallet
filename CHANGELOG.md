@@ -29,6 +29,45 @@ and the places it was not true fixed.
   Orbot set as the proxy, the one setup it protects — and disarmed it only after arming the transport, so
   that session refused every request while the switch read "off". The status line now says "through your
   proxy". [How to set up Orbot](docs/guides/android.md#tor-on-the-phone-through-orbot).
+- **A token is priced on its contract, not its name.** A token calling itself "USDT" (or ETH, TRX, BTC)
+  from any other contract was counted at the real coin's price; it is now worth nothing and folded away
+  with the spam.
+- **Every wallet asks for the same price list.** The list used to include the tokens you hold — and a
+  Monero-only request when you held Monero — so the price service could tell wallets apart by what they
+  asked for. Now it is one fixed list, one shared request, reused for 20 seconds.
+
+### Market, currency and balances
+
+- **The Home market card shows coins, not code.** It printed `MarketRowViewModel { Symbol = BTC… }`: its
+  row layout was defined on the Market page only. A test now draws every screen, desktop and phone, and
+  fails on any such text.
+- **Figures are always in the currency they are labelled with.** A rate that failed to load was taken as
+  1.0 and never asked for again, so dollar figures stood under ¥ or ₴. Rates are kept on disk and applied
+  together with the symbol; without a rate, figures stay in dollars and say USD. The chart's axis, candles,
+  crosshair and caption follow the chosen currency, and the fiat field in Send and Receive now takes that
+  currency (it took dollars: "100" beside yuan figures meant $100).
+- **Balances appear as each chain answers**, a price missing from one answer no longer zeroes a holding,
+  and the 24-hour change is exact.
+- **Settings, balances, address book, activity, market data, the watch list and a vault restore are
+  written atomically**, so a crash or power cut mid-save leaves the previous copy, never half a file.
+
+### Release integrity
+
+- **Windows executables and the installer are signed** (Authenticode, SHA-256, RFC 3161 timestamp) by the
+  author's key, and **the APK is signed with one stable key** from now on. Fingerprints in
+  [SECURITY.md](SECURITY.md#verifying-what-you-run). The Windows certificate is self-signed for now.
+  Beta 1's APK had a key of its own, so moving from it to Beta 2 on Android takes one reinstall (back up
+  the 24 words first).
+- **Each release carries an SBOM** (`PhobiaWallet-<label>-sbom.spdx.json`), covered by the sums file and
+  the build attestation.
+- **Release tags are immutable.** The `v*` tags moved on 2026-10-03 are back on the commits they were
+  built from, and a repository ruleset now forbids moving or deleting a release tag. The release workflow
+  refuses to build into a release that already has files.
+- **Every GitHub Action is pinned to a commit**, and an OpenSSF Scorecard of the repository is published
+  every week.
+- **Bundled Monero is 0.18.5.3** (0.18.5.1 was withdrawn from the signed hash list).
+- **Screens are tested as drawn.** A new test project renders every section, desktop and phone, with the
+  real styles, and fails if any of them shows an object's name instead of words.
 
 ### Swap
 
@@ -43,6 +82,10 @@ and the places it was not true fixed.
 - `docs/TOR.md` described the deleted web server; it now describes the wallet's Tor, kill-switch, circuits,
   custom proxy, Orbot and Monero routing. README, threat model, privacy page, roadmap and pre-beta checklist
   brought up to date (chains, themes and test counts, Android, the swap routes, what still is not done).
+- [BUILD_VERIFY.md](docs/BUILD_VERIFY.md) rewritten: checksum, signature, attestation and building it
+  yourself, with exact commands and what is and is not bit-for-bit reproducible. Security policy,
+  vulnerability history (the issues above, found by our own review), audit status, privacy pages, Tor,
+  architecture and the in-app guide's technology section updated to match.
 
 ## [4.10.0-beta.1] — Beta 1 (a GitHub pre-release; installed beta copies update to newer betas by themselves) — Umbrella is now Phobia; Monero seeds in every language
 

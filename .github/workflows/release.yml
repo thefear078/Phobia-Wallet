@@ -11,12 +11,32 @@ permissions:
   contents: write
 
 jobs:
+  # A published release is never rebuilt. On 2026-10-03 every tag was moved to one commit and this
+  # workflow re-ran for each, attaching new files to sixty old release pages. Tags are now immutable
+  # (a repository ruleset), and this refuses to build for a release that already carries files.
+  guard:
+    name: guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to rebuild a published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          files="$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json assets \
+                   --jq '[.assets[].name | select(startswith("PhobiaWallet-") or startswith("SHA256SUMS-"))] | length' 2>/dev/null || echo 0)"
+          if [ "$files" -gt 0 ]; then
+            echo "::error::${GITHUB_REF_NAME} already has ${files} release file(s). A published release is never rebuilt - cut a new version."
+            exit 1
+          fi
+
   windows:
     name: windows
+    needs: guard
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: "8.0.x"
 
@@ -47,6 +67,18 @@ jobs:
           dotnet publish $csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist/portable
           foreach ($d in "dist/app","dist/portable") { Rename-Item "$d/Umbrella.Wallet.App.exe" "Phobia.exe" -Force }
 
+      # Authenticode, signer "the fear (thefear078)": the program inside the installer and the portable
+      # file before packaging, the installer itself after. The certificate lives only in the two
+      # secrets and in memory. Without them this repository's release fails; a fork's stays unsigned and says so.
+      - name: Sign the executables
+        shell: pwsh
+        env:
+          WINDOWS_CERT_PFX_B64: ${{ secrets.WINDOWS_CERT_PFX_B64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          # The thumbprint docs/BUILD_VERIFY.md publishes. Changing the certificate means changing this.
+          WINDOWS_CERT_THUMBPRINT: 89C2D871C195D57C14D1911B6C47629DE052C553
+        run: ./desktop/scripts/sign-windows.ps1 -Files dist/app/Phobia.exe, dist/portable/Phobia.exe
+
       - name: Build installer (Inno Setup) + portable zip
         shell: pwsh
         run: |
@@ -61,8 +93,17 @@ jobs:
           # hand - which the checksum job below would then reject as a stray artifact.
           Copy-Item "dist/portable/Phobia.exe" "dist/PhobiaWallet-$label-win-x64-portable.exe" -Force
 
+      - name: Sign the installer
+        shell: pwsh
+        env:
+          WINDOWS_CERT_PFX_B64: ${{ secrets.WINDOWS_CERT_PFX_B64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          # The thumbprint docs/BUILD_VERIFY.md publishes. Changing the certificate means changing this.
+          WINDOWS_CERT_THUMBPRINT: 89C2D871C195D57C14D1911B6C47629DE052C553
+        run: ./desktop/scripts/sign-windows.ps1 -Files "dist/PhobiaWallet-Setup-${{ steps.v.outputs.label }}.exe"
+
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
@@ -71,10 +112,11 @@ jobs:
 
   linux:
     name: linux
+    needs: guard
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: "8.0.x"
 
@@ -102,7 +144,7 @@ jobs:
           cp "desktop/dist/linux/phobia-wallet-${V}-linux-x64.tar.gz" "PhobiaWallet-${{ steps.v.outputs.label }}-linux-x64.tar.gz"
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
@@ -110,17 +152,18 @@ jobs:
 
   android:
     name: android
+    needs: guard
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # The android workload installs into the SDK's own folder, so the SDK goes somewhere this user
       # can write to rather than the runner's root-owned /usr/share/dotnet.
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
         with:
           dotnet-version: "8.0.x"
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "17"
@@ -138,8 +181,8 @@ jobs:
           echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
 
       # Android installs an update only when it is signed with the same key as the copy already on the
-      # phone. That key lives in two repository secrets; without them this release still ships an APK,
-      # signed with a key made for this run alone, and says so - a later APK will not install over it.
+      # phone. That key lives in two repository secrets. In this repository a release without them fails;
+      # a fork's release ships an APK signed with a key made for that run alone, and says so.
       - name: Signing key
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
@@ -151,6 +194,9 @@ jobs:
             echo "$KEYSTORE_B64" | base64 -d > "$KS"
             PASS="$KEYSTORE_PASSWORD"
             ALIAS="${KEY_ALIAS:-phobia}"
+          elif [ "$GITHUB_REPOSITORY" = "thefear078/Phobia-Wallet" ]; then
+            echo "::error::ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD are not set - an official APK must carry the project's key."
+            exit 1
           else
             echo "::warning::ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD are not set - this APK is signed with a one-off key, and the next one will not install over it."
             PASS="$(openssl rand -hex 24)"
@@ -171,15 +217,26 @@ jobs:
           ( cd desktop && ./scripts/publish-android.sh )
           cp "desktop/dist/android/phobia-wallet-${{ steps.v.outputs.version }}-android.apk" "PhobiaWallet-${{ steps.v.outputs.label }}-android.apk"
 
-      # The file people install must carry a v2+ signature from the key above, not the SDK's debug key.
+      # The file people install must carry a v2+ signature from the key above, not the SDK's debug key -
+      # and in this repository, from the key whose fingerprint docs/BUILD_VERIFY.md publishes. A secret
+      # replaced with another key fails here instead of shipping an APK that cannot update the real one.
       - name: Check the signature
+        env:
+          PINNED_SHA256: c3800ec634f3c16c844e620bbb922881b634c02b174068d480f89adaa89572d1
         run: |
           APKSIGNER="$(ls -d "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"/build-tools/*/apksigner | sort -V | tail -n 1)"
           "$APKSIGNER" verify --verbose --print-certs "PhobiaWallet-${{ steps.v.outputs.label }}-android.apk" | tee apksigner.txt
           if grep -q "CN=Android Debug" apksigner.txt; then echo "::error::APK is signed with the debug key"; exit 1; fi
+          if [ "$GITHUB_REPOSITORY" = "thefear078/Phobia-Wallet" ]; then
+            got="$(grep -m1 'Signer #1 certificate SHA-256 digest' apksigner.txt | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')"
+            if [ "$got" != "$PINNED_SHA256" ]; then
+              echo "::error::APK signer SHA-256 is '$got', not the published $PINNED_SHA256"
+              exit 1
+            fi
+          fi
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
@@ -194,7 +251,7 @@ jobs:
       id-token: write        # OIDC, so the attestation is keyless — no signing key to lose or leak
       attestations: write    # record it against this repository
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Read version
         id: v
@@ -241,6 +298,18 @@ jobs:
           done
           [ "$missing" -eq 0 ] || { echo "Release artifact set is incomplete or unexpected."; exit 1; }
 
+      # Roadmap R.4. The software bill of materials: every package this commit builds from, with its
+      # version and licence, as GitHub's dependency graph reads them (SPDX). Made here, after the set
+      # above is checked, so it is covered by the checksum manifest and the attestation like any file.
+      - name: Software bill of materials (SPDX)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          L="${{ steps.v.outputs.label }}"
+          gh api "repos/${GITHUB_REPOSITORY}/dependency-graph/sbom" --jq '.sbom' > "assets/PhobiaWallet-${L}-sbom.spdx.json"
+          test -s "assets/PhobiaWallet-${L}-sbom.spdx.json"
+          jq -e '.spdxVersion and (.packages | length > 0)' "assets/PhobiaWallet-${L}-sbom.spdx.json" > /dev/null
+
       # Named per release ("SHA256SUMS-Beta-1.txt", "SHA256SUMS-4.10.0.txt"), because that is what the
       # README tells people to run:
       #   sha256sum -c SHA256SUMS-<label>.txt
@@ -256,11 +325,13 @@ jobs:
           [ -s "SHA256SUMS-${L}.txt" ] || { echo "::error::checksum manifest is empty"; exit 1; }
           ( cd assets && sha256sum -c "../SHA256SUMS-${L}.txt" )
 
-      - name: Attach checksums to release
-        uses: softprops/action-gh-release@v2
+      - name: Attach checksums and the SBOM to release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           prerelease: ${{ contains(steps.v.outputs.version, '-') }}
-          files: SHA256SUMS-${{ steps.v.outputs.label }}.txt
+          files: |
+            SHA256SUMS-${{ steps.v.outputs.label }}.txt
+            assets/PhobiaWallet-${{ steps.v.outputs.label }}-sbom.spdx.json
 
       # Roadmap R.3. A checksum proves a download matches the manifest on the release page. It says
       # nothing about who put that page there — and an attacker who can replace the artifacts can
@@ -272,7 +343,7 @@ jobs:
       # a signing service had a bad minute. A missing attestation is visible and re-runnable; a
       # half-published release is not.
       - name: Attest the release artifacts
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: |
             assets/PhobiaWallet-*

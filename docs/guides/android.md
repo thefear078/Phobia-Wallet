@@ -31,7 +31,8 @@ It is a **beta**, installed from the release page (an APK), not from a store.
    sha256sum -c SHA256SUMS-Beta-1.txt --ignore-missing
    gh attestation verify PhobiaWallet-Beta-1-android.apk --repo thefear078/Phobia-Wallet
    ```
-   then copy the checked file to the phone.
+   then copy the checked file to the phone. From Beta 2 the APK is also signed with the author's key —
+   see [Updating](#updating) for its fingerprint.
 3. Open the APK. Android asks once whether your browser or file manager may install apps — allow it
    for that app, install, and you can switch the permission off again afterwards.
 4. Open **Phobia**, set a vault password, and create a wallet or import your recovery phrase — exactly
@@ -112,10 +113,20 @@ the proxy alone is enough, and it is what lets the kill-switch know whether Tor 
 Download the newer APK from its release page, check it the same way, and open it: Android installs it
 over the old one and the wallet keeps its data.
 
-Android only installs an update that is **signed with the same key** as the copy on the phone. If
-Android says the app "conflicts with an existing package", the new APK was signed with a different key:
-make sure your recovery phrase is written down, uninstall Phobia, install the new APK and import the
-phrase. The release notes say when that is needed.
+Android only installs an update that is **signed with the same key** as the copy on the phone — which
+is also the proof that the update is ours. From Beta 2 every APK is signed with one key, the author's:
+
+```
+SHA-256  C3:80:0E:C6:34:F3:C1:6C:84:4E:62:0B:BB:92:28:81:B6:34:C0:2B:17:40:68:D4:80:F8:9A:DA:A8:95:72:D1
+```
+
+Check it on a computer with `apksigner verify --print-certs <file>.apk` (Android SDK build-tools), or on
+the phone with an app that shows signing certificates. Anything else is not an official build.
+
+**Beta 1 → Beta 2 needs one reinstall.** Beta 1's APK was signed with a key made for that one build, so
+Android refuses Beta 2 over it ("conflicts with an existing package"). Make sure your recovery phrase is
+written down, uninstall Phobia, install Beta 2 and import the phrase. Every update after that installs
+over the old copy and keeps its data.
 
 ## Questions
 

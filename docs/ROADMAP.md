@@ -125,14 +125,16 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | H.1 | Bitcoin **PSBT** export/import + watch-only xpub | ✅ **PSBT both ways.** Export: the reviewed payment as an unsigned PSBT naming the master fingerprint and every BIP32 path — BIP-371 Taproot fields filled by hand, because NBitcoin's `AddKeyPath` leaves a Taproot coin unnamed — with the change index reserved as for a real send. Import (base64, hex or `.psbt`): reviewed line by line with the cost to this wallet, and only coins the wallet's **own scan** found are signed, at the value read from the chain; a PSBT that misstates one of them, or spends from one of its addresses a coin the scan cannot see, is refused. Completed PSBTs broadcast through the same route gate. The xpub export now includes the Taproot account the balance counts. **Not done:** a seedless watch-only wallet (import an xpub, sign elsewhere) — the app is built around an unlocked seed, and that mode is the same work H.2 needs, so they go together. Signing needs a synced wallet: this is not an air-gapped signer |
 | **H.2** | **Ledger / Trezor** (sign on device, no seed in Phobia) + seedless watch-only | 🏆 **P0 next** — design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md); H.1 PSBT is the interim path |
 | H.3 | **Multisig** 2-of-3 | 📅 long |
-| H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 🟡 **Beta 1 APK** — the same view models, signing code and pages in a phone layout (`Views/MobileShell`), built in CI and attached to the release with its checksum and attestation. Seed and key screens are FLAG_SECURE, Android backup is off. Tor through **Orbot** (custom proxy `127.0.0.1:9050`, kill-switch kept across restarts — beta.2). **Not yet:** a Tor bundled in the APK and the Monero service on the phone, a stable signing key in the repository secrets (until then every release APK is signed with a one-off key and an update needs a reinstall — set `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`), Play Store |
-| R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | 🟡 docs / ⏳ attestations |
-| R.2 | **Code signing OV/EV (SmartScreen)** | ⏳ **start ≥60 days before store release**; legal entity required; ~$300–1000/year (see R.6) |
-| R.3 | Sign releases with **GPG / Sigstore** | ✅ from the next release — every artifact **and** the sums file carry a keyless build attestation (GitHub OIDC → public transparency log), verified with `gh attestation verify`. No signing key exists, so none can be stolen. Earlier releases have checksums only, and the docs say so |
-| R.4 | SBOM / provenance as a release asset | 📅 |
+| H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 🟡 **Beta 1 APK** — the same view models, signing code and pages in a phone layout (`Views/MobileShell`), built in CI and attached to the release with its checksum and attestation. Seed and key screens are FLAG_SECURE, Android backup is off. Tor through **Orbot** (custom proxy `127.0.0.1:9050`, kill-switch kept across restarts — beta.2). **Signed with **one stable key** from Beta 2 (fingerprint in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); Beta 1 → Beta 2 needs one reinstall, later updates install over). **Not yet:** a Tor bundled in the APK and the Monero service on the phone, Play Store |
+| R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | ✅ the managed assemblies — the code that derives keys, signs and routes — are byte-identical across builds (CI `reproducible-build`); attestations ✅ (R.3). The apphost, installer and APK are not bit-identical; [BUILD_VERIFY.md](BUILD_VERIFY.md#what-is-and-is-not-bit-for-bit-reproducible) says which files to compare |
+| R.2 | **Code signing OV/EV (SmartScreen)** | 🟡 **the pipeline is done** (2026-10-07): `release.yml` signs `Phobia.exe`, the portable exe and the installer (Authenticode SHA-256, RFC 3161 timestamp) and refuses a signature from any other certificate. The certificate is the author's own, self-signed — it proves the file is untouched, not who the publisher is, so SmartScreen still warns. **Next:** a CA-issued certificate for an individual open-source developer (no legal entity needed), swapped in through the same two secrets; EV/Store later (R.6) |
+| R.3 | Sign releases with **GPG / Sigstore** | ✅ since 4.8.0 — every artifact **and** the sums file carry a keyless build attestation (GitHub OIDC → public transparency log), verified with `gh attestation verify`. No signing key exists, so none can be stolen. Earlier releases have checksums only, and the docs say so |
+| R.4 | SBOM / provenance as a release asset | ✅ from Beta 2: `PhobiaWallet-<label>-sbom.spdx.json` (SPDX, from GitHub's dependency graph) on every release, in the sums file and the attestation; provenance is R.3 |
 | R.5 | External **security audit** — status in [`../AUDIT_STATUS.md`](../AUDIT_STATUS.md) | 📅 Planned |
 | **R.6** | **EV Code Signing** (~$500–800/year) or OV for Windows build — without this SmartScreen / Store block unsigned exe | ⏳ |
 | **R.7** | **Microsoft Store** (optional): separate Store build / Microsoft signature | 📅 |
+| R.8 | **Immutable releases** | ✅ 2026-10-07: the tags force-moved on 2026-10-03 are back on their original commits; a repository ruleset forbids moving or deleting `v*` tags; `release.yml` refuses to build into a release that already has files |
+| R.9 | **Build supply chain** | ✅ 2026-10-07: every GitHub Action pinned to a commit SHA (Dependabot updates them); OpenSSF Scorecard weekly; bundled Tor and Monero checked against their signed sums on every PR |
 
 ### P2 / Legal — store compliance (see §9 + root legal files)
 
@@ -204,7 +206,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | No external audit | Commission audit (R.5); until then do not write “audited” |
 | Docs drifted from code | Annual documentation audit (M.7) |
 | App Store / Play rejection | §9 compliance (L.1–L.8, wording) |
-| SmartScreen / unsigned Windows | R.6 EV code signing |
+| SmartScreen “unknown publisher” | Builds are signed (R.2, self-signed); a CA certificate (R.2) and EV (R.6) remove the warning |
 
 ---
 
@@ -218,7 +220,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 6. ✅ **P1.2, P1.4–P1.7, P1.9, P1.10** — hidden-wallet unlock, simulation, private-send parity across UTXO chains, connection status, honest capture wording, address book, Activity coverage. **P1.3** (panic wipe) is the last P1 open. ← **next**  
 7. ✅ **P1.20** + §10 — self-verify (xpub export) and the public guide “how to check you are not being lied to.”  
 8. ✅ **L.1 / L.3 / L.8** (+ L.2 wording) — disclaimers / age / ToS in the app; **L.4** is store-listing copy, written at submission.  
-9. **R.6 / L.6** — EV signing for Windows + PGP for Linux packages. R.3 attestations already cover “did this come from the project”; EV covers SmartScreen, which is a different problem and needs a legal entity and money. ← **next (human/process)**  
+9. 🟡 **R.2 / R.6 / L.6** — Windows builds are signed in the pipeline (self-signed, 2026-10-07); next a CA-issued certificate, then EV, and PGP for Linux packages. R.3 attestations already cover “did this come from the project”; a CA certificate covers SmartScreen, which is a different problem. ← **next (human/process)**  
 10. ✅ **N.1 / N.2** ERC-20 and TRC-20, ✅ **N.3** jettons and SPL tokens, both token programs.  
 11. ✅ **P2.1** Taproot find/show/spend, ✅ **P2.2** PayJoin (sender).  
 12. ✅ **H.1** PSBT export / review / sign. **H.2** Ledger/Trezor next — needs the seedless watch-only mode and the devices to test on.  

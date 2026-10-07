@@ -102,30 +102,31 @@ verify the build attestation as below.
 
 ## Verifying what you run
 
-Every release ships `SHA256SUMS-<version>.txt`. Check your download before running it:
+Four independent checks — checksum, signature, build attestation, building it yourself — each with the
+exact commands, are in **[docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md)**. The signing keys' public
+fingerprints:
 
-```bash
-sha256sum -c SHA256SUMS-4.6.0.txt
-```
+| Platform | Signer | Fingerprint |
+|---|---|---|
+| Windows (Authenticode) | the fear (thefear078) | SHA-1 `89C2D871C195D57C14D1911B6C47629DE052C553` |
+| Android APK | the fear (thefear078) | SHA-256 `C3:80:0E:C6:34:F3:C1:6C:84:4E:62:0B:BB:92:28:81:B6:34:C0:2B:17:40:68:D4:80:F8:9A:DA:A8:95:72:D1` |
 
-```powershell
-Get-FileHash .\PhobiaWallet-Setup-4.10.0.exe -Algorithm SHA256
-```
-
-Better still, [build it yourself](docs/building.md). Reproducible builds with published attestations
-are on the roadmap and are not done yet — this page will not claim them until they are.
+A file signed by anything else is not an official build. The Windows certificate is self-signed until a
+CA-issued one replaces it, so Windows still shows an unknown publisher; the thumbprint is what to check.
 
 ## What we do on our side
 
 | | |
 |---|---|
 | Static analysis | CodeQL on every push |
-| Secret scanning | enabled, with push protection |
+| Secret scanning | enabled, with push protection; gitleaks over the whole history every week |
 | Dependency alerts | Dependabot, with security updates |
 | Vulnerable packages | build fails on a known-vulnerable dependency |
-| Secrets in history | gitleaks in CI |
-| Branch protection | `main` requires review + all checks green; no force-push, no deletion |
-| Tests | 526 offline tests, required before merge |
+| Supply chain of the build itself | every GitHub Action pinned to a commit SHA; OpenSSF Scorecard published weekly |
+| Bundled Tor / Monero | pinned versions, checked against the projects' signed sums on every PR (`supply-chain` job) |
+| Branch protection | `main` requires all checks green; no force-push, no deletion |
+| Release tags | immutable: a ruleset forbids moving or deleting `v*` tags; a published release is never rebuilt |
+| Tests | about 1,850 offline tests plus rendered-screen tests, required before merge; the Monero service's login is tested against the real `monero-wallet-rpc` in CI |
 
 No external audit has been performed. Status and future links live in
 **[AUDIT_STATUS.md](AUDIT_STATUS.md)**. When an audit exists, it will be linked there and here with the
@@ -147,9 +148,11 @@ Each release should include:
 
 | Asset | Status |
 |---|---|
-| `SHA256SUMS-<version>.txt` | ✅ shipped |
-| Build attestation over every artifact **and** the sums file | ✅ from the next release — keyless, via GitHub OIDC |
-| SBOM (CycloneDX / SPDX) | ⏳ roadmap R.4 |
+| `SHA256SUMS-<label>.txt` | ✅ shipped |
+| Build attestation over every artifact **and** the sums file | ✅ keyless, via GitHub OIDC (since 4.8.0) |
+| Authenticode signature on every Windows executable | ✅ from the release after 2026-10-07 (self-signed, see above) |
+| APK signed with one stable key | ✅ from the release after 2026-10-07 |
+| SBOM (SPDX) `PhobiaWallet-<label>-sbom.spdx.json` | ✅ from the release after 2026-10-07, covered by the sums and the attestation |
 
 Verify an attestation with the GitHub CLI:
 
@@ -158,8 +161,9 @@ gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/Phobia-
 ```
 
 It checks, against a public transparency log rather than against anything we say, that those exact
-bytes came out of this repository's release workflow at a specific commit. Releases published before then have checksums only — an attestation cannot be added to a build
-after the fact, and claiming otherwise would defeat the point.
+bytes came out of this repository's release workflow at a specific commit. Releases published before
+4.8.0 have checksums only — an attestation cannot be added to a build after the fact, and claiming
+otherwise would defeat the point. The same goes for signatures and SBOMs on older releases.
 
 ## Historical vulnerabilities
 
@@ -168,10 +172,14 @@ Process: **[SECURITY/COORDINATED_DISCLOSURE.md](SECURITY/COORDINATED_DISCLOSURE.
 
 | Date | ID | Severity | Fixed in |
 |---|---|---|---|
-| — | — | — | None disclosed yet |
+| 2026-10-07 | PHB-2026-01 — local Monero service had no login | **High** | next release (#143) |
+| 2026-10-07 | PHB-2026-02 — Tor circuit isolation ineffective | Medium | next release (#143) |
+| 2026-10-07 | PHB-2026-03 — token ticker impersonation valued | Medium | next release (#143) |
+| 2026-10-07 | PHB-2026-04 — Android kill-switch reset with Orbot | Medium | next release (#143) |
+| 2026-10-07 | PHB-2026-05…07 — price-list fingerprint, `socks4://` local DNS, fiat field currency | Low | next release (#143) |
 
-When vulnerabilities are disclosed, they will be listed here and in `SECURITY/VULNERABILITY_HISTORY.md`
-with links to advisories.
+All found by the project's own review, none reported from outside; details and affected versions in
+the full log. Disclosed reports will be added the same way, with links to advisories.
 
 ## Bug bounty
 
