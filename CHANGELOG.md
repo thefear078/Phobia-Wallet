@@ -4,7 +4,7 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [4.10.0-beta.2] — Beta 2 (a GitHub pre-release) — the phone gets its own Tor and Monero; signed, attested builds with an SBOM; privacy fixes from the readiness audit
 
 A readiness audit of Beta 1 (2026-10-07): the network privacy the wallet claimed, checked on the wire,
 and the places it was not true fixed.

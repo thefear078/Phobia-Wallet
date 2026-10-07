@@ -12,7 +12,10 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 > **Umbrella Wallet is now Phobia Wallet.** Same code, same keys, same encrypted vault — a new name and
 > a new look. Phobia is in **beta**, and a stable copy (4.9.0 and older) is never offered a beta by
-> itself: install Beta 1 from its release page over the old copy, and it keeps the vault and settings.
+> itself: install Beta 2 from its release page over the old copy, and it keeps the vault and settings.
+> A Beta 1 copy finds Beta 2 by itself: on Windows one click installs it; on Linux unpack the downloaded
+> file over the folder (from Beta 2 on, that is one click too). On Android, Beta 1 → Beta 2 takes one
+> reinstall: the APK is now signed with a stable key ([why](docs/guides/android.md#updating)).
 
 <br/>
 
@@ -21,7 +24,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Security](https://github.com/thefear078/Phobia-Wallet/actions/workflows/security.yml/badge.svg)
 ![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release)
 ![License](https://img.shields.io/badge/license-MIT-4B3F86)
-![Version](https://img.shields.io/badge/version-4.10.0--beta.1-2F6BEF)
+![Version](https://img.shields.io/badge/version-4.10.0--beta.2-2F6BEF)
 ![Tests](https://img.shields.io/badge/tests-1850%2B%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
 
@@ -31,7 +34,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download Beta 1](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1)** ·
+**[⬇ Download Beta 2](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.2)** ·
 [Verify your download](#verify-what-you-downloaded) ·
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
@@ -245,7 +248,7 @@ did not quote that coin when this was written.
 
 <img src="docs/assets/logo-phobia.png" width="64" align="left" alt="" hspace="14"/>
 
-The current build is **Beta 1** — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1) has every file below. It is a
+The current build is **Beta 2** — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.2) has every file below. It is a
 pre-release, so GitHub does not label it “Latest”; older builds are on the
 [releases page](https://github.com/thefear078/Phobia-Wallet/releases).
 This is the icon you will see once it is installed.
@@ -254,11 +257,11 @@ This is the icon you will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | [`PhobiaWallet-Setup-Beta-1.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Setup-Beta-1.exe) |
-| **Windows portable** | [`PhobiaWallet-Beta-1-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-win-x64-portable.exe) — one file, no install, leaves nothing behind |
-| **Linux** | [`PhobiaWallet-Beta-1-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-linux-x64.tar.gz) |
-| **Android** | [`PhobiaWallet-Beta-1-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/PhobiaWallet-Beta-1-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
-| **Checksums** | [`SHA256SUMS-Beta-1.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.1/SHA256SUMS-Beta-1.txt) |
+| **Windows installer** | [`PhobiaWallet-Setup-Beta-2.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.2/PhobiaWallet-Setup-Beta-2.exe) |
+| **Windows portable** | [`PhobiaWallet-Beta-2-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.2/PhobiaWallet-Beta-2-win-x64-portable.exe) — one file, no install, leaves nothing behind |
+| **Linux** | [`PhobiaWallet-Beta-2-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.2/PhobiaWallet-Beta-2-linux-x64.tar.gz) |
+| **Android** | [`PhobiaWallet-Beta-2-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.2/PhobiaWallet-Beta-2-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
+| **Checksums** | [`SHA256SUMS-Beta-2.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.2/SHA256SUMS-Beta-2.txt) |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
@@ -277,12 +280,12 @@ Every release ships `SHA256SUMS-<version>.txt`. Check it before you run anything
 
 ```bash
 # Linux / macOS — run in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-Beta-1.txt
+sha256sum -c SHA256SUMS-Beta-2.txt
 ```
 
 ```powershell
 # Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\PhobiaWallet-Setup-Beta-1.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-Beta-2.exe -Algorithm SHA256
 ```
 
 If the hash does not match, do not run it. From Beta 2 every Windows executable and the APK are also
