@@ -33,7 +33,7 @@ It is a **beta**, installed from the release page (an APK), not from a store.
    sha256sum -c SHA256SUMS-Beta-1.txt --ignore-missing
    gh attestation verify PhobiaWallet-Beta-1-android.apk --repo thefear078/Phobia-Wallet
    ```
-   then copy the checked file to the phone. From Beta 2 the APK is also signed with the author's key —
+   then copy the checked file to the phone. From Beta 3 the APK is also signed with the author's key —
    see [Updating](#updating) for its fingerprint.
 3. Open the APK. Android asks once whether your browser or file manager may install apps — allow it
    for that app, install, and you can switch the permission off again afterwards.
@@ -72,7 +72,7 @@ The phone starts in the **Ice** theme (Phobia blue). Settings → Appearance has
 
 ## Tor on the phone
 
-From Beta 2 the APK carries Tor itself — the Tor Project's own Android build, checked against their signed
+From Beta 3 the APK carries Tor itself — the Tor Project's own Android build, checked against their signed
 checksums like the desktop's — so nothing else needs installing:
 
 1. **Settings → Privacy → Tor**: switch it on. The first start takes about half a minute; the chip then
@@ -105,7 +105,7 @@ the proxy alone is enough, and it is what lets the kill-switch know whether Tor 
 
 ## Monero on the phone
 
-From Beta 2 the APK also carries `monero-wallet-rpc`, the Monero project's own Android build (checked
+From Beta 3 the APK also carries `monero-wallet-rpc`, the Monero project's own Android build (checked
 against their signed `hashes.txt`), so XMR shows its balance and sends on the phone as on the desktop. The
 first sync scans the chain from the wallet's birthday and takes a while on mobile data — keep the app open
 until the balance appears. It goes through Tor when Tor is on, and runs only while the app is open.
@@ -130,14 +130,14 @@ until the balance appears. It goes through Tor when Tor is on, and runs only whi
 
 ## Updating
 
-From Beta 2 the wallet looks for a newer release by itself, shortly after it starts and twice a day
+From Beta 3 the wallet looks for a newer release by itself, shortly after it starts and twice a day
 (Settings → Updates turns that off; it goes through Tor when Tor is on). When one is out, a strip on
 Home says so, and **Download** opens that release's APK in your browser. Open the downloaded file:
 Android installs it over the old one and the wallet keeps its data. You can also download it from the
 release page yourself and check it as in [Install](#install).
 
 Android only installs an update that is **signed with the same key** as the copy on the phone — which
-is also the proof that the update is ours. From Beta 2 every APK is signed with one key, the author's:
+is also the proof that the update is ours. From Beta 3 every APK is signed with one key, the author's:
 
 ```
 SHA-256  C3:80:0E:C6:34:F3:C1:6C:84:4E:62:0B:BB:92:28:81:B6:34:C0:2B:17:40:68:D4:80:F8:9A:DA:A8:95:72:D1
@@ -146,9 +146,9 @@ SHA-256  C3:80:0E:C6:34:F3:C1:6C:84:4E:62:0B:BB:92:28:81:B6:34:C0:2B:17:40:68:D4
 Check it on a computer with `apksigner verify --print-certs <file>.apk` (Android SDK build-tools), or on
 the phone with an app that shows signing certificates. Anything else is not an official build.
 
-**Beta 1 → Beta 2 needs one reinstall.** Beta 1's APK was signed with a key made for that one build, so
-Android refuses Beta 2 over it ("conflicts with an existing package"). Make sure your recovery phrase is
-written down, uninstall Phobia, install Beta 2 and import the phrase. Every update after that installs
+**Beta 1 → Beta 3 needs one reinstall.** Beta 1's APK was signed with a key made for that one build, so
+Android refuses Beta 3 over it ("conflicts with an existing package"). Make sure your recovery phrase is
+written down, uninstall Phobia, install Beta 3 and import the phrase. Every update after that installs
 over the old copy and keeps its data.
 
 ## Questions

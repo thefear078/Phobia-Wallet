@@ -25,7 +25,8 @@ for i in $(seq 1 60); do   # up to five minutes: a cold Tor bootstrap fetches a 
     log="$(adb logcat -d -s PHOBIA-SELFTEST:I AndroidRuntime:E 2>/dev/null || true)"
     if echo "${log}" | grep -q "FATAL EXCEPTION"; then result="CRASH"; break; fi
     if echo "${log}" | grep -q "TOR-OK"; then result="OK"; break; fi
-    if echo "${log}" | grep -q "TOR-FAIL"; then result="FAIL"; break; fi
+    # A failure counts only once nothing is still starting (the app logs one result per run).
+    if echo "${log}" | grep -q "TOR-FAIL" && [ "$i" -ge 12 ]; then result="FAIL"; break; fi
 done
 
 adb exec-out screencap -p > "${OUT}/after-tor.png" || true

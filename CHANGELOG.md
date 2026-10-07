@@ -4,7 +4,12 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [4.10.0-beta.2] — Beta 2 (a GitHub pre-release) — the phone gets its own Tor and Monero; signed, attested builds with an SBOM; privacy fixes from the readiness audit
+## [4.10.0-beta.3] — Beta 3 (a GitHub pre-release) — the phone gets its own Tor and Monero; signed, attested builds with an SBOM; privacy fixes from the readiness audit
+
+> **Beta 2 (v4.10.0-beta.2) was tagged from the same code but its release build stopped at the APK
+> signature check**, which looked for an older `apksigner` wording and so read no fingerprint from a
+> correctly signed APK. It has no Android file and no checksum list, so no wallet installs it; Beta 3 is
+> that release, complete, with the check fixed. Tags are never moved, so it is a new number.
 
 A readiness audit of Beta 1 (2026-10-07): the network privacy the wallet claimed, checked on the wire,
 and the places it was not true fixed.
@@ -91,7 +96,7 @@ and the places it was not true fixed.
 - **Windows executables and the installer are signed** (Authenticode, SHA-256, RFC 3161 timestamp) by the
   author's key, and **the APK is signed with one stable key** from now on. Fingerprints in
   [SECURITY.md](SECURITY.md#verifying-what-you-run). The Windows certificate is self-signed for now.
-  Beta 1's APK had a key of its own, so moving from it to Beta 2 on Android takes one reinstall (back up
+  Beta 1's APK had a key of its own, so moving from it to Beta 3 on Android takes one reinstall (back up
   the 24 words first).
 - **Each release carries an SBOM** (`PhobiaWallet-<label>-sbom.spdx.json`), covered by the sums file and
   the build attestation.

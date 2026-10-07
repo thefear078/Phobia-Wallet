@@ -44,8 +44,13 @@ public class MainActivity : AvaloniaMainActivity<Umbrella.Wallet.App.App>
 #if PHOBIA_SELFTEST
     /// <summary>The emulator check: run the bundled Tor from the native-library folder, the way a user's
     /// "Tor on" does, and log how far it got. CI reads the "PHOBIA-SELFTEST" lines from logcat.</summary>
+    private static int _selfTestStarted;
+
     private static async Task SelfTestAsync()
     {
+        // Once per process: Android may create the activity twice at launch, and a second run would end the
+        // first run's Tor (as a leftover) and report it as a failure.
+        if (Interlocked.Exchange(ref _selfTestStarted, 1) == 1) return;
         const string tag = "PHOBIA-SELFTEST";
         Android.Util.Log.Info(tag, $"tor path {EmbeddedTorService.TorExecutablePath} present={EmbeddedTorService.IsBundlePresent}");
         Android.Util.Log.Info(tag, $"monero path {MoneroRpcService.ExecutablePath} present={MoneroRpcService.IsBundlePresent}");

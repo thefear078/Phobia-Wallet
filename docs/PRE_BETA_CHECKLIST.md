@@ -95,10 +95,10 @@ Do **not** call a public beta “fund-safe” until these are green:
 | Item | Status |
 |------|--------|
 | Windows installer + portable exe, Linux tar.gz, Android APK, `SHA256SUMS-<label>.txt` on the release page | ✅ Beta 1 — the sums match GitHub's own digests, every file has a build attestation |
-| Android APK signed with a **stable** key (repository secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`) | ✅ set 2026-10-07 — from Beta 2 every APK carries the key in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); Beta 1 → Beta 2 is one reinstall |
-| Windows code signing (SmartScreen) | 🟡 from Beta 2 every exe and the installer are signed and timestamped (`WINDOWS_CERT_PFX_B64` / `WINDOWS_CERT_PASSWORD`), but self-signed — SmartScreen still warns until a CA-issued certificate replaces it (R.2) |
+| Android APK signed with a **stable** key (repository secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`) | ✅ set 2026-10-07 — from Beta 3 every APK carries the key in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); Beta 1 → Beta 3 is one reinstall |
+| Windows code signing (SmartScreen) | 🟡 from Beta 3 every exe and the installer are signed and timestamped (`WINDOWS_CERT_PFX_B64` / `WINDOWS_CERT_PASSWORD`), but self-signed — SmartScreen still warns until a CA-issued certificate replaces it (R.2) |
 | Tags point at the commit each release was built from | ✅ restored 2026-10-07 (moved to `6a533d4` on 2026-10-03; the Beta 1 copies attached to old release pages were deleted). A ruleset now forbids moving or deleting `v*` tags, and the release workflow refuses a release that already has files |
-| SBOM on the release page | ✅ from Beta 2 — `PhobiaWallet-<label>-sbom.spdx.json`, in the sums and the attestation |
+| SBOM on the release page | ✅ from Beta 3 — `PhobiaWallet-<label>-sbom.spdx.json`, in the sums and the attestation |
 
 Track in [ROADMAP.md](ROADMAP.md) §3.
 

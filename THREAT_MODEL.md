@@ -163,7 +163,7 @@ prices, swap quotes, an exchange account, PayJoin and maintenance traffic each g
 so the relay that saw an address is not the relay that receives the spend. Tor keys a circuit on the
 SOCKS5 username/password, so this needs no extra dependency.
 
-Until 4.10.0-beta.2 this was claimed and not true: the per-purpose label was written into the proxy
+Until 4.10.0-beta.3 this was claimed and not true: the per-purpose label was written into the proxy
 URI, which .NET's SOCKS client ignores, so every request reached Tor with no credentials and shared
 one circuit. `SocksHandshakeTests` now runs a SOCKS5 server on loopback and reads the username and the
 destination type off the wire — including that the destination goes to Tor as a **name**, never as an
@@ -180,7 +180,7 @@ down whenever that state changes. A cached client outliving the kill-switch bein
 hole in the kill-switch itself — worse than not isolating — so `TorStreamIsolationTests` pins it, and
 the assertion was verified by removing the teardown and watching the test fail.
 
-**On Android** (from Beta 2) the APK carries the same Tor, run from the native-library folder, with the
+**On Android** (from Beta 3) the APK carries the same Tor, run from the native-library folder, with the
 same switch, kill-switch and per-purpose circuits; CI's `device-check` job proves on an emulator that it
 starts and bootstraps. Android may stop it while the app is in the background: the wallet starts it again
 on return, and until then requests are refused, never direct. Orbot's SOCKS port (`127.0.0.1:9050`) as

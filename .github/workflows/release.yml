@@ -231,7 +231,9 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "PhobiaWallet-${{ steps.v.outputs.label }}-android.apk" | tee apksigner.txt
           if grep -q "CN=Android Debug" apksigner.txt; then echo "::error::APK is signed with the debug key"; exit 1; fi
           if [ "$GITHUB_REPOSITORY" = "thefear078/Phobia-Wallet" ]; then
-            got="$(grep -m1 'Signer #1 certificate SHA-256 digest' apksigner.txt | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')"
+            # "Signer #1 certificate SHA-256 digest:" from older apksigner, "V3.0 Signer: certificate SHA-256
+            # digest:" from newer - the first signer's certificate either way.
+            got="$(grep -m1 -E 'certificate SHA-256 digest:' apksigner.txt | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')"
             if [ "$got" != "$PINNED_SHA256" ]; then
               echo "::error::APK signer SHA-256 is '$got', not the published $PINNED_SHA256"
               exit 1
