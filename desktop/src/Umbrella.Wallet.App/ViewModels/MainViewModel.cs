@@ -6341,7 +6341,20 @@ public partial class MainViewModel : ViewModelBase
         return result;
     }
 
+    /// <summary>Rebuilds Holdings and every list derived from it, one caller at a time.
+    ///
+    /// In the app every caller is on the UI thread and the lock is never contended. Without a UI
+    /// thread (the test suite) a balance read finishing in the background and a wallet switch could
+    /// rebuild the same lists at once, and ObservableCollection.Clear threw mid-way. One rebuild at a
+    /// time keeps the lists whole whoever calls.</summary>
     private void RefreshHoldings()
+    {
+        lock (_holdingsGate) RefreshHoldingsCore();
+    }
+
+    private readonly object _holdingsGate = new();
+
+    private void RefreshHoldingsCore()
     {
         Holdings.Clear();
         var rows = Accounts.Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only");
