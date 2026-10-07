@@ -23,6 +23,9 @@
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <!-- Phones: 64-bit ARM, and 32-bit ARM for older ones. One APK carries both. -->
     <RuntimeIdentifiers>android-arm64;android-arm</RuntimeIdentifiers>
+    <!-- The emulator check builds x86_64 only (-p:PhobiaAndroidRids=android-x64). A property of its own:
+         RuntimeIdentifiers given on the command line would reach the library projects too and break them. -->
+    <RuntimeIdentifiers Condition="'$(PhobiaAndroidRids)' != ''">$(PhobiaAndroidRids)</RuntimeIdentifiers>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <!-- Nothing is trimmed: the wallet reads its own files with reflection-based JSON, and trimming
          also switches that serializer off by default - a settings file would silently fail to load. -->

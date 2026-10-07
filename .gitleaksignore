@@ -5,6 +5,11 @@
 # "umbrella-monero-v1": the domain-separation string of the Monero key derivation, a public constant.
 7a31c493b595a93bb4792e45a96305253c462717:desktop/src/Umbrella.Wallet.Core/Chains/ChainCatalog.cs:generic-api-key:60
 
+# PUBLIC PGP fingerprints of the Tor Browser Developers' and binaryFate's signing keys, first committed
+# under the names $torKey / $moneroKey (renamed to *SigningKeyFingerprint, which .gitleaks.toml allows).
+42285b394f98fc9915acf2d3de3373530df4595c:desktop/scripts/verify-android-pins.ps1:generic-api-key:38
+42285b394f98fc9915acf2d3de3373530df4595c:desktop/scripts/verify-android-pins.ps1:generic-api-key:39
+
 # Removed web stack (deleted in v3.0.1): names of localStorage keys, not values.
 5a51721475866cd2b12b2a89a3ec0bc934e9169e:src/lib/platformFee.ts:generic-api-key:17
 

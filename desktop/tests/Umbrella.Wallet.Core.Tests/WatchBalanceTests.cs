@@ -51,6 +51,7 @@ public sealed class WatchBalanceTests : IDisposable
         vm.ConfirmPassword = GoodPassword;
         await vm.CreateWalletCommand.ExecuteAsync(null);
         vm.ConfirmPhraseBackupCommand.Execute(null);
+        await BackgroundRefresh.SettleAsync(vm);
 
         // A watch row with a real price and amount must be counted, not filtered out.
         vm.Accounts.Add(new WalletAccountViewModel(
@@ -62,10 +63,13 @@ public sealed class WatchBalanceTests : IDisposable
 
         vm.RecomputeHoldingsForTest();
 
-        var watchRow = vm.Holdings.FirstOrDefault(h => h.SupportStatus == "Watch");
+        // One snapshot: with no UI thread in a test, the new wallet's background refresh can rebuild
+        // Holdings between two reads (it once emptied it between the two asserts below).
+        var holdings = vm.Holdings.ToArray();
+        var watchRow = holdings.FirstOrDefault(h => h.SupportStatus == "Watch");
         Assert.NotNull(watchRow);
         Assert.Equal(3000, watchRow!.Value);
-        Assert.Contains(vm.Holdings, h => h.Value > 0);
+        Assert.Contains(holdings, h => h.Value > 0);
     }
 
     public void Dispose()

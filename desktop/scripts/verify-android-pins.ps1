@@ -35,22 +35,24 @@ if (($pins | Where-Object Project -eq 'tor').Count -lt 2 -or ($pins | Where-Obje
 }
 
 $torSums = "https://dist.torproject.org/torbrowser/$torVersion/sha256sums-unsigned-build.txt"
-$torKey = 'EF6E286DDA85EA2A4BA7DE684E2C6E8793298290'
-$moneroKey = '81AC591FE9C4B65C5806AFC3F0AF4D462A0BDF92'
+# PUBLIC key fingerprints (the same ones fetch-tor.ps1 and fetch-monero.ps1 pin), named so that
+# .gitleaks.toml's allowlist recognises them as such.
+$torSigningKeyFingerprint = 'EF6E286DDA85EA2A4BA7DE684E2C6E8793298290'
+$moneroSigningKeyFingerprint = '81AC591FE9C4B65C5806AFC3F0AF4D462A0BDF92'
 
 foreach ($pin in $pins) {
     Write-Host "== $($pin.What): $($pin.File)"
     $work = Join-Path ([System.IO.Path]::GetTempPath()) ("phobia-pin-" + [guid]::NewGuid().ToString('N'))
     if ($pin.Project -eq 'tor') {
         Assert-PinnedBySignedSums -SumsUrl $torSums -SignatureUrl "$torSums.asc" `
-            -FileName $pin.File -ExpectedSha256 $pin.Sha -KeyFingerprint $torKey `
-            -KeyUrls @((Join-Path $PSScriptRoot "keys/torbrowser-$torKey.asc"),
+            -FileName $pin.File -ExpectedSha256 $pin.Sha -KeyFingerprint $torSigningKeyFingerprint `
+            -KeyUrls @((Join-Path $PSScriptRoot "keys/torbrowser-$torSigningKeyFingerprint.asc"),
                 'https://openpgpkey.torproject.org/.well-known/openpgpkey/torproject.org/hu/kounek7zrdx745qydx6p59t9mqjpuhdf?l=torbrowser') `
             -WorkDir $work -Required:$RequireSignature -What $pin.What
     }
     else {
         Assert-PinnedBySignedSums -SumsUrl 'https://www.getmonero.org/downloads/hashes.txt' `
-            -FileName $pin.File -ExpectedSha256 $pin.Sha -KeyFingerprint $moneroKey `
+            -FileName $pin.File -ExpectedSha256 $pin.Sha -KeyFingerprint $moneroSigningKeyFingerprint `
             -KeyUrls @('https://raw.githubusercontent.com/monero-project/monero/master/utils/gpg_keys/binaryfate.asc') `
             -WorkDir $work -Required:$RequireSignature -What $pin.What
     }

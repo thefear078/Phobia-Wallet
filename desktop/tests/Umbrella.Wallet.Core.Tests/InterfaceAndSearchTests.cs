@@ -280,6 +280,7 @@ public sealed class InterfaceAndSearchTests : IDisposable
         vm.ConfirmPassword = vm.Password;
         await vm.CreateWalletCommand.ExecuteAsync(null);
         vm.ConfirmPhraseBackupCommand.Execute(null);
+        await BackgroundRefresh.SettleAsync(vm);
         vm.RecomputeHoldingsForTest();
 
         Assert.Equal(["TRX", "SOL", "ATOM"], vm.StakeChains.Select(c => c.Symbol).ToArray());

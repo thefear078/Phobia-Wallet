@@ -26,7 +26,7 @@ OUT="dist/android/publish"
 ABIS="${ABIS:-arm64-v8a armeabi-v7a}" ./scripts/fetch-android-helpers.sh
 
 args=(-c Release -f net8.0-android -o "${OUT}")
-[ -n "${ANDROID_RIDS:-}" ] && args+=("-p:RuntimeIdentifiers=${ANDROID_RIDS}")
+[ -n "${ANDROID_RIDS:-}" ] && args+=("-p:PhobiaAndroidRids=${ANDROID_RIDS}")
 [ "${PHOBIA_SELFTEST:-0}" = "1" ] && args+=("-p:PhobiaSelfTest=true")
 SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 [ -n "${SDK_DIR}" ] && args+=("-p:AndroidSdkDirectory=${SDK_DIR}")

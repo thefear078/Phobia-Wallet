@@ -91,8 +91,16 @@ jobs:
         run: |
           chmod +x desktop/scripts/publish-linux.sh
           ( cd desktop && ./scripts/publish-linux.sh )
+      # Xvfb and ImageMagick are usually on the runner already; installed only if missing, without the
+      # man-db rebuild that made a plain apt-get install sit for the whole job.
       - name: Virtual display
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb imagemagick libice6 libsm6 libfontconfig1 > /dev/null
+        timeout-minutes: 10
+        run: |
+          if command -v Xvfb > /dev/null && command -v import > /dev/null; then exit 0; fi
+          echo "set man-db/auto-update false" | sudo debconf-communicate > /dev/null 2>&1 || true
+          sudo rm -f /var/lib/man-db/auto-update
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends xvfb imagemagick libice6 libsm6 libfontconfig1 > /dev/null
       - name: Run it
         run: bash scripts/linux-desktop-check.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
