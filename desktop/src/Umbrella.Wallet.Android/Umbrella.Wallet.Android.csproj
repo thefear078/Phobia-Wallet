@@ -45,7 +45,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Android" Version="11.3.18" />
+    <PackageReference Include="Avalonia.Android" Version="11.3.22" />
   </ItemGroup>
 
   <!-- Tor and monero-wallet-rpc, staged by scripts/fetch-android-helpers.sh (pinned, hash-checked). They

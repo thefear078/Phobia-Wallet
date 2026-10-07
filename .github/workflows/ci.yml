@@ -101,7 +101,7 @@ jobs:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
         with:
           dotnet-version: "8.0.x"
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: "17"
@@ -114,7 +114,7 @@ jobs:
         run: |
           chmod +x desktop/scripts/publish-android.sh desktop/scripts/fetch-android-helpers.sh
           ( cd desktop && ./scripts/publish-android.sh )
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: phobia-android-check-build
           path: desktop/dist/android/*.apk
