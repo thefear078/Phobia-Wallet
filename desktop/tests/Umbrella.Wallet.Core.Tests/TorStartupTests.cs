@@ -19,6 +19,21 @@ public class TorStartupTests
     }
 
     [Fact]
+    public void On_linux_tor_finds_its_own_libraries_first()
+    {
+        // The Linux Tor ships libevent and OpenSSL beside it and has no RPATH: without its folder on
+        // LD_LIBRARY_PATH it exits at once ("error while loading shared libraries").
+        var path = EmbeddedTorService.LibraryPathFor("/opt/phobia/tor", "/usr/lib/extra");
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Null(path);   // Windows loads DLLs from the exe's own folder
+            return;
+        }
+        Assert.Equal("/opt/phobia/tor:/usr/lib/extra", path);
+        Assert.Equal("/opt/phobia/tor", EmbeddedTorService.LibraryPathFor("/opt/phobia/tor", null));
+    }
+
+    [Fact]
     public void NoLoggedProblemAddsNothing()
     {
         Assert.Null(EmbeddedTorService.ProblemFromLog(null));

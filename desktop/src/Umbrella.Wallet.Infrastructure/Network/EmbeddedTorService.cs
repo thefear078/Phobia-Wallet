@@ -109,6 +109,8 @@ public sealed class EmbeddedTorService : IDisposable
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        if (LibraryPathFor(torDir, Environment.GetEnvironmentVariable("LD_LIBRARY_PATH")) is { } libraryPath)
+            startInfo.Environment["LD_LIBRARY_PATH"] = libraryPath;
         startInfo.ArgumentList.Add("-f");
         startInfo.ArgumentList.Add(torrcPath);
         // Tor exits by itself (within seconds) once this process is gone, so a wallet that dies without
@@ -274,6 +276,18 @@ public sealed class EmbeddedTorService : IDisposable
                 p.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// LD_LIBRARY_PATH for the Linux Tor: its folder first. The Tor Project's Linux build finds its own
+    /// libevent and OpenSSL (shipped beside it) only through this variable - it has no RPATH - and exited at
+    /// once on a system without exactly those libraries. Null on Windows (DLLs load from the exe's folder)
+    /// and on Android (the phone's Tor needs none).
+    /// </summary>
+    public static string? LibraryPathFor(string torDir, string? existing)
+    {
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsAndroid()) return null;
+        return string.IsNullOrEmpty(existing) ? torDir : $"{torDir}:{existing}";
     }
 
     /// <summary>Tor's own words for why it could not run, without the timestamp and log level.</summary>

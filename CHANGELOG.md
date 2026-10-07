@@ -25,6 +25,14 @@ and the places it was not true fixed.
   its Tor bootstraps; another runs the Linux build on a virtual display and asks check.torproject.org
   through its Tor. Screenshots are kept with each run.
 
+### Linux
+
+- **Tor on Linux starts.** The Tor Project's Linux Tor needs its own libevent and OpenSSL, which ship
+  beside it in their bundle; the tarball carried Tor without them, so on any system lacking exactly those
+  libraries Tor exited at once ("Tor failed"; with Tor-only on, the wallet then refused every request
+  rather than going direct). The libraries ship now, Tor is started with them, the build proves the staged
+  Tor runs, and a CI job runs the Linux build and asks check.torproject.org through its Tor.
+
 ### Updates
 
 - **Linux installs its update with one click**, like Windows: the verified tarball is unpacked over the
