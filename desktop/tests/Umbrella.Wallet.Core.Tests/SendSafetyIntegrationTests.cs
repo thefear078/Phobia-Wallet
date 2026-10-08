@@ -30,6 +30,7 @@ public sealed class SendSafetyIntegrationTests : IDisposable
         vm.ConfirmPassword = Password;
         await vm.CreateWalletCommand.ExecuteAsync(null);
         vm.ConfirmPhraseBackupCommand.Execute(null);
+        await BackgroundRefresh.SettleAsync(vm);   // its own first refresh rewrites Accounts
         return vm;
     }
 

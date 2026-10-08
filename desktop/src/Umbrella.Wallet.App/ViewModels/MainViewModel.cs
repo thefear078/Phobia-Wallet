@@ -2646,9 +2646,10 @@ public partial class MainViewModel : ViewModelBase
         var dest = SendTo?.Trim() ?? string.Empty;
         if (dest.Length == 0) return;
 
-        var own = Accounts.Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
-        var known = _addressBookAll.Select(e => e.Address)
-            .Concat(Transactions.Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
+        // Snapshots: a refresh finishing in the background can rewrite these lists while they are read.
+        var own = Accounts.ToArray().Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
+        var known = _addressBookAll.ToArray().Select(e => e.Address)
+            .Concat(Transactions.ToArray().Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -6510,7 +6511,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     private List<(double Value, double Change)> WalletValueRows() =>
-        Accounts
+        Accounts.ToArray()
             .Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only"
                         && a.Balance != BalanceRead.Unknown && (ShowSpamTokens || !a.IsSuspectedSpam))
             .Select(a => (a.Price * a.Amount, a.Change24h))
@@ -6521,7 +6522,10 @@ public partial class MainViewModel : ViewModelBase
         // The total is a sum of what the wallet actually knows. Anything it could not read is counted
         // separately and said out loud, because a number quietly missing an asset is a wrong number
         // that looks exactly like a right one (MANIFESTO §4 / roadmap P0.6).
-        UnreadableAssetCount = Holdings.Count(h => h.Balance == BalanceRead.Unknown);
+        // One snapshot of the holdings for the whole recount: a refresh finishing in the background (the
+        // test suite has no UI thread to queue it on) can rebuild the list while it is being read.
+        var holdings = Holdings.ToArray();
+        UnreadableAssetCount = holdings.Count(h => h.Balance == BalanceRead.Unknown);
         // The WHOLE wallet, whatever the asset list below is filtered to: picking "Bitcoin" there used to
         // turn the total into the Bitcoin figure, and the switcher showed that as the wallet's balance.
         var valued = WalletValueRows();
@@ -6538,7 +6542,7 @@ public partial class MainViewModel : ViewModelBase
 
         var (avg, moveUsd) = Move24h(valued);
         var delta = moveUsd * (double)Fx.Rate;
-        Change24hLabel = Holdings.Count == 0
+        Change24hLabel = holdings.Length == 0
             ? "· unlock for live rates"
             : $"{(avg >= 0 ? "▲" : "▼")} {Math.Abs(avg).ToString("0.00", Fx.Culture)}%   {(delta >= 0 ? "+" : "-")}{Fx.Symbol}{Math.Abs(delta).ToString("N2", Fx.Culture)} · 24h";
         var priced = valued.Any(v => v.Value > 0);
@@ -6551,15 +6555,15 @@ public partial class MainViewModel : ViewModelBase
 
         // Dashboard stat tiles. These read from the holdings/market data the wallet already has, so
         // they work even at a zero balance (24h moves exist regardless of what you hold).
-        PortfolioAssetCount = Holdings.Count.ToString(CultureInfo.InvariantCulture);
-        PortfolioNetworkCount = Holdings
+        PortfolioAssetCount = holdings.Length.ToString(CultureInfo.InvariantCulture);
+        PortfolioNetworkCount = holdings
             .Select(h => h.Chain)
             .Where(c => !string.IsNullOrWhiteSpace(c))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Count()
             .ToString(CultureInfo.InvariantCulture);
 
-        var best = Holdings
+        var best = holdings
             .Where(h => h.Price > 0 && h.Change24h != 0)
             .OrderByDescending(h => h.Change24h)
             .FirstOrDefault();
@@ -6591,7 +6595,7 @@ public partial class MainViewModel : ViewModelBase
         PortfolioBreakdown.Clear();
         if (total > 0)
         {
-            var byAsset = Holdings
+            var byAsset = Holdings.ToArray()
                 .Where(h => h.Value > 0)
                 .GroupBy(h => h.Symbol)
                 .Select(g => (Symbol: g.Key, Value: g.Sum(h => h.Value)))
