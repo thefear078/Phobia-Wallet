@@ -465,21 +465,21 @@
                            Foreground="{DynamicResource UmTextDim}"/>
               </Border>
             </Panel>
-            <pages:ReceivePage IsVisible="{Binding IsReceive}"/>
-            <pages:SendPage IsVisible="{Binding IsSend}"/>
-            <pages:SwapPage IsVisible="{Binding IsSwap}"/>
-            <pages:ActivityPage IsVisible="{Binding IsActivity}"/>
-            <pages:DiscoverPage IsVisible="{Binding IsDiscover}"/>
-            <pages:MarketPage IsVisible="{Binding IsMarket}"/>
-            <pages:StakingPage IsVisible="{Binding IsStaking}"/>
-            <pages:ConnectPage IsVisible="{Binding IsConnect}"/>
-            <pages:BuyPage IsVisible="{Binding IsBuy}"/>
-            <pages:P2pPage IsVisible="{Binding IsP2p}"/>
-            <pages:NewsPage IsVisible="{Binding IsNews}"/>
-            <pages:NftsPage IsVisible="{Binding IsNfts}"/>
-            <pages:AssetPage IsVisible="{Binding IsAsset}"/>
-            <pages:SecurityPage IsVisible="{Binding IsSecurity}"/>
-            <pages:SettingsPage IsVisible="{Binding IsSettings}"/>
+            <controls:LazyPage Page="{x:Type pages:ReceivePage}" IsVisible="{Binding IsReceive}"/>
+            <controls:LazyPage Page="{x:Type pages:SendPage}" IsVisible="{Binding IsSend}"/>
+            <controls:LazyPage Page="{x:Type pages:SwapPage}" IsVisible="{Binding IsSwap}"/>
+            <controls:LazyPage Page="{x:Type pages:ActivityPage}" IsVisible="{Binding IsActivity}"/>
+            <controls:LazyPage Page="{x:Type pages:DiscoverPage}" IsVisible="{Binding IsDiscover}"/>
+            <controls:LazyPage Page="{x:Type pages:MarketPage}" IsVisible="{Binding IsMarket}"/>
+            <controls:LazyPage Page="{x:Type pages:StakingPage}" IsVisible="{Binding IsStaking}"/>
+            <controls:LazyPage Page="{x:Type pages:ConnectPage}" IsVisible="{Binding IsConnect}"/>
+            <controls:LazyPage Page="{x:Type pages:BuyPage}" IsVisible="{Binding IsBuy}"/>
+            <controls:LazyPage Page="{x:Type pages:P2pPage}" IsVisible="{Binding IsP2p}"/>
+            <controls:LazyPage Page="{x:Type pages:NewsPage}" IsVisible="{Binding IsNews}"/>
+            <controls:LazyPage Page="{x:Type pages:NftsPage}" IsVisible="{Binding IsNfts}"/>
+            <controls:LazyPage Page="{x:Type pages:AssetPage}" IsVisible="{Binding IsAsset}"/>
+            <controls:LazyPage Page="{x:Type pages:SecurityPage}" IsVisible="{Binding IsSecurity}"/>
+            <controls:LazyPage Page="{x:Type pages:SettingsPage}" IsVisible="{Binding IsSettings}"/>
           </StackPanel>
         </StackPanel>
       </ScrollViewer>

@@ -11,8 +11,8 @@ if [ -z "$VERSION" ]; then
   echo "::error::VERSION file is empty"; exit 1
 fi
 echo "Expected version: $VERSION"
-# A beta's files carry its beta number ("Beta-1"); a full release's, the version.
-LABEL="$(echo "$VERSION" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+# A beta's files are named "Beta" (betas are not numbered for people); a full release's, the version.
+LABEL="$(echo "$VERSION" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$/Beta/')"
 echo "File label:       $LABEL"
 
 fail=0
@@ -39,12 +39,15 @@ if grep -qE '^#define AppVersion "' desktop/installer/phobia.iss; then
 else
   echo "  ok  installer takes its version from the build (desktop/installer/phobia.iss)"
 fi
-# shields.io escapes a hyphen as "--" (4.10.0-beta.1 → version-4.10.0--beta.1-).
-require "README version badge"      "README.md"                                                   "version-${VERSION//-/--}-"
-require "README installer link"     "README.md"                                                   "PhobiaWallet-Setup-${LABEL}.exe"
-require "README portable link"      "README.md"                                                   "PhobiaWallet-${LABEL}-win-x64-portable.exe"
-require "README linux link"         "README.md"                                                   "PhobiaWallet-${LABEL}-linux-x64.tar.gz"
-require "README android link"       "README.md"                                                   "PhobiaWallet-${LABEL}-android.apk"
+# The badge shows the label ("Beta", or 4.10.0); shields.io escapes a hyphen as "--".
+require "README version badge"      "README.md"                                                   "version-${LABEL//-/--}-"
+# The links carry the tag, so a README left pointing at the previous beta fails here.
+DL="releases/download/v${VERSION}"
+require "README installer link"     "README.md"                                                   "${DL}/PhobiaWallet-Setup-${LABEL}.exe"
+require "README portable link"      "README.md"                                                   "${DL}/PhobiaWallet-${LABEL}-win-x64-portable.exe"
+require "README linux link"         "README.md"                                                   "${DL}/PhobiaWallet-${LABEL}-linux-x64.tar.gz"
+require "README android link"       "README.md"                                                   "${DL}/PhobiaWallet-${LABEL}-android.apk"
+require "README checksums link"     "README.md"                                                   "${DL}/SHA256SUMS-${LABEL}.txt"
 # Android's versionName is the numeric part; the beta number rides in versionCode.
 require "android versionName"       "desktop/src/Umbrella.Wallet.Android/Umbrella.Wallet.Android.csproj" "<ApplicationDisplayVersion>${VERSION%%-*}</ApplicationDisplayVersion>"
 require "CHANGELOG entry"           "CHANGELOG.md"                                                 "## [${VERSION}]"

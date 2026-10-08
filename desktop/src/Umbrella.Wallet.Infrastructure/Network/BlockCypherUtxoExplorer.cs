@@ -5,8 +5,8 @@ using Umbrella.Wallet.Core.Utxo;
 namespace Umbrella.Wallet.Infrastructure.Network;
 
 /// <summary>
-/// The live <see cref="IUtxoExplorer"/> over BlockCypher, for chains that have no Esplora instance
-/// (Dogecoin). Read through the shared Tor/proxy-aware <see cref="PublicHttp"/>. Every failure throws
+/// The live <see cref="IUtxoExplorer"/> over BlockCypher: Dogecoin (which has no Esplora instance) and
+/// Litecoin (behind Bitcore, when litecoinspace does not answer). Read through the shared Tor/proxy-aware <see cref="PublicHttp"/>. Every failure throws
 /// so the scanner treats it as "unknown", never "empty" — critical, or a flaky API could make the
 /// wallet believe an address holds nothing and quietly skip its coins.
 ///
@@ -24,6 +24,7 @@ public sealed class BlockCypherUtxoExplorer : IUtxoExplorer
     public static string CoinFor(string symbol) => symbol.ToUpperInvariant() switch
     {
         "DOGE" => "doge",
+        "LTC" => "ltc",
         _ => throw new NotSupportedException($"No BlockCypher explorer for {symbol}."),
     };
 

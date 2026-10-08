@@ -1099,10 +1099,10 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Version shown in the status bar — read from the assembly so it never drifts from the csproj.</summary>
     public string AppVersionLabel => $"Phobia Wallet {VersionDisplay} · the fear";
 
-    /// <summary>Just the version, for the sidebar's foot: "Beta 1" on a beta, "v4.10.0" on a release.</summary>
+    /// <summary>Just the version, for the sidebar's foot: "Beta" on a beta, "v4.10.0" on a release.</summary>
     public string AppVersionShort => VersionDisplay;
 
-    /// <summary>"Beta 1" for 4.10.0-beta.1, "v4.10.0" for a full release.</summary>
+    /// <summary>"Beta" for any beta (betas are not numbered for people), "v4.10.0" for a full release.</summary>
     private static string VersionDisplay
     {
         get
@@ -1116,7 +1116,7 @@ public partial class MainViewModel : ViewModelBase
                 "alpha" => "Alpha",
                 _ => parts[0],
             };
-            return parts.Length > 1 ? $"{name} {parts[1]}" : name;
+            return name == "Beta" || parts.Length == 1 ? name : $"{name} {parts[1]}";
         }
     }
 
@@ -2234,8 +2234,8 @@ public partial class MainViewModel : ViewModelBase
         string.Join(", ", ChainCatalog.Planned.Select(c => c.Symbol));
 
     public string NetworkLabel =>
-        "Public RPC / explorers, no API keys: cloudflare-eth.com, mempool.space, " +
-        "litecoinspace.org, blockcypher.com, tronscanapi.com";
+        "Public RPC / explorers, no API keys: mempool.space, Bitcore, BlockCypher, " +
+        "PublicNode, TronGrid and the rest - each named in Privacy";
     public string BalanceDisplayMain => IsBalanceHidden ? "•••••••" : TotalBalanceMain;
     /// <summary>The cents, with the locale's own decimal separator — a hardcoded "." put a US point in
     /// front of a comma-decimal total.</summary>
@@ -3669,6 +3669,7 @@ public partial class MainViewModel : ViewModelBase
 
     public void LockVault()
     {
+        Umbrella.Wallet.Core.Derivation.HdAddressDeriver.ForgetCachedKeys();   // account keys go with the phrase
         _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
         _otherTotalsCts?.Cancel();   // and the other wallets' balances stop being read
         ForgetSwapState();           // a swap payment or a followed swap belongs to the wallet that made it
@@ -4578,7 +4579,7 @@ public partial class MainViewModel : ViewModelBase
             }
             _ = LoadSparklinesAsync();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             MarketStatus = Loc.Instance["market.unreachable"];
         }
@@ -6765,13 +6766,15 @@ public partial class MainViewModel : ViewModelBase
         _ => null,
     };
 
-    /// <summary>The right UTXO explorer for a chain: Bitcore then BlockCypher for Dogecoin, Haskoin for Bitcoin Cash
-    /// (neither has an Esplora instance; BCH's Blockchair also rate-limits), Esplora (Blockstream /
-    /// litecoinspace) for BTC and LTC.</summary>
+    /// <summary>The right UTXO explorer for a chain: Bitcore then BlockCypher for Dogecoin and Litecoin (Litecoin's
+    /// litecoinspace behind them), Haskoin for Bitcoin Cash (no Esplora instance; Blockchair rate-limits), Esplora
+    /// (mempool.space and its mirrors) for BTC.</summary>
     private static Umbrella.Wallet.Core.Utxo.IUtxoExplorer UtxoExplorerFor(string symbol) =>
         symbol.Trim().ToUpperInvariant() switch
         {
             "DOGE" => FailoverUtxoExplorer.ForDogecoin(),
+            "LTC" => FailoverUtxoExplorer.ForLitecoin(),
+            "BTC" => FailoverUtxoExplorer.ForBitcoin(),
             "BCH" => HaskoinUtxoExplorer.For(symbol),
             _ => EsploraUtxoExplorer.For(symbol),
         };

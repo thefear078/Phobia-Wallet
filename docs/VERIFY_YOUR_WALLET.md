@@ -92,15 +92,15 @@ cannot pass for the wrong reason.
 
 ## 3. The download
 
-Every release carries a `SHA256SUMS` file — `SHA256SUMS-Beta-1.txt` for a beta, `SHA256SUMS-4.10.0.txt`
+Every release carries a `SHA256SUMS` file — `SHA256SUMS-Beta.txt` for the Beta, `SHA256SUMS-4.10.0.txt`
 for a full release. Verify what you downloaded before you run it:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\PhobiaWallet-Setup-Beta-1.exe
+Get-FileHash -Algorithm SHA256 .\PhobiaWallet-Setup-Beta.exe
 ```
 
 ```bash
-sha256sum -c SHA256SUMS-Beta-1.txt --ignore-missing
+sha256sum -c SHA256SUMS-Beta.txt --ignore-missing
 ```
 
 The release workflow generates that manifest from the artifacts it attached and verifies every line
@@ -108,7 +108,7 @@ before publishing. You can re-check what the page serves **now**, which is the p
 promise:
 
 ```bash
-bash scripts/verify-published-release.sh v4.10.0-beta.1
+bash scripts/verify-published-release.sh v4.10.0-beta.4
 ```
 
 A checksum proves the file matches what the release page says. It says nothing about **who put that

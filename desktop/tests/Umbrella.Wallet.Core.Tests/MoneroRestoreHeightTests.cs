@@ -64,7 +64,7 @@ public sealed class MoneroRestoreHeightTests : IDisposable
     }
 
     [Fact]
-    public void Every_rpc_call_states_its_length()
+    public async Task Every_rpc_call_states_its_length()
     {
         // epee (monerod and monero-wallet-rpc) answers a chunked body with "Invalid Request". A body without
         // a known length goes out chunked; this one must not — that was every Monero call until 2026-09-30.
@@ -72,7 +72,7 @@ public sealed class MoneroRestoreHeightTests : IDisposable
         Assert.NotNull(body.Headers.ContentLength);
         Assert.True(body.Headers.ContentLength > 0);
 
-        var json = body.ReadAsStringAsync().GetAwaiter().GetResult();
+        var json = await body.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
         Assert.Equal("2.0", doc.RootElement.GetProperty("jsonrpc").GetString());
         Assert.Equal("get_balance", doc.RootElement.GetProperty("method").GetString());

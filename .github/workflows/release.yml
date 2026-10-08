@@ -45,8 +45,8 @@ jobs:
         shell: bash
         run: |
           V="$(tr -d ' \t\r\n' < VERSION)"
-          # A beta's files are named by its beta number ("Beta-1"), a full release's by its version.
-          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+          # A beta's files are named "Beta" (betas are not numbered for people), a full release's by its version.
+          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$/Beta/')"
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "label=$L" >> "$GITHUB_OUTPUT"
           echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
@@ -86,7 +86,7 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           $ver = (Get-Content VERSION).Trim()
           $label = "${{ steps.v.outputs.label }}"
-          # Shown in Windows as "Phobia Wallet Beta 1"; the file version stays numeric (4.10.0).
+          # Shown in Windows as "Phobia Wallet Beta"; the file version stays numeric (4.10.0).
           & $iscc "/DAppVersion=${{ steps.v.outputs.display }}" "/DAppFileLabel=$label" "/DAppNumericVersion=$($ver.Split('-')[0])" "/DSourceDir=$(Resolve-Path dist/app)" "/DDistDir=$(Resolve-Path dist)" desktop/installer/phobia.iss
           # The README links to a single portable EXE, not an archive. Producing a zip here meant the
           # download link on the front page 404'd on every release until somebody uploaded the exe by
@@ -124,8 +124,8 @@ jobs:
         id: v
         run: |
           V="$(tr -d ' \t\r\n' < VERSION)"
-          # A beta's files are named by its beta number ("Beta-1"), a full release's by its version.
-          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+          # A beta's files are named "Beta" (betas are not numbered for people), a full release's by its version.
+          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$/Beta/')"
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "label=$L" >> "$GITHUB_OUTPUT"
           echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
@@ -174,8 +174,8 @@ jobs:
         id: v
         run: |
           V="$(tr -d ' \t\r\n' < VERSION)"
-          # A beta's files are named by its beta number ("Beta-1"), a full release's by its version.
-          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+          # A beta's files are named "Beta" (betas are not numbered for people), a full release's by its version.
+          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$/Beta/')"
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "label=$L" >> "$GITHUB_OUTPUT"
           echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
@@ -262,10 +262,14 @@ jobs:
         id: v
         run: |
           V="$(tr -d ' \t\r\n' < VERSION)"
-          # A beta's files are named by its beta number ("Beta-1"), a full release's by its version.
-          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/')"
+          # A beta's files are named "Beta" (betas are not numbered for people), a full release's by its version.
+          L="$(echo "$V" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$/Beta/')"
+          # The name a copy from Beta 3 or older looks for ("Beta-4"): those updaters put the beta's
+          # number in the file name. Empty for a full release, whose name both old and new agree on.
+          C="$(echo "$V" | sed -nE 's/^[0-9]+\.[0-9]+\.[0-9]+-beta\.([0-9]+)$/Beta-\1/p')"
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "label=$L" >> "$GITHUB_OUTPUT"
+          echo "compat=$C" >> "$GITHUB_OUTPUT"
           echo "display=${L//-/ }" >> "$GITHUB_OUTPUT"
 
       # Every build job has finished and attached their artifacts to the release; pull them all
@@ -277,6 +281,9 @@ jobs:
           mkdir assets
           gh release download "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
             --pattern "PhobiaWallet-*" --dir assets
+          # A re-run finds the numbered copies a previous run attached; they are made again below.
+          C="${{ steps.v.outputs.compat }}"
+          if [ -n "$C" ]; then rm -f "assets/PhobiaWallet-Setup-${C}.exe" assets/PhobiaWallet-"${C}"-*; fi
 
       # Fail closed if the release is incomplete: every platform artifact for THIS version must be
       # present and version-stamped before we publish a checksum manifest — a partial release must
@@ -338,6 +345,30 @@ jobs:
             SHA256SUMS-${{ steps.v.outputs.label }}.txt
             assets/PhobiaWallet-${{ steps.v.outputs.label }}-sbom.spdx.json
 
+      # Copies from Beta 3 and older look for numbered files ("PhobiaWallet-Setup-Beta-4.exe" and
+      # "SHA256SUMS-Beta-4.txt") and would otherwise say "the release has no file to download". The
+      # same bytes under those names, with a manifest of their own, keep their one-click update working.
+      # Betas only: a full release is named by its version, which every updater agrees on.
+      - name: Numbered copies for updaters from Beta 3 and older
+        if: steps.v.outputs.compat != ''
+        run: |
+          L="${{ steps.v.outputs.label }}"; C="${{ steps.v.outputs.compat }}"
+          mkdir compat
+          cp "assets/PhobiaWallet-Setup-${L}.exe"             "compat/PhobiaWallet-Setup-${C}.exe"
+          cp "assets/PhobiaWallet-${L}-win-x64-portable.exe"  "compat/PhobiaWallet-${C}-win-x64-portable.exe"
+          cp "assets/PhobiaWallet-${L}-linux-x64.tar.gz"      "compat/PhobiaWallet-${C}-linux-x64.tar.gz"
+          cp "assets/PhobiaWallet-${L}-android.apk"           "compat/PhobiaWallet-${C}-android.apk"
+          ( cd compat && sha256sum PhobiaWallet-* ) > "SHA256SUMS-${C}.txt"
+          ( cd compat && sha256sum -c "../SHA256SUMS-${C}.txt" )
+          mv "SHA256SUMS-${C}.txt" compat/
+
+      - name: Attach the numbered copies
+        if: steps.v.outputs.compat != ''
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          prerelease: true
+          files: compat/*
+
       # Roadmap R.3. A checksum proves a download matches the manifest on the release page. It says
       # nothing about who put that page there — and an attacker who can replace the artifacts can
       # replace the manifest beside them. An attestation is the missing half: GitHub signs a
@@ -353,3 +384,9 @@ jobs:
           subject-path: |
             assets/PhobiaWallet-*
             SHA256SUMS-${{ steps.v.outputs.label }}.txt
+
+      - name: Attest the numbered copies' manifest
+        if: steps.v.outputs.compat != ''
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: compat/SHA256SUMS-${{ steps.v.outputs.compat }}.txt

@@ -83,7 +83,7 @@ There is no funded bounty programme yet. Being straight about that rather than i
 
 | Version | Supported |
 |---|---|
-| 4.10.0 betas (Phobia **Beta 1**) | ✅ |
+| 4.10.0 betas (Phobia **Beta**) | ✅ |
 | 4.9.x | ✅ |
 | 4.8.x | ⚠️ critical fixes only |
 | < 4.8 | ❌ |
@@ -126,7 +126,7 @@ CA-issued one replaces it, so Windows still shows an unknown publisher; the thum
 | Bundled Tor / Monero | pinned versions, checked against the projects' signed sums on every PR (`supply-chain` job) |
 | Branch protection | `main` requires all checks green; no force-push, no deletion |
 | Release tags | immutable: a ruleset forbids moving or deleting `v*` tags; a published release is never rebuilt |
-| Tests | about 1,850 offline tests plus rendered-screen tests, required before merge; the Monero service's login is tested against the real `monero-wallet-rpc` in CI |
+| Tests | about 1,860 offline tests plus rendered-screen tests, required before merge; the Monero service's login is tested against the real `monero-wallet-rpc` in CI |
 
 No external audit has been performed. Status and future links live in
 **[AUDIT_STATUS.md](AUDIT_STATUS.md)**. When an audit exists, it will be linked there and here with the
@@ -172,13 +172,13 @@ Process: **[SECURITY/COORDINATED_DISCLOSURE.md](SECURITY/COORDINATED_DISCLOSURE.
 
 | Date | ID | Severity | Fixed in |
 |---|---|---|---|
-| 2026-10-07 | PHB-2026-01 — local Monero service had no login | **High** | next release (#143) |
-| 2026-10-07 | PHB-2026-02 — Tor circuit isolation ineffective | Medium | next release (#143) |
-| 2026-10-07 | PHB-2026-03 — token ticker impersonation valued | Medium | next release (#143) |
-| 2026-10-07 | PHB-2026-04 — Android kill-switch reset with Orbot | Medium | next release (#143) |
-| 2026-10-07 | PHB-2026-05…07 — price-list fingerprint, `socks4://` local DNS, fiat field currency | Low | next release (#143) |
-| 2026-10-07 | PHB-2026-08 — balance chart named the coins held | Low | next release (#145) |
-| 2026-10-07 | PHB-2026-09 — Linux Tor shipped without its libraries (could not start) | Low | next release (#145) |
+| 2026-10-07 | PHB-2026-01 — local Monero service had no login | **High** | 4.10.0-beta.3, 2026-10-07 (#143) |
+| 2026-10-07 | PHB-2026-02 — Tor circuit isolation ineffective | Medium | 4.10.0-beta.3, 2026-10-07 (#143) |
+| 2026-10-07 | PHB-2026-03 — token ticker impersonation valued | Medium | 4.10.0-beta.3, 2026-10-07 (#143) |
+| 2026-10-07 | PHB-2026-04 — Android kill-switch reset with Orbot | Medium | 4.10.0-beta.3, 2026-10-07 (#143) |
+| 2026-10-07 | PHB-2026-05…07 — price-list fingerprint, `socks4://` local DNS, fiat field currency | Low | 4.10.0-beta.3, 2026-10-07 (#143) |
+| 2026-10-07 | PHB-2026-08 — balance chart named the coins held | Low | 4.10.0-beta.3, 2026-10-07 (#145) |
+| 2026-10-07 | PHB-2026-09 — Linux Tor shipped without its libraries (could not start) | Low | 4.10.0-beta.3, 2026-10-07 (#145) |
 
 All found by the project's own review, none reported from outside; details and affected versions in
 the full log. Disclosed reports will be added the same way, with links to advisories.

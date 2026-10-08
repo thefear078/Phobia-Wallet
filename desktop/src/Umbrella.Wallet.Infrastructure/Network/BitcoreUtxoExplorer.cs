@@ -99,6 +99,40 @@ public sealed class FailoverUtxoExplorer : IUtxoExplorer
             (BlockCypherUtxoExplorer.DefaultRoot, BlockCypherUtxoExplorer.For("DOGE")));
     }
 
+    /// <summary>
+    /// Litecoin's explorers: litecoinspace (and any other Esplora the build knows), then Bitcore, then
+    /// BlockCypher. litecoinspace alone was the wallet's only Litecoin source, and when it stopped answering
+    /// address lookups (Cloudflare 522/502 after twenty seconds each, October 2026) every Litecoin balance
+    /// read "unknown" and a send could not get a fee or reach the network. It stays first - the most generous
+    /// of the three, and Bitcore is Dogecoin's first server too - and a server that does not answer is
+    /// benched for a while, so the next scan goes straight to Bitcore. A server the user chose in the
+    /// endpoint picker (an Esplora) is the only one asked, as for every chain.
+    /// </summary>
+    /// <summary>
+    /// Bitcoin's explorers: the shipped Esploras (mempool.space and its mirrors, Blockstream), then Bitcore.
+    /// One evening mempool.space and mempool.ninja hung on every lookup while Blockstream answered "too many
+    /// requests" - three servers and no Bitcoin balance. Bitcore answers the same questions for every kind of
+    /// Bitcoin address (legacy, SegWit, Taproot). A server the user chose is the only one asked.
+    /// </summary>
+    public static IUtxoExplorer ForBitcoin()
+    {
+        if (Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor("BTC") is not null)
+            return EsploraUtxoExplorer.For("BTC");
+        return new FailoverUtxoExplorer(
+            (EsploraUtxoExplorer.DefaultBaseUrlFor("BTC"), EsploraUtxoExplorer.For("BTC")),
+            (BitcoreUtxoExplorer.BaseFor("BTC"), new BitcoreUtxoExplorer("BTC")));
+    }
+
+    public static IUtxoExplorer ForLitecoin()
+    {
+        if (Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor("LTC") is not null)
+            return EsploraUtxoExplorer.For("LTC");
+        return new FailoverUtxoExplorer(
+            (EsploraUtxoExplorer.DefaultBaseUrlFor("LTC"), EsploraUtxoExplorer.For("LTC")),
+            (BitcoreUtxoExplorer.BaseFor("LTC"), new BitcoreUtxoExplorer("LTC")),
+            (BlockCypherUtxoExplorer.DefaultRoot + "/v1/ltc", BlockCypherUtxoExplorer.For("LTC")));
+    }
+
     public Task<AddressActivity> GetActivityAsync(string address, CancellationToken ct) =>
         TryEachAsync(e => e.GetActivityAsync(address, ct), ct);
 

@@ -12,7 +12,7 @@ Phobia is built for someone who assumes the network is hostile and the service i
 | Adversary | Covered? | How |
 |---|---|---|
 | A service that wants your identity | ✅ | There is no service. No account, email, phone, or KYC. |
-| A block explorer profiling you by IP | ✅ | Bundled Tor (in the APK too, from Beta 3) + a kill-switch that fails closed; a separate circuit per kind of request. |
+| A block explorer profiling you by IP | ✅ | Bundled Tor (in the APK too) + a kill-switch that fails closed; a separate circuit per kind of request. |
 | Someone who steals the vault file | ✅ | Argon2id (m=64 MiB) → AES-256-GCM. Brute force is expensive by design. |
 | Someone who steals the whole laptop, locked | ✅ | Auto-lock on idle and on minimise; the seed is not at rest in memory. |
 | Screen recording / screenshots of your seed | ✅ | Seed and key screens set `WDA_EXCLUDEFROMCAPTURE` (Windows) and `FLAG_SECURE` (Android). |
@@ -142,8 +142,8 @@ never leaves the machine; `.onion` is encrypted by Tor itself.
 **Credentials in a URL are refused**, because every hop along the way records the URL.
 
 **A chosen server is never silently replaced.** With no choice made, the shipped Esplora instances
-fall back to one another — one being rate-limited should not leave the wallet with no Bitcoin balance
-at all, and that is not hypothetical: Blockstream was returning 429 while two other instances answered
+fall back to one another, and Bitcoin and Litecoin to Bitcore and BlockCypher as well — one being
+rate-limited should not leave the wallet with no Bitcoin balance at all, and that is not hypothetical: Blockstream was returning 429 while two other instances answered
 the same question identically. But once the *user* picks a server, there is no fallback. Rerouting
 their addresses to the default is exactly what choosing was meant to prevent; the scan reports
 "unknown" and they decide. Same rule as a chosen Monero node.

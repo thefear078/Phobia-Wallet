@@ -19,34 +19,35 @@ safely.
 
 ## 1. Download
 
-The current build is **Beta 1**, a GitHub *pre-release*: get it from its
-**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
+The current build is the **Beta**, a GitHub *pre-release*: get it from its
+**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.4)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
 full 4.10.0 is out.)
 
 | Platform | File |
 |---|---|
-| Windows installer | `PhobiaWallet-Setup-Beta-1.exe` |
-| Windows portable | `PhobiaWallet-Beta-1-win-x64-portable.exe` — one file, no install |
-| Linux | `PhobiaWallet-Beta-1-linux-x64.tar.gz` — Tor and Monero included |
-| Android | `PhobiaWallet-Beta-1-android.apk` — Android 7.0+, see the [Android guide](guides/android.md) |
+| Windows installer | `PhobiaWallet-Setup-Beta.exe` |
+| Windows portable | `PhobiaWallet-Beta-win-x64-portable.exe` — one file, no install |
+| Linux | `PhobiaWallet-Beta-linux-x64.tar.gz` — Tor and Monero included |
+| Android | `PhobiaWallet-Beta-android.apk` — Android 7.0+, see the [Android guide](guides/android.md) |
 
-Also download **`SHA256SUMS-Beta-1.txt`** from the same release. A full release names its files by
-version instead (`PhobiaWallet-Setup-4.10.0.exe`, `SHA256SUMS-4.10.0.txt`).
+Also download **`SHA256SUMS-Beta.txt`** from the same release. A full release names its files by
+version instead (`PhobiaWallet-Setup-4.10.0.exe`, `SHA256SUMS-4.10.0.txt`). Files with a number in the
+name (`…-Beta-4…`) are the same bytes, kept for older copies' updaters — you can ignore them.
 
 ## 2. Verify the file
 
 Do not run an unsigned copy you cannot check.
 
 ```powershell
-# Windows PowerShell — compare to the matching line in SHA256SUMS-Beta-1.txt
-Get-FileHash .\PhobiaWallet-Setup-Beta-1.exe -Algorithm SHA256
+# Windows PowerShell — compare to the matching line in SHA256SUMS-Beta.txt
+Get-FileHash .\PhobiaWallet-Setup-Beta.exe -Algorithm SHA256
 ```
 
 ```bash
 # Linux / macOS
-sha256sum -c SHA256SUMS-Beta-1.txt --ignore-missing
+sha256sum -c SHA256SUMS-Beta.txt --ignore-missing
 # and who built it — every file carries a GitHub build attestation
-gh attestation verify PhobiaWallet-Beta-1-linux-x64.tar.gz --repo thefear078/Phobia-Wallet
+gh attestation verify PhobiaWallet-Beta-linux-x64.tar.gz --repo thefear078/Phobia-Wallet
 ```
 
 Details: [SECURITY.md — Verifying what you run](../SECURITY.md#verifying-what-you-run).

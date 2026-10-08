@@ -30,7 +30,7 @@
 #ifndef AppVersion
   #define AppVersion GetVersionNumbersString(SourceDir + "\" + AppExe)
 #endif
-; What the setup file is named with: "Beta-1" for a beta (the build passes it), else the version.
+; What the setup file is named with: "Beta" for a beta (the build passes it), else the version.
 #ifndef AppFileLabel
   #define AppFileLabel AppVersion
 #endif

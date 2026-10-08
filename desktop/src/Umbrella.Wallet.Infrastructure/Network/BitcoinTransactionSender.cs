@@ -74,7 +74,11 @@ public sealed class BitcoinTransactionSender
     {
         // The same server the balance was read from — the user's choice, or mempool.space.
         "BTC" => EsploraUtxoExplorer.BaseUrlFor("BTC"),
-        "LTC" => "https://litecoinspace.org/api",
+        // Litecoin: the user's own Esplora when they chose one; otherwise BlockCypher for fee + broadcast,
+        // with Bitcore behind it (litecoinspace, the old default, stopped answering in October 2026).
+        "LTC" => Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor("LTC") is not null
+            ? EsploraUtxoExplorer.BaseUrlFor("LTC")
+            : "https://api.blockcypher.com/v1/ltc/main",
         // Dogecoin has no Esplora instance; BlockCypher supplies fee + broadcast (and UTXOs elsewhere).
         "DOGE" => "https://api.blockcypher.com/v1/doge/main",
         // Bitcoin Cash has no Esplora either, and Blockchair rate-limits; Haskoin supplies UTXOs + broadcast.
@@ -82,7 +86,27 @@ public sealed class BitcoinTransactionSender
         _ => throw new NotSupportedException($"No explorer for {symbol}."),
     };
 
-    private static bool IsBlockCypher(string symbol) => symbol.ToUpperInvariant() == "DOGE";
+    private static bool IsBlockCypher(string symbol) => symbol.ToUpperInvariant() switch
+    {
+        "DOGE" => true,
+        "LTC" => Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor("LTC") is null,
+        _ => false,
+    };
+
+    /// <summary>
+    /// The Esplora servers a Bitcoin send may use, in order: just the user's when they chose one, otherwise
+    /// every shipped one, healthy first. Bitcore stands behind them (<see cref="UsesBitcoreBackup"/>).
+    /// </summary>
+    private static IReadOnlyList<string> EsploraHosts(string symbol) =>
+        UsesBitcoreBackup(symbol)
+            ? ExplorerHttp.HealthyFirst(EsploraUtxoExplorer.BasesFor("BTC"))
+            : [ExplorerFor(symbol)];
+
+    /// <summary>Bitcoin with no server of the user's: Bitcore is the last resort for fee, broadcast and the
+    /// "did it arrive" check. (Dogecoin and Litecoin reach Bitcore through the BlockCypher path.)</summary>
+    private static bool UsesBitcoreBackup(string symbol) =>
+        symbol.Equals("BTC", StringComparison.OrdinalIgnoreCase) &&
+        Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor("BTC") is null;
 
     /// <summary>BCH broadcasts + fee go through Haskoin (its own POST /transactions and a fixed fee).</summary>
     private static bool IsHaskoin(string symbol) => symbol.ToUpperInvariant() == "BCH";
@@ -392,10 +416,38 @@ public sealed class BitcoinTransactionSender
             }
             else
             {
-                using var content = new StringContent(hex, Encoding.UTF8, "text/plain");
-                using var res = await Http.PostAsync($"{ExplorerFor(symbol)}/tx", content, ct);
-                httpOk = res.IsSuccessStatusCode;
-                body = (await res.Content.ReadAsStringAsync(ct)).Trim();
+                // Each Esplora in turn until one gives a clear answer - accepted, or a definite "no" that
+                // every node would give. A server that hangs or says "not now" hands over to the next; the
+                // signed bytes are the same everywhere, so there is only ever one transaction id.
+                (httpOk, body) = (false, "");
+                foreach (var host in EsploraHosts(symbol))
+                {
+                    try
+                    {
+                        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        deadline.CancelAfter(ExplorerHttp.AttemptDeadline + TimeSpan.FromSeconds(7));
+                        using var content = new StringContent(hex, Encoding.UTF8, "text/plain");
+                        using var res = await Http.PostAsync($"{host}/tx", content, deadline.Token);
+                        httpOk = res.IsSuccessStatusCode;
+                        body = (await res.Content.ReadAsStringAsync(ct)).Trim();
+                        if (UtxoBroadcast.Classify(httpOk, body) != UtxoBroadcastAnswer.Unclear) break;
+                        ExplorerHttp.Bench(host);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                    catch
+                    {
+                        (httpOk, body) = (false, "");
+                        ExplorerHttp.Bench(host);   // not answering: the next server
+                    }
+                }
+
+                if (UtxoBroadcast.Classify(httpOk, body) == UtxoBroadcastAnswer.Unclear && UsesBitcoreBackup(symbol))
+                {
+                    using var content = new StringContent($"{{\"rawTx\":\"{hex}\"}}", Encoding.UTF8, "application/json");
+                    using var res = await Http.PostAsync($"{BitcoreUtxoExplorer.BaseFor(symbol)}/tx/send", content, ct);
+                    httpOk = res.IsSuccessStatusCode;
+                    body = (await res.Content.ReadAsStringAsync(ct)).Trim();
+                }
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -428,6 +480,30 @@ public sealed class BitcoinTransactionSender
             await Task.Delay(TimeSpan.FromSeconds(attempt == 0 ? 2 : 5), ct);
             try
             {
+                if (UsesBitcoreBackup(symbol))
+                {
+                    // Bitcoin: any shipped server, or Bitcore, that knows the transaction settles it. Asked
+                    // side by side: the broadcast only gets here after handing the transaction to each of
+                    // them, so none learns anything new, and a dead network costs one wait, not five.
+                    using var round = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    round.CancelAfter(ExplorerHttp.AttemptDeadline);
+                    var asks = EsploraHosts(symbol).Append(BitcoreUtxoExplorer.BaseFor(symbol))
+                        .Select(host => KnowsAsync($"{host}/tx/{txid}", round.Token))
+                        .ToList();
+                    while (asks.Count > 0)
+                    {
+                        var answered = await Task.WhenAny(asks);
+                        asks.Remove(answered);
+                        if (await answered)
+                        {
+                            round.Cancel();
+                            return (true, txid, null, false);
+                        }
+                    }
+                    ct.ThrowIfCancellationRequested();
+                    continue;
+                }
+
                 var url = IsBlockCypher(symbol) ? $"{ExplorerFor(symbol)}/txs/{txid}" : $"{ExplorerFor(symbol)}/tx/{txid}";
                 if (IsHaskoin(symbol)) url = $"{ExplorerFor(symbol)}/transaction/{txid}";
                 using var res = await Http.GetAsync(url, ct);
@@ -455,6 +531,20 @@ public sealed class BitcoinTransactionSender
             true);
     }
 
+    /// <summary>Whether a server answers this transaction's URL with success; any failure is "not known here".</summary>
+    private static async Task<bool> KnowsAsync(string url, CancellationToken ct)
+    {
+        try
+        {
+            using var res = await Http.GetAsync(url, ct);
+            return res.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Economical sat/vB for the chosen <paramref name="level"/>. The network gives one "standard"
     /// estimate (Esplora's 6-block ~1h target, BlockCypher's medium rate, or a safe fixed rate for BCH);
@@ -468,6 +558,28 @@ public sealed class BitcoinTransactionSender
         // API needed. 2 sat/vB sits safely above the 1 sat/byte relay minimum. A too-low fee only ever
         // gets a tx stuck (recoverable), never lost.
         if (IsHaskoin(symbol)) return FeeLevels.Adjust(2.0, level, 1.0, 20.0);
+
+        if (IsBlockCypher(symbol) && symbol.Equals("LTC", StringComparison.OrdinalIgnoreCase))
+        {
+            // Litecoin through BlockCypher: fee-per-kB in litoshi, so /1000 is litoshi/vB. The same band and
+            // default as the Esplora path (1 litoshi/vB is the network's relay floor).
+            double ltc = 2.0;
+            try
+            {
+                using var res = await Http.GetAsync(explorer, ct);
+                if (res.IsSuccessStatusCode)
+                {
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                    if (doc.RootElement.TryGetProperty("medium_fee_per_kb", out var f))
+                        ltc = Math.Clamp(f.GetDouble() / 1000.0, 1.0, 200.0);
+                }
+            }
+            catch
+            {
+                // fall through to the safe default
+            }
+            return FeeLevels.Adjust(ltc, level, 1.0, 200.0);
+        }
 
         if (IsBlockCypher(symbol))
         {
@@ -496,19 +608,46 @@ public sealed class BitcoinTransactionSender
         double standard = 2.0; // safe Esplora default
         try
         {
-            using var res = await Http.GetAsync($"{explorer}/fee-estimates", ct);
-            if (res.IsSuccessStatusCode)
+            var found = false;
+            foreach (var host in EsploraHosts(symbol))
             {
-                using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-                foreach (var target in new[] { "6", "10", "12", "3" })
+                try
                 {
-                    if (doc.RootElement.TryGetProperty(target, out var rate))
+                    using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    deadline.CancelAfter(ExplorerHttp.AttemptDeadline);
+                    using var res = await Http.GetAsync($"{host}/fee-estimates", deadline.Token);
+                    if (!res.IsSuccessStatusCode) continue;
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                    foreach (var target in new[] { "6", "10", "12", "3" })
                     {
-                        standard = Math.Clamp(rate.GetDouble(), 1.0, 200.0);
-                        break;
+                        if (doc.RootElement.TryGetProperty(target, out var rate))
+                        {
+                            standard = Math.Clamp(rate.GetDouble(), 1.0, 200.0);
+                            found = true;
+                            break;
+                        }
                     }
+                    if (found) break;
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch { /* the next server */ }
+            }
+
+            // Bitcore's estimate (BTC per kB for a 6-block target) when no Esplora answered.
+            if (!found && UsesBitcoreBackup(symbol))
+            {
+                using var res = await Http.GetAsync($"{BitcoreUtxoExplorer.BaseFor(symbol)}/fee/6", ct);
+                if (res.IsSuccessStatusCode)
+                {
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                    if (doc.RootElement.TryGetProperty("feerate", out var perKb) && perKb.GetDouble() > 0)
+                        standard = Math.Clamp(perKb.GetDouble() * 100_000.0, 1.0, 200.0);   // BTC/kB -> sat/vB
                 }
             }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {

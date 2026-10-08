@@ -1,6 +1,6 @@
 # Pre-beta checklist
 
-**Last verified:** 2026-10-07 · Wallet [4.10.0-beta.1](../VERSION) (Beta 1)  
+**Last verified:** 2026-10-08 · Wallet [4.10.0-beta.4](../VERSION) (Beta)  
 **Repo:** [thefear078/Phobia-Wallet](https://github.com/thefear078/Phobia-Wallet)
 
 This replaces stale audits that still claim “missing LICENSE / CODEOWNERS / CoC / Dependabot”.
@@ -88,17 +88,17 @@ Do **not** call a public beta “fund-safe” until these are green:
 | L.1–L.3, L.8 | First-run disclaimer + 18+ + ToS/Privacy accept in UI | ✅ shipped — gates create/import/unlock, versioned acceptance, 6 languages |
 | P0.1–P0.5 | HD history judged against the whole address set; Tor/Monero signed-sum pins; published-release check; one capability matrix; zkSync sends | ✅ see [ROADMAP.md](ROADMAP.md) §3 |
 | Net | Tor circuits really separated per purpose, Monero service behind a login | ✅ 2026-10-07 — `SocksHandshakeTests`, `MoneroRpcLoginTests` |
-| Tests | `dotnet test` green on CI | ✅ on `main` PRs — 1,810 offline tests on 2026-10-07 |
+| Tests | `dotnet test` green on CI | ✅ on `main` PRs — 1,860 offline tests on 2026-10-08 |
 
 ## E2. Release artifacts — check before telling anyone to download
 
 | Item | Status |
 |------|--------|
-| Windows installer + portable exe, Linux tar.gz, Android APK, `SHA256SUMS-<label>.txt` on the release page | ✅ Beta 1 — the sums match GitHub's own digests, every file has a build attestation |
-| Android APK signed with a **stable** key (repository secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`) | ✅ set 2026-10-07 — from Beta 3 every APK carries the key in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); Beta 1 → Beta 3 is one reinstall |
-| Windows code signing (SmartScreen) | 🟡 from Beta 3 every exe and the installer are signed and timestamped (`WINDOWS_CERT_PFX_B64` / `WINDOWS_CERT_PASSWORD`), but self-signed — SmartScreen still warns until a CA-issued certificate replaces it (R.2) |
-| Tags point at the commit each release was built from | ✅ restored 2026-10-07 (moved to `6a533d4` on 2026-10-03; the Beta 1 copies attached to old release pages were deleted). A ruleset now forbids moving or deleting `v*` tags, and the release workflow refuses a release that already has files |
-| SBOM on the release page | ✅ from Beta 3 — `PhobiaWallet-<label>-sbom.spdx.json`, in the sums and the attestation |
+| Windows installer + portable exe, Linux tar.gz, Android APK, `SHA256SUMS-<label>.txt` on the release page | ✅ since the first beta (2026-10-02) — the sums match GitHub's own digests, every file has a build attestation; a beta also carries numbered copies for older copies' updaters, with their own sums |
+| Android APK signed with a **stable** key (repository secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`) | ✅ set 2026-10-07 — every APK since carries the key in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); a copy from before that date is one reinstall |
+| Windows code signing (SmartScreen) | 🟡 since 2026-10-07 every exe and the installer are signed and timestamped (`WINDOWS_CERT_PFX_B64` / `WINDOWS_CERT_PASSWORD`), but self-signed — SmartScreen still warns until a CA-issued certificate replaces it (R.2) |
+| Tags point at the commit each release was built from | ✅ restored 2026-10-07 (moved to `6a533d4` on 2026-10-03; the first beta's copies attached to old release pages were deleted). A ruleset now forbids moving or deleting `v*` tags, and the release workflow refuses a release that already has files |
+| SBOM on the release page | ✅ since 2026-10-07 — `PhobiaWallet-<label>-sbom.spdx.json`, in the sums and the attestation |
 
 Track in [ROADMAP.md](ROADMAP.md) §3.
 

@@ -50,6 +50,15 @@ public sealed class UtxoAccountScanner
     /// of public explorers (a 429 marks the scan partial, which is worse than being a little slower).</summary>
     public const int MaxParallelProbes = 6;
 
+    /// <summary>
+    /// How many requests one chain's scan may have in flight across ALL its branches together. The
+    /// branches (receive and change, and Taproot's two on Bitcoin) used to be walked one after another, so
+    /// a Bitcoin scan was four walks end to end - forty-odd seconds on a fresh import. They now walk at
+    /// once and share this limit: the explorer is asked exactly the same addresses (each branch keeps its
+    /// own gap-limit window), just sooner, and never more than this many at a time.
+    /// </summary>
+    public const int MaxInFlightPerChain = 8;
+
     private readonly HdAddressDeriver _deriver;
     private readonly int _gapLimit;
 
@@ -69,29 +78,38 @@ public sealed class UtxoAccountScanner
         int? gapLimit = null)
     {
         var gap = gapLimit is > 0 ? gapLimit.Value : _gapLimit;
-        var utxos = new List<OwnedUtxo>();
-        var externalAddresses = new List<string>();
-        long confirmed = 0, pending = 0;
         var scanned = 0;
-        var partial = false;
+        using var gate = new SemaphoreSlim(MaxInFlightPerChain);
 
-        void Add(long c, long p) { confirmed += c; pending += p; }
+        // Each branch collects into its own list and totals; they are joined below in the fixed order
+        // (receive, change, then Taproot's), so the result is what the one-after-another walk produced.
+        Task<Branch> Walk(uint change, UtxoScriptKind kind, long forcedThrough, bool collect)
+        {
+            var branch = new Branch(collect ? new List<string>() : null);
+            return WalkAsync();
+
+            async Task<Branch> WalkAsync()
+            {
+                var (high, part) = await ScanChainAsync(
+                    mnemonic, chain, change, kind, explorer, forcedThrough, branch.Addresses, branch.Utxos,
+                    (c, p) => { branch.Confirmed += c; branch.Pending += p; },
+                    progressCount: () => Volatile.Read(ref scanned), onScan: () => Interlocked.Increment(ref scanned),
+                    progress, gap, gate, ct);
+                branch.HighestUsed = high;
+                branch.Partial = part;
+                return branch;
+            }
+        }
 
         // external chain (change = 0): always covered at least through index 0, the default receive.
-        var extForced = ForcedThrough(floors.LastIssuedExternalIndex, floors.LastSeenUsedExternalIndex, includeZero: true);
-        var (extHigh, extPartial) = await ScanChainAsync(
-            mnemonic, chain, change: 0, UtxoScriptKind.Default, explorer, extForced, externalAddresses, utxos,
-            Add, progressCount: () => scanned, onScan: () => scanned++, progress, gap, ct);
-        partial |= extPartial;
-
         // internal chain (change = 1): no implicit #0, but a restore must still find used change addresses.
-        var intForced = ForcedThrough(floors.LastIssuedInternalIndex, floors.LastSeenUsedInternalIndex, includeZero: false);
-        var (intHigh, intPartial) = await ScanChainAsync(
-            mnemonic, chain, change: 1, UtxoScriptKind.Default, explorer, intForced, collectAddresses: null, utxos,
-            Add, progressCount: () => scanned, onScan: () => scanned++, progress, gap, ct);
-        partial |= intPartial;
-
-        uint? trExtHigh = null, trIntHigh = null;
+        var walks = new List<Task<Branch>>
+        {
+            Walk(0, UtxoScriptKind.Default,
+                ForcedThrough(floors.LastIssuedExternalIndex, floors.LastSeenUsedExternalIndex, includeZero: true), collect: true),
+            Walk(1, UtxoScriptKind.Default,
+                ForcedThrough(floors.LastIssuedInternalIndex, floors.LastSeenUsedInternalIndex, includeZero: false), collect: false),
+        };
 
         // BIP86 Taproot lives on a DIFFERENT purpose, so none of the work above can see it. A seed
         // restored from a Taproot wallet would otherwise read as empty while the coins sat in plain
@@ -100,29 +118,44 @@ public sealed class UtxoAccountScanner
         // The cost is real and is not hidden: this doubles the addresses BTC reveals to the explorer
         // per scan. It is spent because a balance that silently omits a branch is worse than a scan
         // that is twice as wide, and it is spent only on Bitcoin, the only chain with a Taproot branch.
-        if (ScansTaproot(chain))
+        var taproot = ScansTaproot(chain);
+        if (taproot)
         {
-            var trExtForced = ForcedThrough(null, floors.TaprootLastSeenUsedExternalIndex, includeZero: true);
-            var (h1, p1) = await ScanChainAsync(
-                mnemonic, chain, change: 0, UtxoScriptKind.Taproot, explorer, trExtForced,
-                collectAddresses: null, utxos,
-                Add, progressCount: () => scanned, onScan: () => scanned++, progress, gap, ct);
-            trExtHigh = h1;
-            partial |= p1;
+            walks.Add(Walk(0, UtxoScriptKind.Taproot,
+                ForcedThrough(null, floors.TaprootLastSeenUsedExternalIndex, includeZero: true), collect: false));
+            walks.Add(Walk(1, UtxoScriptKind.Taproot,
+                ForcedThrough(floors.TaprootLastIssuedInternalIndex, floors.TaprootLastSeenUsedInternalIndex, includeZero: false),
+                collect: false));
+        }
 
-            var trIntForced = ForcedThrough(
-                floors.TaprootLastIssuedInternalIndex, floors.TaprootLastSeenUsedInternalIndex, includeZero: false);
-            var (h2, p2) = await ScanChainAsync(
-                mnemonic, chain, change: 1, UtxoScriptKind.Taproot, explorer, trIntForced,
-                collectAddresses: null, utxos,
-                Add, progressCount: () => scanned, onScan: () => scanned++, progress, gap, ct);
-            trIntHigh = h2;
-            partial |= p2;
+        var branches = await Task.WhenAll(walks);
+
+        var utxos = new List<OwnedUtxo>();
+        long confirmed = 0, pending = 0;
+        var partial = false;
+        foreach (var b in branches)
+        {
+            utxos.AddRange(b.Utxos);
+            confirmed += b.Confirmed;
+            pending += b.Pending;
+            partial |= b.Partial;
         }
 
         return new UtxoScanResult(
-            chain, utxos, confirmed, pending, extHigh, intHigh, externalAddresses, partial,
-            trExtHigh, trIntHigh);
+            chain, utxos, confirmed, pending, branches[0].HighestUsed, branches[1].HighestUsed,
+            branches[0].Addresses ?? [], partial,
+            taproot ? branches[2].HighestUsed : null, taproot ? branches[3].HighestUsed : null);
+    }
+
+    /// <summary>One branch's findings, kept apart until the branches are joined.</summary>
+    private sealed class Branch(List<string>? addresses)
+    {
+        public List<string>? Addresses { get; } = addresses;
+        public List<OwnedUtxo> Utxos { get; } = [];
+        public long Confirmed { get; set; }
+        public long Pending { get; set; }
+        public uint? HighestUsed { get; set; }
+        public bool Partial { get; set; }
     }
 
     /// <summary>
@@ -156,6 +189,7 @@ public sealed class UtxoAccountScanner
         Action onScan,
         IProgress<UtxoScanProgress>? progress,
         int gapLimit,
+        SemaphoreSlim gate,
         CancellationToken ct)
     {
         uint? highestUsed = null;
@@ -171,16 +205,20 @@ public sealed class UtxoAccountScanner
         // unreadable, while a working fallback server was never asked.
         async Task<AddressActivity?> ProbeAsync(string address)
         {
+            await gate.WaitAsync(ct);
             try { return await explorer.GetActivityAsync(address, ct); }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch { return null; }
+            finally { gate.Release(); }
         }
 
         async Task<IReadOnlyList<ExplorerUtxo>?> FetchUtxosAsync(string address)
         {
+            await gate.WaitAsync(ct);
             try { return await explorer.GetUtxosAsync(address, ct); }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch { return null; }
+            finally { gate.Release(); }
         }
 
         for (uint index = 0; ; )

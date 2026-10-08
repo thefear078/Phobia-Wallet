@@ -124,7 +124,7 @@ public sealed class InterfaceAndSearchTests : IDisposable
 
         Assert.True(headings.Count > 20, $"only {headings.Count} cards read from the screen");
         var indexed = MainViewModel.SettingsIndex.Select(s => s.TitleKey).ToHashSet();
-        Assert.Empty(headings.Where(h => !indexed.Contains(h)));
+        Assert.DoesNotContain(headings, h => !indexed.Contains(h));
     }
 
     [Fact]

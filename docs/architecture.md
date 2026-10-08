@@ -68,9 +68,10 @@ it is not decoration. If you add a field that accepts an amount, use it.
 Infrastructure/
   Network/
     PublicHttp                  the ONE http client. Tor-aware.
-    EsploraUtxoExplorer         BTC / LTC
+    EsploraUtxoExplorer         BTC / LTC (several instances, or the one the user chose)
+    BitcoreUtxoExplorer         BTC / LTC / DOGE, behind FailoverUtxoExplorer (healthiest first)
     HaskoinUtxoExplorer         BCH
-    BlockCypherUtxoExplorer     DOGE
+    BlockCypherUtxoExplorer     DOGE / LTC
     PublicChainClients          balances, prices, candles
     OnChainHistoryClient        transaction history
     *TransactionSender          per-chain broadcast

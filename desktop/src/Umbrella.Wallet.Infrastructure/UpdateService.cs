@@ -46,13 +46,14 @@ public readonly record struct ReleaseVersion(int Major, int Minor, int Patch, st
     public override string ToString() => IsPrerelease ? $"{Major}.{Minor}.{Patch}-{Pre}" : $"{Major}.{Minor}.{Patch}";
 
     /// <summary>
-    /// What the release's files are named with: "Beta-1" for 4.10.0-beta.1 — a beta is called by its
-    /// beta number, the way people say it — and the plain version ("4.10.0") for a full release.
+    /// What the release's files are named with: "Beta" for every beta - the project's betas are not
+    /// numbered for people (PhobiaWallet-Setup-Beta.exe); the number lives on in the tag and the version,
+    /// where it orders the updates - and the plain version ("4.10.0") for a full release.
     /// </summary>
-    public string FileLabel =>
-        Pre.StartsWith("beta.", StringComparison.OrdinalIgnoreCase) && int.TryParse(Pre["beta.".Length..], out var n)
-            ? $"Beta-{n}"
-            : ToString();
+    public string FileLabel => IsBeta ? "Beta" : ToString();
+
+    /// <summary>A "-beta.N" pre-release.</summary>
+    public bool IsBeta => Pre.StartsWith("beta", StringComparison.OrdinalIgnoreCase);
 
     public int CompareTo(ReleaseVersion other)
     {
