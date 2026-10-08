@@ -23,6 +23,17 @@ public static class ExplorerHttp
     public static readonly TimeSpan MaxWait = TimeSpan.FromSeconds(8);
 
     /// <summary>
+    /// How long one request to an explorer may take before it counts as "not answering": eight seconds
+    /// direct, fifteen through Tor or a proxy (a circuit adds a few seconds of its own). An address lookup
+    /// is answered in well under a second by a healthy server. The client's own limit is twenty seconds,
+    /// and a server that hangs (mempool.space took ten-plus seconds a request one evening, Cloudflare sat
+    /// on litecoinspace for twenty before a 522) held a whole scan back that long, request after request,
+    /// before the next server was tried. A timed-out server is benched like a refusing one.
+    /// </summary>
+    public static TimeSpan AttemptDeadline =>
+        PublicHttp.ActiveProxy is null ? TimeSpan.FromSeconds(8) : TimeSpan.FromSeconds(15);
+
+    /// <summary>
     /// GET <paramref name="url"/>, trying up to <paramref name="attempts"/> times while the answer is
     /// transient. Returns the last response (success or not) for the caller to judge; throws only
     /// when no response ever came back, or on the caller's own cancel.
@@ -39,7 +50,9 @@ public static class ExplorerHttp
             await gate.EnterAsync(ct).ConfigureAwait(false);
             try
             {
-                response = await http.GetAsync(url, ct).ConfigureAwait(false);
+                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                deadline.CancelAfter(AttemptDeadline);
+                response = await http.GetAsync(url, deadline.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

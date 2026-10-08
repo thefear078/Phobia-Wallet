@@ -32,6 +32,30 @@ public sealed class HdAddressDeriver
     /// <summary>Resolves the effective passphrase: an explicit (non-null) argument wins, else the ambient.</summary>
     private string Resolve(string? passphrase) => passphrase ?? ActivePassphrase;
 
+    // --- Account keys, kept while the wallet is unlocked ------------------------------------------
+    //
+    // Every UTXO address used to be derived from the phrase itself: the BIP39 seed (PBKDF2, 2048 rounds)
+    // and then the whole path from the root, 2.5 ms an address. A Bitcoin scan walks a hundred-odd
+    // addresses, the other UTXO chains and the history plan several hundred more - seconds of CPU, much
+    // of it on the UI thread. The account key (m/purpose'/coin'/0') is now derived once and each address
+    // from it (0.35 ms). It is the same secret the phrase already is, held for the same session; the cache
+    // is keyed by a hash, never the phrase, and dropped when the wallet locks (ForgetCachedKeys).
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, ExtKey> AccountKeys = new();
+
+    /// <summary>Drops every cached account key. Called when the wallet locks or switches.</summary>
+    public static void ForgetCachedKeys() => AccountKeys.Clear();
+
+    private static ExtKey AccountKey(Mnemonic parsed, string passphrase, int purpose, int coinType)
+    {
+        var id = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(
+            $"{parsed}\n{passphrase}\n{purpose}/{coinType}")));
+        if (AccountKeys.TryGetValue(id, out var cached)) return cached;
+        if (AccountKeys.Count > 64) AccountKeys.Clear();   // a handful of wallets, never unbounded
+        var key = parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"{purpose}'/{coinType}'/0'"));
+        return AccountKeys.GetOrAdd(id, key);
+    }
+
     /// <summary>
     /// Derives the external (receive) address at the given index for a supported chain.
     /// <paramref name="passphrase"/> is the optional BIP39 passphrase (the "25th word"): empty = the
@@ -320,8 +344,11 @@ public sealed class HdAddressDeriver
         var (_, scriptType) = BranchParams(path.Chain, path.Kind);
 
         var parsed = Bip39MnemonicService.ParseValidated(RequireNormalized(mnemonic));
-        var keyPath = KeyPathFor(path);
-        var key = parsed.DeriveExtKey(passphrase).Derive(keyPath).PrivateKey;
+        var (_, coinType, _, _) = BitcoinLikeParams(path.Chain);
+        var (purpose, _) = BranchParams(path.Chain, path.Kind);
+        // The same key as deriving KeyPathFor(path) from the root - the account key, then change/index.
+        var key = AccountKey(parsed, passphrase, purpose, coinType)
+            .Derive(new KeyPath($"{path.Change}/{path.Index}")).PrivateKey;
         var address = key.PubKey.GetAddress(scriptType, network).ToString();
         var scriptPubKey = key.PubKey.GetAddress(scriptType, network).ScriptPubKey;
         return new DerivedUtxoAccount(path, address, key, scriptPubKey);

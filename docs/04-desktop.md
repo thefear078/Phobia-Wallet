@@ -103,7 +103,7 @@ build → sign locally → verify → broadcast signed bytes only.**
 
 | Sender | Mechanism |
 |--------|-----------|
-| `BitcoinTransactionSender` | Esplora UTXOs + NBitcoin; fee from `/fee-estimates` (~6-block target); `builder.Verify()` must pass |
+| `BitcoinTransactionSender` | Esplora UTXOs + NBitcoin; fee from `/fee-estimates` (~6-block target, Bitcore's `/fee/6` as BTC's backup); LTC and DOGE fee and broadcast through BlockCypher unless a server is chosen; a BTC broadcast tries each Esplora instance, then Bitcore; `builder.Verify()` must pass |
 | `EthTransactionSender` | `eth_gasPrice` × 1.05, 21000 gas, EIP-155 chainId 1, `eth_sendRawTransaction` |
 | `SolanaTransactionSender` | Hand-serialized legacy message, ed25519 sign, `sendTransaction` |
 | `TronTransactionSender` | TronGrid builds the unsigned tx; we sign its txID with secp256k1; TRX and **USDT (TRC-20 contract call)** |

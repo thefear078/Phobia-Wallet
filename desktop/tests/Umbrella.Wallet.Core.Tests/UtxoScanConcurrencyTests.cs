@@ -85,8 +85,28 @@ public sealed class UtxoScanConcurrencyTests
         await scanner.ScanAsync(Phrase, ChainId.Btc, fake, UtxoScanFloors.None);
 
         Assert.True(fake.PeakInFlight > 1, $"probes did not overlap (peak in-flight was {fake.PeakInFlight})");
-        Assert.True(fake.PeakInFlight <= UtxoAccountScanner.MaxParallelProbes,
-            $"probe burst exceeded the rate-limit cap (peak {fake.PeakInFlight} > {UtxoAccountScanner.MaxParallelProbes})");
+        Assert.True(fake.PeakInFlight <= UtxoAccountScanner.MaxInFlightPerChain,
+            $"probe burst exceeded the rate-limit cap (peak {fake.PeakInFlight} > {UtxoAccountScanner.MaxInFlightPerChain})");
+    }
+
+    [Fact]
+    public async Task The_branches_of_one_scan_walk_at_once_not_one_after_another()
+    {
+        // A Bitcoin scan has four branches (receive, change, Taproot receive, Taproot change). Walked one
+        // after another a fresh import took forty-odd seconds; now the Taproot receive branch must start
+        // before the plain change branch has finished.
+        var fake = new RecordingExplorer { HoldMs = 25 };
+        var deriver = new Umbrella.Wallet.Core.Derivation.HdAddressDeriver();
+        var scanner = new UtxoAccountScanner(gapLimit: 20);
+
+        await scanner.ScanAsync(Phrase, ChainId.Btc, fake, UtxoScanFloors.None);
+
+        var order = fake.Probed.ToList();
+        var lastChange = order.IndexOf(deriver.DeriveBitcoinLikeAt(Phrase, ChainId.Btc, change: 1, index: 19).Address);
+        var firstTaproot = order.IndexOf(deriver.DeriveBitcoinLikeAt(
+            Phrase, ChainId.Btc, change: 0, index: 0, kind: Umbrella.Wallet.Core.Derivation.UtxoScriptKind.Taproot).Address);
+        Assert.True(lastChange >= 0 && firstTaproot >= 0);
+        Assert.True(firstTaproot < lastChange, $"Taproot started at probe {firstTaproot}, after change finished at {lastChange}");
     }
 
     [Fact]

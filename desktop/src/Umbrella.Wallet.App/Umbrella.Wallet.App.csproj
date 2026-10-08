@@ -9,7 +9,7 @@
     <AssemblyName>Umbrella.Wallet.App</AssemblyName>
     <Product>Phobia Wallet</Product>
     <AssemblyTitle>Phobia Wallet</AssemblyTitle>
-    <Version>4.10.0-beta.3</Version>
+    <Version>4.10.0-beta.4</Version>
     <!-- Published builds (installer, portable, Linux) ship ahead-of-time compiled code, so the first
          unlock, the first chart and the first screen of a session run at full speed instead of waiting
          on the JIT. A plain `dotnet build` (and the reproducibility check, which uses it) is unchanged. -->

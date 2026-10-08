@@ -42,7 +42,7 @@ public sealed class TonJettonParsingTests
         """;
 
     private static TokenBalance Find(IReadOnlyList<TokenBalance> tokens, string symbol) =>
-        Assert.Single(tokens.Where(t => t.Symbol == symbol));
+        Assert.Single(tokens, t => t.Symbol == symbol);
 
     [Fact]
     public void Decimals_come_from_the_master_not_from_a_guess()

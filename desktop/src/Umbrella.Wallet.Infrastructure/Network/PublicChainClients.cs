@@ -392,8 +392,7 @@ public sealed class PublicChainBalanceClient
             return chain switch
             {
                 ChainId.Btc => await GetBtcAsync(address, cancellationToken),
-                ChainId.Ltc => await GetEsploraAsync(
-                    "https://litecoinspace.org/api", ChainId.Ltc, address, "LTC", 8, cancellationToken),
+                ChainId.Ltc => await GetLtcAsync(address, cancellationToken),
                 ChainId.Doge => await GetDogeAsync(address, cancellationToken),
                 ChainId.Bch => await GetHaskoinAsync("bch", ChainId.Bch, "BCH", address, cancellationToken),
                 ChainId.Zec => await GetZecAsync(address, cancellationToken),
@@ -925,6 +924,41 @@ public sealed class PublicChainBalanceClient
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// One Litecoin address: the user's own Esplora when they chose one; otherwise Bitcore, BlockCypher, then
+    /// litecoinspace - the order the address scan uses (<see cref="FailoverUtxoExplorer.ForLitecoin"/>).
+    /// </summary>
+    private static async Task<ChainBalance?> GetLtcAsync(string address, CancellationToken ct)
+    {
+        if (ChainEndpoints.OverrideFor("LTC") is not null)
+            return await GetEsploraAsync(EsploraUtxoExplorer.BaseUrlFor("LTC"), ChainId.Ltc, address, "LTC", 8, ct);
+
+        try
+        {
+            using var res = await Http.GetAsync(
+                $"{BitcoreUtxoExplorer.BaseFor("LTC")}/address/{Uri.EscapeDataString(address)}/balance", ct);
+            if (res.IsSuccessStatusCode)
+            {
+                using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                // "balance" is confirmed + unconfirmed, in litoshi (1e-8 LTC).
+                if (doc.RootElement.TryGetProperty("balance", out var b) && b.TryGetInt64(out var litoshi))
+                    return new ChainBalance(ChainId.Ltc, address, litoshi / 100_000_000m, "LTC");
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { /* the next source */ }
+
+        try
+        {
+            if (await GetBlockcypherAsync("ltc", ChainId.Ltc, address, "LTC", 8, ct) is { } viaBlockcypher)
+                return viaBlockcypher;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { /* the next source */ }
+
+        return await GetEsploraAsync(EsploraUtxoExplorer.DefaultBaseUrlFor("LTC"), ChainId.Ltc, address, "LTC", 8, ct);
     }
 
     private static async Task<ChainBalance?> GetBlockcypherAsync(

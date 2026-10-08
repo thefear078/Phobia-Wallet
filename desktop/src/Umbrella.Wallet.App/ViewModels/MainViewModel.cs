@@ -1099,10 +1099,10 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Version shown in the status bar — read from the assembly so it never drifts from the csproj.</summary>
     public string AppVersionLabel => $"Phobia Wallet {VersionDisplay} · the fear";
 
-    /// <summary>Just the version, for the sidebar's foot: "Beta 1" on a beta, "v4.10.0" on a release.</summary>
+    /// <summary>Just the version, for the sidebar's foot: "Beta" on a beta, "v4.10.0" on a release.</summary>
     public string AppVersionShort => VersionDisplay;
 
-    /// <summary>"Beta 1" for 4.10.0-beta.1, "v4.10.0" for a full release.</summary>
+    /// <summary>"Beta" for any beta (betas are not numbered for people), "v4.10.0" for a full release.</summary>
     private static string VersionDisplay
     {
         get
@@ -1116,7 +1116,7 @@ public partial class MainViewModel : ViewModelBase
                 "alpha" => "Alpha",
                 _ => parts[0],
             };
-            return parts.Length > 1 ? $"{name} {parts[1]}" : name;
+            return name == "Beta" || parts.Length == 1 ? name : $"{name} {parts[1]}";
         }
     }
 
@@ -2234,8 +2234,8 @@ public partial class MainViewModel : ViewModelBase
         string.Join(", ", ChainCatalog.Planned.Select(c => c.Symbol));
 
     public string NetworkLabel =>
-        "Public RPC / explorers, no API keys: cloudflare-eth.com, mempool.space, " +
-        "litecoinspace.org, blockcypher.com, tronscanapi.com";
+        "Public RPC / explorers, no API keys: mempool.space, Bitcore, BlockCypher, " +
+        "PublicNode, TronGrid and the rest - each named in Privacy";
     public string BalanceDisplayMain => IsBalanceHidden ? "•••••••" : TotalBalanceMain;
     /// <summary>The cents, with the locale's own decimal separator — a hardcoded "." put a US point in
     /// front of a comma-decimal total.</summary>
@@ -2646,9 +2646,10 @@ public partial class MainViewModel : ViewModelBase
         var dest = SendTo?.Trim() ?? string.Empty;
         if (dest.Length == 0) return;
 
-        var own = Accounts.Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
-        var known = _addressBookAll.Select(e => e.Address)
-            .Concat(Transactions.Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
+        // Snapshots: a refresh finishing in the background can rewrite these lists while they are read.
+        var own = Accounts.ToArray().Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
+        var known = _addressBookAll.ToArray().Select(e => e.Address)
+            .Concat(Transactions.ToArray().Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -3669,6 +3670,7 @@ public partial class MainViewModel : ViewModelBase
 
     public void LockVault()
     {
+        Umbrella.Wallet.Core.Derivation.HdAddressDeriver.ForgetCachedKeys();   // account keys go with the phrase
         _lockEpoch++;   // anything that was opening a vault when this happened must not finish the job
         _otherTotalsCts?.Cancel();   // and the other wallets' balances stop being read
         ForgetSwapState();           // a swap payment or a followed swap belongs to the wallet that made it
@@ -4578,7 +4580,7 @@ public partial class MainViewModel : ViewModelBase
             }
             _ = LoadSparklinesAsync();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             MarketStatus = Loc.Instance["market.unreachable"];
         }
@@ -6509,7 +6511,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     private List<(double Value, double Change)> WalletValueRows() =>
-        Accounts
+        Accounts.ToArray()
             .Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only"
                         && a.Balance != BalanceRead.Unknown && (ShowSpamTokens || !a.IsSuspectedSpam))
             .Select(a => (a.Price * a.Amount, a.Change24h))
@@ -6520,7 +6522,10 @@ public partial class MainViewModel : ViewModelBase
         // The total is a sum of what the wallet actually knows. Anything it could not read is counted
         // separately and said out loud, because a number quietly missing an asset is a wrong number
         // that looks exactly like a right one (MANIFESTO §4 / roadmap P0.6).
-        UnreadableAssetCount = Holdings.Count(h => h.Balance == BalanceRead.Unknown);
+        // One snapshot of the holdings for the whole recount: a refresh finishing in the background (the
+        // test suite has no UI thread to queue it on) can rebuild the list while it is being read.
+        var holdings = Holdings.ToArray();
+        UnreadableAssetCount = holdings.Count(h => h.Balance == BalanceRead.Unknown);
         // The WHOLE wallet, whatever the asset list below is filtered to: picking "Bitcoin" there used to
         // turn the total into the Bitcoin figure, and the switcher showed that as the wallet's balance.
         var valued = WalletValueRows();
@@ -6537,7 +6542,7 @@ public partial class MainViewModel : ViewModelBase
 
         var (avg, moveUsd) = Move24h(valued);
         var delta = moveUsd * (double)Fx.Rate;
-        Change24hLabel = Holdings.Count == 0
+        Change24hLabel = holdings.Length == 0
             ? "· unlock for live rates"
             : $"{(avg >= 0 ? "▲" : "▼")} {Math.Abs(avg).ToString("0.00", Fx.Culture)}%   {(delta >= 0 ? "+" : "-")}{Fx.Symbol}{Math.Abs(delta).ToString("N2", Fx.Culture)} · 24h";
         var priced = valued.Any(v => v.Value > 0);
@@ -6550,15 +6555,15 @@ public partial class MainViewModel : ViewModelBase
 
         // Dashboard stat tiles. These read from the holdings/market data the wallet already has, so
         // they work even at a zero balance (24h moves exist regardless of what you hold).
-        PortfolioAssetCount = Holdings.Count.ToString(CultureInfo.InvariantCulture);
-        PortfolioNetworkCount = Holdings
+        PortfolioAssetCount = holdings.Length.ToString(CultureInfo.InvariantCulture);
+        PortfolioNetworkCount = holdings
             .Select(h => h.Chain)
             .Where(c => !string.IsNullOrWhiteSpace(c))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Count()
             .ToString(CultureInfo.InvariantCulture);
 
-        var best = Holdings
+        var best = holdings
             .Where(h => h.Price > 0 && h.Change24h != 0)
             .OrderByDescending(h => h.Change24h)
             .FirstOrDefault();
@@ -6590,7 +6595,7 @@ public partial class MainViewModel : ViewModelBase
         PortfolioBreakdown.Clear();
         if (total > 0)
         {
-            var byAsset = Holdings
+            var byAsset = Holdings.ToArray()
                 .Where(h => h.Value > 0)
                 .GroupBy(h => h.Symbol)
                 .Select(g => (Symbol: g.Key, Value: g.Sum(h => h.Value)))
@@ -6765,13 +6770,15 @@ public partial class MainViewModel : ViewModelBase
         _ => null,
     };
 
-    /// <summary>The right UTXO explorer for a chain: Bitcore then BlockCypher for Dogecoin, Haskoin for Bitcoin Cash
-    /// (neither has an Esplora instance; BCH's Blockchair also rate-limits), Esplora (Blockstream /
-    /// litecoinspace) for BTC and LTC.</summary>
+    /// <summary>The right UTXO explorer for a chain: Bitcore then BlockCypher for Dogecoin and Litecoin (Litecoin's
+    /// litecoinspace behind them), Haskoin for Bitcoin Cash (no Esplora instance; Blockchair rate-limits), Esplora
+    /// (mempool.space and its mirrors) for BTC.</summary>
     private static Umbrella.Wallet.Core.Utxo.IUtxoExplorer UtxoExplorerFor(string symbol) =>
         symbol.Trim().ToUpperInvariant() switch
         {
             "DOGE" => FailoverUtxoExplorer.ForDogecoin(),
+            "LTC" => FailoverUtxoExplorer.ForLitecoin(),
+            "BTC" => FailoverUtxoExplorer.ForBitcoin(),
             "BCH" => HaskoinUtxoExplorer.For(symbol),
             _ => EsploraUtxoExplorer.For(symbol),
         };

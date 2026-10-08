@@ -1,6 +1,6 @@
 # Phobia Wallet — unified roadmap
 
-**Product version:** see [`VERSION`](../VERSION) (currently **4.10.0-beta.1**, “Beta 1”).  
+**Product version:** see [`VERSION`](../VERSION) (currently **4.10.0-beta.4**, shown as “Beta”; betas are not numbered for people).  
 **Consolidation date:** 2026-09-15 · **last status pass:** 2026-10-07 (readiness audit: Tor circuit isolation made real, Monero service login, Orbot on Android, swap claims re-checked live; before that 2026-09-20: P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.2, P1.4–P1.7, P1.9–P1.13 and L.1/L.2/L.3/L.8 closed).  
 **Purpose:** one document for “what remains to do” — compiled from README, CHANGELOG, `SECURE_ANON_ROADMAP`, `CLAUDE_IMPLEMENTATION_ROADMAP_UK`, `12-coins-and-chains`, `PRIVACY`, `THREAT_MODEL`, `security-model`, `BUILD_VERIFY`, and notes on alignment with the manifesto philosophy.
 
@@ -42,12 +42,12 @@ Philosophy ([`MANIFESTO.md`](../MANIFESTO.md)): the user must **verify**, not **
 | Monero 25-word seeds in all 12 Monero languages (Chinese included) → Monero-only wallet, optional scan-from | ✅ (4.10) |
 | Monero service reachable (RPC bodies with a stated length) and restore over the account's whole life | ✅ (4.10) |
 | Rebrand Umbrella → **Phobia**: vector crystal logos + icons, midnight-violet default theme, every theme adapted, Phobia file names (+ legacy copies) | ✅ (4.10) |
-| Swap any coin for any coin (THORChain → NEAR Intents → Exolix, route named before paying), Nano sends, restorable wallet removal | ✅ (Beta 1) — every coin but Polkadot, which no route trades on its own network (re-checked live 2026-10-07; DOT and TON removed from Exolix, which lists neither natively) |
-| Tor circuits per purpose, actually on the wire (the label used to sit where .NET never reads it — every request shared one circuit); names always resolved by the proxy (`socks5h` accepted, `socks4` used as 4a). Per-server circuits measured and dropped — too slow over Tor for the balance scans | ✅ (beta.3) |
-| Local Monero service behind a random login file (it ran with `--disable-rpc-login` on a fixed port — reachable by a web page's cross-site POST); leftover daemon ended, a squatted port refused | ✅ (beta.3) |
-| Android: Tor through Orbot as the custom proxy, kill-switch kept across restarts while it is set | ✅ (beta.3) |
-| Balance chart follows the pointer (real worth per point, 1% scale floor), Settings search in every language over every card, “Back to top”, notes that close, wallet total never narrowed by the asset filter | ✅ (Beta 1) |
-| Staking from the wallet: TRON (freeze, vote, claim, unfreeze, withdraw — TronGrid's bytes checked before signing), Solana (seed stake accounts: stake, undelegate, withdraw), Cosmos Hub (delegate, claim, undelegate); Connect rebuilt; unlock and refresh no longer block the UI | ✅ (Beta 1) |
+| Swap any coin for any coin (THORChain → NEAR Intents → Exolix, route named before paying), Nano sends, restorable wallet removal | ✅ (2026-10-02) — every coin but Polkadot, which no route trades on its own network (re-checked live 2026-10-07; DOT and TON removed from Exolix, which lists neither natively) |
+| Tor circuits per purpose, actually on the wire (the label used to sit where .NET never reads it — every request shared one circuit); names always resolved by the proxy (`socks5h` accepted, `socks4` used as 4a). Per-server circuits measured and dropped — too slow over Tor for the balance scans | ✅ (2026-10-07) |
+| Local Monero service behind a random login file (it ran with `--disable-rpc-login` on a fixed port — reachable by a web page's cross-site POST); leftover daemon ended, a squatted port refused | ✅ (2026-10-07) |
+| Android: Tor through Orbot as the custom proxy, kill-switch kept across restarts while it is set | ✅ (2026-10-07) |
+| Balance chart follows the pointer (real worth per point, 1% scale floor), Settings search in every language over every card, “Back to top”, notes that close, wallet total never narrowed by the asset filter | ✅ (2026-10-02) |
+| Staking from the wallet: TRON (freeze, vote, claim, unfreeze, withdraw — TronGrid's bytes checked before signing), Solana (seed stake accounts: stake, undelegate, withdraw), Cosmos Hub (delegate, claim, undelegate); Connect rebuilt; unlock and refresh no longer block the UI | ✅ (2026-10-02) |
 
 ---
 
@@ -125,11 +125,11 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | H.1 | Bitcoin **PSBT** export/import + watch-only xpub | ✅ **PSBT both ways.** Export: the reviewed payment as an unsigned PSBT naming the master fingerprint and every BIP32 path — BIP-371 Taproot fields filled by hand, because NBitcoin's `AddKeyPath` leaves a Taproot coin unnamed — with the change index reserved as for a real send. Import (base64, hex or `.psbt`): reviewed line by line with the cost to this wallet, and only coins the wallet's **own scan** found are signed, at the value read from the chain; a PSBT that misstates one of them, or spends from one of its addresses a coin the scan cannot see, is refused. Completed PSBTs broadcast through the same route gate. The xpub export now includes the Taproot account the balance counts. **Not done:** a seedless watch-only wallet (import an xpub, sign elsewhere) — the app is built around an unlocked seed, and that mode is the same work H.2 needs, so they go together. Signing needs a synced wallet: this is not an air-gapped signer |
 | **H.2** | **Ledger / Trezor** (sign on device, no seed in Phobia) + seedless watch-only | 🏆 **P0 next** — design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md); H.1 PSBT is the interim path |
 | H.3 | **Multisig** 2-of-3 | 📅 long |
-| H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 🟡 **Beta 1 APK** — the same view models, signing code and pages in a phone layout (`Views/MobileShell`), built in CI and attached to the release with its checksum and attestation. Seed and key screens are FLAG_SECURE, Android backup is off. Tor through **Orbot** (custom proxy `127.0.0.1:9050`, kill-switch kept across restarts — beta.3). **Signed with **one stable key** from Beta 3 (fingerprint in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); Beta 1 → Beta 3 needs one reinstall, later updates install over). **Tor and monero-wallet-rpc in the APK** from Beta 3 (the projects' own Android builds, pinned to their signed sums, run from the native-library folder; Tor restarted when Android stops it in the background; an emulator job proves Tor bootstraps). The app looks for updates and opens the new APK's download. **Not yet:** Play Store / F-Droid |
+| H.4 | **Android** (separate mobile threat model + UX, not a desktop copy) | 🟡 **Beta APK** — the same view models, signing code and pages in a phone layout (`Views/MobileShell`), built in CI and attached to the release with its checksum and attestation. Seed and key screens are FLAG_SECURE, Android backup is off. Tor through **Orbot** (custom proxy `127.0.0.1:9050`, kill-switch kept across restarts — beta.3). **Signed with **one stable key** from Beta 3 (fingerprint in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); Beta 1 → Beta 3 needs one reinstall, later updates install over). **Tor and monero-wallet-rpc in the APK** from Beta 3 (the projects' own Android builds, pinned to their signed sums, run from the native-library folder; Tor restarted when Android stops it in the background; an emulator job proves Tor bootstraps). The app looks for updates and opens the new APK's download. **Not yet:** Play Store / F-Droid |
 | R.1 | **Reproducible builds** + published attestations (honestly: .NET single-file installer is not bit-identical) | ✅ the managed assemblies — the code that derives keys, signs and routes — are byte-identical across builds (CI `reproducible-build`); attestations ✅ (R.3). The apphost, installer and APK are not bit-identical; [BUILD_VERIFY.md](BUILD_VERIFY.md#what-is-and-is-not-bit-for-bit-reproducible) says which files to compare |
 | R.2 | **Code signing OV/EV (SmartScreen)** | 🟡 **the pipeline is done** (2026-10-07): `release.yml` signs `Phobia.exe`, the portable exe and the installer (Authenticode SHA-256, RFC 3161 timestamp) and refuses a signature from any other certificate. The certificate is the author's own, self-signed — it proves the file is untouched, not who the publisher is, so SmartScreen still warns. **Next:** a CA-issued certificate for an individual open-source developer (no legal entity needed), swapped in through the same two secrets; EV/Store later (R.6) |
 | R.3 | Sign releases with **GPG / Sigstore** | ✅ since 4.8.0 — every artifact **and** the sums file carry a keyless build attestation (GitHub OIDC → public transparency log), verified with `gh attestation verify`. No signing key exists, so none can be stolen. Earlier releases have checksums only, and the docs say so |
-| R.4 | SBOM / provenance as a release asset | ✅ from Beta 3: `PhobiaWallet-<label>-sbom.spdx.json` (SPDX, from GitHub's dependency graph) on every release, in the sums file and the attestation; provenance is R.3 |
+| R.4 | SBOM / provenance as a release asset | ✅ since 2026-10-07: `PhobiaWallet-<label>-sbom.spdx.json` (SPDX, from GitHub's dependency graph) on every release, in the sums file and the attestation; provenance is R.3 |
 | R.5 | External **security audit** — status in [`../AUDIT_STATUS.md`](../AUDIT_STATUS.md) | 📅 Planned |
 | **R.6** | **EV Code Signing** (~$500–800/year) or OV for Windows build — without this SmartScreen / Store block unsigned exe | ⏳ |
 | **R.7** | **Microsoft Store** (optional): separate Store build / Microsoft signature | 📅 |
@@ -168,10 +168,10 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 
 | Symbol | Receive | Balance | Send | History | Note |
 |---|:---:|:---:|:---:|:---:|---|
-| BTC | ✅ | ✅ | ✅ | ✅ | coin control; restored Taproot (`m/86'`) found and spent — receive stays SegWit |
-| LTC | ✅ | ✅ | ✅ | ✅ | |
+| BTC | ✅ | ✅ | ✅ | ✅ | coin control; restored Taproot (`m/86'`) found and spent — receive stays SegWit. Esplora instances, then Bitcore, the healthiest first (2026-10-08); a chosen server alone |
+| LTC | ✅ | ✅ | ✅ | ✅ | litecoinspace, Bitcore and BlockCypher, the healthiest first; fee and broadcast through BlockCypher; history BlockCypher (2026-10-08). A chosen server alone |
 | BCH | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7 |
-| DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7; Bitcore then BlockCypher (4.10). History (Beta 1): BlockCypher across the used addresses, netted per transaction |
+| DOGE | ✅ | ✅ | ✅ | ✅ | HD scan since 4.7; Bitcore then BlockCypher (4.10). History (2026-10-02): BlockCypher across the used addresses, netted per transaction |
 | ETH | ✅ | ✅ | ✅ | ✅ | any held ERC-20 (N.1) |
 | Arb / Base / OP / Linea | ✅ | ✅ | ✅ | 🟡 | |
 | zkSync Era | ✅ | ✅ | ✅ | 🟡 | gas from the chain's own estimate |
@@ -181,14 +181,14 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | ADA | ✅ | ✅ | ✅ | ✅ | |
 | XMR | ✅ | ✅ | ✅ | ✅ | full private |
 | AVAX / BNB / MATIC / FTM / CRO | ✅ | ✅ | ✅ | 🟡 | EVM family |
-| ZEC | ✅ | ✅ | ✅ | ✅ | receive, balance and transparent send (N.10) — v4 Sapling, ZIP-243 digest, ZIP-317 fee. History (Beta 1): Blockchair, then 3xpl |
+| ZEC | ✅ | ✅ | ✅ | ✅ | receive, balance and transparent send (N.10) — v4 Sapling, ZIP-243 digest, ZIP-317 fee. History (2026-10-02): Blockchair, then 3xpl |
 | XRP | ✅ | ✅ | ✅ | ✅ | receive, balance and send (N.4) — a plain Payment + destination tag, pinned to xrpl.js; history shows the amount DELIVERED, never a partial payment's claimed Amount |
 | XLM | ✅ | ✅ | ✅ | ✅ | receive, balance and send (N.5) — Payment / CreateAccount + memo, pinned to the Stellar Go SDK |
 | ATOM | ✅ | ✅ | ✅ | ❌ | receive, available balance and send (N.6) — MsgSend + memo, pinned to cosmjs; staked ATOM not counted. History: public REST servers prune their tx index (one answer in nine for an account with known sends), so it stays off rather than show an empty list that means nothing |
 | NEAR | ✅ | ✅ | ✅ | ✅ | receive, balance and send (N.7) — one Transfer from the implicit account, pinned to near-api-js |
 | DOT | ✅ | ✅ | ✅ | ❌ | receive + balance (Asset Hub + relay), send from Asset Hub (N.8) |
 | XNO | ✅ | ✅ | ✅ | ✅ | receive, balance, history and send (N.11) — m/44'/165'/0', ed25519-BLAKE2b; a send pockets the receivable it needs (open/receive blocks), then publishes a state send block; hash pinned to a mainnet block, signature to the Nano docs, proof of work computed locally (an unrolled BLAKE2b-64, seconds on a desktop) and accepted by a live node (NanoSendLiveTests) |
-| DCR | ✅ | ✅ | ❌ | ✅ | receive + balance (N.12); history from dcrdata's Insight API, netted for change (Beta 1) — m/44'/42'/0'/0/0, BLAKE-256 Hash160 + checksum, pinned to dcrd and Trust Wallet |
+| DCR | ✅ | ✅ | ❌ | ✅ | receive + balance (N.12); history from dcrdata's Insight API, netted for change (2026-10-02) — m/44'/42'/0'/0/0, BLAKE-256 Hash160 + checksum, pinned to dcrd and Trust Wallet |
 
 ---
 

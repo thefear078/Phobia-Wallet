@@ -4,6 +4,52 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.10.0-beta.4] — Beta of 8 October 2026 (a GitHub pre-release) — balances several times faster, Litecoin answers again, betas without numbers
+
+### Betas have no numbers
+
+- The wallet, its update strip, the installer and the release files say **Beta**:
+  `PhobiaWallet-Setup-Beta.exe`, `PhobiaWallet-Beta-win-x64-portable.exe`,
+  `PhobiaWallet-Beta-linux-x64.tar.gz`, `PhobiaWallet-Beta-android.apk` and `SHA256SUMS-Beta.txt`. Two
+  betas are told apart by their date: "Phobia Beta · 8 Oct 2026 is available — you have Phobia Beta". Each
+  release still has its own tag (`v4.10.0-beta.4`), because a published tag is never moved, and Android
+  needs its version code to rise.
+- Copies from before this one look for numbered names, so every beta also carries the same files as
+  `…-Beta-4…` with a `SHA256SUMS-Beta-4.txt` of their own, attested like the rest: their one-click update
+  keeps working. `scripts/verify-published-release.sh` checks every checksum list on a release page.
+
+### Faster
+
+- **Balances arrive several times sooner.** A public explorer that hangs used to hold each lookup for up to
+  20 seconds before the next server was tried; an attempt now gets 8 seconds (15 over Tor). The receive
+  and change branches of a Bitcoin-family wallet are scanned side by side, sharing one limit of eight
+  requests per chain, so no server sees more at once than before and the set of addresses asked about is
+  the same. Measured on a restored wallet over the public servers: a first refresh that took 48–131 s took
+  about 17 s.
+- **Unlocking and refreshing derive less.** The account key of each coin (m/purpose'/coin'/0') is derived
+  once per session instead of once per address; it is forgotten when the wallet locks.
+- **The window opens sooner.** Its fifteen pages used to be built before it appeared — Settings alone
+  116 ms on a cold start — and every hidden page kept answering every change. Each page is now built the
+  first time it is opened, and kept. Measured cold: the window is built in 0.43 s instead of 0.9–1.3 s.
+
+### Litecoin and Bitcoin
+
+- **Litecoin answers again.** It had one server, litecoinspace, for its balance, fee, broadcast and
+  history, and in October 2026 that server stopped answering address lookups (Cloudflare 522/502 after
+  20 s each): every Litecoin balance read "unknown". Litecoin now has Dogecoin's arrangement — Bitcore and
+  BlockCypher beside litecoinspace, the healthiest first; fee and broadcast through BlockCypher; history
+  from BlockCypher, netted per transaction, with links to its explorer.
+- **Bitcoin has a server of a different kind behind its Esplora instances**: Bitcore, for the balance,
+  the fee estimate and the broadcast. A broadcast tries each Esplora instance in turn, then Bitcore.
+- A server you chose in Settings is still the only one asked, for both. Settings → Privacy lists Bitcore
+  and BlockCypher for Litecoin.
+
+### Clean-up
+
+- The Android project no longer lists Tor and Monero's libraries a second time (the SDK packs them by
+  their folder), which only produced "already contains" warnings; a compiler warning in the market code is
+  gone.
+
 ## [4.10.0-beta.3] — Beta 3 (a GitHub pre-release) — the phone gets its own Tor and Monero; signed, attested builds with an SBOM; privacy fixes from the readiness audit
 
 > **Beta 2 (v4.10.0-beta.2) was tagged from the same code but its release build stopped at the APK

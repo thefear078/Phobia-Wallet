@@ -56,6 +56,7 @@ public sealed class WalletJourneySmokeTests : IDisposable
         Assert.Empty(vm.RecoveryPhrase);
 
         // 4. Lock: no workspace, no accounts with real addresses left on screen.
+        await BackgroundRefresh.SettleAsync(vm);   // the first refresh, finished (no UI thread here)
         vm.LockCommand.Execute(null);
         Assert.True(vm.IsUnlockStage);
         Assert.False(vm.IsUnlocked);

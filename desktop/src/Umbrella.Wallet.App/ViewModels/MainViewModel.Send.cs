@@ -1286,7 +1286,7 @@ public partial class MainViewModel
                         "BTC" => $"mempool.space/tx/{txid}",
                         "DOGE" => $"live.blockcypher.com/doge/tx/{txid}",
                         "BCH" => $"blockchair.com/bitcoin-cash/transaction/{txid}",
-                        _ => $"litecoinspace.org/tx/{txid}",
+                        _ => $"live.blockcypher.com/ltc/tx/{txid}",
                     };
                     if (unclear)
                     {

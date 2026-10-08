@@ -12,10 +12,11 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 
 > **Umbrella Wallet is now Phobia Wallet.** Same code, same keys, same encrypted vault — a new name and
 > a new look. Phobia is in **beta**, and a stable copy (4.9.0 and older) is never offered a beta by
-> itself: install Beta 3 from its release page over the old copy, and it keeps the vault and settings.
-> A Beta 1 copy finds Beta 3 by itself: on Windows one click installs it; on Linux unpack the downloaded
-> file over the folder (from Beta 3 on, that is one click too). On Android, Beta 1 → Beta 3 takes one
-> reinstall: the APK is now signed with a stable key ([why](docs/guides/android.md#updating)).
+> itself: install the Beta from its release page over the old copy, and it keeps the vault and settings.
+> A beta copy finds the newer Beta by itself: on Windows one click installs it, and on Linux too (a Linux
+> copy from before 7 October 2026 unpacks the downloaded file over its folder instead). On Android, a copy
+> installed before 7 October 2026 takes one reinstall: the APK is now signed with a stable key
+> ([why](docs/guides/android.md#updating)).
 
 <br/>
 
@@ -24,8 +25,8 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Security](https://github.com/thefear078/Phobia-Wallet/actions/workflows/security.yml/badge.svg)
 ![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release)
 ![License](https://img.shields.io/badge/license-MIT-4B3F86)
-![Version](https://img.shields.io/badge/version-4.10.0--beta.3-2F6BEF)
-![Tests](https://img.shields.io/badge/tests-1850%2B%20offline-7DCF8F)
+![Version](https://img.shields.io/badge/version-Beta-2F6BEF)
+![Tests](https://img.shields.io/badge/tests-1900%2B%20offline-7DCF8F)
 ![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
@@ -34,7 +35,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download Beta 3](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.3)** ·
+**[⬇ Download Beta](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.4)** ·
 [Verify your download](#verify-what-you-downloaded) ·
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
@@ -248,7 +249,7 @@ did not quote that coin when this was written.
 
 <img src="docs/assets/logo-phobia.png" width="64" align="left" alt="" hspace="14"/>
 
-The current build is **Beta 3** — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.3) has every file below. It is a
+The current build is the **Beta** of 8 October 2026 — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.4) has every file below. It is a
 pre-release, so GitHub does not label it “Latest”; older builds are on the
 [releases page](https://github.com/thefear078/Phobia-Wallet/releases).
 This is the icon you will see once it is installed.
@@ -257,17 +258,21 @@ This is the icon you will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | [`PhobiaWallet-Setup-Beta-3.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.3/PhobiaWallet-Setup-Beta-3.exe) |
-| **Windows portable** | [`PhobiaWallet-Beta-3-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.3/PhobiaWallet-Beta-3-win-x64-portable.exe) — one file, no install, leaves nothing behind |
-| **Linux** | [`PhobiaWallet-Beta-3-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.3/PhobiaWallet-Beta-3-linux-x64.tar.gz) |
-| **Android** | [`PhobiaWallet-Beta-3-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.3/PhobiaWallet-Beta-3-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
-| **Checksums** | [`SHA256SUMS-Beta-3.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.3/SHA256SUMS-Beta-3.txt) |
+| **Windows installer** | [`PhobiaWallet-Setup-Beta.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/PhobiaWallet-Setup-Beta.exe) |
+| **Windows portable** | [`PhobiaWallet-Beta-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/PhobiaWallet-Beta-win-x64-portable.exe) — one file, no install, leaves nothing behind |
+| **Linux** | [`PhobiaWallet-Beta-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/PhobiaWallet-Beta-linux-x64.tar.gz) |
+| **Android** | [`PhobiaWallet-Beta-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/PhobiaWallet-Beta-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
+| **Checksums** | [`SHA256SUMS-Beta.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/SHA256SUMS-Beta.txt) |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
 
+The page also carries the same files with a number in the name (`PhobiaWallet-Setup-Beta-4.exe`, with
+their own `SHA256SUMS-Beta-4.txt`). They are byte-for-byte the files above, there for copies from before
+8 October 2026, whose updater looks for numbered names. You need only the unnumbered ones.
+
 **On a phone:** the Android app is the same wallet — the same keys, signing code, coins and screens —
-laid out for a phone. From Beta 3 the APK carries Tor and the Monero service too — the projects' own
+laid out for a phone. The APK carries Tor and the Monero service too — the projects' own
 Android builds, checked against their signed sums — so the phone has the same Tor switch, kill-switch and
 Monero balance as the desktop ([Orbot](https://orbot.app) works as well). The
 [Android guide](docs/guides/android.md) says how, and what else differs.
@@ -276,19 +281,20 @@ Monero balance as the desktop ([Orbot](https://orbot.app) works as well). The
 
 ### Verify what you downloaded
 
-Every release ships `SHA256SUMS-<version>.txt`. Check it before you run anything:
+Every release ships a checksum list — `SHA256SUMS-Beta.txt` for the Beta, `SHA256SUMS-<version>.txt`
+for a full release. Check it before you run anything:
 
 ```bash
 # Linux / macOS — run in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-Beta-3.txt
+sha256sum -c SHA256SUMS-Beta.txt --ignore-missing
 ```
 
 ```powershell
 # Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\PhobiaWallet-Setup-Beta-3.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-Beta.exe -Algorithm SHA256
 ```
 
-If the hash does not match, do not run it. From Beta 3 every Windows executable and the APK are also
+If the hash does not match, do not run it. Every Windows executable and the APK are also
 signed by the author — Windows thumbprint `89C2D871C195D57C14D1911B6C47629DE052C553`, Android
 certificate SHA-256 `C3:80:0E:…:95:72:D1` (in full in [SECURITY.md](SECURITY.md#verifying-what-you-run)).
 The Windows certificate is self-signed for now, so Windows still names no publisher: check the thumbprint.
@@ -393,7 +399,7 @@ desktop/
       GuideContent.cs                the in-app guide
     Umbrella.Wallet.Android/         the Android head (hosts the App project)
   tests/
-    Umbrella.Wallet.Core.Tests/      about 1,850 offline tests
+    Umbrella.Wallet.Core.Tests/      about 1,860 offline tests
     Umbrella.Wallet.UiTests/         every screen drawn headless, desktop and phone
   installer/                         Inno Setup script
   scripts/                           release, signing, Tor/Monero staging
@@ -425,7 +431,7 @@ Producing installers, the portable build and checksums is documented in
 
 ## Tests
 
-More than 1,850 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there
+More than 1,860 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there
 for a badge — several classes of them exist because the alternative is losing money:
 
 - **Derivation** is pinned byte-for-byte to official test vectors and to the reference libraries
@@ -509,7 +515,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 |---|---|
 | ✅ Shipped | 18 chains, Tor + kill-switch with per-purpose circuits, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations · signed Windows and Android builds, SBOM, immutable release tags |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🧪 Beta | **Android** (APK with its own Tor and Monero service from Beta 3; checks for updates, Android installs them) |
+| 🧪 Beta | **Android** (APK with its own Tor and Monero service; checks for updates, Android installs them) |
 | 🗓 Planned | Tor bundled on Android · Decred sending · reproducible builds · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 

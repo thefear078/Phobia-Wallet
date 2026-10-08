@@ -72,7 +72,7 @@ behind the code: the build fails if a host appears in the source without appeari
   SOCKS username, and a test reads that username off a real SOCKS5 handshake (before 2026-10-07 it was
   not sent, and everything shared one circuit — see the
   [vulnerability history](SECURITY/VULNERABILITY_HISTORY.md)). Requests of one purpose share a circuit.
-- **Tor on Android too**: from Beta 3 the APK carries the same Tor, so the phone has the same switch,
+- **Tor on Android too**: the APK carries the same Tor, so the phone has the same switch,
   kill-switch and circuits.
 - **A SOCKS5 proxy** of your own instead — Orbot (`127.0.0.1:9050`) on Android, for example — with the
   kill-switch kept armed while it is set. The destination always goes to the proxy as a name, so this machine's
@@ -100,7 +100,7 @@ Being direct about this is the point of the document.
 - **Malware on your machine defeats all of it.** See [THREAT_MODEL.md](THREAT_MODEL.md), Vector 1.
 - **There is no CoinJoin and no Dandelion++ yet**, and PayJoin works only as the sender, with a
   receiver that offers it. Taproot is in since 4.8. Real gaps, on the roadmap, not implied away.
-- **The local Monero service** (`monero-wallet-rpc`, on the desktop and from Beta 3 on Android) listens on this device alone and
+- **The local Monero service** (`monero-wallet-rpc`, on the desktop and on Android) listens on this device alone and
   answers only to a random login it makes at each start, in a file only your account can read. Before
   2026-10-07 it had no login.
 

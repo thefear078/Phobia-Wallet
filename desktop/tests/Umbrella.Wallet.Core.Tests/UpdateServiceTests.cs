@@ -82,11 +82,13 @@ public sealed class UpdateServiceTests
         Assert.True(b10 > b2);      // numbers, not text
         Assert.True(release > b10); // the release supersedes every beta of it
         Assert.True(b1 > older);
-        // A beta's files are named by its beta number — what people call it — not by 4.10.0-beta.1.
-        Assert.Equal("PhobiaWallet-Setup-Beta-1.exe", UpdateService.AssetNameFor(InstallKind.WindowsInstaller, b1));
-        Assert.Equal("PhobiaWallet-Beta-10-win-x64-portable.exe", UpdateService.AssetNameFor(InstallKind.WindowsPortable, b10));
-        Assert.Equal("PhobiaWallet-Beta-2-linux-x64.tar.gz", UpdateService.AssetNameFor(InstallKind.Linux, b2));
-        Assert.Equal("SHA256SUMS-Beta-1.txt", UpdateService.SumsNameFor(b1));
+        // Every beta's files are named "Beta" — betas are not numbered for people; the number stays in the
+        // version, where it orders them (above).
+        Assert.Equal("PhobiaWallet-Setup-Beta.exe", UpdateService.AssetNameFor(InstallKind.WindowsInstaller, b1));
+        Assert.Equal("PhobiaWallet-Beta-win-x64-portable.exe", UpdateService.AssetNameFor(InstallKind.WindowsPortable, b10));
+        Assert.Equal("PhobiaWallet-Beta-linux-x64.tar.gz", UpdateService.AssetNameFor(InstallKind.Linux, b2));
+        Assert.Equal("PhobiaWallet-Beta-android.apk", UpdateService.AssetNameFor(InstallKind.Android, b2));
+        Assert.Equal("SHA256SUMS-Beta.txt", UpdateService.SumsNameFor(b1));
         Assert.Equal("SHA256SUMS-4.10.0.txt", UpdateService.SumsNameFor(release));   // a full release keeps its number
     }
 
@@ -145,11 +147,19 @@ public sealed class UpdateServiceTests
         var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
 
         Assert.Contains("PhobiaWallet-Setup-${{ steps.v.outputs.label }}.exe", workflow);
-        // The workflow names files by the same label the wallet looks for ("Beta-1" for a beta).
-        Assert.Contains(@"-beta\.([0-9]+)$/Beta-\1/", workflow);
+        // The workflow names files by the same label the wallet looks for ("Beta" for every beta).
+        Assert.Contains(@"-beta\.[0-9]+$/Beta/", workflow);
         Assert.Contains("-win-x64-portable.exe", workflow);
         Assert.Contains("-linux-x64.tar.gz", workflow);
         Assert.Contains("SHA256SUMS-", workflow);
+        // Copies from Beta 3 and older look for "PhobiaWallet-Setup-Beta-4.exe" and "SHA256SUMS-Beta-4.txt";
+        // without the numbered copies their one-click update would find nothing to download.
+        Assert.Contains(@"-beta\.([0-9]+)$/Beta-\1/p", workflow);
+        Assert.Contains("compat/PhobiaWallet-Setup-${C}.exe", workflow);
+        Assert.Contains("compat/PhobiaWallet-${C}-win-x64-portable.exe", workflow);
+        Assert.Contains("compat/PhobiaWallet-${C}-linux-x64.tar.gz", workflow);
+        Assert.Contains("compat/PhobiaWallet-${C}-android.apk", workflow);
+        Assert.Contains("SHA256SUMS-${C}.txt", workflow);
     }
 
     [Fact]

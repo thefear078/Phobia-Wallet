@@ -148,7 +148,7 @@ public sealed class ChainEndpointTests : IDisposable
     public void A_malformed_settings_value_leaves_every_chain_on_its_default(string? saved)
     {
         ChainEndpoints.Restore(saved);
-        Assert.Empty(ChainEndpoints.Configurable.Where(ChainEndpoints.IsCustomised));
+        Assert.DoesNotContain(ChainEndpoints.Configurable, c => ChainEndpoints.IsCustomised(c));
     }
 
     // --- the offered list ---------------------------------------------------------------------------

@@ -746,60 +746,60 @@
                    hands the list exactly what remains, so it can never overflow. -->
               <!-- Receive: full-width list. The QR now opens as a centred popup (see the
                    overlay at the end of this file) instead of a cramped side panel. -->
-              <pages:ReceivePage IsVisible="{Binding IsReceive}"/>
+              <controls:LazyPage Page="{x:Type pages:ReceivePage}" IsVisible="{Binding IsReceive}"/>
 
               <!-- Send -->
-              <pages:SendPage IsVisible="{Binding IsSend}"/>
+              <controls:LazyPage Page="{x:Type pages:SendPage}" IsVisible="{Binding IsSend}"/>
 
               <!-- Swap (THORChain · non-custodial cross-chain) -->
-              <pages:SwapPage IsVisible="{Binding IsSwap}"/>
+              <controls:LazyPage Page="{x:Type pages:SwapPage}" IsVisible="{Binding IsSwap}"/>
 
               <!-- Connect watch-only -->
               <!-- Connect: other wallets' addresses watched read-only, and exchanges read through read-only API
                    keys — each shown with what it holds, in the wallet's own style. -->
-              <pages:ConnectPage IsVisible="{Binding IsConnect}"/>
+              <controls:LazyPage Page="{x:Type pages:ConnectPage}" IsVisible="{Binding IsConnect}"/>
 
               <!-- NFTs — real: ERC-721/1155 collections at the Ethereum address (names + counts, no images). -->
-              <pages:NftsPage IsVisible="{Binding IsNfts}"/>
+              <controls:LazyPage Page="{x:Type pages:NftsPage}" IsVisible="{Binding IsNfts}"/>
 
               <!-- Staking — real staking from this wallet on TRON, Solana and the Cosmos Hub (built, checked and
                    signed here, confirmed like a send); the other networks described. -->
-              <pages:StakingPage IsVisible="{Binding IsStaking}"/>
+              <controls:LazyPage Page="{x:Type pages:StakingPage}" IsVisible="{Binding IsStaking}"/>
 
               <!-- Discover: Market + external Buy / P2P·DEX + News, grouped out of the primary nav (§6.1). -->
-              <pages:DiscoverPage IsVisible="{Binding IsDiscover}"/>
+              <controls:LazyPage Page="{x:Type pages:DiscoverPage}" IsVisible="{Binding IsDiscover}"/>
 
               <!-- Market -->
-              <pages:MarketPage IsVisible="{Binding IsMarket}"/>
+              <controls:LazyPage Page="{x:Type pages:MarketPage}" IsVisible="{Binding IsMarket}"/>
 
               <!-- Buy (fiat on-ramps) -->
-              <pages:BuyPage IsVisible="{Binding IsBuy}"/>
+              <controls:LazyPage Page="{x:Type pages:BuyPage}" IsVisible="{Binding IsBuy}"/>
 
               <!-- P2P & DEX -->
-              <pages:P2pPage IsVisible="{Binding IsP2p}"/>
+              <controls:LazyPage Page="{x:Type pages:P2pPage}" IsVisible="{Binding IsP2p}"/>
 
               <!-- News -->
-              <pages:NewsPage IsVisible="{Binding IsNews}"/>
+              <controls:LazyPage Page="{x:Type pages:NewsPage}" IsVisible="{Binding IsNews}"/>
 
               <!-- Transactions — money movements only (sends, receives, swaps), with explorer links. -->
               <!-- Activity (merged with Transactions per roadmap §6) -->
-              <pages:ActivityPage IsVisible="{Binding IsActivity}"/>
+              <controls:LazyPage Page="{x:Type pages:ActivityPage}" IsVisible="{Binding IsActivity}"/>
 
               <!-- ===== ASSET DETAILS =====
                    One coin end to end: the holding, the live price, the address it lives on, what this
                    build can actually do with it (read from ChainCatalog, so the page cannot promise a
                    capability the wallet lacks) and the movements that touched it. -->
-              <pages:AssetPage IsVisible="{Binding IsAsset}"/>
+              <controls:LazyPage Page="{x:Type pages:AssetPage}" IsVisible="{Binding IsAsset}"/>
 
               <!-- ===== SECURITY CENTER =====
                    One screen answering "what is actually protecting this wallet right now?". Every row
                    is computed from live settings, so a protection that is off says so instead of being
                    quietly left out, and the score only counts things the user can switch on. -->
-              <pages:SecurityPage IsVisible="{Binding IsSecurity}"/>
+              <controls:LazyPage Page="{x:Type pages:SecurityPage}" IsVisible="{Binding IsSecurity}"/>
 
               <!-- Settings. Split into panes: one long scroll buried the danger zone under the
                    status bar, and no amount of padding makes a 2000px column discoverable. -->
-              <pages:SettingsPage IsVisible="{Binding IsSettings}"/>
+              <controls:LazyPage Page="{x:Type pages:SettingsPage}" IsVisible="{Binding IsSettings}"/>
 
               <!-- Guarantees the last card (Danger Zone) can always be scrolled clear of the
                    status bar, whatever the window height. -->

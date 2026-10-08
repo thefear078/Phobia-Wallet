@@ -116,6 +116,6 @@ UmbrellaWallet/
 
 ---
 
-*Last updated: 2026-10-02 · Wallet version [4.10.0-beta.1](../VERSION) (Phobia Beta 1)*
+*Last updated: 2026-10-08 · Wallet version [4.10.0-beta.4](../VERSION) (shown as Phobia Beta)*
 
 📖 This page is the documentation hub. Product overview: [README.md](../README.md).

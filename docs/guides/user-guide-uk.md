@@ -1,7 +1,7 @@
 # Посібник користувача Phobia Wallet
 
 Усе про гаманець українською — від встановлення до стейкінгу. Посібник написано для **Phobia Wallet
-Beta 1**. Новини, релізи й допомога — лише в офіційному Telegram-каналі
+Beta**. Новини, релізи й допомога — лише в офіційному Telegram-каналі
 **[t.me/PhobiaStat](https://t.me/PhobiaStat)**.
 
 <!-- TOC -->
@@ -34,25 +34,28 @@ Beta 1**. Новини, релізи й допомога — лише в офі�
 
 ## 2. Завантаження й перевірка
 
-Файли Beta 1 — на [сторінці релізу](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.1):
+Файли Beta — на [сторінці релізу](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.4):
 
 | Система | Файл |
 |---|---|
-| Windows, інсталятор | `PhobiaWallet-Setup-Beta-1.exe` |
-| Windows, портативна версія | `PhobiaWallet-Beta-1-win-x64-portable.exe` |
-| Linux | `PhobiaWallet-Beta-1-linux-x64.tar.gz` |
-| Контрольні суми | `SHA256SUMS-Beta-1.txt` |
+| Windows, інсталятор | `PhobiaWallet-Setup-Beta.exe` |
+| Windows, портативна версія | `PhobiaWallet-Beta-win-x64-portable.exe` |
+| Linux | `PhobiaWallet-Beta-linux-x64.tar.gz` |
+| Android | `PhobiaWallet-Beta-android.apk` |
+| Контрольні суми | `SHA256SUMS-Beta.txt` |
+
+Файли з номером у назві (`…-Beta-4…`) — ті самі байти для старіших копій, що оновлюються самі; їх можна не завантажувати.
 
 Перевірте файл перед запуском:
 
 ```powershell
-# Windows PowerShell: порівняйте з рядком у SHA256SUMS-Beta-1.txt
-Get-FileHash .\PhobiaWallet-Setup-Beta-1.exe -Algorithm SHA256
+# Windows PowerShell: порівняйте з рядком у SHA256SUMS-Beta.txt
+Get-FileHash .\PhobiaWallet-Setup-Beta.exe -Algorithm SHA256
 ```
 
 ```bash
 # Linux
-sha256sum -c SHA256SUMS-Beta-1.txt --ignore-missing
+sha256sum -c SHA256SUMS-Beta.txt --ignore-missing
 ```
 
 Кожен файл має ще й атестацію збірки GitHub: `gh attestation verify <файл> --repo thefear078/Phobia-Wallet`.
@@ -212,8 +215,8 @@ Polygon описано в розділі «Інші мережі» — стей�
 Той самий гаманець на телефоні (бета): ті самі ключі, код підпису, монети й сторінки, лише розкладені
 під телефон. Фраза, створена на телефоні, відновлюється на комп'ютері — і навпаки.
 
-- **Встановлення:** зі сторінки релізу Beta 1 завантажте `PhobiaWallet-Beta-1-android.apk` (Android 7.0+),
-  звірте SHA256 з `SHA256SUMS-Beta-1.txt`, відкрийте файл і один раз дозвольте браузеру чи файловому
+- **Встановлення:** зі сторінки релізу Beta завантажте `PhobiaWallet-Beta-android.apk` (Android 7.0+),
+  звірте SHA256 з `SHA256SUMS-Beta.txt`, відкрийте файл і один раз дозвольте браузеру чи файловому
   менеджеру встановлювати застосунки.
 - **Головний екран:** загальний баланс зі зміною за 24 год (око ховає суми), графік портфеля
   (1D / 1W / 1M / 1Y — ведіть пальцем), плитки Отримати / Надіслати / Обмін / Купити, ваші активи

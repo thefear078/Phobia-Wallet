@@ -180,7 +180,7 @@ down whenever that state changes. A cached client outliving the kill-switch bein
 hole in the kill-switch itself — worse than not isolating — so `TorStreamIsolationTests` pins it, and
 the assertion was verified by removing the teardown and watching the test fail.
 
-**On Android** (from Beta 3) the APK carries the same Tor, run from the native-library folder, with the
+**On Android** the APK carries the same Tor, run from the native-library folder, with the
 same switch, kill-switch and per-purpose circuits; CI's `device-check` job proves on an emulator that it
 starts and bootstraps. Android may stop it while the app is in the background: the wallet starts it again
 on return, and until then requests are refused, never direct. Orbot's SOCKS port (`127.0.0.1:9050`) as

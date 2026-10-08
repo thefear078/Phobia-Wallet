@@ -36,37 +36,42 @@ gh release download "$TAG" --repo "$REPO" --dir "$WORK" --pattern "SHA256SUMS-*.
 
 cd "$WORK"
 
-manifest="$(ls SHA256SUMS-*.txt 2> /dev/null | head -1 || true)"
-if [ -z "$manifest" ]; then
+manifests=(SHA256SUMS-*.txt)
+if [ ! -e "${manifests[0]}" ]; then
   echo "::error::$TAG has no SHA256SUMS manifest attached — nothing to verify against."
   echo "A release without one asks every downloader to trust the page instead of checking it."
   exit 1
 fi
 
-# v4.5.0 shipped a manifest that was zero bytes. It verified nothing, and nothing said so.
-if [ ! -s "$manifest" ]; then
-  echo "::error::$manifest is empty."
-  exit 1
-fi
+# A beta carries two: SHA256SUMS-Beta.txt for its files, and SHA256SUMS-Beta-<n>.txt for the numbered
+# copies that the updaters of Beta 3 and older look for. Each is checked on its own.
+for manifest in "${manifests[@]}"; do
+  # v4.5.0 shipped a manifest that was zero bytes. It verified nothing, and nothing said so.
+  if [ ! -s "$manifest" ]; then
+    echo "::error::$manifest is empty."
+    exit 1
+  fi
+  echo "----- $manifest -----"
+  cat "$manifest"
+  echo "---------------------"
+done
 
-echo "----- $manifest -----"
-cat "$manifest"
-echo "---------------------"
-
-# Every artifact the release serves must be named in the manifest. A file that is downloadable but
+# Every artifact the release serves must be named in a manifest. A file that is downloadable but
 # unlisted is precisely the one worth substituting.
 unlisted=0
 for f in PhobiaWallet-* UmbrellaWallet-*; do
   [ -e "$f" ] || continue
-  if ! grep -Fq " $f" "$manifest" && ! grep -Fq "*$f" "$manifest"; then
-    echo "::error::$f is attached to the release but missing from $manifest"
+  if ! cat "${manifests[@]}" | grep -Fq " $f" && ! cat "${manifests[@]}" | grep -Fq "*$f"; then
+    echo "::error::$f is attached to the release but missing from every manifest"
     unlisted=1
   fi
 done
 [ "$unlisted" -eq 0 ] || exit 1
 
-# And every line of the manifest must match the bytes actually served.
-sha256sum -c "$manifest"
+# And every line of every manifest must match the bytes actually served.
+for manifest in "${manifests[@]}"; do
+  sha256sum -c "$manifest"
+done
 
 echo
-echo "OK — $TAG matches $manifest, byte for byte."
+echo "OK — $TAG matches ${manifests[*]}, byte for byte."

@@ -78,7 +78,7 @@ public partial class MainViewModel
         ? string.Format(Loc.Instance["update.ready"], UpdateLatestVersion)
         : IsUpdateDownloading
             ? string.Format(Loc.Instance["update.downloading"], UpdateLatestVersion, (int)UpdateProgress)
-            : string.Format(Loc.Instance["update.available"], UpdateLatestVersion, CurrentVersion);
+            : string.Format(Loc.Instance["update.available"], UpdateLatestVersion, RunningName);
 
     public bool HasUpdateNotes => UpdateNotes.Length > 0;
 
@@ -177,12 +177,14 @@ public partial class MainViewModel
             if (!result.Available || result.Release is null)
             {
                 UpdateAvailable = false;
-                if (userAsked) UpdateStatus = string.Format(Loc.Instance["update.latest"], CurrentVersion);
+                if (userAsked) UpdateStatus = string.Format(Loc.Instance["update.latest"], RunningName);
                 return;
             }
 
             var release = result.Release;
-            var newVersion = !string.Equals(UpdateLatestVersion, VersionName(release.Version), StringComparison.Ordinal);
+            // Compared by version, not by name: every beta is called "Beta", and a newer one must still
+            // bring the banner back.
+            var newVersion = _latestRelease is null || _latestRelease.Version != release.Version;
 
             // A release newer than the one already downloaded supersedes it. Keeping the old file as
             // "ready" would name the new version on the banner and install the old one on the click.
@@ -193,11 +195,11 @@ public partial class MainViewModel
             }
 
             _latestRelease = release;
-            UpdateLatestVersion = VersionName(release.Version);
+            UpdateLatestVersion = ReleaseName(release.Version, release.Published);
             UpdateNotes = TrimNotes(release.Notes);
             UpdateAvailable = true;
             if (newVersion) UpdateBannerDismissed = false;
-            UpdateStatus = string.Format(Loc.Instance["update.available"], UpdateLatestVersion, CurrentVersion);
+            UpdateStatus = string.Format(Loc.Instance["update.available"], UpdateLatestVersion, RunningName);
 
             // The phone never fetches by itself: its "Download" opens the APK in the browser, which only
             // the person should start.
@@ -348,9 +350,18 @@ public partial class MainViewModel
 
     private static string VersionText(ReleaseVersion v) => v.ToString();
 
-    /// <summary>A release as the user knows it: "Beta 2", or "4.10.0" for a full release.</summary>
-    private static string VersionName(ReleaseVersion v) =>
-        v.FileLabel.StartsWith("Beta-", StringComparison.Ordinal) ? v.FileLabel.Replace('-', ' ') : v.ToString();
+    /// <summary>
+    /// A release as the user knows it: "Phobia Beta · 8 Oct 2026" - betas are not numbered, so the day it
+    /// came out tells two apart - or "Phobia v4.10.0" for a full release.
+    /// </summary>
+    private static string ReleaseName(ReleaseVersion v, DateTimeOffset? published) =>
+        v.IsBeta
+            ? published is { } at ? $"Phobia Beta · {at.ToLocalTime().ToString("d MMM yyyy", Fx.Culture)}" : "Phobia Beta"
+            : $"Phobia v{v}";
+
+    /// <summary>The copy that is running, named the same way ("Phobia Beta", "Phobia v4.9.0").</summary>
+    private static string RunningName =>
+        UpdateService.TryParseVersion(CurrentVersion, out var v) && v.IsBeta ? "Phobia Beta" : $"Phobia v{CurrentVersion}";
 
     /// <summary>Release notes are markdown and can be long; the banner's details show the start of them.</summary>
     private static string TrimNotes(string notes)

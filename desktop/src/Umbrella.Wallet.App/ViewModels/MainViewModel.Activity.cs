@@ -328,9 +328,14 @@ public partial class MainViewModel
 
                 // BlockCypher (Dogecoin's source) answers a hundred keyless calls an hour: the first ten
                 // used addresses, not every one.
-                reads.Add(sym == "DOGE"
-                    ? _coinHistory.GetDogecoinAsync(plan.Query.Take(10).ToList())
-                    : ReadUtxoHistoryAsync(sym, plan));
+                reads.Add(sym switch
+                {
+                    "DOGE" => _coinHistory.GetDogecoinAsync(plan.Query.Take(10).ToList()),
+                    // Litecoin from BlockCypher too, unless the user chose their own (Esplora) server.
+                    "LTC" when Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor("LTC") is null
+                        => _coinHistory.GetLitecoinAsync(plan.Query.Take(10).ToList()),
+                    _ => ReadUtxoHistoryAsync(sym, plan),
+                });
             }
 
             string? AddressOf(ChainId chain)

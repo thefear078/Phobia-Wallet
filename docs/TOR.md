@@ -67,7 +67,7 @@ an SSH tunnel, a VPN's SOCKS port. It and the bundled Tor are mutually exclusive
 
 ## Android
 
-From Beta 3 the APK carries Tor: the Tor Project's own Android build (`tor-expert-bundle-android-*`,
+The APK carries Tor: the Tor Project's own Android build (`tor-expert-bundle-android-*`,
 checked against the same signed sums as the desktop's), shipped as `libTor.so` in the native-library
 folder — the one place Android lets an app run a program from, and the way Tor Browser for Android runs
 its own Tor. Everything above applies unchanged: the same switch, kill-switch, port range and circuits.

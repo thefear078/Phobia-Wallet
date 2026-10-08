@@ -1,6 +1,6 @@
 # Audit status
 
-**Last updated:** 2026-10-07 (after Beta 1)
+**Last updated:** 2026-10-08
 
 ## External security audit
 
@@ -36,7 +36,7 @@ Until then, do **not** describe Phobia as “audited” in README, store listing
 
 | Date | Scope | Result |
 |---|---|---|
-| 2026-10-07 | Beta 1 readiness: network privacy checked on the wire (SOCKS handshakes, DNS), the local Monero service, Android kill-switch, prices and currency, release pipeline | Seven issues, one High — all fixed, listed in [SECURITY/VULNERABILITY_HISTORY.md](SECURITY/VULNERABILITY_HISTORY.md) |
+| 2026-10-07 | Beta readiness: network privacy checked on the wire (SOCKS handshakes, DNS), the local Monero service, Android kill-switch, prices and currency, release pipeline | Seven issues, one High — all fixed, listed in [SECURITY/VULNERABILITY_HISTORY.md](SECURITY/VULNERABILITY_HISTORY.md) |
 
 An internal review is the author checking their own work. It finds real bugs (the table above is the
 proof) but it is not independent, and it is not called an audit anywhere.

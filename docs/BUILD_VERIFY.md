@@ -18,18 +18,20 @@ that already has files). If a file on a release page ever changes, that is the s
 
 ## A. Checksum
 
-Every release carries `SHA256SUMS-<label>.txt` (`SHA256SUMS-Beta-1.txt`, `SHA256SUMS-4.10.0.txt`)
-listing every file on the page, the SBOM included. The release workflow writes it only after checking
+Every release carries `SHA256SUMS-<label>.txt` (`SHA256SUMS-Beta.txt`, `SHA256SUMS-4.10.0.txt`)
+listing every file on the page, the SBOM included. A beta also carries the same files under numbered
+names (`PhobiaWallet-Setup-Beta-4.exe`, for older copies' updaters) with a `SHA256SUMS-Beta-4.txt` of
+their own. The release workflow writes it only after checking
 the set of files is complete, and checks every line against the file before publishing.
 
 ```bash
 # Linux / macOS, in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-Beta-1.txt --ignore-missing
+sha256sum -c SHA256SUMS-Beta.txt --ignore-missing
 ```
 
 ```powershell
 # Windows: compare with the matching line of the sums file
-Get-FileHash .\PhobiaWallet-Setup-Beta-1.exe -Algorithm SHA256
+Get-FileHash .\PhobiaWallet-Setup-Beta.exe -Algorithm SHA256
 ```
 
 A mismatch means: do not run it. A match proves the file is the one on the page — not who put it there.
@@ -45,14 +47,14 @@ the author, **the fear (thefear078)**. Their public fingerprints:
 | Windows (Authenticode) — `Phobia.exe`, portable exe, installer | `CN=the fear (thefear078), O=Phobia Wallet` | SHA-1 thumbprint **`89C2D871C195D57C14D1911B6C47629DE052C553`**<br>SHA-256 `A88405BED227428530E8E6A77F4D3A42C03A154A1AD2E2E0EF1C87583DEA412F` |
 | Android APK (v2/v3 signature) | `CN=the fear (thefear078), O=Phobia Wallet` | SHA-256 **`C3:80:0E:C6:34:F3:C1:6C:84:4E:62:0B:BB:92:28:81:B6:34:C0:2B:17:40:68:D4:80:F8:9A:DA:A8:95:72:D1`** |
 
-Files from releases after 2026-10-07 carry these signatures; Beta 1 and older were not signed (Beta 1's
-APK has a key made for that one build). Both fingerprints are also pinned in `release.yml`: a release
+Files from releases since 2026-10-07 carry these signatures; older ones were not signed (the first
+beta's APK, 2026-10-02, has a key made for that one build). Both fingerprints are also pinned in `release.yml`: a release
 whose secrets hold any other key, or no key, fails instead of publishing.
 
 **Windows** (PowerShell):
 
 ```powershell
-Get-AuthenticodeSignature .\PhobiaWallet-Setup-Beta-3.exe |
+Get-AuthenticodeSignature .\PhobiaWallet-Setup-Beta.exe |
   Format-List Status, @{n='Thumbprint';e={$_.SignerCertificate.Thumbprint}}, @{n='Timestamped';e={[bool]$_.TimeStamperCertificate}}
 ```
 
@@ -65,7 +67,7 @@ developer) will replace it; this page will say so, with the new thumbprint.
 **Android** (any machine with the Android SDK's build-tools):
 
 ```bash
-apksigner verify --print-certs PhobiaWallet-Beta-3-android.apk
+apksigner verify --print-certs PhobiaWallet-Beta-android.apk
 ```
 
 `Signer #1 certificate SHA-256 digest` must equal the fingerprint above. Android itself enforces it from
@@ -78,7 +80,7 @@ transparency log). It states that those exact bytes came out of this repository'
 specific commit — checked against the log, not against anything this project says.
 
 ```bash
-gh attestation verify PhobiaWallet-Setup-Beta-3.exe --repo thefear078/Phobia-Wallet
+gh attestation verify PhobiaWallet-Setup-Beta.exe --repo thefear078/Phobia-Wallet
 ```
 
 Each release also carries `PhobiaWallet-<label>-sbom.spdx.json`: every package that release builds from,
@@ -92,7 +94,7 @@ You need the .NET SDK pinned in [`global.json`](../global.json) (8.0.423, latest
 ```bash
 git clone https://github.com/thefear078/Phobia-Wallet.git
 cd Phobia-Wallet
-git checkout v4.10.0-beta.1          # the exact released tag — never a moving branch
+git checkout v4.10.0-beta.4          # the tag on the release page — never a moving branch
 dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"
 ```
 

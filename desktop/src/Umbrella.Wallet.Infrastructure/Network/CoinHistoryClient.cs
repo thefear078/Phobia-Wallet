@@ -144,12 +144,22 @@ public sealed class CoinHistoryClient
         return list;
     }
 
-    // --- Dogecoin ------------------------------------------------------------------------------------
+    // --- Dogecoin and Litecoin (BlockCypher) -----------------------------------------------------------
 
     /// <summary>Recent Dogecoin transactions across the wallet's addresses, from BlockCypher (where the
     /// balance comes from).</summary>
-    public async Task<IReadOnlyList<ChainTx>> GetDogecoinAsync(
-        IReadOnlyCollection<string> addresses, int limit = 25, CancellationToken ct = default)
+    public Task<IReadOnlyList<ChainTx>> GetDogecoinAsync(
+        IReadOnlyCollection<string> addresses, int limit = 25, CancellationToken ct = default) =>
+        GetBlockcypherHistoryAsync("doge", "DOGE", addresses, limit, ct);
+
+    /// <summary>Recent Litecoin transactions across the wallet's addresses, from BlockCypher - litecoinspace,
+    /// the old source, stopped answering address lookups.</summary>
+    public Task<IReadOnlyList<ChainTx>> GetLitecoinAsync(
+        IReadOnlyCollection<string> addresses, int limit = 25, CancellationToken ct = default) =>
+        GetBlockcypherHistoryAsync("ltc", "LTC", addresses, limit, ct);
+
+    private async Task<IReadOnlyList<ChainTx>> GetBlockcypherHistoryAsync(
+        string coin, string symbol, IReadOnlyCollection<string> addresses, int limit, CancellationToken ct)
     {
         var pages = new List<string>();
         foreach (var address in addresses)
@@ -157,7 +167,7 @@ public sealed class CoinHistoryClient
             try
             {
                 using var res = await Http.GetAsync(
-                    $"https://api.blockcypher.com/v1/doge/main/addrs/{Uri.EscapeDataString(address)}?limit={limit}", ct);
+                    $"https://api.blockcypher.com/v1/{coin}/main/addrs/{Uri.EscapeDataString(address)}?limit={limit}", ct);
                 if (res.IsSuccessStatusCode) pages.Add(await res.Content.ReadAsStringAsync(ct));
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -172,7 +182,7 @@ public sealed class CoinHistoryClient
 
         try
         {
-            return ParseBlockcypherRefs(pages, "DOGE", hash => $"https://live.blockcypher.com/doge/tx/{hash}");
+            return ParseBlockcypherRefs(pages, symbol, hash => $"https://live.blockcypher.com/{coin}/tx/{hash}");
         }
         catch
         {

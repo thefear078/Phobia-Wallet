@@ -1,6 +1,6 @@
 # User guides
 
-Step-by-step tutorials for everything the wallet does, written against **Phobia Wallet Beta 1**.
+Step-by-step tutorials for everything the wallet does, written against **Phobia Wallet Beta**.
 Start with [Getting started](../getting-started.md) if the wallet is not installed yet.
 
 | Guide | What it covers |

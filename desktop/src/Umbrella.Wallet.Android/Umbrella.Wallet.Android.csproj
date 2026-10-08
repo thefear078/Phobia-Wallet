@@ -16,9 +16,9 @@
     <ApplicationId>com.thefear.phobia</ApplicationId>
     <ApplicationTitle>Phobia</ApplicationTitle>
     <!-- versionCode, which Android needs to rise for an update to install: major·1000000 + minor·10000
-         + patch·100 + the beta number (99 for the full release). 4.10.0-beta.3 → 4100003. PhoneLayoutTests
+         + patch·100 + the beta number (99 for the full release). 4.10.0-beta.4 → 4100004. PhoneLayoutTests
          keeps it in step with VERSION. -->
-    <ApplicationVersion>4100003</ApplicationVersion>
+    <ApplicationVersion>4100004</ApplicationVersion>
     <ApplicationDisplayVersion>4.10.0</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <!-- Phones: 64-bit ARM, and 32-bit ARM for older ones. One APK carries both. -->
@@ -48,15 +48,13 @@
     <PackageReference Include="Avalonia.Android" Version="11.3.22" />
   </ItemGroup>
 
-  <!-- Tor and monero-wallet-rpc, staged by scripts/fetch-android-helpers.sh (pinned, hash-checked). They
-       ship as lib*.so so Android unpacks them into the native-library folder, the one place an app may
-       run a program from; MainActivity tells the wallet where they are. A build without them still
-       works and says so: no Tor of its own (Orbot instead), no Monero balance on the phone. -->
-  <ItemGroup>
-    <AndroidNativeLibrary Include="natives/arm64-v8a/*.so" Abi="arm64-v8a" />
-    <AndroidNativeLibrary Include="natives/armeabi-v7a/*.so" Abi="armeabi-v7a" />
-    <AndroidNativeLibrary Include="natives/x86_64/*.so" Abi="x86_64" />
-  </ItemGroup>
+  <!-- Tor and monero-wallet-rpc are staged by scripts/fetch-android-helpers.sh (pinned, hash-checked) as
+       natives/<abi>/lib*.so. The Android SDK packs every .so in the project by its folder's ABI name, so
+       they need no item here (listing them again only produced "already contains" warnings). They ship as
+       lib*.so so Android unpacks them into the native-library folder, the one place an app may run a
+       program from; MainActivity tells the wallet where they are. A build without them still works and
+       says so: no Tor of its own (Orbot instead), no Monero balance on the phone. publish-android.sh lists
+       what the APK carries and, for a release, fails if either is missing for an ABI. -->
 
   <ItemGroup>
     <ProjectReference Include="..\Umbrella.Wallet.App\Umbrella.Wallet.App.csproj"
