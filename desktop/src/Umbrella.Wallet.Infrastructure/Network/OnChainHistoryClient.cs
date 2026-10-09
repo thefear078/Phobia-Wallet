@@ -188,6 +188,37 @@ public sealed class OnChainHistoryClient
         }
     }
 
+    /// <summary>
+    /// The other EVM networks with a keyless, Etherscan-shaped history API, and the explorer each one's
+    /// sends are linked to (what the Send screen stores, so a payment made here is one row). Checked
+    /// 2026-10-08: Blockscout's Base, Arbitrum and Polygon instances answer with a Cloudflare challenge,
+    /// Routescan serves only Ethereum and Avalanche, and the Etherscan family and Ankr need an API key —
+    /// so Base, Arbitrum, Polygon, BNB, Linea, Fantom and Cronos have no history source.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Network, string Api, string Asset, string Explorer)> EvmSideHistory =
+    [
+        ("Optimism", "https://optimism.blockscout.com/api", "ETH", "https://optimistic.etherscan.io/tx/"),
+        ("zkSync Era", "https://zksync.blockscout.com/api", "ETH", "https://explorer.zksync.io/tx/"),
+        ("Avalanche", "https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan/api", "AVAX", "https://snowtrace.io/tx/"),
+    ];
+
+    /// <summary>Native transfers on one of <see cref="EvmSideHistory"/>'s networks.</summary>
+    public async Task<IReadOnlyList<ChainTx>> GetEvmAsync(
+        string address, string api, string asset, string explorer, CancellationToken ct = default)
+    {
+        try
+        {
+            var url = $"{api}?module=account&action=txlist&address={Uri.EscapeDataString(address)}&sort=desc&page=1&offset=25";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return [];
+            return ParseEvmTxlist(await res.Content.ReadAsStringAsync(ct), address, asset, explorer, 18);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     /// <summary>Native TON transfers for a user-friendly (UQ/EQ) address, via toncenter's keyless API.</summary>
     public async Task<IReadOnlyList<ChainTx>> GetTonAsync(string address, int limit = 30, CancellationToken ct = default)
     {

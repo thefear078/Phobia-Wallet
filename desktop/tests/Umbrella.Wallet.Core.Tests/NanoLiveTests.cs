@@ -8,6 +8,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// The Nano balance against the real nodes. <c>Category=Live</c>: run by hand, never in CI.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class NanoLiveTests
 {
     [Fact]

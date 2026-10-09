@@ -6,6 +6,7 @@ namespace Umbrella.Wallet.Core.Tests;
 
 /// <summary>The Decred balance against dcrdata itself. <c>Category=Live</c>: run by hand, never in CI.</summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class DecredLiveTests
 {
     [Fact]

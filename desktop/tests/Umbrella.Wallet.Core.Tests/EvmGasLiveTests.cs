@@ -14,6 +14,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// everywhere else. Nothing is signed or sent.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class EvmGasLiveTests(ITestOutputHelper output)
 {
     private static void Online()

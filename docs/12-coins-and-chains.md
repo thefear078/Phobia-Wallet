@@ -38,7 +38,7 @@
 | **NEAR** | NEAR Protocol | ✅ | ✅ | — | Your implicit account (the 64-character hex id), to any `.near` name or implicit account. Named accounts of your own and staked NEAR are not shown |
 | **DOT** | Polkadot | ✅ | ✅ | — | sr25519 like Polkadot.js / Nova; balance adds Asset Hub and the relay chain; sends go from Asset Hub, where balances now live |
 | **XNO** | Nano | ✅ | ✅ | — | No fee: a send pockets the received payments it needs, then sends, with a few seconds of proof of work computed on your computer. Restores in Ledger / Trust Wallet / Nault (BIP39); "receivable" XNO is counted in the balance |
-| **DCR** | Decred | — | ✅ | — | Receive and balance. The BIP44 account Trust Wallet / Ledger / Exodus use — Decrediton derives differently and will not show it. Sending is not here yet |
+| **DCR** | Decred | ✅ | ✅ | — | Receive, balance and send. The BIP44 account Trust Wallet / Ledger / Exodus use — Decrediton derives differently and will not show it. Change returns to the same address |
 
 > Any ERC-20 token (LINK, UNI, AAVE, SHIB, PEPE, etc.) is automatically detected and its
 > balance shown when you link an Ethereum address. Same for TRC-20 on Tron and SPL on Solana.
@@ -513,7 +513,7 @@ threat model names each one as an open gap rather than implying it away.
 | 25 | Near | NEAR | ✅ Full | Receive, balance and send from the implicit account |
 | 26 | Polkadot | DOT | ✅ Full | Receive, balance (Asset Hub + relay), send from Asset Hub |
 | 27 | Nano | XNO | ✅ Full | Send, receive, balance (incl. receivable) and history; no fee |
-| 28 | Decred | DCR | ⚠️ Partial | Receive, balance and history; no send yet |
+| 28 | Decred | DCR | ✅ Full | Receive, balance, send and history |
 
 ## Staking from the wallet
 

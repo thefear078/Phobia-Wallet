@@ -35,7 +35,7 @@ No account. No email. No phone number. No KYC. No tracking. No fee on your trans
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download Beta](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.4)** ·
+**[⬇ Download Beta](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5)** ·
 [Verify your download](#verify-what-you-downloaded) ·
 [Build it yourself](docs/building.md) ·
 [Security](SECURITY.md) ·
@@ -225,13 +225,13 @@ is the most common way people lose money.
 | Zcash (ZEC) | ✅ | ✅ | ✅ | ✅ | ✅ | **transparent `t1…` only** — not shielded |
 | XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | ✅ | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
 | Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | ✅ | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
-| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | — | ✅ | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
+| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | ✅ | ✅ | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
 | NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | ✅ | from your implicit account, to any `.near` name or implicit account; swaps through the Exolix exchange |
-| Polkadot (DOT) | ✅ | ✅ | ✅ | — | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub; no route trades native DOT, so no swap |
+| Polkadot (DOT) | ✅ | ✅ | ✅ | ✅ | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub; no route trades native DOT, so no swap |
 | Nano (XNO) | ✅ | ✅ | ✅ | ✅ | ✅ | restores in Ledger / Trust / Nault (BIP39); no fee — a send pockets what it needs first, with proof of work computed on your device |
-| Decred (DCR) | ✅ | ✅ | — | ✅ | ✅ | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); bought through a swap, sending is not here yet |
-| Linea (ETH) | ✅ | ✅ | ✅ | 🟡 | — | same `0x` as mainnet |
-| zkSync Era (ETH) | ✅ | ✅ | ✅ | 🟡 | — | the gas comes from zkSync's own estimate, not Ethereum's 21,000 |
+| Decred (DCR) | ✅ | ✅ | ✅ | ✅ | ✅ | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); Decred's own signature hash, checked against transactions the network accepted |
+| Linea (ETH) | ✅ | ✅ | ✅ | — | — | same `0x` as mainnet; no history source answers without an API key (your own sends still show) |
+| zkSync Era (ETH) | ✅ | ✅ | ✅ | ✅ | — | the gas comes from zkSync's own estimate, not Ethereum's 21,000; history while you hold ETH there |
 
 Plus the native coin of every major EVM network at the same `0x` address (BNB, MATIC, AVAX, FTM, CRO,
 and ETH on Arbitrum / Optimism / Base), and NFTs listed by name and count with **no image fetch**, so
@@ -249,7 +249,7 @@ did not quote that coin when this was written.
 
 <img src="docs/assets/logo-phobia.png" width="64" align="left" alt="" hspace="14"/>
 
-The current build is the **Beta** of 8 October 2026 — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.4) has every file below. It is a
+The current build is the **Beta** of 9 October 2026 — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5) has every file below. It is a
 pre-release, so GitHub does not label it “Latest”; older builds are on the
 [releases page](https://github.com/thefear078/Phobia-Wallet/releases).
 This is the icon you will see once it is installed.
@@ -258,17 +258,17 @@ This is the icon you will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | [`PhobiaWallet-Setup-Beta.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/PhobiaWallet-Setup-Beta.exe) |
-| **Windows portable** | [`PhobiaWallet-Beta-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/PhobiaWallet-Beta-win-x64-portable.exe) — one file, no install, leaves nothing behind |
-| **Linux** | [`PhobiaWallet-Beta-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/PhobiaWallet-Beta-linux-x64.tar.gz) |
-| **Android** | [`PhobiaWallet-Beta-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/PhobiaWallet-Beta-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
-| **Checksums** | [`SHA256SUMS-Beta.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.4/SHA256SUMS-Beta.txt) |
+| **Windows installer** | [`PhobiaWallet-Setup-Beta.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Setup-Beta.exe) |
+| **Windows portable** | [`PhobiaWallet-Beta-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-win-x64-portable.exe) — one file, no install, leaves nothing behind |
+| **Linux** | [`PhobiaWallet-Beta-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-linux-x64.tar.gz) |
+| **Android** | [`PhobiaWallet-Beta-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
+| **Checksums** | [`SHA256SUMS-Beta.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/SHA256SUMS-Beta.txt) |
 
 Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
 from the file you downloaded and keeps its data next to it.
 
-The page also carries the same files with a number in the name (`PhobiaWallet-Setup-Beta-4.exe`, with
-their own `SHA256SUMS-Beta-4.txt`). They are byte-for-byte the files above, there for copies from before
+The page also carries the same files with a number in the name (`PhobiaWallet-Setup-Beta-5.exe`, with
+their own `SHA256SUMS-Beta-5.txt`). They are byte-for-byte the files above, there for copies from before
 8 October 2026, whose updater looks for numbered names. You need only the unnumbered ones.
 
 **On a phone:** the Android app is the same wallet — the same keys, signing code, coins and screens —
@@ -516,7 +516,7 @@ Being honest about what exists and what doesn't. Full backlog (coins, security, 
 | ✅ Shipped | 18 chains, Tor + kill-switch with per-purpose circuits, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations · signed Windows and Android builds, SBOM, immutable release tags |
 | 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
 | 🧪 Beta | **Android** (APK with its own Tor and Monero service; checks for updates, Android installs them) |
-| 🗓 Planned | Tor bundled on Android · Decred sending · reproducible builds · external security audit |
+| 🗓 Planned | Installers that rebuild byte for byte (the signing code already does) · a CA-issued Windows certificate · external security audit |
 | ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
 
 ## Documentation

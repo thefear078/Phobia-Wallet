@@ -9,6 +9,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// <summary>Live, read-only: runs the real balance scan against the real explorers and reports every
 /// failed request, so "balance unavailable" can be traced to its cause. Never part of the offline run.</summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class ScanDiagnosticLiveTests(ITestOutputHelper output)
 {
     private const string Phrase =

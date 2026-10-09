@@ -108,7 +108,7 @@ before publishing. You can re-check what the page serves **now**, which is the p
 promise:
 
 ```bash
-bash scripts/verify-published-release.sh v4.10.0-beta.4
+bash scripts/verify-published-release.sh v4.10.0-beta.5
 ```
 
 A checksum proves the file matches what the release page says. It says nothing about **who put that

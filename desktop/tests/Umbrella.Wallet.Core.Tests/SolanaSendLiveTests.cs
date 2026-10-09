@@ -14,6 +14,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// is sent. Never part of the offline run.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class SolanaSendLiveTests(ITestOutputHelper output)
 {
     private const string Node = "https://api.mainnet-beta.solana.com";

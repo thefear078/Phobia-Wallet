@@ -14,6 +14,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// node will accept.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public class ZcashConsensusLiveTests
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };

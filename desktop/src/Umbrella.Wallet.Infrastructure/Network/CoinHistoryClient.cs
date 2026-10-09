@@ -69,24 +69,39 @@ public sealed class CoinHistoryClient
 
     // --- Decred --------------------------------------------------------------------------------------
 
-    /// <summary>Recent Decred transactions touching any of the wallet's addresses, from dcrdata.</summary>
+    /// <summary>
+    /// Recent Decred transactions touching any of the wallet's addresses, from dcrdata — or, when it does
+    /// not answer in time, from the next dcrdata server (the user's choice stays the only one asked).
+    /// </summary>
     public async Task<IReadOnlyList<ChainTx>> GetDecredAsync(
         IReadOnlyCollection<string> addresses, int count = 25, CancellationToken ct = default)
     {
         if (addresses.Count == 0) return [];
-        try
+        var joined = string.Join(",", addresses.Select(Uri.EscapeDataString));
+        foreach (var candidate in ChainEndpoints.Candidates("DCR", "https://dcrdata.decred.org"))
         {
-            var root = ChainEndpoints.Resolve("DCR", "https://dcrdata.decred.org").TrimEnd('/');
-            var joined = string.Join(",", addresses.Select(Uri.EscapeDataString));
-            using var res = await Http.GetAsync($"{root}/insight/api/addrs/{joined}/txs?from=0&to={count}", ct);
-            if (!res.IsSuccessStatusCode) return [];
-            return ParseInsight(await res.Content.ReadAsStringAsync(ct), addresses, "DCR",
-                hash => $"https://dcrdata.decred.org/tx/{hash}");
+            try
+            {
+                using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                attempt.CancelAfter(ExplorerHttp.AttemptDeadline);
+                using var res = await Http.GetAsync($"{candidate.TrimEnd('/')}/insight/api/addrs/{joined}/txs?from=0&to={count}", attempt.Token);
+                if (!res.IsSuccessStatusCode) continue;
+                // Linked to the Decred project's explorer whichever server answered: the same link the
+                // Send screen stores, so a payment made here is one row.
+                return ParseInsight(await res.Content.ReadAsStringAsync(attempt.Token), addresses, "DCR",
+                    hash => $"https://dcrdata.decred.org/tx/{hash}");
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return [];
+            }
+            catch
+            {
+                // the next server
+            }
         }
-        catch
-        {
-            return [];
-        }
+
+        return [];
     }
 
     /// <summary>

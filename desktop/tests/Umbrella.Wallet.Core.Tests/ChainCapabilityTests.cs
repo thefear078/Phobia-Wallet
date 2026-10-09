@@ -20,6 +20,7 @@ public sealed class ChainCapabilityTests
         ChainId.Dot, // transfer_keep_alive on Asset Hub; sr25519 pinned to polkadot.js, validated by the node (PolkadotSend*Tests)
         ChainId.Zec, // transparent v4 spend, ZIP-243 digest pinned to Zcash's own sighash vectors (ZcashSigHashTests)
         ChainId.Nano, // state blocks: hash pinned to mainnet, signature to the Nano docs, work checked by a node (NanoBlockTests, NanoSendLiveTests)
+        ChainId.Dcr, // BLAKE-256 signature hash verified against mainnet signatures; fraud proofs and fee accepted by dcrd (DecredTransactionTests, DecredSendLiveTests)
     };
 
     [Fact]

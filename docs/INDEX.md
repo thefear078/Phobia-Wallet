@@ -70,6 +70,7 @@ Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Li
 | [SECURITY.md](../SECURITY.md) | Private reporting process |
 | [AUDIT_STATUS.md](../AUDIT_STATUS.md) | External audit: none yet |
 | [BUILD_VERIFY.md](BUILD_VERIFY.md) | Verify a release against source |
+| [CODE_SIGNING.md](CODE_SIGNING.md) | Windows code signing: the routes to a trusted certificate, and what the pipeline needs then |
 | [VERIFY_YOUR_WALLET.md](VERIFY_YOUR_WALLET.md) | Self-verify outline (P1.20) |
 | [TOR.md](TOR.md) | Bundled Tor, kill-switch, circuits |
 | [REPO_HARDENING.md](REPO_HARDENING.md) | GitHub security + legal checklist (live status) |
@@ -116,6 +117,6 @@ UmbrellaWallet/
 
 ---
 
-*Last updated: 2026-10-08 · Wallet version [4.10.0-beta.4](../VERSION) (shown as Phobia Beta)*
+*Last updated: 2026-10-09 · Wallet version [4.10.0-beta.5](../VERSION) (shown as Phobia Beta)*
 
 📖 This page is the documentation hub. Product overview: [README.md](../README.md).

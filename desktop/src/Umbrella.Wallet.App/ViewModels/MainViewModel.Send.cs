@@ -786,6 +786,26 @@ public partial class MainViewModel
                         symbol: "ZEC");
                     break;
                 }
+
+                case "DCR":
+                {
+                    // Decred (roadmap N.12): the coins are read with the block height and position each
+                    // input must repeat, the fee follows from how many coins fund the payment, and the
+                    // signature hash is Decred's own (BLAKE-256 over the prefix and the signing witness).
+                    var (quote, error) = await _dcrSender.PrepareAsync(from.Address, SendTo.Trim(), amount);
+                    if (quote is null) { SendError = error ?? Loc.Instance["send.errPrepareFailed"]; return; }
+                    _dcrQuote = quote;
+                    SendQuoteSummary = $"Send {Fmt(quote.Amount)} DCR  →  {quote.To}";
+                    SendQuoteFee = string.Format(
+                        Loc.Instance[quote.ChangeSweptToFee ? "send.dcrFeeNoChange" : "send.dcrFee"],
+                        Fmt(quote.FeeDcr), quote.InputCount);
+                    BuildSendSimulation(
+                        balance: (decimal)from.Amount,
+                        amount: quote.Amount,
+                        networkFee: quote.FeeDcr,
+                        symbol: "DCR");
+                    break;
+                }
             }
 
             HasSendQuote = true;
@@ -1125,7 +1145,7 @@ public partial class MainViewModel
                         || _splQuote is not null
                         || _xlmQuote is not null || _nearQuote is not null || _xrpQuote is not null
                         || _atomQuote is not null || _dotQuote is not null || _zecQuote is not null
-                        || _nanoQuote is not null
+                        || _nanoQuote is not null || _dcrQuote is not null
                         || (_sendSymbol == "XMR" && _moneroAmount > 0);
         if (_unlockedMnemonic is null || !haveQuote)
         {
@@ -1632,6 +1652,17 @@ public partial class MainViewModel
                     break;
                 }
 
+                case "DCR" when _dcrQuote is not null:
+                {
+                    var quote = _dcrQuote;
+                    using var key = _deriver.DeriveDecredKey(_unlockedMnemonic!);
+                    var result = await _dcrSender.SignAndBroadcastAsync(quote, key);
+                    await FinishSendAsync(result.Ok, result.TxId, result.Error, result.Unclear,
+                        "DCR", quote.Amount, quote.To,
+                        result.TxId is null ? "" : DecredTransactionSender.ExplorerFor(result.TxId));
+                    break;
+                }
+
                 case "XMR":
                 {
                     // monero-wallet-rpc builds, signs and relays the RingCT transaction itself.
@@ -1743,6 +1774,7 @@ public partial class MainViewModel
         _xrpQuote = null;
         _atomQuote = null;
         _zecQuote = null;
+        _dcrQuote = null;
         SendReviewMemo = string.Empty;
         // Cleared with the rest: a stale token marker would route the NEXT quote — possibly a plain
         // ETH send — down the contract-call path.

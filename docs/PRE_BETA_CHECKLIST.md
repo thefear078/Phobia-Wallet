@@ -1,6 +1,6 @@
 # Pre-beta checklist
 
-**Last verified:** 2026-10-08 · Wallet [4.10.0-beta.4](../VERSION) (Beta)  
+**Last verified:** 2026-10-09 · Wallet [4.10.0-beta.5](../VERSION) (Beta)  
 **Repo:** [thefear078/Phobia-Wallet](https://github.com/thefear078/Phobia-Wallet)
 
 This replaces stale audits that still claim “missing LICENSE / CODEOWNERS / CoC / Dependabot”.
@@ -96,7 +96,7 @@ Do **not** call a public beta “fund-safe” until these are green:
 |------|--------|
 | Windows installer + portable exe, Linux tar.gz, Android APK, `SHA256SUMS-<label>.txt` on the release page | ✅ since the first beta (2026-10-02) — the sums match GitHub's own digests, every file has a build attestation; a beta also carries numbered copies for older copies' updaters, with their own sums |
 | Android APK signed with a **stable** key (repository secrets `ANDROID_KEYSTORE_B64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS`) | ✅ set 2026-10-07 — every APK since carries the key in [BUILD_VERIFY.md](BUILD_VERIFY.md#b-signature); a copy from before that date is one reinstall |
-| Windows code signing (SmartScreen) | 🟡 since 2026-10-07 every exe and the installer are signed and timestamped (`WINDOWS_CERT_PFX_B64` / `WINDOWS_CERT_PASSWORD`), but self-signed — SmartScreen still warns until a CA-issued certificate replaces it (R.2) |
+| Windows code signing (SmartScreen) | 🟡 since 2026-10-07 every exe and the installer are signed and timestamped (`WINDOWS_CERT_PFX_B64` / `WINDOWS_CERT_PASSWORD`), but self-signed — SmartScreen still warns until a CA-issued certificate replaces it (R.2; the routes: [CODE_SIGNING.md](CODE_SIGNING.md)) |
 | Tags point at the commit each release was built from | ✅ restored 2026-10-07 (moved to `6a533d4` on 2026-10-03; the first beta's copies attached to old release pages were deleted). A ruleset now forbids moving or deleting `v*` tags, and the release workflow refuses a release that already has files |
 | SBOM on the release page | ✅ since 2026-10-07 — `PhobiaWallet-<label>-sbom.spdx.json`, in the sums and the attestation |
 

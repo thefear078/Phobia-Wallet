@@ -13,6 +13,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// preparation runs against a real account. Nothing is broadcast. Never part of the offline run.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class CosmosSendLiveTests(ITestOutputHelper output)
 {
     private const string Node = "https://cosmos-rest.publicnode.com";

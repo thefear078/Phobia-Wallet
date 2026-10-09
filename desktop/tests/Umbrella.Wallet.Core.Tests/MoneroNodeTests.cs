@@ -117,10 +117,10 @@ public sealed class MoneroNodeTests
     public void A_saved_choice_wins_over_the_default()
     {
         var resolved = MoneroNodeCatalog.Resolve(
-            "node.sethforprivacy.com:18089", torConnected: false, killSwitchArmed: false);
+            "monero.stackwallet.com:18081", torConnected: false, killSwitchArmed: false);
 
         Assert.NotNull(resolved);
-        Assert.Equal("node.sethforprivacy.com:18089", resolved!.Address);
+        Assert.Equal("monero.stackwallet.com:18081", resolved!.Address);
     }
 
     [Fact]

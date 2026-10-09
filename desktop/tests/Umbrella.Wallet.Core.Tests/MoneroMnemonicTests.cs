@@ -303,6 +303,7 @@ public sealed class MoneroRestoreHeightInputTests
 
 /// <summary>The block anchors, re-read from a public node. <c>Category=Live</c>: run by hand.</summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class MoneroRestoreHeightAnchorLiveTests
 {
     [Fact]
@@ -315,7 +316,7 @@ public sealed class MoneroRestoreHeightAnchorLiveTests
         {
             using var body = Umbrella.Wallet.Infrastructure.Network.MoneroRpcService.RequestBody(
                 "get_block_header_by_height", new { height });
-            using var res = await http.PostAsync("https://node.sethforprivacy.com/json_rpc", body);
+            using var res = await http.PostAsync("https://monero.stackwallet.com:18081/json_rpc", body);
             using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
             Assert.Equal(time, doc.RootElement.GetProperty("result").GetProperty("block_header").GetProperty("timestamp").GetInt64());
         }

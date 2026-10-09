@@ -22,7 +22,7 @@ public static class MoneroNodeCatalog
     [
         new("xmr-node.cakewallet.com", 18081, "Cake Wallet", "Cake Wallet"),
         new("xmr.stormycloud.org", 18089, "StormyCloud", "StormyCloud"),
-        new("node.sethforprivacy.com", 18089, "Seth For Privacy", "Seth For Privacy"),
+        new("monero.stackwallet.com", 18081, "Stack Wallet", "Stack Wallet"),
         new("nodes.hashvault.pro", 18081, "HashVault", "HashVault"),
         new("node.monerodevs.org", 18089, "MoneroDevs", "MoneroDevs"),
     ];

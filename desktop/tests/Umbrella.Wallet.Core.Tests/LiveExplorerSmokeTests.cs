@@ -11,6 +11,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// validates the adapter for both; BTC is left out here because Blockstream rate-limits shared IPs.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class LiveExplorerSmokeTests
 {
     // A long-lived, high-activity Litecoin address.
