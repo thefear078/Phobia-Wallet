@@ -203,39 +203,63 @@ public sealed class DecredTransactionSender
         return (DecredTransactions.Serialize(final), DecredTransactions.TxId(final));
     }
 
+    /// <summary>
+    /// A GET of a dcrdata <paramref name="path"/> from the first server that answers it, each given
+    /// <see cref="ExplorerHttp.AttemptDeadline"/>. When a server refused for rate (429) and none answered,
+    /// the round is tried once more after a short pause: "not now" is not "no".
+    /// </summary>
+    private static async Task<(string? Body, string? Error)> GetFromServersAsync(string path, CancellationToken ct)
+    {
+        string? lastError = null;
+        for (var round = 0; round < 2; round++)
+        {
+            var rateLimited = false;
+            foreach (var root in Roots)
+            {
+                try
+                {
+                    using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    attempt.CancelAfter(ExplorerHttp.AttemptDeadline);
+                    using var res = await ChainHttp.GetAsync(root + path, attempt.Token);
+                    if (res.IsSuccessStatusCode) return (await res.Content.ReadAsStringAsync(attempt.Token), null);
+                    rateLimited |= (int)res.StatusCode == 429;
+                    lastError = $"the explorer answered {(int)res.StatusCode}";
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex.Message;
+                }
+            }
+
+            if (!rateLimited) break;
+            await Task.Delay(TimeSpan.FromSeconds(3), ct);
+        }
+
+        return (null, lastError);
+    }
+
     /// <summary>The address's unspent coins paying exactly its own script, from the first server that answers.</summary>
     private static async Task<(IReadOnlyList<DecredUtxo>? Coins, string? Error)> FetchCoinsAsync(
         string address, byte[] script, CancellationToken ct)
     {
-        string? lastError = null;
-        foreach (var root in Roots)
-        {
-            try
-            {
-                using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                attempt.CancelAfter(ExplorerHttp.AttemptDeadline);
-                using var res = await ChainHttp.GetAsync($"{root}/insight/api/addr/{Uri.EscapeDataString(address)}/utxo", attempt.Token);
-                if (!res.IsSuccessStatusCode)
-                {
-                    lastError = $"the explorer answered {(int)res.StatusCode}";
-                    continue;
-                }
+        var (body, error) = await GetFromServersAsync($"/insight/api/addr/{Uri.EscapeDataString(address)}/utxo", ct);
+        if (body is null) return (null, $"Could not read this address's Decred ({error}). Nothing was sent.");
 
-                using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(attempt.Token));
-                if (ParseCoins(doc.RootElement, script) is { } coins) return (coins, null);
-                lastError = "the explorer's answer was not a list of coins";
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                lastError = ex.Message;
-            }
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (ParseCoins(doc.RootElement, script) is { } coins) return (coins, null);
+        }
+        catch (JsonException)
+        {
+            // not JSON: the same answer as one of the wrong shape
         }
 
-        return (null, $"Could not read this address's Decred ({lastError}). Nothing was sent.");
+        return (null, "The explorer's list of this address's coins could not be read. Nothing was sent.");
     }
 
     /// <summary>
@@ -272,36 +296,19 @@ public sealed class DecredTransactionSender
     /// </summary>
     private static async Task<(DecredUtxo? Coin, string? Error)> ProveAsync(DecredUtxo coin, byte[] script, CancellationToken ct)
     {
-        string? lastError = null;
-        foreach (var root in Roots)
+        var (body, error) = await GetFromServersAsync($"/api/tx/{coin.TxId}", ct);
+        if (body is null) return (null, $"Could not read where a coin came from ({error}). Nothing was sent.");
+
+        try
         {
-            try
-            {
-                using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                attempt.CancelAfter(ExplorerHttp.AttemptDeadline);
-                using var res = await ChainHttp.GetAsync($"{root}/api/tx/{coin.TxId}", attempt.Token);
-                if (!res.IsSuccessStatusCode)
-                {
-                    lastError = $"the explorer answered {(int)res.StatusCode}";
-                    continue;
-                }
-
-                using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(attempt.Token));
-                var (proven, why) = ReadOrigin(doc.RootElement, coin, script);
-                if (proven is not null) return (proven, null);
-                return (null, why);   // an answer that contradicts the coin is not retried elsewhere
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                lastError = ex.Message;
-            }
+            using var doc = JsonDocument.Parse(body);
+            // An answer that contradicts the coin is not retried elsewhere: it is reported.
+            return ReadOrigin(doc.RootElement, coin, script);
         }
-
-        return (null, $"Could not read where a coin came from ({lastError}). Nothing was sent.");
+        catch (JsonException)
+        {
+            return (null, "The explorer described a coin's transaction in a way this wallet cannot read. Nothing was sent.");
+        }
     }
 
     /// <summary>The coin with its block position filled in from a dcrdata <c>/api/tx/{id}</c> answer, or why not.</summary>

@@ -56,24 +56,50 @@ public sealed class DecredSendLiveTests(ITestOutputHelper output)
         Assert.Contains("failed to validate input", said);
     }
 
+    private static readonly string[] Roots = ["https://dcrdata.decred.org", "https://bisonexplorer.com"];
+
+    /// <summary>
+    /// A GET of a dcrdata path from whichever of the two servers answers, the way the wallet asks:
+    /// spaced, because both rate-limit a client walking blocks quickly, and on to the other on a refusal.
+    /// </summary>
+    private static async Task<string> GetAsync(string path)
+    {
+        Exception? last = null;
+        foreach (var root in Roots)
+        {
+            try
+            {
+                await Task.Delay(250);
+                using var res = await Http.GetAsync(root + path);
+                res.EnsureSuccessStatusCode();
+                return await res.Content.ReadAsStringAsync();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                last = ex;
+            }
+        }
+
+        throw last!;
+    }
+
     /// <summary>The address of an unspent pay-to-pubkey-hash coin worth at least 0.01 DCR in a recent block.</summary>
     private static async Task<string> FindFundedAddressAsync()
     {
-        const string root = "https://bisonexplorer.com";
-        var tip = long.Parse(await Http.GetStringAsync($"{root}/api/block/best/height"));
+        var tip = long.Parse(await GetAsync($"/api/block/best/height"));
         for (var height = tip - 6; height > tip - 60; height--)
         {
-            using var block = JsonDocument.Parse(await Http.GetStringAsync($"{root}/api/block/{height}/tx"));
+            using var block = JsonDocument.Parse(await GetAsync($"/api/block/{height}/tx"));
             if (!block.RootElement.TryGetProperty("tx", out var txs) || txs.ValueKind != JsonValueKind.Array) continue;
             foreach (var id in txs.EnumerateArray().Skip(1).Select(t => t.GetString()))
             {
-                using var tx = JsonDocument.Parse(await Http.GetStringAsync($"{root}/api/tx/{id}"));
+                using var tx = JsonDocument.Parse(await GetAsync($"/api/tx/{id}"));
                 foreach (var vout in tx.RootElement.GetProperty("vout").EnumerateArray())
                 {
                     var spk = vout.GetProperty("scriptPubKey");
                     if (spk.GetProperty("type").GetString() != "pubkeyhash" || vout.GetProperty("value").GetDecimal() < 0.01m) continue;
                     var address = spk.GetProperty("addresses")[0].GetString()!;
-                    using var utxos = JsonDocument.Parse(await Http.GetStringAsync($"{root}/insight/api/addr/{address}/utxo"));
+                    using var utxos = JsonDocument.Parse(await GetAsync($"/insight/api/addr/{address}/utxo"));
                     if (utxos.RootElement.GetArrayLength() > 0) return address;
                 }
             }
