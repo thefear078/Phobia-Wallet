@@ -49,11 +49,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 - **One Monero node replaced:** node.sethforprivacy.com stopped answering; Stack Wallet's public node
   (monero.stackwallet.com) takes its place in the list.
-- **The emulator check runs the phone's own binaries.** A second job installs an APK carrying only the
-  ARM64 Tor and ARM64 `monero-wallet-rpc` — built exactly as the release builds them — on an Android image
-  that translates ARM code, starts Tor, then starts the Monero service through it, restores a throwaway
-  wallet and waits for a node's chain height. Monero publishes no x86_64 Android build, so this is the
-  only place Monero has run on Android in CI. A real phone is still the final word.
+- **The Android self-test starts the Monero service too** when the APK carries it for the device: through Tor,
+  behind its login, restoring a throwaway wallet and waiting for a node's chain height. The emulator check
+  cannot run it — Monero publishes no x86_64 Android build, and the ARM64 APK on an x86_64 image that
+  translates ARM was tried and fails before our code runs (Google's translator stops the .NET runtime with
+  SIGILL) — so Monero on Android is still proven only on a real phone.
 
 ### Checks that mean something
 

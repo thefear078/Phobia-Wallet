@@ -5,8 +5,8 @@
 #   - when the APK carries monero-wallet-rpc for the device's ABI, the bundled Monero service starts
 #     behind its login, restores a wallet and reads the chain height from a node through that Tor.
 #
-# The APK is a self-test build (scripts/publish-android.sh with PHOBIA_SELFTEST=1): x86_64 for the main
-# check, or ARM64 — the binaries phones get — on an x86_64 image that translates ARM code.
+# The APK is a self-test build (scripts/publish-android.sh with PHOBIA_SELFTEST=1). On the x86_64 emulator
+# it carries no Monero (none is published for x86_64); on ARM hardware the same check covers Monero too.
 # TOR_REQUIRED (default 1) and MONERO_REQUIRED (default 0) say which results fail the check.
 # Used by .github/workflows/device-check.yml.
 set -euo pipefail
