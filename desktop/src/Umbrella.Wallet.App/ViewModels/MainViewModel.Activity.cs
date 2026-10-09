@@ -146,11 +146,21 @@ public partial class MainViewModel
     /// </summary>
     private void RefreshHistoryCoverage()
     {
-        var held = Accounts
+        var accounts = Accounts.ToArray();
+        var held = accounts
             .Where(a => a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address))
             .Select(a => a.Symbol);
 
-        HistoryGapCoins = string.Join(", ", HistoryCoverage.WithoutHistory(held));
+        // EVM networks read at the Ethereum address that have no keyless indexer (Base, Arbitrum, BNB …)
+        // are named too, once the wallet holds something there: their rows carry "ETH" or "BNB", which
+        // the catalog alone would not flag.
+        var evmGaps = accounts
+            .Where(a => a.Derivation == EvmSideDerivation && a.Amount > 0 &&
+                        !OnChainHistoryClient.EvmSideHistory.Any(s => s.Network.Equals(a.Chain, StringComparison.OrdinalIgnoreCase)))
+            .Select(a => $"{a.Symbol} ({a.Chain})")
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        HistoryGapCoins = string.Join(", ", HistoryCoverage.WithoutHistory(held).Concat(evmGaps));
     }
 
     /// <summary>The merged feed (roadmap §6): local events plus real on-chain history, deduped by explorer
@@ -350,13 +360,26 @@ public partial class MainViewModel
                 reads.Add(_history.GetTronTrc20Async(tron));
                 reads.Add(_history.GetTronNativeAsync(tron));
             }
-            if (AddressOf(ChainId.Eth) is { Length: > 0 } eth) reads.Add(_history.GetEthereumAsync(eth));
+            if (AddressOf(ChainId.Eth) is { Length: > 0 } eth)
+            {
+                reads.Add(_history.GetEthereumAsync(eth));
+                // The other EVM networks with a keyless indexer — only where this wallet holds something,
+                // so each indexer learns the 0x address only for a network it is used on.
+                var held = Accounts.ToArray()
+                    .Where(a => a.Derivation == EvmSideDerivation && a.Amount > 0)
+                    .Select(a => a.Chain)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                foreach (var (network, api, asset, explorer) in OnChainHistoryClient.EvmSideHistory)
+                    if (held.Contains(network)) reads.Add(_history.GetEvmAsync(eth, api, asset, explorer));
+            }
             if (AddressOf(ChainId.Ton) is { Length: > 0 } ton) reads.Add(_history.GetTonAsync(ton));
             if (AddressOf(ChainId.Ada) is { Length: > 0 } ada) reads.Add(_history.GetCardanoAsync(ada));
             if (AddressOf(ChainId.Sol) is { Length: > 0 } sol) reads.Add(_history.GetSolanaAsync(sol));
             if (AddressOf(ChainId.Xrp) is { Length: > 0 } xrp) reads.Add(_accountHistory.GetXrpAsync(xrp));
             if (AddressOf(ChainId.Xlm) is { Length: > 0 } xlm) reads.Add(_accountHistory.GetStellarAsync(xlm));
             if (AddressOf(ChainId.Near) is { Length: > 0 } near) reads.Add(_accountHistory.GetNearAsync(near));
+            if (AddressOf(ChainId.Atom) is { Length: > 0 } atom) reads.Add(_accountHistory.GetCosmosAsync(atom));
+            if (AddressOf(ChainId.Dot) is { Length: > 0 } dot) reads.Add(_accountHistory.GetPolkadotAsync(dot));
             if (AddressOf(ChainId.Nano) is { Length: > 0 } nano) reads.Add(_coinHistory.GetNanoAsync(nano));
             if (AddressOf(ChainId.Dcr) is { Length: > 0 } dcr) reads.Add(_coinHistory.GetDecredAsync([dcr]));
             if (AddressOf(ChainId.Zec) is { Length: > 0 } zec) reads.Add(_coinHistory.GetZcashAsync(zec));

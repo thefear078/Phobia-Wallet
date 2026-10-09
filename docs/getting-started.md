@@ -20,7 +20,7 @@ safely.
 ## 1. Download
 
 The current build is the **Beta**, a GitHub *pre-release*: get it from its
-**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.4)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
+**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
 full 4.10.0 is out.)
 
 | Platform | File |
@@ -32,7 +32,7 @@ full 4.10.0 is out.)
 
 Also download **`SHA256SUMS-Beta.txt`** from the same release. A full release names its files by
 version instead (`PhobiaWallet-Setup-4.10.0.exe`, `SHA256SUMS-4.10.0.txt`). Files with a number in the
-name (`…-Beta-4…`) are the same bytes, kept for older copies' updaters — you can ignore them.
+name (`…-Beta-5…`) are the same bytes, kept for older copies' updaters — you can ignore them.
 
 ## 2. Verify the file
 

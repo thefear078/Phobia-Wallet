@@ -12,6 +12,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// part of the offline run.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class XrpSendLiveTests(ITestOutputHelper output)
 {
     /// <summary>ACCOUNT_ZERO: an account nobody holds the key to, funded on the live ledger.</summary>

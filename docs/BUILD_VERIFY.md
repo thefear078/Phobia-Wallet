@@ -20,7 +20,7 @@ that already has files). If a file on a release page ever changes, that is the s
 
 Every release carries `SHA256SUMS-<label>.txt` (`SHA256SUMS-Beta.txt`, `SHA256SUMS-4.10.0.txt`)
 listing every file on the page, the SBOM included. A beta also carries the same files under numbered
-names (`PhobiaWallet-Setup-Beta-4.exe`, for older copies' updaters) with a `SHA256SUMS-Beta-4.txt` of
+names (`PhobiaWallet-Setup-Beta-5.exe`, for older copies' updaters) with a `SHA256SUMS-Beta-5.txt` of
 their own. The release workflow writes it only after checking
 the set of files is complete, and checks every line against the file before publishing.
 
@@ -62,7 +62,8 @@ The thumbprint must be `89C2D871…C553` and the file timestamped. The certifica
 now, so `Status` reads `UnknownError` ("root not trusted") and Windows SmartScreen still warns about an
 unknown publisher: the signature proves the file is untouched since the release workflow signed it, but
 no certificate authority vouches for the name yet. A CA-issued certificate (for an individual open-source
-developer) will replace it; this page will say so, with the new thumbprint.
+developer) will replace it; this page will say so, with the new thumbprint. The routes, and what the
+pipeline needs then: [CODE_SIGNING.md](CODE_SIGNING.md).
 
 **Android** (any machine with the Android SDK's build-tools):
 
@@ -94,7 +95,7 @@ You need the .NET SDK pinned in [`global.json`](../global.json) (8.0.423, latest
 ```bash
 git clone https://github.com/thefear078/Phobia-Wallet.git
 cd Phobia-Wallet
-git checkout v4.10.0-beta.4          # the tag on the release page — never a moving branch
+git checkout v4.10.0-beta.5          # the tag on the release page — never a moving branch
 dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"
 ```
 

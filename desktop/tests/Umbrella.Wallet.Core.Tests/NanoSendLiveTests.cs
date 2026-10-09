@@ -18,6 +18,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// <c>Category=Live</c>: run by hand, never in CI.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class NanoSendLiveTests
 {
     /// <summary>A mainnet send (to the Natrium donation account) — the link of block 6D7FC58C….</summary>

@@ -34,6 +34,7 @@ means saying your address.
 |---|---|---|
 | Your wallet addresses | Block explorers and RPC nodes | To read balances and history |
 | A signed transaction | The same | To broadcast it |
+| Your Cosmos, Polkadot and NEAR addresses | CryptoCrew's Cosmos Hub archive node; Statescan (Polkadot); NearBlocks | To read their history: an ordinary node of those chains keeps no complete per-account index, so an indexer is asked |
 | One fixed list of coin symbols, the same for every wallet | CoinGecko, Binance; KuCoin and Bybit for what those refuse | To price coins. The list does not depend on what you hold, so the request says nothing about you |
 | The coin a chart is for | Binance, then KuCoin, Bybit or CoinGecko | To draw the chart you open. The Home balance chart asks for the whole market list, in the same order from every wallet — never for "the coins this wallet holds" |
 | Nothing but the request | open.er-api.com | Currency rates (USD → EUR, UAH, …) when you show a currency other than dollars, at most once an hour; kept on disk so figures appear at once |

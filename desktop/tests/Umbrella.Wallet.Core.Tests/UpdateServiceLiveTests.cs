@@ -9,6 +9,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// the check that the files the wallet will look for are the files the release actually has.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class UpdateServiceLiveTests
 {
     /// <summary>The offline suite arms the kill-switch; these are the runs that must reach GitHub.</summary>

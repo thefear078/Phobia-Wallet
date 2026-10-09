@@ -16,9 +16,9 @@
     <ApplicationId>com.thefear.phobia</ApplicationId>
     <ApplicationTitle>Phobia</ApplicationTitle>
     <!-- versionCode, which Android needs to rise for an update to install: major·1000000 + minor·10000
-         + patch·100 + the beta number (99 for the full release). 4.10.0-beta.4 → 4100004. PhoneLayoutTests
+         + patch·100 + the beta number (99 for the full release). 4.10.0-beta.5 → 4100005. PhoneLayoutTests
          keeps it in step with VERSION. -->
-    <ApplicationVersion>4100004</ApplicationVersion>
+    <ApplicationVersion>4100005</ApplicationVersion>
     <ApplicationDisplayVersion>4.10.0</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <!-- Phones: 64-bit ARM, and 32-bit ARM for older ones. One APK carries both. -->

@@ -44,7 +44,11 @@ jobs:
       - name: Install the Android workload
         run: dotnet workload install android
       # x86_64, so the emulator runs it at full speed; Tor's own x86_64 Android build is bundled the same
-      # way as the ARM ones in the release APK. (Monero publishes no x86_64 Android build.)
+      # way as the ARM ones in the release APK. Monero publishes no x86_64 Android build, so Monero cannot
+      # run here, and the ARM64 APK cannot either: tried on 2026-10-09, Google's ARM translation in the
+      # x86_64 images (ndk_translation 0.2.2) stops the .NET runtime itself with SIGILL on an instruction
+      # it cannot translate, and GitHub's ARM machines cannot host an emulator. The self-test starts
+      # Monero whenever the APK carries it for the device, so on ARM hardware it checks that too.
       - name: Build the emulator check APK
         env:
           ABIS: x86_64

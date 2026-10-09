@@ -700,6 +700,23 @@ public sealed class HdAddressDeriver
     }
 
     /// <summary>
+    /// The secp256k1 key behind the Decred address at m/44'/42'/0'/0/{index} — the address
+    /// <see cref="DeriveDecred"/> shows. Decred signs with the same curve as Bitcoin; only the hashes differ.
+    /// </summary>
+    public Key DeriveDecredKey(string mnemonic, uint addressIndex = 0, string? passphrase = null)
+    {
+        passphrase = Resolve(passphrase);
+        var validation = _mnemonicService.Validate(mnemonic);
+        if (!validation.IsValid || validation.NormalizedMnemonic is null)
+        {
+            throw new ArgumentException(validation.Error ?? "Invalid mnemonic.", nameof(mnemonic));
+        }
+
+        var parsed = Bip39MnemonicService.ParseValidated(validation.NormalizedMnemonic);
+        return parsed.DeriveExtKey(passphrase).Derive(new KeyPath($"44'/{DecredAddress.CoinType}'/0'/0/{addressIndex}")).PrivateKey;
+    }
+
+    /// <summary>
     /// Decred at m/44'/42'/0'/0/{index} — the BIP44 path Trust Wallet, Ledger and Exodus derive — with
     /// Decred's own Hash160 (RIPEMD-160 of BLAKE-256) and double-BLAKE-256 checksum. Pinned to dcrd's
     /// and Trust Wallet's vectors (DecredReceiveTests).

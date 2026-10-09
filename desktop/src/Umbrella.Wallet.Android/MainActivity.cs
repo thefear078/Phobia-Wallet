@@ -43,7 +43,8 @@ public class MainActivity : AvaloniaMainActivity<Umbrella.Wallet.App.App>
 
 #if PHOBIA_SELFTEST
     /// <summary>The emulator check: run the bundled Tor from the native-library folder, the way a user's
-    /// "Tor on" does, and log how far it got. CI reads the "PHOBIA-SELFTEST" lines from logcat.</summary>
+    /// "Tor on" does, then the bundled Monero service through it, and log how far each got. CI reads the
+    /// "PHOBIA-SELFTEST" lines from logcat.</summary>
     private static int _selfTestStarted;
 
     private static async Task SelfTestAsync()
@@ -58,6 +59,55 @@ public class MainActivity : AvaloniaMainActivity<Umbrella.Wallet.App.App>
         var progress = new Progress<string>(m => Android.Util.Log.Info(tag, m));
         var (ok, message) = await tor.StartAsync(progress);
         Android.Util.Log.Info(tag, ok ? $"TOR-OK {message}" : $"TOR-FAIL {message}");
+
+        if (!MoneroRpcService.IsBundlePresent)
+        {
+            Android.Util.Log.Info(tag, "MONERO-SKIP no monero-wallet-rpc for this ABI");
+            return;
+        }
+
+        await MoneroSelfTestAsync(tag, ok ? tor.ProxyUri : null, progress);
+    }
+
+    /// <summary>
+    /// The bundled monero-wallet-rpc, the way the phone's Monero switch runs it: started from the
+    /// native-library folder behind its random login, through Tor when Tor came up, and asked to restore a
+    /// wallet and read the chain. The wallet is the public test phrase's account — it has never held
+    /// anything — scanned from a recent height so the check is about the service, not a long sync.
+    /// </summary>
+    private static async Task MoneroSelfTestAsync(string tag, string? torProxy, IProgress<string> progress)
+    {
+        try
+        {
+            PublicHttp.SetProxy(torProxy);
+            using var monero = new MoneroRpcService { NodeAddress = Umbrella.Wallet.Core.Chains.MoneroNodeCatalog.Default.Address };
+            var wallet = new Umbrella.Wallet.Core.Derivation.HdAddressDeriver().DeriveMoneroWallet(
+                "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about");
+            var (started, why) = await monero.StartAsync(wallet.Address, wallet.SecretSpendKeyHex, wallet.SecretViewKeyHex,
+                "phobia-selftest", progress, scanFrom: 3_770_000);
+            Android.Util.Log.Info(tag, started ? $"MONERO-STARTED via {(torProxy is null ? "clearnet" : "Tor")}" : $"MONERO-FAIL {why}");
+            if (!started) return;
+
+            // The node's height reaching the wallet proves the whole path: the service runs, it answered its
+            // login, and it reached a Monero node (through Tor when Tor is up).
+            for (var i = 0; i < 60; i++)
+            {
+                var balance = await monero.GetBalanceAsync();
+                if (balance is { ChainHeight: > 0 } b)
+                {
+                    Android.Util.Log.Info(tag, $"MONERO-OK chain {b.ChainHeight} scanned {b.ScannedHeight}");
+                    return;
+                }
+
+                await Task.Delay(5_000);
+            }
+
+            Android.Util.Log.Info(tag, "MONERO-FAIL the service never reported the chain height");
+        }
+        catch (Exception ex)
+        {
+            Android.Util.Log.Info(tag, $"MONERO-FAIL {ex.GetType().Name}: {ex.Message}");
+        }
     }
 #endif
 

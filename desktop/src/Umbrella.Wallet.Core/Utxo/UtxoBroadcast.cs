@@ -30,6 +30,7 @@ public static class UtxoBroadcast
         "already in mempool", "txn-already-in-mempool", "txn-already-known", "already known", "already-known",
         "transaction already in block chain", "already exists", "duplicate transaction",
         "transaction already in the mempool", "-27",   // bitcoind: transaction already in chain
+        "already have transaction",                    // dcrd
     ];
 
     /// <summary>Refusals a node makes on its own terms: the transaction never entered a block.</summary>
@@ -39,6 +40,13 @@ public static class UtxoBroadcast
         "dust", "non-final", "non-mandatory-script-verify-flag", "mandatory-script-verify-flag-failed",
         "scriptsig", "too-long-mempool-chain", "tx-size", "version", "absurdly-high-fee",
         "sendrawtransaction rpc error", "invalid transaction", "decode failed",
+        // dcrd, through dcrdata: unreadable bytes, a fraud proof that disagrees with the coin, a fee
+        // under the relay floor, a failed signature, coins it does not know.
+        "failed to deserialize", "fraud check", "under the required amount", "script validation failed",
+        "orphan transaction", "failed to validate input",
+        // Every other mempool rule dcrd enforces is worded "rejected transaction <id>: …". Its two
+        // answers that are not refusals — already there, or a conflicting spend — are read above.
+        "rejected transaction",
     ];
 
     public static UtxoBroadcastAnswer Classify(bool httpSuccess, string? body)
@@ -52,7 +60,9 @@ public static class UtxoBroadcast
 
         // A conflicting spend is a refusal of THIS transaction, but it also means some other transaction
         // is spending those coins — which may well be this same send, relayed a moment ago.
-        if (text.Contains("txn-mempool-conflict", StringComparison.Ordinal)) return UtxoBroadcastAnswer.Unclear;
+        if (text.Contains("txn-mempool-conflict", StringComparison.Ordinal) ||
+            text.Contains("already spent by", StringComparison.Ordinal))   // dcrd's wording of the same
+            return UtxoBroadcastAnswer.Unclear;
 
         return Refusals.Any(n => text.Contains(n, StringComparison.Ordinal))
             ? UtxoBroadcastAnswer.Rejected

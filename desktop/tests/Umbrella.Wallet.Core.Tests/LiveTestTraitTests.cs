@@ -69,6 +69,25 @@ public sealed class LiveTestTraitTests
         }
     }
 
+    [Fact]
+    public void Every_live_test_class_runs_in_the_live_collection()
+    {
+        // Live classes running side by side switched the network on and off under each other, and a
+        // live run then reported half the services as down. One collection runs them one at a time.
+        var outside = typeof(LiveTestTraitTests).Assembly
+            .GetTypes()
+            .Where(t => t.IsClass && HasLiveTrait(t))
+            .Where(t => !t.GetCustomAttributesData().Any(a =>
+                a.AttributeType.Name == "CollectionAttribute" &&
+                a.ConstructorArguments.Count == 1 &&
+                (a.ConstructorArguments[0].Value as string) == LiveNetworkCollection.Name))
+            .Select(t => t.Name)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Empty(outside);
+    }
+
     private static bool HasLiveTrait(Type type) =>
         CategoryValues(type).Any(v => v.Equals("Live", StringComparison.Ordinal));
 

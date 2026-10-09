@@ -109,9 +109,10 @@ public static class ChainCatalog
             // Cosmos Hub — receive, balance and send (roadmap N.6). BIP44 coin type 118, secp256k1, the
             // m/44'/118'/0'/0/0 that Keplr, Leap and Ledger derive, pinned to cosmjs's own wallet test;
             // sends one bank MsgSend, pinned byte-for-byte to cosmjs's signing vectors (CosmosSendTests).
+            // History from an archive node: ordinary public servers prune the transaction index.
             new ChainInfo(
                 ChainId.Atom, "ATOM", "Cosmos Hub", ChainSupportLevel.Supported, "BIP44 · secp256k1", "m/44'/118'/0'/0/0",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: true,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. The balance shown is available ATOM only — ATOM you have staked with a validator is not included."),
             // NEAR — receive and balance (roadmap N.7). SLIP-0010 ed25519 at m/44'/397'/0', the path
@@ -127,9 +128,10 @@ public static class ChainCatalog
             // account there. The root key, no derivation path. Balance from Asset Hub and the relay chain;
             // sends Balances.transfer_keep_alive from Asset Hub, built from the running runtime's metadata
             // and validated by the node before broadcast (PolkadotSendTests, PolkadotSendLiveTests).
+            // History of transfers on Asset Hub and the relay chain from Statescan's indexes.
             new ChainInfo(
                 ChainId.Dot, "DOT", "Polkadot", ChainSupportLevel.Supported, "substrate-bip39 · sr25519", "root key (no derivation path)",
-                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: false, CanSwap: false,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: false,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. The balance adds up DOT on Asset Hub and on the relay chain — Polkadot moved balances to Asset Hub in 2025 — and includes DOT locked for staking or governance, which may not all be spendable."),
             // Nano — receive, balance, history and send. SLIP-0010 at m/44'/165'/0' with Nano's
@@ -143,17 +145,18 @@ public static class ChainCatalog
                 CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
                 PrivacyNote: "Public ledger. Incoming XNO stays \"receivable\" until a receive block pockets it; the balance counts it, and a send pockets what it needs first. No fees: each block carries a few seconds of proof of work computed on this computer."),
-            // Decred — receive and balance. BIP44 m/44'/42'/0'/0/0 (Trust Wallet, Ledger, Exodus); a
+            // Decred — receive, balance and send. BIP44 m/44'/42'/0'/0/0 (Trust Wallet, Ledger, Exodus); a
             // Bitcoin-shaped address with Decred's own hashing: RIPEMD-160 of BLAKE-256 for the key hash
             // and double BLAKE-256 for the checksum, pinned to dcrd's and Trust Wallet's vectors
-            // (DecredReceiveTests). Sending builds a Decred transaction (its own serialisation and
-            // BLAKE-256 signature hash) and stays off until that path is proven. Decred's own wallet
+            // (DecredReceiveTests). Sending builds Decred's own transaction format and BLAKE-256 signature
+            // hash, proven against signatures the network accepted (DecredTransactionTests), with each
+            // input's fraud proof read from the coin's own transaction. Decred's own wallet
             // (dcrwallet / Decrediton) uses a different seed scheme and will NOT show this account.
             new ChainInfo(
                 ChainId.Dcr, "DCR", "Decred", ChainSupportLevel.Supported, "BIP44 · secp256k1 · BLAKE-256", "m/44'/42'/0'/0/{index}",
-                CanSend: false, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
+                CanSend: true, CanReceive: true, CanSyncBalance: true, HasHistory: true, CanSwap: true,
                 HasTokens: false, Maturity: ChainMaturity.Beta,
-                PrivacyNote: "Public ledger. This is the BIP44 account Trust Wallet, Ledger and Exodus use — Decred's own wallet (Decrediton) derives differently and will not show it. Sending is not available here yet."),
+                PrivacyNote: "Public ledger. This is the BIP44 account Trust Wallet, Ledger and Exodus use — Decred's own wallet (Decrediton) derives differently and will not show it. A payment's change returns to the same address."),
         ];
 
         ById = All.ToDictionary(c => c.Id);

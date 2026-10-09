@@ -6,20 +6,20 @@ using Umbrella.Wallet.Core.Safety;
 namespace Umbrella.Wallet.Infrastructure.Network;
 
 /// <summary>
-/// Transaction history for account-based chains that had none: XRP, Stellar and NEAR.
+/// Transaction history for account-based chains: XRP, Stellar, NEAR, Cosmos Hub and Polkadot.
 ///
-/// Each is read from the SAME server the balance comes from — the one the user chose, or the default —
-/// so showing history adds no new party that learns the address. Each is best-effort: a server that
-/// does not answer yields an empty list, and the Activity screen's coverage note keeps saying which
-/// coins' history could not be read, rather than an empty list passing for "no transactions".
+/// XRP and Stellar are read from the SAME server the balance comes from — the one the user chose, or
+/// the default — so showing history adds no new party that learns the address. A node of NEAR, Cosmos
+/// or Polkadot keeps no complete per-account index, so those need an indexer, each declared on the
+/// counterparty list. Each is best-effort: a server that does not answer yields an empty list.
 ///
-/// The explorer links are exactly the ones the Send screen stores for a transaction (scheme included),
-/// so a payment made in this wallet and the same payment read back from the chain collapse into one row.
+/// The explorer links are exactly the ones the Send screen stores for a transaction, so a payment made
+/// in this wallet and the same payment read back from the chain collapse into one row.
 ///
-/// Cosmos Hub is NOT here, on purpose. Its public REST servers prune their transaction index: the same
-/// search for an account with known sends answered with them once in nine tries across three servers,
-/// and "0" the other eight — indistinguishable from an account that never moved anything. A history
-/// that is usually empty for a reason nobody can see is worse than none, which the coverage note says.
+/// Cosmos Hub's ordinary public REST servers prune their transaction index: the same search for an
+/// account with known sends answered with them once in nine tries across three servers, and "0" the
+/// other eight. Its history therefore comes from an ARCHIVE node (CryptoCrew's, with the index from the
+/// chain's start), never from a pruned one that would show "no transactions" for a reason nobody sees.
 /// </summary>
 public sealed class AccountHistoryClient
 {
@@ -270,6 +270,277 @@ public sealed class AccountHistoryClient
         }
 
         return list;
+    }
+
+    // --- Cosmos Hub ----------------------------------------------------------------------------------
+
+    /// <summary>
+    /// CryptoCrew's Cosmos Hub archive node (a community-funded grant): REST with the transaction index
+    /// kept from the chain's start. Ordinary public servers prune it, which reads as "no transactions".
+    /// </summary>
+    public const string CosmosArchive = "https://rest.cosmoshub-main.ccvalidators.com";
+
+    /// <summary>The archive node answers about one request a second; a second one sooner gets 429.</summary>
+    private static readonly TimeSpan CosmosArchiveSpacing = TimeSpan.FromMilliseconds(1_200);
+
+    /// <summary>
+    /// Recent ATOM movements of an address, newest first: what it sent and what it received. From the
+    /// server the user chose for Cosmos if there is one (their choice of who learns the address), else
+    /// the archive node.
+    /// </summary>
+    public async Task<IReadOnlyList<ChainTx>> GetCosmosAsync(string address, int limit = 25, CancellationToken ct = default)
+    {
+        try
+        {
+            var root = (ChainEndpoints.OverrideFor("ATOM") ?? CosmosArchive).TrimEnd('/');
+            var sent = await SearchCosmosAsync(root, $"message.sender='{address}'", limit, ct);
+            await Task.Delay(CosmosArchiveSpacing, ct);
+            var received = await SearchCosmosAsync(root, $"transfer.recipient='{address}'", limit, ct);
+
+            var rows = new List<ChainTx>();
+            if (sent is not null) rows.AddRange(ParseCosmos(sent, address));
+            if (received is not null) rows.AddRange(ParseCosmos(received, address));
+            // A transaction found by both searches is one row per direction.
+            return rows.DistinctBy(r => (r.Hash, r.Kind)).OrderByDescending(r => r.UnixMs).ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static async Task<string?> SearchCosmosAsync(string root, string query, int limit, CancellationToken ct)
+    {
+        var url = $"{root}/cosmos/tx/v1beta1/txs?query={Uri.EscapeDataString(query)}&pagination.limit={limit}&order_by=2";
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            using var res = await Http.GetAsync(url, ct);
+            if (res.IsSuccessStatusCode) return await res.Content.ReadAsStringAsync(ct);
+            if ((int)res.StatusCode != 429) return null;
+            await Task.Delay(CosmosArchiveSpacing, ct);   // rate-limited: once more, a second later
+        }
+
+        return null;
+    }
+
+    /// <summary>A transfer of under 0.0001 ATOM ...</summary>
+    private const long CosmosSpamDustUatom = 100;
+
+    /// <summary>... in a transaction paying more than this many addresses is a mass "airdrop".</summary>
+    private const int CosmosSpamRecipients = 10;
+
+    /// <summary>
+    /// The ATOM movements in a <c>/cosmos/tx/v1beta1/txs</c> answer, one row per transaction and
+    /// direction: bank sends and multi-sends (to or from this address) and IBC transfers of ATOM out of
+    /// it. Failed transactions are left out, and so is one kind of spam: a few micro-ATOM sent with a
+    /// thousand others in one transaction, whose memo advertises a "claim" site — on 2026-10-08 that was
+    /// most of what a real account had received. A single small transfer to this address still shows.
+    /// </summary>
+    public static List<ChainTx> ParseCosmos(string json, string me)
+    {
+        var list = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("txs", out var txs) || txs.ValueKind != JsonValueKind.Array ||
+            !doc.RootElement.TryGetProperty("tx_responses", out var responses) || responses.ValueKind != JsonValueKind.Array)
+            return list;
+
+        var count = Math.Min(txs.GetArrayLength(), responses.GetArrayLength());
+        for (var i = 0; i < count; i++)
+        {
+            var response = responses[i];
+            if (Long(response, "code") != 0) continue;
+            if (!txs[i].TryGetProperty("body", out var body) ||
+                !body.TryGetProperty("messages", out var messages) || messages.ValueKind != JsonValueKind.Array) continue;
+
+            long inUatom = 0, outUatom = 0;
+            string inFrom = "", outTo = "";
+            var recipients = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var m in messages.EnumerateArray())
+            {
+                switch (Str(m, "@type"))
+                {
+                    case "/cosmos.bank.v1beta1.MsgSend":
+                    {
+                        var from = Str(m, "from_address");
+                        var to = Str(m, "to_address");
+                        recipients.Add(to);
+                        var uatom = Uatom(m, "amount");
+                        if (to == me && from != me) { inUatom += uatom; if (inFrom.Length == 0) inFrom = from; }
+                        else if (from == me && to != me) { outUatom += uatom; if (outTo.Length == 0) outTo = to; }
+                        break;
+                    }
+
+                    case "/cosmos.bank.v1beta1.MsgMultiSend":
+                    {
+                        var payer = m.TryGetProperty("inputs", out var ins) && ins.ValueKind == JsonValueKind.Array && ins.GetArrayLength() > 0
+                            ? Str(ins[0], "address") : "";
+                        if (m.TryGetProperty("outputs", out var outs) && outs.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var o in outs.EnumerateArray())
+                            {
+                                var to = Str(o, "address");
+                                recipients.Add(to);
+                                if (to == me && payer != me) { inUatom += Uatom(o, "coins"); if (inFrom.Length == 0) inFrom = payer; }
+                                else if (payer == me && to != me) { outUatom += Uatom(o, "coins"); if (outTo.Length == 0) outTo = to; }
+                            }
+                        }
+
+                        break;
+                    }
+
+                    case "/ibc.applications.transfer.v1.MsgTransfer":
+                    {
+                        if (Str(m, "sender") != me || !m.TryGetProperty("token", out var token) || Str(token, "denom") != "uatom") break;
+                        if (long.TryParse(Str(token, "amount"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var ibc) && ibc > 0)
+                        {
+                            outUatom += ibc;
+                            if (outTo.Length == 0) outTo = Str(m, "receiver");
+                        }
+
+                        break;
+                    }
+                }
+            }
+
+            if (inUatom > 0 && inUatom < CosmosSpamDustUatom && recipients.Count > CosmosSpamRecipients) inUatom = 0;
+
+            var hash = Str(response, "txhash");
+            var ts = DateTimeOffset.TryParse(Str(response, "timestamp"), CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal, out var at) ? at.ToUnixTimeMilliseconds() : 0;
+            var explorer = $"https://www.mintscan.io/cosmos/tx/{hash}";   // what the Send screen stores
+
+            if (outUatom > 0) list.Add(new ChainTx("Sent", "ATOM", Atom(outUatom), outTo, ts, explorer, hash));
+            if (inUatom > 0) list.Add(new ChainTx("Received", "ATOM", Atom(inUatom), inFrom, ts, explorer, hash));
+        }
+
+        return list;
+    }
+
+    private static long Uatom(JsonElement holder, string coinsProperty)
+    {
+        if (!holder.TryGetProperty(coinsProperty, out var coins) || coins.ValueKind != JsonValueKind.Array) return 0;
+        long sum = 0;
+        foreach (var c in coins.EnumerateArray())
+        {
+            if (Str(c, "denom") == "uatom" &&
+                long.TryParse(Str(c, "amount"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 0)
+                sum += n;
+        }
+
+        return sum;
+    }
+
+    private static string Atom(long uatom) =>
+        (uatom / 1_000_000m).ToString("0.######", CultureInfo.InvariantCulture);
+
+    // --- Polkadot ------------------------------------------------------------------------------------
+
+    /// <summary>Statescan (OpenSquare): keyless per-account transfer indexes for Asset Hub and the relay chain.</summary>
+    public const string StatescanAssetHub = "https://ahp-api.statescan.io";
+    public const string StatescanRelay = "https://polkadot-api.statescan.io";
+
+    /// <summary>
+    /// Recent DOT transfers of an account, newest first: on Asset Hub, where balances live since 2025,
+    /// and on the relay chain before that. Subscan, which most wallets use, now refuses requests without
+    /// an API key; a node keeps no per-account index.
+    /// </summary>
+    public async Task<IReadOnlyList<ChainTx>> GetPolkadotAsync(string address, int limit = 25, CancellationToken ct = default)
+    {
+        var rows = new List<ChainTx>();
+        var who = Uri.EscapeDataString(address);
+        try
+        {
+            using var transfers = await Http.GetAsync($"{StatescanAssetHub}/accounts/{who}/transfers?page=0&page_size={limit}", ct);
+            if (transfers.IsSuccessStatusCode)
+            {
+                // The account's own extrinsics carry the hashes its sends were submitted under — what the
+                // Send screen links to — so a payment made here and read back from the chain is one row.
+                IReadOnlyDictionary<(long, long), string> hashes = new Dictionary<(long, long), string>();
+                try
+                {
+                    using var extrinsics = await Http.GetAsync($"{StatescanAssetHub}/accounts/{who}/extrinsics?page=0&page_size={limit}", ct);
+                    if (extrinsics.IsSuccessStatusCode) hashes = ParseStatescanHashes(await extrinsics.Content.ReadAsStringAsync(ct));
+                }
+                catch (Exception) when (!ct.IsCancellationRequested)
+                {
+                    // Without hashes the rows still show, linked by block and position.
+                }
+
+                rows.AddRange(ParsePolkadot(await transfers.Content.ReadAsStringAsync(ct), address, hashes, "https://assethub-polkadot.subscan.io"));
+            }
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            // best effort, like every history source
+        }
+
+        try
+        {
+            using var relay = await Http.GetAsync($"{StatescanRelay}/accounts/{who}/transfers?page=0&page_size={limit}", ct);
+            if (relay.IsSuccessStatusCode)
+                rows.AddRange(ParsePolkadot(await relay.Content.ReadAsStringAsync(ct), address,
+                    new Dictionary<(long, long), string>(), "https://polkadot.subscan.io"));
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+        }
+
+        return rows.OrderByDescending(r => r.UnixMs).ToList();
+    }
+
+    private const decimal PlanckPerDot = 10_000_000_000m;
+
+    /// <summary>
+    /// The DOT movements in a Statescan <c>/accounts/{address}/transfers</c> page. Other assets on Asset
+    /// Hub (USDT and the rest) are left out rather than shown as DOT, and so are transfers of nothing.
+    /// A row links to Subscan by the extrinsic's hash when this account signed it, else by block-index.
+    /// </summary>
+    public static List<ChainTx> ParsePolkadot(string json, string me,
+        IReadOnlyDictionary<(long Block, long Index), string> hashes, string explorerHost)
+    {
+        var list = new List<ChainTx>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) return list;
+
+        foreach (var t in items.EnumerateArray())
+        {
+            if (!t.TryGetProperty("isNativeAsset", out var native) || native.ValueKind != JsonValueKind.True) continue;
+            var from = Str(t, "from");
+            var to = Str(t, "to");
+            var incoming = to == me && from != me;
+            if (!incoming && !(from == me && to != me)) continue;
+
+            if (!decimal.TryParse(Str(t, "balance"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var planck) || planck <= 0)
+                continue;
+
+            if (!t.TryGetProperty("indexer", out var indexer)) continue;
+            var block = Long(indexer, "blockHeight");
+            var index = Long(indexer, "extrinsicIndex");
+            var ts = Long(indexer, "blockTime");
+
+            var id = hashes.TryGetValue((block, index), out var hash) ? hash : $"{block}-{index}";
+            var dot = (planck / PlanckPerDot).ToString("0.##########", CultureInfo.InvariantCulture);
+            list.Add(new ChainTx(incoming ? "Received" : "Sent", "DOT", dot, incoming ? from : to, ts,
+                $"{explorerHost}/extrinsic/{id}", id));
+        }
+
+        return list;
+    }
+
+    /// <summary>(block, extrinsic index) → hash, from a Statescan <c>/accounts/{address}/extrinsics</c> page.</summary>
+    public static IReadOnlyDictionary<(long, long), string> ParseStatescanHashes(string json)
+    {
+        var map = new Dictionary<(long, long), string>();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) return map;
+        foreach (var e in items.EnumerateArray())
+        {
+            if (Str(e, "hash") is not { Length: > 0 } hash || !e.TryGetProperty("indexer", out var indexer)) continue;
+            map[(Long(indexer, "blockHeight"), Long(indexer, "extrinsicIndex"))] = hash;
+        }
+
+        return map;
     }
 
     // --- helpers -------------------------------------------------------------------------------------

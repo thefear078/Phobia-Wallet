@@ -426,7 +426,7 @@ public sealed class PublicChainBalanceClient
     /// <see cref="XrpLedger.ParseAccountInfo"/>.
     /// </summary>
     private static Task<ChainBalance?> GetXrpAsync(string address, CancellationToken ct) =>
-        FirstAnswerAsync("XRP", XrpRoot, root => ReadXrpAsync(root, address, ct), ct);
+        FirstAnswerAsync("XRP", XrpRoot, (root, token) => ReadXrpAsync(root, address, token), ct);
 
     private static async Task<ChainBalance?> ReadXrpAsync(string root, string address, CancellationToken ct)
     {
@@ -454,9 +454,9 @@ public sealed class PublicChainBalanceClient
             return null;
 
         var key = Umbrella.Wallet.Core.Polkadot.PolkadotAccounts.SystemAccountKey(accountId);
-        var hub = await FirstAnswerAsync("DOT", DotAssetHubRoot, root => BoxAsync(ReadDotAccountAsync(root, key, ct)), ct);
+        var hub = await FirstAnswerAsync("DOT", DotAssetHubRoot, (root, token) => BoxAsync(ReadDotAccountAsync(root, key, token)), ct);
         if (hub is null) return null;
-        var relay = await FirstAnswerAsync("DOT-RELAY", DotRelayRoot, root => BoxAsync(ReadDotAccountAsync(root, key, ct)), ct);
+        var relay = await FirstAnswerAsync("DOT-RELAY", DotRelayRoot, (root, token) => BoxAsync(ReadDotAccountAsync(root, key, token)), ct);
         if (relay is null) return null;
 
         return new ChainBalance(ChainId.Dot, address, hub.Value + relay.Value, "DOT");
@@ -470,16 +470,20 @@ public sealed class PublicChainBalanceClient
     /// <summary>
     /// The first server that answers, among <see cref="ChainEndpoints.Candidates"/>. A server that
     /// fails or times out hands over to the next; only when all have failed is the balance unknown.
+    /// Each server gets <see cref="ExplorerHttp.AttemptDeadline"/>: dcrdata once hung for 21 seconds a
+    /// request while its fallback answered in 0.3, and the balance waited the whole time.
     /// Cancellation by the caller is never swallowed.
     /// </summary>
     private static async Task<T?> FirstAnswerAsync<T>(
-        string symbol, string defaultRoot, Func<string, Task<T?>> read, CancellationToken ct) where T : class
+        string symbol, string defaultRoot, Func<string, CancellationToken, Task<T?>> read, CancellationToken ct) where T : class
     {
         foreach (var root in ChainEndpoints.Candidates(symbol, defaultRoot))
         {
             try
             {
-                if (await read(root) is { } answer) return answer;
+                using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                attempt.CancelAfter(ExplorerHttp.AttemptDeadline);
+                if (await read(root, attempt.Token) is { } answer) return answer;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -525,7 +529,7 @@ public sealed class PublicChainBalanceClient
     /// <summary>NEAR balance of the implicit account at final finality (roadmap N.7).</summary>
     private static Task<ChainBalance?> GetNearAsync(string address, CancellationToken ct) =>
         NearAccounts.IsImplicitAccountId(address)
-            ? FirstAnswerAsync("NEAR", NearRoot, root => ReadNearAsync(root, address, ct), ct)
+            ? FirstAnswerAsync("NEAR", NearRoot, (root, token) => ReadNearAsync(root, address, token), ct)
             : Task.FromResult<ChainBalance?>(null);
 
     private static async Task<ChainBalance?> ReadNearAsync(string root, string address, CancellationToken ct)
@@ -548,7 +552,7 @@ public sealed class PublicChainBalanceClient
     /// </summary>
     private static Task<ChainBalance?> GetNanoAsync(string address, CancellationToken ct) =>
         NanoAccounts.IsValid(address)
-            ? FirstAnswerAsync("XNO", NanoRoot, root => ReadNanoAsync(root, address, ct), ct)
+            ? FirstAnswerAsync("XNO", NanoRoot, (root, token) => ReadNanoAsync(root, address, token), ct)
             : Task.FromResult<ChainBalance?>(null);
 
     private static async Task<ChainBalance?> ReadNanoAsync(string root, string address, CancellationToken ct)
@@ -569,7 +573,7 @@ public sealed class PublicChainBalanceClient
     /// <summary>Unspent DCR at an address, from dcrdata's totals. Any failure is unknown, never zero.</summary>
     private static Task<ChainBalance?> GetDecredAsync(string address, CancellationToken ct) =>
         DecredAddress.IsValid(address)
-            ? FirstAnswerAsync("DCR", DcrRoot, root => ReadDecredAsync(root, address, ct), ct)
+            ? FirstAnswerAsync("DCR", DcrRoot, (root, token) => ReadDecredAsync(root, address, token), ct)
             : Task.FromResult<ChainBalance?>(null);
 
     private static async Task<ChainBalance?> ReadDecredAsync(string root, string address, CancellationToken ct)
@@ -589,7 +593,7 @@ public sealed class PublicChainBalanceClient
     /// <summary>Available (not staked) ATOM from the bank module (roadmap N.6).</summary>
     private static Task<ChainBalance?> GetAtomAsync(string address, CancellationToken ct) =>
         CosmosHub.IsValidAddress(address)
-            ? FirstAnswerAsync("ATOM", AtomRoot, root => ReadAtomAsync(root, address, ct), ct)
+            ? FirstAnswerAsync("ATOM", AtomRoot, (root, token) => ReadAtomAsync(root, address, token), ct)
             : Task.FromResult<ChainBalance?>(null);
 
     private static async Task<ChainBalance?> ReadAtomAsync(string root, string address, CancellationToken ct)
@@ -621,7 +625,7 @@ public sealed class PublicChainBalanceClient
     /// </summary>
     private static Task<ChainBalance?> GetXlmAsync(string address, CancellationToken ct) =>
         StellarKeys.IsValidAccountId(address)
-            ? FirstAnswerAsync("XLM", XlmRoot, root => ReadXlmAsync(root, address, ct), ct)
+            ? FirstAnswerAsync("XLM", XlmRoot, (root, token) => ReadXlmAsync(root, address, token), ct)
             : Task.FromResult<ChainBalance?>(null);
 
     private static async Task<ChainBalance?> ReadXlmAsync(string root, string address, CancellationToken ct)
@@ -1411,12 +1415,12 @@ public sealed class PublicChainBalanceClient
         foreach (var program in new[] { Umbrella.Wallet.Core.Chains.SolanaTokens.TokenProgram, Umbrella.Wallet.Core.Chains.SolanaTokens.Token2022Program })
         {
             var box = await FirstAnswerAsync("SOL", "https://api.mainnet-beta.solana.com",
-                async root =>
+                async (root, token) =>
                 {
                     using var res = await Http.PostAsJsonAsync(root,
-                        Umbrella.Wallet.Core.Chains.SolanaTokens.TokenAccountsRequest(address.Trim(), program), cancellationToken);
+                        Umbrella.Wallet.Core.Chains.SolanaTokens.TokenAccountsRequest(address.Trim(), program), token);
                     if (!res.IsSuccessStatusCode) return null;
-                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+                    using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(token), cancellationToken: token);
                     return Umbrella.Wallet.Core.Chains.SolanaTokens.ParseTokenAccounts(doc.RootElement) is { } list
                         ? new SplList(list)
                         : null;
@@ -1460,15 +1464,15 @@ public sealed class PublicChainBalanceClient
         if (Token2022Sendable.TryGetValue(mint, out var known)) return known;
 
         var box = await FirstAnswerAsync("SOL", "https://api.mainnet-beta.solana.com",
-            async root =>
+            async (root, token) =>
             {
                 using var res = await Http.PostAsJsonAsync(root, new
                 {
                     jsonrpc = "2.0", id = 1, method = "getAccountInfo",
                     @params = new object[] { mint, new { encoding = "jsonParsed" } },
-                }, ct);
+                }, token);
                 if (!res.IsSuccessStatusCode) return null;
-                using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(token), cancellationToken: token);
                 if (!doc.RootElement.TryGetProperty("result", out var result) ||
                     !result.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Object ||
                     !value.TryGetProperty("data", out var data) || !data.TryGetProperty("parsed", out var parsed) ||

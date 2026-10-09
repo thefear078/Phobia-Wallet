@@ -12,6 +12,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// Never part of the offline run.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class PolkadotSendLiveTests(ITestOutputHelper output)
 {
     private const string Node = "https://polkadot-asset-hub-rpc.polkadot.io";

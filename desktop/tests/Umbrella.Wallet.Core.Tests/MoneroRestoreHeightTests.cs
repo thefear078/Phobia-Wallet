@@ -87,11 +87,12 @@ public sealed class MoneroRestoreHeightTests : IDisposable
 
 /// <summary>The floor block's date, asked of public Monero nodes. <c>Category=Live</c>: run by hand.</summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class MoneroRestoreHeightLiveTests
 {
     [Theory]
     [InlineData("https://xmr-node.cakewallet.com:18081/json_rpc")]
-    [InlineData("https://node.sethforprivacy.com/json_rpc")]
+    [InlineData("https://monero.stackwallet.com:18081/json_rpc")]
     public async Task The_floor_block_was_mined_before_the_derivation_shipped(string node)
     {
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };

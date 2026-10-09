@@ -4,6 +4,72 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.10.0-beta.5] — Beta of 9 October 2026 (a GitHub pre-release) — Decred sends, ATOM and DOT history, live checks that mean something
+
+### Decred sends
+
+- **DCR can be sent**, from the wallet's Ds… address (the BIP44 account Trust Wallet, Ledger and Exodus
+  use). Decred is not Bitcoin with another hash: its transaction has a prefix and a witness, its id is
+  BLAKE-256 of the prefix, and every input repeats the amount, block height and position-in-block of the
+  coin it spends — dcrd refuses an input whose "fraud proof" disagrees with its own record.
+- Written from dcrd's `wire` and `txscript` sources and **checked against mainnet**: the signatures of two
+  real transactions — one input, and nine — verify against the signature hashes this code computes, and
+  the bytes read back exactly. A payment from a real coin, signed with a stranger's key and broadcast,
+  was refused by mainnet at the signature check and nowhere earlier: the format, the coin, the fraud
+  proof and the fee were all what the network expects.
+- Each chosen coin's height and position are read from the transaction that created it, which must also
+  confirm the coin pays this address that amount — an explorer that contradicts itself is not signed
+  for. Coins from staking transactions are not spent this way. Fee 0.00015 DCR per kB (about 0.00004
+  for one coin), dust and change handled as dcrd does; the review shows the exact fee.
+- **Decred's servers:** the Decred project's dcrdata hung for 21 seconds per address lookup on
+  2026-10-08 while a community instance of the same software, **Bison Explorer**, answered in 0.3 —
+  it now stands behind dcrdata for balance, history, coins and broadcast. A server you chose stays the
+  only one asked.
+
+### History for Cosmos Hub, Polkadot and three more EVM networks
+
+- **ATOM history** from **CryptoCrew's Cosmos Hub archive node**, whose transaction index runs from the
+  chain's start. It stayed off until now because ordinary public servers prune that index — one answer
+  in nine for an account with known sends — and an empty list that means "pruned" is worse than none.
+  Sends, receipts, multi-send payouts and IBC transfers out. Mass "airdrops" of a micro-ATOM to
+  thousands of look-alike addresses, with a memo advertising a "claim" site (address poisoning), are
+  left out; a single small transfer to you still shows.
+- **DOT history** of transfers on Asset Hub and the relay chain, from **Statescan** (OpenSquare) — Subscan
+  now refuses requests without an API key. Your own sends link by the hash they were submitted under, so
+  a payment made in the wallet is one row.
+- **History on Optimism, zkSync Era and Avalanche**, read only while the wallet holds something there, so each indexer learns the address only for a network it is used on (Blockscout; Routescan for Avalanche). Base, Arbitrum, Polygon, BNB, Linea, Fantom and Cronos have no history source left that answers without an API key — Blockscout's instances for them answer with a Cloudflare challenge — so there the wallet shows its own sends only, and says so.
+- All of these are on Settings → Privacy, contacted only to read history.
+
+### Faster when a server hangs
+
+- Balance reads for XRP, Stellar, NEAR, Nano, Decred, Cosmos, Polkadot and Solana tokens give each
+  server 8 seconds (15 over Tor) before asking the next, as Bitcoin-family reads already did.
+
+### Monero and Android
+
+- **One Monero node replaced:** node.sethforprivacy.com stopped answering; Stack Wallet's public node
+  (monero.stackwallet.com) takes its place in the list.
+- **The Android self-test starts the Monero service too** when the APK carries it for the device: through Tor,
+  behind its login, restoring a throwaway wallet and waiting for a node's chain height. The emulator check
+  cannot run it — Monero publishes no x86_64 Android build, and the ARM64 APK on an x86_64 image that
+  translates ARM was tried and fails before our code runs (Google's translator stops the .NET runtime with
+  SIGILL) — so Monero on Android is still proven only on a real phone.
+
+### Checks that mean something
+
+- **Live tests ran into each other.** Each class that reaches the internet lifted the suite's offline
+  wall for itself and one of them put it back when it finished — while the others were mid-request. A
+  live run reported 24 failures, GitHub, XRP, Solana and Polkadot "down" among them; run one at a time,
+  40 of 43 passed, and the three left were real (dcrdata slow, the dead Monero node). They now run as one
+  collection, one at a time, and a test fails if a live class is left out of it.
+
+### Windows code signing
+
+- [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md): the routes from the self-signed certificate to one a
+  certificate authority vouches for (SignPath Foundation, free for open-source projects, is the fit;
+  Azure's is for individuals in the US and Canada only), and what the pipeline changes then. Applying is
+  the maintainer's step.
+
 ## [4.10.0-beta.4] — Beta of 8 October 2026 (a GitHub pre-release) — balances several times faster, Litecoin answers again, betas without numbers
 
 ### Betas have no numbers

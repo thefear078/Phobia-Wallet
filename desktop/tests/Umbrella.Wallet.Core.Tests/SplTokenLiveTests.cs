@@ -14,6 +14,7 @@ namespace Umbrella.Wallet.Core.Tests;
 /// signature checking off. Nothing lands. Never part of the offline run.
 /// </summary>
 [Trait("Category", "Live")]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class SplTokenLiveTests(ITestOutputHelper output)
 {
     private const string Node = "https://api.mainnet-beta.solana.com";

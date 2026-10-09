@@ -23,7 +23,7 @@ namespace Umbrella.Wallet.Core.Tests;
 // offline for exactly this reason; this file reintroduced the problem by being named after the other
 // convention, and LiveTestTraitTests now stops that recurring.
 [Trait("Category", "Live")]
-[Collection(SharedAppStateCollection.Name)]
+[Collection(LiveNetworkCollection.Name)]
 public sealed class LiveExplorerEndpointTests : IDisposable
 {
     /// <summary>The genesis coinbase address — the most-examined address in Bitcoin, and one that will
@@ -31,16 +31,16 @@ public sealed class LiveExplorerEndpointTests : IDisposable
     private const string Genesis = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
 
     /// <summary>Opens the registry so these tests reach the real internet — which is the entire point
-    /// of them — and closes it again afterwards, so nothing scheduled later inherits live access.</summary>
+    /// of them. The live collection (<see cref="LiveNetworkCollection"/>) closes it again after its last
+    /// test; closing it here cut off the live classes still running.</summary>
     public LiveExplorerEndpointTests()
     {
-        // The rest of the suite runs behind the wallet's own kill-switch, which refuses every
-        // connection. These tests exist to make real ones, so they lift it - and put it straight back.
         PublicHttp.SetRequireProxy(false);
         ChainEndpoints.ClearAll();
     }
 
-    public void Dispose() => TestDataIsolation.GoOffline();
+    /// <summary>Undoes the server choices these tests made; the network stays open for the next live test.</summary>
+    public void Dispose() => ChainEndpoints.ClearAll();
 
     private static async Task<AddressActivityOrSkip> ActivityAsync(string baseUrl)
     {

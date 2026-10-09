@@ -1227,6 +1227,7 @@ public partial class MainViewModel : ViewModelBase
     private XrpSendQuote? _xrpQuote;
     private AtomSendQuote? _atomQuote;
     private ZecSendQuote? _zecQuote;
+    private DcrSendQuote? _dcrQuote;
     private string _sendSymbol = "ETH";
     private decimal _moneroAmount;
     private string _moneroTo = string.Empty;
@@ -1352,6 +1353,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly XrpTransactionSender _xrpSender = new();
     private readonly CosmosTransactionSender _atomSender = new();
     private readonly ZcashTransactionSender _zecSender = new();
+    private readonly DecredTransactionSender _dcrSender = new();
     private readonly EmbeddedTorService _tor = new();
     private readonly MoneroRpcService _monero = new();
     private CancellationTokenSource? _refreshCts;
@@ -2094,6 +2096,7 @@ public partial class MainViewModel : ViewModelBase
     {
         "BTC", "LTC", "BCH", "DOGE",                 // UTXO HD wallet (BCH signs with SIGHASH_FORKID)
         "ZEC",                                       // Zcash transparent (v4 Sapling, ZIP-243 digest)
+        "DCR",                                       // Decred (BLAKE-256 signature hash, fraud-proof inputs)
         "ETH", "BNB", "MATIC", "AVAX", "FTM", "CRO", // Ethereum + EVM side-chains (shared key/address)
         "ARB", "BASE", "OP", "LINEA", "ZKSYNC",      // Ethereum L2 rollups — native ETH, same 0x address
         "SOL", "TON", "ADA", "XLM", "NEAR", "XRP",   // account-based (XLM: memo; NEAR: implicit account; XRP: tag)
@@ -2117,6 +2120,7 @@ public partial class MainViewModel : ViewModelBase
         new("BCH", "Bitcoin Cash", "Bitcoin Cash network · CashAddr"),
         new("DOGE", "Dogecoin", "Dogecoin network"),
         new("ZEC", "Zcash", "Zcash network · transparent t1… only, not shielded"),
+        new("DCR", "Decred", "Decred network · Ds… address"),
         new("SOL", "Solana", "Solana network"),
         new("TON", "Toncoin", "TON network · wallet v4R2"),
         new("XMR", "Monero", "Monero network · needs the Monero service on"),
@@ -2866,6 +2870,9 @@ public partial class MainViewModel : ViewModelBase
         // ZEC: ZIP-317 charges 0.00005 ZEC per coin spent, 0.0001 at least — 0.0005 covers ten coins.
         // The review states the exact fee for the coins actually chosen.
         "ZEC" => 0.0005m,
+        // DCR: 0.00015 DCR per kB of transaction, about 0.00004 for one coin and 0.0005 for nineteen.
+        // The review states the exact fee for the coins actually chosen.
+        "DCR" => 0.0005m,
         _ => 0m,
     };
 
