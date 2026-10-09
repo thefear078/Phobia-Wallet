@@ -4,6 +4,39 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased] — repository, security checks and documentation
+
+Nothing here changes what the wallet does with your coins; it changes what can be checked about it.
+
+### Security
+
+- **Linux: the data folder and every file in it are now readable by you alone.** A self-review found
+  them created with the system default (folder `0755`, files `0644`), so another account on the same
+  machine could read the plain-text ones — address book, watched addresses, activity log. The vault was
+  encrypted all along. The folder is now `0700` and every file the wallet writes `0600` from the moment
+  it exists, not tightened afterwards; tests pin both. Android's app storage was already private, and so
+  is Windows' `%APPDATA%` — a portable copy on another drive inherits that drive's permissions.
+- The self-review itself — secrets in logs, wiping keys from memory, files at rest, local services — is
+  in [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md), with what is still open.
+
+### Checks
+
+- **Semgrep** (C#, secrets, GitHub Actions rules) runs beside CodeQL on every pull request; CodeQL now
+  also reads the workflows themselves.
+- **Every NuGet package is pinned by hash** (`packages.lock.json`) and CI restores in locked mode: a
+  package that changes on the feed fails the build instead of shipping.
+- Workflows hold write access only in the jobs that publish; the release page gets each release's
+  signed **provenance** file, so an attestation can be checked offline.
+- **Coverage** of the offline suite is published weekly and on every push to `main`.
+
+### Repository
+
+- A shorter README — what it is in five seconds, then the features, screenshots, architecture and a
+  Results table of what was measured — with the full tour moved to [docs/FEATURES.md](docs/FEATURES.md).
+- [docs/testing.md](docs/testing.md) describes every test layer and what a failure in it would mean;
+  [docs/architecture.md](docs/architecture.md) gains the send path as a diagram and the repository layout.
+- CONTRIBUTING rewritten around `good first issue` / `help wanted` and area labels.
+
 ## [4.10.0-beta.5] — Beta of 9 October 2026 (a GitHub pre-release) — Decred sends, ATOM and DOT history, live checks that mean something
 
 ### Decred sends

@@ -84,6 +84,13 @@ specific commit — checked against the log, not against anything this project s
 gh attestation verify PhobiaWallet-Setup-Beta.exe --repo thefear078/Phobia-Wallet
 ```
 
+From the release after 4.10.0-beta.5 the signed attestation itself is on the release page too, as
+`provenance-<label>.sigstore.json`, so it can be checked without asking GitHub for it:
+
+```bash
+gh attestation verify PhobiaWallet-Setup-Beta.exe --repo thefear078/Phobia-Wallet --bundle provenance-Beta.sigstore.json
+```
+
 Each release also carries `PhobiaWallet-<label>-sbom.spdx.json`: every package that release builds from,
 with its version and licence (SPDX, from GitHub's dependency graph), covered by the same checksum and
 attestation.

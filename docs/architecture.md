@@ -183,6 +183,69 @@ These are not lint rules; they are tests that exist because each one was a real 
   Settings does not name.
 - A file the wallet writes that the wipe does not remove.
 
+## The send path
+
+Every chain's send follows the same shape, and each step exists because skipping it has cost somebody
+money somewhere:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor You
+    participant App as App (view model)
+    participant Core as Core (offline)
+    participant Infra as Infrastructure
+    participant Net as Explorer / node (over Tor)
+
+    You->>App: amount and destination
+    App->>Core: is the address valid for this network? a look-alike of one in your history?
+    App->>Infra: read the coins or account state
+    Infra->>Net: chain-data circuit
+    Net-->>Infra: coins, fee rate, nonce
+    Infra->>Core: plan: coins, fee, change, dust (refuse here rather than later)
+    Core-->>App: review: fee, balance before and after, what it reveals (Privacy Radar)
+    You->>App: confirm with your password
+    App->>Core: build and sign on this device; verify every signature
+    App->>Infra: broadcast the signed bytes
+    Infra->>Net: broadcast circuit (not the one that saw your address)
+    alt clear answer
+        Net-->>App: accepted, or refused with a reason
+    else no answer / unclear
+        App->>Net: ask for this exact transaction id
+        Note over App,Net: never offered as a retry —<br/>a second send of the same payment pays twice
+    end
+```
+
+The transaction id is computed before the broadcast, so an answer that never arrives can be settled
+against the chain instead of being called a failure.
+
+## Repository layout
+
+```
+desktop/
+  src/
+    Umbrella.Wallet.Core/            pure logic — no network, no UI, no file system
+      Chains/                        catalog, address formats, per-chain transaction formats
+      Derivation/                    BIP32 / SLIP-0010 / BIP32-Ed25519, Monero keys
+      Utxo/                          HD scan, spend planner, fee levels, broadcast answers
+      Safety/                        Privacy Radar, spam, address safety, server catalog
+      Polkadot/  Ton/  Codecs/       sr25519 and SCALE, TON cells, BLAKE-256 and friends
+    Umbrella.Wallet.Infrastructure/  everything that does I/O
+      Network/                       PublicHttp, explorers, senders, Tor, Monero service
+      EncryptedFileSeedVault.cs      Argon2id → AES-256-GCM vault
+      AtomicFile.cs                  every save all-or-nothing, owner-only on Unix
+    Umbrella.Wallet.App/             Avalonia UI: desktop window and phone shell
+      Views/  ViewModels/            XAML pages, MainViewModel split by feature
+      Localization.cs  Theming.cs    6 languages, 15 themes
+    Umbrella.Wallet.Android/         the Android head around the same App
+  tests/
+    Umbrella.Wallet.Core.Tests/      ~1,890 offline tests (+ Live ones, by hand)
+    Umbrella.Wallet.UiTests/         every screen drawn headless
+  installer/  scripts/               Inno Setup; release, signing, Tor/Monero staging
+scripts/                             release gates, verifiers, device checks
+docs/                                this documentation
+```
+
 ## See also
 
 - [building.md](building.md) — build, run, test, package

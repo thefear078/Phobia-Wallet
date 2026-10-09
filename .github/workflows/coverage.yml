@@ -1,0 +1,51 @@
+name: Coverage
+
+# How much of the code the offline suite runs, per assembly, on every push to main and weekly. Written to
+# the run's summary page and kept as an artifact. Not a gate: a percentage is a map of what is untested,
+# not a measure of quality — the tests' own doc comments say what each one protects (docs/testing.md).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "12 6 * * 1" # Mondays 06:12 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      # Two reproducibility settings are undone for this run only (desktop/Directory.Build.props): Release
+      # builds carry no symbols, so Debug; and PathMap rewrites source paths to /_/, which makes coverlet
+      # skip every assembly whose files it cannot find — Core and Infrastructure included.
+      - name: Offline suite with coverage (coverlet)
+        run: >
+          dotnet test desktop/Umbrella.Wallet.sln -c Debug -p:PathMap= --filter "Category!=Live"
+          --collect:"XPlat Code Coverage" --results-directory coverage
+      - name: Summary
+        run: |
+          {
+            echo "## Coverage of the offline suite"
+            echo
+            python3 scripts/coverage-summary.py coverage
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-cobertura
+          path: coverage/**/coverage.cobertura.xml
+          retention-days: 30

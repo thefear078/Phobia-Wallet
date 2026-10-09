@@ -7,8 +7,9 @@ on:
   push:
     tags: ["v*"]
 
+# Read-only by default; each job that attaches files to the release asks for write itself.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # A published release is never rebuilt. On 2026-10-03 every tag was moved to one commit and this
@@ -17,6 +18,8 @@ jobs:
   guard:
     name: guard
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Refuse to rebuild a published release
         env:
@@ -34,6 +37,8 @@ jobs:
     name: windows
     needs: guard
     runs-on: windows-latest
+    permissions:
+      contents: write   # attach its files to the release
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
@@ -114,6 +119,8 @@ jobs:
     name: linux
     needs: guard
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # attach its files to the release
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
@@ -154,6 +161,8 @@ jobs:
     name: android
     needs: guard
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # attach its files to the release
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # The android workload installs into the SDK's own folder, so the SDK goes somewhere this user
@@ -204,7 +213,9 @@ jobs:
             keytool -genkeypair -keystore "$KS" -storetype PKCS12 -alias "$ALIAS" -keyalg RSA -keysize 4096 \
               -validity 10000 -storepass "$PASS" -keypass "$PASS" -dname "CN=Phobia Wallet, O=the fear"
           fi
-          echo "::add-mask::$PASS"
+          # A throwaway password for a throwaway key, used only when the signing secrets are absent (a fork):
+          # masked before the line below writes it to the job environment.
+          echo "::add-mask::$PASS"  # nosemgrep: yaml.github-actions.security.audit.unsafe-add-mask-workflow-command.unsafe-add-mask-workflow-command
           {
             echo "ANDROID_KEYSTORE=$KS"
             echo "ANDROID_KEY_ALIAS=$ALIAS"
@@ -379,11 +390,22 @@ jobs:
       # a signing service had a bad minute. A missing attestation is visible and re-runnable; a
       # half-published release is not.
       - name: Attest the release artifacts
+        id: attest
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: |
             assets/PhobiaWallet-*
             SHA256SUMS-${{ steps.v.outputs.label }}.txt
+
+      # The attestation also lives on the release as a file, so it can be checked without asking GitHub:
+      #   gh attestation verify <file> --repo thefear078/Phobia-Wallet --bundle provenance-<label>.sigstore.json
+      - name: Keep the provenance on the release page
+        run: cp "${{ steps.attest.outputs.bundle-path }}" "provenance-${{ steps.v.outputs.label }}.sigstore.json"
+      - name: Attach the provenance
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
+          files: provenance-${{ steps.v.outputs.label }}.sigstore.json
 
       - name: Attest the numbered copies' manifest
         if: steps.v.outputs.compat != ''
