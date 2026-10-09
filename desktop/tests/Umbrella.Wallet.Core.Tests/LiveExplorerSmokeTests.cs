@@ -7,8 +7,10 @@ namespace Umbrella.Wallet.Core.Tests;
 /// category). Proves the Esplora adapter still parses production responses — the half the offline
 /// fake-explorer tests cannot cover. Run explicitly:
 ///   dotnet test --filter Category=Live
-/// BTC (Blockstream) and LTC (litecoinspace) share the identical Esplora shape, so exercising LTC
-/// validates the adapter for both; BTC is left out here because Blockstream rate-limits shared IPs.
+/// Litecoin is read the way the wallet reads it: litecoinspace (Esplora), Bitcore and BlockCypher,
+/// the healthiest first — litecoinspace alone went down for days in October 2026, and a smoke test of
+/// one server then said "Litecoin is broken" while the wallet's Litecoin balance worked. BTC is left
+/// out here because the public servers rate-limit shared IPs.
 /// </summary>
 [Trait("Category", "Live")]
 [Collection(LiveNetworkCollection.Name)]
@@ -20,7 +22,7 @@ public sealed class LiveExplorerSmokeTests
     [Fact]
     public async Task Ltc_explorer_reports_activity_for_a_used_address()
     {
-        var explorer = EsploraUtxoExplorer.For("LTC");
+        var explorer = FailoverUtxoExplorer.ForLitecoin();
         var activity = await explorer.GetActivityAsync(ActiveLtcAddress, CancellationToken.None);
 
         Assert.True(activity.Used, "a high-activity address must read as used");
@@ -30,7 +32,7 @@ public sealed class LiveExplorerSmokeTests
     [Fact]
     public async Task Ltc_explorer_returns_parseable_utxos()
     {
-        var explorer = EsploraUtxoExplorer.For("LTC");
+        var explorer = FailoverUtxoExplorer.ForLitecoin();
         var utxos = await explorer.GetUtxosAsync(ActiveLtcAddress, CancellationToken.None);
 
         Assert.NotEmpty(utxos);

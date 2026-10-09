@@ -5,7 +5,8 @@ namespace Umbrella.Wallet.Core.Chains;
 /// (roadmap P1.10).
 ///
 /// The Activity feed shows what this wallet did plus whatever history it can pull from an explorer.
-/// For a chain with no history reader — Dogecoin and transparent Zcash today — a transaction made
+/// For a chain with no history reader — every native chain has one today; some EVM networks read at the
+/// Ethereum address do not (the Activity screen adds those) — a transaction made
 /// anywhere else, or before this wallet existed, simply is not there. The feed does not look empty
 /// because nothing happened; it looks empty because nobody asked.
 ///

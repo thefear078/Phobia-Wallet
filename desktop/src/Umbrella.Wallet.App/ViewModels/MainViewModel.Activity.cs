@@ -146,11 +146,21 @@ public partial class MainViewModel
     /// </summary>
     private void RefreshHistoryCoverage()
     {
-        var held = Accounts
+        var accounts = Accounts.ToArray();
+        var held = accounts
             .Where(a => a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address))
             .Select(a => a.Symbol);
 
-        HistoryGapCoins = string.Join(", ", HistoryCoverage.WithoutHistory(held));
+        // EVM networks read at the Ethereum address that have no keyless indexer (Base, Arbitrum, BNB …)
+        // are named too, once the wallet holds something there: their rows carry "ETH" or "BNB", which
+        // the catalog alone would not flag.
+        var evmGaps = accounts
+            .Where(a => a.Derivation == EvmSideDerivation && a.Amount > 0 &&
+                        !OnChainHistoryClient.EvmSideHistory.Any(s => s.Network.Equals(a.Chain, StringComparison.OrdinalIgnoreCase)))
+            .Select(a => $"{a.Symbol} ({a.Chain})")
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        HistoryGapCoins = string.Join(", ", HistoryCoverage.WithoutHistory(held).Concat(evmGaps));
     }
 
     /// <summary>The merged feed (roadmap §6): local events plus real on-chain history, deduped by explorer
