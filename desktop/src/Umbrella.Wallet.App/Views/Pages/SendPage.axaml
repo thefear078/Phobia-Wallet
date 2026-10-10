@@ -211,6 +211,13 @@
                   Content="{Binding [send.max], Source={x:Static app:Loc.Instance}}" Command="{Binding SetMaxAmountCommand}"/>
         </StackPanel>
 
+        <!-- A note for yourself: kept encrypted on this device against the transaction, never sent. -->
+        <StackPanel Spacing="5">
+          <TextBlock Classes="eyebrow" Text="{Binding [send.noteLabel], Source={x:Static app:Loc.Instance}}"/>
+          <TextBox Text="{Binding SendNote}" MaxLength="280"
+                   Watermark="{Binding [send.notePh], Source={x:Static app:Loc.Instance}}"/>
+        </StackPanel>
+
         <!-- Everything a send does not need every time, folded behind one line: saving the address,
              choosing the coins, the fee level, and the private-send checklist. Nothing was removed. -->
         <Expander Classes="soft" HorizontalAlignment="Stretch">

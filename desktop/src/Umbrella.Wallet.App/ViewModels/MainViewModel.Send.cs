@@ -1321,7 +1321,7 @@ public partial class MainViewModel
                         SendTo = string.Empty;
                         SendAmount = string.Empty;
                         StatusMessage = Loc.Instance["status.broadcastFailed"];
-                        PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", Shorten(quote.To), "now",
+                        PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", quote.To, "now",
                             txid is null ? null : $"https://{explorer}", "Pending");
                         break;
                     }
@@ -1350,7 +1350,7 @@ public partial class MainViewModel
                             SendTo = string.Empty;
                             SendAmount = string.Empty;
                             StatusMessage = Loc.Instance["status.broadcastFailed"];
-                            PushActivity("Sent", "SOL", $"-{Fmt(quote.AmountSol)}", Shorten(quote.To), "now",
+                            PushActivity("Sent", "SOL", $"-{Fmt(quote.AmountSol)}", quote.To, "now",
                                 explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                             break;
                         }
@@ -1399,7 +1399,7 @@ public partial class MainViewModel
                             SendAmount = string.Empty;
                             SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                             StatusMessage = Loc.Instance["status.broadcastFailed"];
-                            PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", Shorten(quote.To), "now",
+                            PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", quote.To, "now",
                                 explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                             break;
                         }
@@ -1468,7 +1468,7 @@ public partial class MainViewModel
                             SendMemo = string.Empty;
                             SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                             StatusMessage = Loc.Instance["status.broadcastFailed"];
-                            PushActivity("Sent", "XLM", $"-{Fmt(quote.AmountXlm)}", Shorten(quote.To), "now",
+                            PushActivity("Sent", "XLM", $"-{Fmt(quote.AmountXlm)}", quote.To, "now",
                                 explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                             break;
                         }
@@ -1523,7 +1523,7 @@ public partial class MainViewModel
                         SendAmount = string.Empty;
                         SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                         StatusMessage = Loc.Instance["status.broadcastFailed"];
-                        PushActivity("Sent", "DOT", $"-{Fmt(quote.AmountDot)}", Shorten(quote.To), "now",
+                        PushActivity("Sent", "DOT", $"-{Fmt(quote.AmountDot)}", quote.To, "now",
                             explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                         break;
                     }
@@ -1552,7 +1552,7 @@ public partial class MainViewModel
                         SendMemo = string.Empty;
                         SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                         StatusMessage = Loc.Instance["status.broadcastFailed"];
-                        PushActivity("Sent", "ATOM", $"-{Fmt(quote.AmountAtom)}", Shorten(quote.To), "now",
+                        PushActivity("Sent", "ATOM", $"-{Fmt(quote.AmountAtom)}", quote.To, "now",
                             explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                         break;
                     }
@@ -1581,7 +1581,7 @@ public partial class MainViewModel
                         SendMemo = string.Empty;
                         SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                         StatusMessage = Loc.Instance["status.broadcastFailed"];
-                        PushActivity("Sent", "XRP", $"-{Fmt(quote.AmountXrp)}", Shorten(quote.To), "now",
+                        PushActivity("Sent", "XRP", $"-{Fmt(quote.AmountXrp)}", quote.To, "now",
                             explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                         break;
                     }
@@ -1611,7 +1611,7 @@ public partial class MainViewModel
                             SendAmount = string.Empty;
                             SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                             StatusMessage = Loc.Instance["status.broadcastFailed"];
-                            PushActivity("Sent", "NEAR", $"-{Fmt(quote.AmountNear)}", Shorten(quote.To), "now",
+                            PushActivity("Sent", "NEAR", $"-{Fmt(quote.AmountNear)}", quote.To, "now",
                                 explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                             break;
                         }
@@ -1726,7 +1726,7 @@ public partial class MainViewModel
         StatusMessage = Loc.Instance["status.broadcastFailed"];
         var link = string.IsNullOrWhiteSpace(explorer) ? null
             : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
-        PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link, "Pending");
+        PushActivity("Sent", symbol, $"-{Fmt(amount)}", to, "now", link, "Pending");
     }
 
     /// <param name="confirmed">True only when the sender itself followed the transaction into a
@@ -1752,7 +1752,7 @@ public partial class MainViewModel
             var link = string.IsNullOrWhiteSpace(explorer) ? null
                 : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
             // Pending until a block is known to hold it, so the feed never says more than the wallet saw.
-            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link, confirmed ? "Confirmed" : "Pending");
+            PushActivity("Sent", symbol, $"-{Fmt(amount)}", to, "now", link, confirmed ? "Confirmed" : "Pending");
             // The receipt is on screen now. Reading every balance again took the better part of a
             // minute over Tor, and the send stayed "busy" for all of it — so it happens behind the
             // receipt, and once more a little later for the chains whose explorers lag a block.
@@ -1764,7 +1764,7 @@ public partial class MainViewModel
             StatusMessage = Loc.Instance["status.broadcastFailed"];
             // A failed broadcast never left this device, so record it as retryable (full destination and
             // amount kept in retry context, not shown, so Retry can safely re-open a pre-filled send).
-            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", null, "Failed",
+            PushActivity("Sent", symbol, $"-{Fmt(amount)}", to, "now", null, "Failed",
                 retryTo: to, retryAmount: amount.ToString(CultureInfo.InvariantCulture), retryChain: symbol);
         }
 

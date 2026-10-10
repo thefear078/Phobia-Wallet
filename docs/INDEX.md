@@ -120,6 +120,6 @@ Phobia-Wallet/
 
 ---
 
-*Last updated: 2026-10-09 · Wallet version [4.10.0-beta.5](../VERSION) (shown as Phobia Beta)*
+*Last updated: 2026-10-10 · Wallet version [4.10.0-beta.6](../VERSION) (shown as Phobia Beta)*
 
 📖 This page is the documentation hub. Product overview: [README.md](../README.md).

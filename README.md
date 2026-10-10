@@ -16,7 +16,7 @@ No account · no email · no KYC · no tracking · no fee on your transfers.
 [![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release&color=6E5FB8)](https://github.com/thefear078/Phobia-Wallet/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4B3F86)](LICENSE)
 ![Version](https://img.shields.io/badge/version-Beta-2F6BEF)
-![Tests](https://img.shields.io/badge/tests-1%2C890%2B%20offline-7DCF8F)
+![Tests](https://img.shields.io/badge/tests-1%2C950%2B%20offline-7DCF8F)
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
@@ -24,7 +24,7 @@ No account · no email · no KYC · no tracking · no fee on your transfers.
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download the Beta](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5)** ·
+**[⬇ Download the Beta](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.6)** ·
 [Verify a download](docs/BUILD_VERIFY.md) ·
 [Build from source](#build-from-source) ·
 [Feature tour](docs/FEATURES.md) ·
@@ -83,7 +83,8 @@ can receive, send, show its balance and read its history.
 **Security**
 - Encrypted vault; your password again before every send; auto-lock; seed screens hidden from screenshots.
 - Warnings for **address poisoning**, wrong-network addresses and look-alikes of your own; a **duress password**.
-- An unclear broadcast is settled against the chain — never offered as a retry that would pay twice.
+- One amount box with its unit on it, a review that puts warnings first, and a receipt for every send;
+  an unclear broadcast is settled against the chain — never offered as a retry that would pay twice.
 - Signed, attested releases with an SBOM; the code that derives keys and signs **rebuilds byte for byte**.
 
 **Money**
@@ -93,7 +94,8 @@ can receive, send, show its balance and read its history.
 - **Staking** for TRX, SOL and ATOM, signed in the wallet. **No platform fee**, ever.
 
 **Every day**
-- Portfolio chart, an exchange-style market chart, Activity with fiat values, CSV export, encrypted notes.
+- A balance chart drawn through your own transfers, an exchange-style market chart, Activity with fiat values
+  and the whole history the wallet has read, CSV export, encrypted notes on transfers and names for addresses.
 - 15 themes, 6 languages, desktop and phone layouts, updates that check their own checksums.
 
 See all of it, screen by screen, in the **[feature tour](docs/FEATURES.md)**.
@@ -155,17 +157,17 @@ not quote that coin when last checked. Per-chain detail: **[docs/12-coins-and-ch
 
 <img src="docs/assets/logo-phobia.png" width="56" align="right" alt="Phobia icon"/>
 
-The current build is the **Beta** of 9 October 2026, a GitHub pre-release; older builds are on the
+The current build is the **Beta** of 10 October 2026, a GitHub pre-release; older builds are on the
 [releases page](https://github.com/thefear078/Phobia-Wallet/releases). The icon on the right is what you
 will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | [`PhobiaWallet-Setup-Beta.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Setup-Beta.exe) |
-| **Windows portable** | [`PhobiaWallet-Beta-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-win-x64-portable.exe) — one file, no install |
-| **Linux** | [`PhobiaWallet-Beta-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-linux-x64.tar.gz) — Tor and Monero included |
-| **Android** | [`PhobiaWallet-Beta-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-android.apk) — Android 7.0+, [how to install](docs/guides/android.md) |
-| **Checksums** | [`SHA256SUMS-Beta.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/SHA256SUMS-Beta.txt) |
+| **Windows installer** | [`PhobiaWallet-Setup-Beta.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/PhobiaWallet-Setup-Beta.exe) |
+| **Windows portable** | [`PhobiaWallet-Beta-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/PhobiaWallet-Beta-win-x64-portable.exe) — one file, no install |
+| **Linux** | [`PhobiaWallet-Beta-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/PhobiaWallet-Beta-linux-x64.tar.gz) — Tor and Monero included |
+| **Android** | [`PhobiaWallet-Beta-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/PhobiaWallet-Beta-android.apk) — Android 7.0+, [how to install](docs/guides/android.md) |
+| **Checksums** | [`SHA256SUMS-Beta.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/SHA256SUMS-Beta.txt) |
 
 **Check before you run anything:**
 
@@ -217,7 +219,7 @@ git clone https://github.com/thefear078/Phobia-Wallet.git
 cd Phobia-Wallet
 dotnet build desktop/Umbrella.Wallet.sln -c Release                                 # build
 dotnet run --project desktop/src/Umbrella.Wallet.App                                # run
-dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"        # ~1,890 offline tests
+dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"        # ~1,950 offline tests
 ```
 
 Installers, the portable exe, the Linux tarball and the Android APK: **[docs/building.md](docs/building.md)**.
@@ -305,7 +307,7 @@ for anything that could put funds at risk.
 
 ## Quality
 
-- **1,890+ offline tests** on every push: derivation and signing pinned to official vectors and to
+- **1,950+ offline tests** on every push: derivation and signing pinned to official vectors and to
   transactions the networks accepted, amount parsing, spend planning, privacy on the wire (a SOCKS5 server
   reads each request's circuit, a listener proves the kill-switch opens no socket), and every screen
   rendered headless on desktop and phone.
@@ -317,12 +319,12 @@ for anything that could put funds at risk.
 
 ### Results
 
-Measured on **9 October 2026** against `main` and the current Beta — re-run them yourself with the commands
+Measured on **9–10 October 2026** against `main` and the current Beta — re-run them yourself with the commands
 in [docs/testing.md](docs/testing.md) and [docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md).
 
 | Check | Result |
 |---|---|
-| Offline test suite | ✅ **1,893 / 1,893** passed · rendered screens **4 / 4** |
+| Offline test suite | ✅ **1,958 / 1,958** passed · rendered screens **4 / 4** |
 | Line coverage of the offline suite | **Core 90.6 %** — the money logic: derivation, signing, fees, parsing · Infrastructure 41.9 % (network code; the live tests cover it instead) · App 54.1 % · **58.5 %** overall ([by assembly](docs/testing.md#coverage)) |
 | Static analysis | ✅ CodeQL: **0** open alerts · ✅ Semgrep: **0** findings — 76 rules over 427 C# files, the workflows and secrets |
 | Live tests against real explorers and nodes | ✅ **48 / 49** — the one left: an explorer rate-limiting this machine |

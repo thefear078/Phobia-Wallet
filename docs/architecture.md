@@ -239,7 +239,7 @@ desktop/
       Localization.cs  Theming.cs    6 languages, 15 themes
     Umbrella.Wallet.Android/         the Android head around the same App
   tests/
-    Umbrella.Wallet.Core.Tests/      ~1,890 offline tests (+ Live ones, by hand)
+    Umbrella.Wallet.Core.Tests/      ~1,950 offline tests (+ Live ones, by hand)
     Umbrella.Wallet.UiTests/         every screen drawn headless
   installer/  scripts/               Inno Setup; release, signing, Tor/Monero staging
 scripts/                             release gates, verifiers, device checks

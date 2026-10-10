@@ -20,7 +20,7 @@ safely.
 ## 1. Download
 
 The current build is the **Beta**, a GitHub *pre-release*: get it from its
-**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
+**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.6)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
 full 4.10.0 is out.)
 
 | Platform | File |
@@ -109,6 +109,9 @@ Tor hides your **IP** from explorers. It does **not** make Bitcoin/Ethereum priv
    Type your password and confirm.
 5. The receipt says how it ended (*confirmed*, *waiting for a block*, or *no clear answer — check before
    sending again*) and can be copied as text or saved as a picture.
+6. A **note for yourself** can be written on the form, on the receipt, or later under the transfer in
+   Activity (the pencil), together with a **name for the address** on its other side. Both are encrypted
+   and stay on the device. An address you have paid before is recognised; a look-alike of one is flagged.
 
 Every coin in the wallet sends.
 

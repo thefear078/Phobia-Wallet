@@ -1,6 +1,6 @@
 # Phobia Wallet — unified roadmap
 
-**Product version:** see [`VERSION`](../VERSION) (currently **4.10.0-beta.5**, shown as “Beta”; betas are not numbered for people).  
+**Product version:** see [`VERSION`](../VERSION) (currently **4.10.0-beta.6**, shown as “Beta”; betas are not numbered for people).  
 **Consolidation date:** 2026-09-15 · **last status pass:** 2026-10-07 (readiness audit: Tor circuit isolation made real, Monero service login, Orbot on Android, swap claims re-checked live; before that 2026-09-20: P0.0, P0.2–P0.4, P0.6–P0.8, P1.1, P1.2, P1.4–P1.7, P1.9–P1.13 and L.1/L.2/L.3/L.8 closed).  
 **Purpose:** one document for “what remains to do” — compiled from README, CHANGELOG, `SECURE_ANON_ROADMAP`, `CLAUDE_IMPLEMENTATION_ROADMAP_UK`, `12-coins-and-chains`, `PRIVACY`, `THREAT_MODEL`, `security-model`, `BUILD_VERIFY`, and notes on alignment with the manifesto philosophy.
 

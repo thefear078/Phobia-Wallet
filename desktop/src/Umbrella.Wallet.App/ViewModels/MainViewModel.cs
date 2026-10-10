@@ -2673,13 +2673,23 @@ public partial class MainViewModel : ViewModelBase
 
         // Snapshots: a refresh finishing in the background can rewrite these lists while they are read.
         var own = Accounts.ToArray().Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
+        // Whole addresses, from the rows that kept them: everyone this wallet has paid (trusted), and
+        // everyone who has paid it (seen, not trusted). The rows used to hold only "abcd…wxyz", which
+        // equals no address and resembles none — an address paid twice was a "first send" each time,
+        // and a look-alike of one went unnoticed.
+        var history = Activity.ToArray().Concat(_onChainRows.ToArray())
+            .Where(t => !string.IsNullOrWhiteSpace(t.CounterpartyFull) && !t.IsFailed)
+            .ToList();
         var known = _addressBookAll.ToArray().Select(e => e.Address)
-            .Concat(Transactions.ToArray().Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
+            .Concat(history.Where(t => t.Kind == "Sent").Select(t => t.CounterpartyFull!))
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var seen = history.Where(t => t.Kind == "Received").Select(t => t.CounterpartyFull!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        var result = Umbrella.Wallet.Core.Safety.AddressSafetyInspector.Inspect(dest, own, known);
+        var result = Umbrella.Wallet.Core.Safety.AddressSafetyInspector.Inspect(dest, own, known, seen);
         switch (result.Level)
         {
             case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.Lookalike:
@@ -2699,7 +2709,9 @@ public partial class MainViewModel : ViewModelBase
                 // actually well-formed for the chosen chain AND you have some history to be "new"
                 // against. On a fresh wallet with no contacts, everyone is new — that would be noise.
                 var sym = SelectedSendAsset?.Symbol;
-                if (known.Count > 0 &&
+                // ...and only once this wallet's history has been read: until then "never paid before"
+                // is a guess, and it was being said about addresses paid the day before.
+                if (known.Count > 0 && (HistorySynced || _isTonWallet || _isMoneroWallet) &&
                     DestinationAddressCheck.Check(sym, dest) == AddressShape.Matches)
                 {
                     SendSafetyTitle = Loc.Instance["send.firstTitle"];
@@ -6202,6 +6214,7 @@ public partial class MainViewModel : ViewModelBase
         _onChainRows.Clear();
         HistorySynced = false; // this wallet's history hasn't been pulled yet → show "loading", not "empty"
         if (!_isTonWallet && !_isMoneroWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history across the user's addresses
+        else _ = LoadTxNotesAsync();   // no history read to bring them in: this wallet's notes, for its own rows
     }
 
     private void SelectFirstReceive()

@@ -215,6 +215,17 @@ public partial class MainViewModel
     /// <summary>The fee as the review stated it ("0.000005 SOL"), kept for the receipt.</summary>
     private string _reviewFeeText = string.Empty;
 
+    /// <summary>A note for yourself on the transfer being made: saved, encrypted, against its transaction
+    /// once there is one. Never part of the transaction — nobody else ever sees it.</summary>
+    [ObservableProperty] private string _sendNote = string.Empty;
+
+    /// <summary>The note on the receipt: what was written on the form, and still editable there.</summary>
+    [ObservableProperty] private string _receiptNote = string.Empty;
+
+    public bool HasReceiptNote => !string.IsNullOrWhiteSpace(ReceiptNote);
+
+    partial void OnReceiptNoteChanged(string value) => OnPropertyChanged(nameof(HasReceiptNote));
+
     /// <summary>Builds the receipt. Called before the quotes are cleared, while the review still knows
     /// the fee and the fiat value.</summary>
     private void ShowSendReceipt(SendReceiptState state, string symbol, decimal amount, string to,
@@ -234,11 +245,22 @@ public partial class MainViewModel
             // An unclear ending is explained in the wallet's language; the sender's own words follow it.
             state == SendReceiptState.Unclear ? Loc.Instance["receipt.unclearNote"] : note ?? string.Empty,
             state == SendReceiptState.Unclear ? note ?? string.Empty : string.Empty);
+
+        // The user's own note goes with the transaction from the moment it has an id (the row the feed
+        // writes next reads it from there), and stays editable on the receipt.
+        ReceiptNote = (SendNote ?? string.Empty).Trim();
+        SendNote = string.Empty;
+        if (ReceiptNote.Length > 0 && !string.IsNullOrWhiteSpace(reference)) _ = StoreNoteAsync(reference, ReceiptNote);
     }
 
     [RelayCommand]
     private void CloseSendReceipt()
     {
+        // A note written (or changed) on the receipt is kept with the transaction.
+        if (SendReceipt is { HasTxId: true } done &&
+            (ReceiptNote ?? string.Empty).Trim() != (TxNoteFor(done.TxId) ?? string.Empty))
+            _ = StoreNoteAsync(done.TxId, ReceiptNote);
+        ReceiptNote = string.Empty;
         SendReceipt = null;
         SendSuccess = string.Empty;
         DismissSendLeakReport();
@@ -274,7 +296,9 @@ public partial class MainViewModel
     private async Task CopyReceiptTextAsync()
     {
         if (SendReceipt is not { } r) return;
-        await CopyTextAsync(r.AsText());
+        var text = r.AsText();
+        if (HasReceiptNote) text += Environment.NewLine + $"{Loc.Instance["receipt.note"]}: {ReceiptNote.Trim()}";
+        await CopyTextAsync(text);
         ShowToast(Loc.Instance["receipt.copiedAll"], isError: false);
     }
 

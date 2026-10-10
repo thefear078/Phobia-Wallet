@@ -1,6 +1,6 @@
 # Security self-review
 
-*Reviewed 2026-10-09 against `main` (Phobia Wallet Beta, 4.10.0-beta.5). Not an external audit — there has
+*Reviewed 2026-10-09 against `main` (Phobia Wallet Beta, 4.10.0-beta.5; still current for 4.10.0-beta.6). Not an external audit — there has
 been none yet ([AUDIT_STATUS.md](../AUDIT_STATUS.md)). It is the code read from an attacker's side, with
 what was looked at, how, and what came of it, so anyone can repeat it.*
 

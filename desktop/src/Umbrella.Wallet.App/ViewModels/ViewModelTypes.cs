@@ -660,7 +660,8 @@ public sealed record ActivityRowViewModel(
     string? RetryChain = null,
     string? TxId = null,
     string? Note = null,
-    string? WalletId = null)
+    string? WalletId = null,
+    string? CounterpartyFull = null)
 {
     /// <summary>
     /// The amount as shown: at most eight significant digits after the leading zeros, in the wallet's
@@ -688,8 +689,38 @@ public sealed record ActivityRowViewModel(
         ? $"{T(Kind)} · {Asset}"
         : string.IsNullOrWhiteSpace(Amount) ? T(Asset) : $"{T(Asset)} · {T(Amount)}";
 
-    /// <summary>Under the title: the other side of a transfer, or what the event did.</summary>
-    public string Detail => T(Counterparty);
+    /// <summary>Under the title: the other side of a transfer — by the name the address book has for
+    /// it, when it has one — or what the event did.</summary>
+    public string Detail => CounterpartyLabel is { Length: > 0 } name
+        ? string.IsNullOrWhiteSpace(Counterparty) ? name : $"{name} · {T(Counterparty)}"
+        : T(Counterparty);
+
+    /// <summary>The name the user gave this row's other side (set by the feed from the address book).</summary>
+    public string? CounterpartyLabel { get; init; }
+
+    /// <summary>The note-and-name editor is open under this row.</summary>
+    public bool IsEditingNote { get; init; }
+
+    /// <summary>The other side's whole address is known, so it can be given a name.</summary>
+    public bool CanLabel => IsTransaction && !string.IsNullOrWhiteSpace(CounterpartyFull);
+
+    /// <summary>There is something to write on this row: a note on its transaction, a name for its address.</summary>
+    public bool CanAnnotate => CanHaveNote || CanLabel;
+
+    /// <summary>What tells this row from every other while its editor is open.</summary>
+    public string EditKey => !string.IsNullOrWhiteSpace(TxId) ? TxId! : $"{UnixMs}|{Asset}|{Amount}|{Counterparty}";
+
+    /// <summary>
+    /// The transaction id an explorer link ends in. A row the wallet wrote itself has the link but was
+    /// never given the id, so it could not carry a note until an explorer listed the same transaction.
+    /// </summary>
+    public static string? TxIdFromExplorer(string? explorer)
+    {
+        if (string.IsNullOrWhiteSpace(explorer)) return null;
+        var path = explorer.Split('?', '#')[0].TrimEnd('/');
+        var id = path[(path.LastIndexOf('/') + 1)..];
+        return id.Length >= 16 ? id : null;   // shorter than any transaction id: a page, not a transaction
+    }
 
     /// <summary>"≈ $3.42" under a transfer's amount (set by the feed from today's price).</summary>
     public string? FiatLabel { get; init; }

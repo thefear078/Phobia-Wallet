@@ -31,7 +31,8 @@ public partial class MainViewModel
 {
     private void PushActivity(string kind, string asset, string amount, string counter, string when,
         string? explorer = null, string status = "Confirmed",
-        string? retryTo = null, string? retryAmount = null, string? retryChain = null)
+        string? retryTo = null, string? retryAmount = null, string? retryChain = null,
+        string? txId = null, string? note = null)
     {
         // UI-preference changes (theme, currency, language, layout, animations…) are not wallet events —
         // logging them turned the activity feed into a developer log. Only real events (transactions,
@@ -47,8 +48,20 @@ public partial class MainViewModel
         // A transfer belongs to the wallet it was made from; what the device did (unlock, Tor, settings)
         // belongs to every wallet on it.
         var walletId = kind is "Sent" or "Received" or "Swap" or "Staked" ? _registry.Active?.Id : null;
+
+        // A transfer keeps the other side's WHOLE address, and shows it shortened. Only the shortened
+        // form used to be kept, so the wallet could never recognise an address it had already paid
+        // ("first send to this address", every time) nor a look-alike of one.
+        string? counterFull = null;
+        if (kind is "Sent" or "Received" && LooksLikeAnAddress(counter))
+        {
+            counterFull = counter.Trim();
+            counter = Shorten(counterFull);
+        }
+
+        txId ??= walletId is null ? null : ActivityRowViewModel.TxIdFromExplorer(explorer);
         Activity.Insert(0, new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer,
-            status, unixMs, retryTo, retryAmount, retryChain, WalletId: walletId));
+            status, unixMs, retryTo, retryAmount, retryChain, txId, note ?? TxNoteFor(txId), walletId, counterFull));
         while (Activity.Count > 60) Activity.RemoveAt(Activity.Count - 1);
 
         RebuildRecentActivity();
@@ -78,7 +91,7 @@ public partial class MainViewModel
     private void PersistActivity() =>
         _activityStore.Save(Activity.Select(a =>
                 new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status,
-                    a.UnixMs, a.WalletId))
+                    a.UnixMs, a.WalletId, a.CounterpartyFull))
             .Concat(_otherWalletsActivity));
 
     /// <summary>Saved transfers of the wallets that are not open: kept for the file, never listed here.</summary>
@@ -123,8 +136,11 @@ public partial class MainViewModel
                 prev = e;
                 continue;
             }
+            var savedId = e.Kind is "Sent" or "Received" or "Swap" or "Staked"
+                ? ActivityRowViewModel.TxIdFromExplorer(e.Explorer)
+                : null;
             Activity.Add(new ActivityRowViewModel(e.Kind, e.Asset, e.Amount, e.Counterparty, e.When, e.Explorer, e.Status,
-                e.UnixMs, WalletId: e.WalletId));
+                e.UnixMs, TxId: savedId, Note: TxNoteFor(savedId), WalletId: e.WalletId, CounterpartyFull: e.CounterpartyFull));
             prev = e;
         }
         if (droppedNoise) PersistActivity(); // rewrite the cleaned history so the noise never returns
@@ -220,9 +236,17 @@ public partial class MainViewModel
         var prices = Accounts.Where(a => a.Price > 0)
             .GroupBy(a => a.Symbol, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Price, StringComparer.OrdinalIgnoreCase);
+        var names = AddressNames();
         DateTime? lastDay = null;
-        foreach (var row in rows)
+        foreach (var source in rows)
         {
+            // The name the user gave the other side, and whether this is the row being written on.
+            var row = source;
+            var name = row.CounterpartyFull is { Length: > 0 } full && names.TryGetValue(full, out var saved) ? saved : null;
+            var editing = IsEditingNote && row.CanAnnotate && row.EditKey == NoteEditingKey;
+            if (name != row.CounterpartyLabel || editing != row.IsEditingNote)
+                row = row with { CounterpartyLabel = name, IsEditingNote = editing };
+
             string? fiat = null;
             if (row.IsTransaction && prices.TryGetValue(row.Asset, out var price) &&
                 decimal.TryParse(row.Amount.TrimStart('+', '-'), System.Globalization.NumberStyles.AllowDecimalPoint,
@@ -493,6 +517,24 @@ public partial class MainViewModel
         RebuildRecentActivity(); // on-chain history just arrived — refresh the Portfolio rail too
         RebuildTransactions();
         PortfolioMovesChanged(); // and the balance chart is drawn through these transfers
+        EvaluateSendSafety();    // an address being typed may turn out to be one already paid
+    }
+
+    /// <summary>A whole address, as opposed to a shortened one, a name or a sentence.</summary>
+    private static bool LooksLikeAnAddress(string? text) =>
+        text is { Length: >= 20 } && !text.Contains(' ') && !text.Contains('…') && !text.Contains("...");
+
+    /// <summary>Address → the name the address book has for it (the first, when chains share an address).</summary>
+    private Dictionary<string, string> AddressNames()
+    {
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in _addressBookAll.ToArray())
+        {
+            // An entry saved without a name is "labelled" with its own shortened address: not a name.
+            if (string.IsNullOrWhiteSpace(entry.Label) || entry.Label == Shorten(entry.Address)) continue;
+            names.TryAdd(entry.Address.Trim(), entry.Label.Trim());
+        }
+        return names;
     }
 
     /// <summary>
@@ -626,7 +668,8 @@ public partial class MainViewModel
         // Explorer history is fetched with only_confirmed, so these are settled — Status "Confirmed".
         // TxId carries the transaction hash so a private (encrypted) note can be attached to this row.
         return new ActivityRowViewModel(t.Kind, t.Asset, amount, counter, when, t.Explorer, "Confirmed", t.UnixMs,
-            TxId: t.Hash, Note: TxNoteFor(t.Hash));
+            TxId: t.Hash, Note: TxNoteFor(t.Hash),
+            CounterpartyFull: LooksLikeAnAddress(t.Counterparty) ? t.Counterparty.Trim() : null);
     }
 
     /// <summary>Copy a transaction's explorer link to the clipboard — deliberately not opened in

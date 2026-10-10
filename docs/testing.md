@@ -1,6 +1,6 @@
 # Testing and quality assurance
 
-About **1,890 offline tests**, **4 rendered-screen tests**, two **device checks**, three **static analysers**
+About **1,950 offline tests**, **4 rendered-screen tests**, two **device checks**, three **static analysers**
 and a set of release gates. This page says what each layer protects, where it runs and how to run it —
 because a test count is not evidence of anything on its own.
 
@@ -10,7 +10,7 @@ because a test count is not evidence of anything on its own.
 flowchart TB
     subgraph PR["Every pull request and every push to main"]
         direction TB
-        U["Offline suite — ~1,890 tests<br/>derivation · signing · fees · parsing · privacy · view models"]
+        U["Offline suite — ~1,950 tests<br/>derivation · signing · fees · parsing · privacy · view models"]
         UI["Rendered screens — 4 tests<br/>every section drawn headless, desktop and phone"]
         ISO["Isolation gate<br/>the kill-switch opens no socket"]
         DEV["Device checks<br/>APK on an Android emulator · Linux build on a virtual display"]

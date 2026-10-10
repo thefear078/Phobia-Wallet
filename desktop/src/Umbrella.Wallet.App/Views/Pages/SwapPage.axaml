@@ -35,7 +35,7 @@
       <StackPanel Spacing="12">
         <TextBlock Classes="eyebrow" Text="{Binding [swap.step1], Source={x:Static app:Loc.Instance}}"/>
 
-        <Grid RowDefinitions="Auto,Auto">
+        <Grid RowDefinitions="Auto,Auto,Auto">
           <!-- You pay -->
           <Border Background="{DynamicResource UmInput}" BorderBrush="{DynamicResource UmBorder2}"
                   BorderThickness="1" CornerRadius="16" Padding="16,12,16,14">
@@ -76,8 +76,10 @@
             </Grid>
           </Border>
 
-          <!-- Flip button, in the gap between the two panels: it overlaps their edges, not their contents. -->
-          <Border Grid.Row="0" Grid.RowSpan="2" Width="40" Height="40" CornerRadius="20"
+          <!-- Flip button, in a row of its own between the two panels. Centred across both, it lay on the
+               lower edge of the first - on top of the balance and its "Max" button. Now it only touches
+               the two borders. -->
+          <Border Grid.Row="1" Width="40" Height="40" CornerRadius="20" Margin="0,-8"
                   HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="2"
                   Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder3}" BorderThickness="2">
             <Button Classes="action" Command="{Binding FlipSwapCommand}"
@@ -91,7 +93,7 @@
           </Border>
 
           <!-- You receive -->
-          <Border Grid.Row="1" Margin="0,10,0,0" Background="{DynamicResource UmInput}"
+          <Border Grid.Row="2" Background="{DynamicResource UmInput}"
                   BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="16" Padding="16,14,16,12">
             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="6">
               <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"

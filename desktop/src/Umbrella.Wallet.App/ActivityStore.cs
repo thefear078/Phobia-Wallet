@@ -24,7 +24,8 @@ public sealed class ActivityStore
     /// a transfer was made from: the file is one for every wallet, and a send from one of them used to be
     /// listed in all the others — including the wallet that RECEIVED it. Both default so older files load.</remarks>
     public sealed record Entry(string Kind, string Asset, string Amount, string Counterparty, string When,
-        string? Explorer, string Status = "Confirmed", long UnixMs = 0, string? WalletId = null);
+        string? Explorer, string Status = "Confirmed", long UnixMs = 0, string? WalletId = null,
+        string? CounterpartyFull = null);
 
     public IReadOnlyList<Entry> Load()
     {

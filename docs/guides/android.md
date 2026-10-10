@@ -24,7 +24,7 @@ It is a **beta**, installed from the release page (an APK), not from a store.
 
 ## Install
 
-1. On the phone, open the **[Beta release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5)**
+1. On the phone, open the **[Beta release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.6)**
    and download **`PhobiaWallet-Beta-android.apk`**. Android 7.0 or newer, 64-bit or 32-bit ARM —
    practically every phone from the last eight years.
 2. Check the file before you open it. Its SHA-256 must match the `PhobiaWallet-Beta-android.apk` line

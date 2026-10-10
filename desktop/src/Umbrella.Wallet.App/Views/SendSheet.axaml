@@ -295,6 +295,17 @@
                   </StackPanel>
                 </Border>
 
+                <!-- Your own note, part of the picture when there is one. -->
+                <Border IsVisible="{Binding HasReceiptNote}" Background="{DynamicResource UmCardAlt}"
+                        BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="12" Padding="14,9">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                    <TextBlock FontSize="12" Foreground="{DynamicResource UmTextDim}" VerticalAlignment="Top"
+                               Text="{Binding [receipt.note], Source={x:Static app:Loc.Instance}}"/>
+                    <TextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap" TextAlignment="Right"
+                               Text="{Binding ReceiptNote}"/>
+                  </Grid>
+                </Border>
+
                 <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center" Opacity="0.7">
                   <controls:CrystalLogo Width="16" Height="16" VerticalAlignment="Center"/>
                   <TextBlock Text="Phobia Wallet" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"
@@ -304,6 +315,9 @@
             </Border>
 
             <StackPanel Spacing="10" Margin="22,4,22,20">
+              <!-- Write it now, while you remember what it was for. Saved, encrypted, when the receipt closes. -->
+              <TextBox Text="{Binding ReceiptNote}" MaxLength="280" IsVisible="{Binding SendReceipt.HasTxId}"
+                       Watermark="{Binding [receipt.notePh], Source={x:Static app:Loc.Instance}}"/>
               <WrapPanel HorizontalAlignment="Center">
                 <Button Classes="ghost" Margin="3" MinHeight="0" Padding="12,7" FontSize="12" IsVisible="{Binding SendReceipt.HasTxId}"
                         Command="{Binding CopyReceiptTxIdCommand}">

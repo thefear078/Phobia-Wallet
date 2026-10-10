@@ -4,7 +4,7 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — sending you can read, history that is kept, and what can be checked
+## [4.10.0-beta.6] — Beta of 10 October 2026 (a GitHub pre-release) — sending you can read, history that is kept, notes and names
 
 ### Sending
 
@@ -57,6 +57,26 @@ how a transaction is built or signed; all of it changes what is on screen while 
   rest — is gone.
 - The Activity list draws a page at a time ("show more" for the rest; the CSV export has all of it): a
   long history rebuilt on every recorded event is what made the wallet stall after a failed send.
+
+### Notes, names and the addresses you know
+
+- **"First send to this address" was said about addresses paid the day before — every time.** The wallet
+  kept the other side of a transfer only as `abcd…wxyz`, which equals no address and resembles none: it
+  could not recognise an address it had paid, and — worse — it could not notice a **look-alike** of one
+  from history (only the address book and your own addresses were compared). Transfers now keep the whole
+  address. An address you have paid reads "you have sent to this address before"; a twin of it is flagged
+  in red; an address that only ever paid *you* is still a first payment — that is exactly how a poisoner
+  gets into a history. The notice also waits until this wallet's history has been read.
+- **A note for yourself on any transfer** — on the Send form, on the receipt, or later in Activity — kept
+  encrypted on the device against the transaction and never sent. A transfer the wallet has just made can
+  be written on at once; it used to need an explorer to list it first.
+- **Names for addresses.** The editor under a transfer has a second line: a name for the address on its
+  other side, kept in your encrypted address book. Every transfer to or from that address then shows the
+  name, and the Send screen knows it.
+- The editor opens **under the row** it belongs to. It used to open at the top of the page, out of sight
+  of the transaction it was for.
+- Swap: the flip button has a row of its own between the two panels — it lay on top of the balance and
+  its "Max" button.
 
 ### Balances
 
