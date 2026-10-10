@@ -73,7 +73,8 @@ Settings → **Security**:
 
 - **Auto-lock** after a chosen idle time; **lock on minimise** (Privacy tab).
 - **Hide balances by default.**
-- **Password before every send** — on by default. Staking actions ask for it too.
+- **Password before every send** — on by default. Staking actions ask for it too. Switching it off
+  takes the password; switching it on does not.
 - **Security Center** — what is actually protecting the wallet right now, and one button for the
   recommended protection.
 - **Duress password** — a second password that opens a decoy wallet.

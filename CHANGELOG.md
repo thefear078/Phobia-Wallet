@@ -4,11 +4,75 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [Unreleased] — repository, security checks and documentation
+## [Unreleased] — sending you can read, history that is kept, and what can be checked
 
-Nothing here changes what the wallet does with your coins; it changes what can be checked about it.
+### Sending
 
-### Security
+A live test on 10 October 2026 sent a few millionths of a SOL, twice, where a few thousandths were meant.
+Both transfers were real and confirmed — the amounts had been typed into the upper of **two** amount
+boxes, the one that took the display currency and said so only in a grey watermark. Nothing here changes
+how a transaction is built or signed; all of it changes what is on screen while that happens.
+
+- **One amount box, with its unit written on it.** A switch beside it changes the unit (coin ⇄ your
+  currency); the line under it always says the same amount the other way round, and changing the unit
+  never changes the amount. Max, 25% and 50% write the coin.
+- **A fee as large as the amount is its own warning**, in amber at the top of the review — it is what
+  an amount in the wrong unit looks like.
+- **The review opens over the page**: the amount, any warnings first, the whole address, what leaves
+  and what is left, the password (Enter confirms). The fee detail, Privacy Radar and PSBT export are
+  one fold away under *Details*. Coin control, the fee level, saving the address and private send are
+  under *More options* on the form.
+- **A receipt** replaces the line of green text that ran off the window: how it ended — *confirmed by the
+  network*, *waiting for a block* or *no clear answer* — the amount, the whole address, the transaction
+  id, the fee and the time; a button to copy each, the whole receipt as text, and the card **as a
+  picture**. An unclear ending gets a receipt too, with the id to check before sending again.
+- The receipt appears at once; balances are read again behind it instead of holding the screen for the
+  better part of a minute.
+- **Solana no longer gives up at one quiet server.** "Could not fetch a recent blockhash" ended a send
+  while two other servers were answering. The blockhash is now asked of the listed servers in turn, the
+  status is read from whichever answers, and a transaction seen nowhere after a few seconds is handed to
+  the other servers as the *same signed bytes* — one signature can land once, however many carry it.
+- **"Password before every send" takes the password to switch off.** Switching it on is free.
+- After a send on Solana, Ethereum and the other one-address networks, the report no longer credits
+  "change sent to a fresh address": there is no change there. It says what is true — one address, every
+  transfer from it visible together.
+
+### History and the balance chart
+
+- **History is kept, and grows.** Each wallet's on-chain history is saved on the device and added to at
+  every read. An explorer that answers nothing today no longer makes last month disappear, and sources
+  that list a page at a time reach further back with every read. Clearing the history (Settings) and
+  "Delete everything" remove it.
+- **Solana history** was the twelve newest transactions from a single server, with nobody named on the
+  other side. It now tries the listed servers in turn, goes two hundred signatures back, fetches only
+  what it has not read before, and names the sender or the recipient.
+- **A transfer belongs to the wallet that made it.** With several wallets, a send from one was listed in
+  all the others — including the one that received it. A "pending" row is marked confirmed once an
+  explorer lists its transaction, and rows keep their place in time after a restart.
+- **The balance chart is drawn through your transfers.** It was "today's holdings at past prices": a
+  wallet funded an hour ago showed a day of balance it never had. Each coin's amount is now worked back
+  through the transfers the wallet has read, so a deposit is a step up at the moment it arrived. Where
+  no transfer falls in the window the line is what it was, and the note under the chart says which kind
+  it is. The cliff at the right-hand edge — the last point taken from another price source than the
+  rest — is gone.
+- The Activity list draws a page at a time ("show more" for the rest; the CSV export has all of it): a
+  long history rebuilt on every recorded event is what made the wallet stall after a failed send.
+
+### Balances
+
+- A balance nobody answered for is asked again by itself after 4, 10 and 25 seconds, instead of standing
+  as "could not be read" until the next full refresh two minutes later.
+
+### Looks
+
+- Swap and Send: coin logos in the pickers, both Swap pickers on one line and one width, a card that
+  keeps its width when the introductory note is closed. The Tor rows of Activity carry an onion.
+
+### Repository, security checks and documentation
+
+Nothing in this part changes what the wallet does with your coins; it changes what can be checked about it.
+
+#### Security
 
 - **Linux: the data folder and every file in it are now readable by you alone.** A self-review found
   them created with the system default (folder `0755`, files `0644`), so another account on the same
@@ -19,7 +83,7 @@ Nothing here changes what the wallet does with your coins; it changes what can b
 - The self-review itself — secrets in logs, wiping keys from memory, files at rest, local services — is
   in [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md), with what is still open.
 
-### Checks
+#### Checks
 
 - **Semgrep** (C#, secrets, GitHub Actions rules) runs beside CodeQL on every pull request; CodeQL now
   also reads the workflows themselves.
@@ -29,7 +93,7 @@ Nothing here changes what the wallet does with your coins; it changes what can b
   signed **provenance** file, so an attestation can be checked offline.
 - **Coverage** of the offline suite is published weekly and on every push to `main`.
 
-### Repository
+#### Repository
 
 - A shorter README — what it is in five seconds, then the features, screenshots, architecture and a
   Results table of what was measured — with the full tour moved to [docs/FEATURES.md](docs/FEATURES.md).

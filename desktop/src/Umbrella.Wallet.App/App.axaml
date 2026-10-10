@@ -23,6 +23,7 @@
         <local:ChangeWashConverter x:Key="ChangeWash" />
         <local:ActivityLabelConverter x:Key="ActivityLabel" />
         <local:ThemeBrushConverter x:Key="ThemeBrush" />
+        <local:CoinLogoConverter x:Key="CoinLogo" />
         <local:ChartLinePointConverter x:Key="HLineStart" Kind="HStart" />
         <local:ChartLinePointConverter x:Key="HLineEnd" Kind="HEnd" />
         <local:ChartLinePointConverter x:Key="VLineStart" Kind="VStart" />

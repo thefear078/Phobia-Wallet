@@ -53,7 +53,7 @@ holds.
 |---|---|---|
 | `vault.json`, `wallets/*.vault.json` | recovery phrase | **encrypted** — Argon2id (64 MiB, 4 passes) → AES-256-GCM |
 | transaction notes, exchange API keys | your notes; read-only keys | **encrypted** (keys derived from the seed) |
-| address book, watched addresses, activity log, settings, cached balances | addresses and labels | plain text |
+| address book, watched addresses, activity log, kept transaction history, settings, cached balances | addresses and labels; public transaction ids and amounts | plain text |
 
 **Found — and fixed in this review:** on **Linux** (and macOS) the data folder was created with the default
 umask: `0755` for the folder, `0644` for files. Any other account on the same computer could read the plain

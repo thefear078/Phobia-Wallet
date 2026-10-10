@@ -148,4 +148,37 @@ public sealed class SendSimulationTests
              SendEffectKind.ChangeReturned, SendEffectKind.BalanceAfter],
             order);
     }
+
+    /// <summary>
+    /// In a live test on 2026-10-10 a number meant as SOL was typed into a currency box and went out a
+    /// thousand times smaller, under a fee several times the amount — twice. A fee as large as the amount
+    /// is its own, louder warning: it is what an amount in the wrong unit looks like, and "the fee is N%
+    /// of the amount" did not stop anybody.
+    /// </summary>
+    [Fact]
+    public void A_fee_as_large_as_the_amount_itself_is_its_own_warning()
+    {
+        var r = SendSimulation.Build(balance: 0.002m, amount: 0.000001m, networkFee: 0.000005m);
+
+        Assert.Contains(r.Warnings, w => w.Kind == SendWarningKind.FeeExceedsAmount);
+        // One of the two, never both: the stronger statement replaces the weaker.
+        Assert.DoesNotContain(r.Warnings, w => w.Kind == SendWarningKind.FeeIsLargeShareOfAmount);
+    }
+
+    [Fact]
+    public void A_fee_exactly_equal_to_the_amount_counts_as_exceeding_it()
+    {
+        var r = SendSimulation.Build(balance: 1m, amount: 0.000005m, networkFee: 0.000005m);
+
+        Assert.Contains(r.Warnings, w => w.Kind == SendWarningKind.FeeExceedsAmount);
+    }
+
+    [Fact]
+    public void A_merely_large_fee_keeps_the_ordinary_warning()
+    {
+        var r = SendSimulation.Build(balance: 1m, amount: 0.001m, networkFee: 0.0005m);
+
+        Assert.DoesNotContain(r.Warnings, w => w.Kind == SendWarningKind.FeeExceedsAmount);
+        Assert.Contains(r.Warnings, w => w.Kind == SendWarningKind.FeeIsLargeShareOfAmount);
+    }
 }

@@ -221,5 +221,8 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+    <!-- The list is drawn a page at a time; the rest of the history is one press away. -->
+    <Button Classes="ghost" HorizontalAlignment="Center" IsVisible="{Binding HasMoreActivity}"
+            Content="{Binding MoreActivityLabel}" Command="{Binding ShowMoreActivityCommand}"/>
   </StackPanel>
 </UserControl>

@@ -68,7 +68,8 @@ public partial class MainViewModel
             // Change goes to a fresh internal address on every UTXO spend that needs one; on an
             // account chain there is no change output at all, so there is nothing to reuse.
             FreshChangeUsed: !isUtxo || _btcPlan is null || _btcPlan.NeedsChange,
-            CoinControlUsed: CoinControlOn && isUtxo);
+            CoinControlUsed: CoinControlOn && isUtxo,
+            IsAccountChain: !isUtxo && sym != "XMR");
 
         var findings = SendLeakReport.Build(signals);
 

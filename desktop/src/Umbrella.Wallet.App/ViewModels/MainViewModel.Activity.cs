@@ -44,8 +44,11 @@ public partial class MainViewModel
             ? DateTime.Now.ToString("MMM d · HH:mm", Fx.Culture)
             : when;
         var unixMs = isNow ? DateTimeOffset.Now.ToUnixTimeMilliseconds() : 0;
+        // A transfer belongs to the wallet it was made from; what the device did (unlock, Tor, settings)
+        // belongs to every wallet on it.
+        var walletId = kind is "Sent" or "Received" or "Swap" or "Staked" ? _registry.Active?.Id : null;
         Activity.Insert(0, new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer,
-            status, unixMs, retryTo, retryAmount, retryChain));
+            status, unixMs, retryTo, retryAmount, retryChain, WalletId: walletId));
         while (Activity.Count > 60) Activity.RemoveAt(Activity.Count - 1);
 
         RebuildRecentActivity();
@@ -54,6 +57,7 @@ public partial class MainViewModel
         RebuildTransactions();
         OnPropertyChanged(nameof(HasActivity));
         PersistActivity();
+        if (walletId is not null) PortfolioMovesChanged();   // a transfer just made is part of the balance's story
     }
 
     /// <summary>The Portfolio rail's five most-recent events — from the MERGED feed (local + on-chain),
@@ -73,16 +77,30 @@ public partial class MainViewModel
 
     private void PersistActivity() =>
         _activityStore.Save(Activity.Select(a =>
-            new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status)));
+                new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status,
+                    a.UnixMs, a.WalletId))
+            .Concat(_otherWalletsActivity));
+
+    /// <summary>Saved transfers of the wallets that are not open: kept for the file, never listed here.</summary>
+    private readonly List<ActivityStore.Entry> _otherWalletsActivity = [];
 
     /// <summary>Loads the saved activity/transaction history from the data folder into the feeds.</summary>
     private void LoadActivity()
     {
         Activity.Clear();
+        _otherWalletsActivity.Clear();
         var droppedNoise = false;
+        var activeWallet = _registry.Active?.Id;
         ActivityStore.Entry? prev = null;
         foreach (var e in _activityStore.Load())
         {
+            // Another wallet's transfer: not this wallet's history. (A row saved before rows carried a
+            // wallet has none, and stays listed everywhere, as it always was.)
+            if (e.WalletId is { Length: > 0 } owner && !string.Equals(owner, activeWallet, StringComparison.Ordinal))
+            {
+                if (_otherWalletsActivity.Count < 300) _otherWalletsActivity.Add(e);
+                continue;
+            }
             // Purge legacy UI-preference noise that older builds logged ("Theme Appearance changed",
             // "Settings … changed") so the feed reads as real wallet events, not a developer log.
             if (string.Equals(e.Kind, "Theme", StringComparison.OrdinalIgnoreCase) ||
@@ -105,7 +123,8 @@ public partial class MainViewModel
                 prev = e;
                 continue;
             }
-            Activity.Add(new ActivityRowViewModel(e.Kind, e.Asset, e.Amount, e.Counterparty, e.When, e.Explorer, e.Status));
+            Activity.Add(new ActivityRowViewModel(e.Kind, e.Asset, e.Amount, e.Counterparty, e.When, e.Explorer, e.Status,
+                e.UnixMs, WalletId: e.WalletId));
             prev = e;
         }
         if (droppedNoise) PersistActivity(); // rewrite the cleaned history so the noise never returns
@@ -263,9 +282,38 @@ public partial class MainViewModel
             (ActivityFilter == "All" || row.Category == ActivityFilter) &&
             (ActivityAssetFilter == "All" || string.Equals(row.Asset, ActivityAssetFilter, StringComparison.OrdinalIgnoreCase)) &&
             (ActivityStatusFilter == "All" || string.Equals(row.Status, ActivityStatusFilter, StringComparison.OrdinalIgnoreCase)) &&
-            !(cutoff > 0 && row.UnixMs > 0 && row.UnixMs < cutoff));
-        foreach (var row in Decorate(matching, dayHeaders: true)) FilteredActivity.Add(row);
+            !(cutoff > 0 && row.UnixMs > 0 && row.UnixMs < cutoff)).ToList();
+        // A page at a time. Every row is a card with its own buttons, and the list is rebuilt whenever
+        // anything is recorded — a failed send, an unlock. Drawing a year of history each time is what
+        // made the wallet stall after one; the rest is one press away, and the CSV export has all of it.
+        foreach (var row in Decorate(matching.Take(_activityShown), dayHeaders: true)) FilteredActivity.Add(row);
+        ActivityNotShown = Math.Max(0, matching.Count - _activityShown);
         OnPropertyChanged(nameof(HasFilteredActivity));
+    }
+
+    /// <summary>How many rows the Activity list draws before "show more".</summary>
+    public const int ActivityPageSize = 80;
+
+    private int _activityShown = ActivityPageSize;
+
+    /// <summary>Rows that match the filters and are not drawn yet.</summary>
+    [ObservableProperty] private int _activityNotShown;
+
+    public bool HasMoreActivity => ActivityNotShown > 0;
+
+    public string MoreActivityLabel => string.Format(Loc.Instance["activity.showMore"], ActivityNotShown);
+
+    partial void OnActivityNotShownChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasMoreActivity));
+        OnPropertyChanged(nameof(MoreActivityLabel));
+    }
+
+    [RelayCommand]
+    private void ShowMoreActivity()
+    {
+        _activityShown += ActivityPageSize * 3;
+        RebuildFilteredActivity();
     }
 
     private void RebuildTransactions()
@@ -308,9 +356,19 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(HasFilteredActivity)); // let the "loading" state show immediately
         try
         {
-            var rows = new List<(long Ts, ActivityRowViewModel Row)>();
             var walletId = _registry.Active?.Id ?? "default";
             var mnemonic = _unlockedMnemonic!;
+
+            // What this wallet has read before is on screen at once, and stays whatever the explorers
+            // answer this time: a server that is rate-limiting today must not make last month vanish.
+            var kept = _historyStore.Load(ActiveWalletCacheKey);
+            if (_onChainRows.Count == 0 && kept.Count > 0)
+            {
+                ShowOnChainHistory(kept);
+                HistorySynced = true;
+            }
+            var knownSolana = kept.Where(t => t.Asset == "SOL" && t.Hash.Length > 0)
+                .Select(t => t.Hash).ToHashSet(StringComparer.Ordinal);
 
             // Every chain is read at the same time. One after another, the list waited for the SUM of
             // every explorer's round-trip (a dozen of them, more over Tor); together it waits for the
@@ -374,7 +432,7 @@ public partial class MainViewModel
             }
             if (AddressOf(ChainId.Ton) is { Length: > 0 } ton) reads.Add(_history.GetTonAsync(ton));
             if (AddressOf(ChainId.Ada) is { Length: > 0 } ada) reads.Add(_history.GetCardanoAsync(ada));
-            if (AddressOf(ChainId.Sol) is { Length: > 0 } sol) reads.Add(_history.GetSolanaAsync(sol));
+            if (AddressOf(ChainId.Sol) is { Length: > 0 } sol) reads.Add(_history.GetSolanaAsync(sol, knownSolana));
             if (AddressOf(ChainId.Xrp) is { Length: > 0 } xrp) reads.Add(_accountHistory.GetXrpAsync(xrp));
             if (AddressOf(ChainId.Xlm) is { Length: > 0 } xlm) reads.Add(_accountHistory.GetStellarAsync(xlm));
             if (AddressOf(ChainId.Near) is { Length: > 0 } near) reads.Add(_accountHistory.GetNearAsync(near));
@@ -384,24 +442,16 @@ public partial class MainViewModel
             if (AddressOf(ChainId.Dcr) is { Length: > 0 } dcr) reads.Add(_coinHistory.GetDecredAsync([dcr]));
             if (AddressOf(ChainId.Zec) is { Length: > 0 } zec) reads.Add(_coinHistory.GetZcashAsync(zec));
 
-            foreach (var batch in await Task.WhenAll(reads.Select(QuietRead)))
-                foreach (var t in batch) rows.Add((t.UnixMs, ToActivityRow(t)));
+            var fresh = new List<ChainTx>();
+            foreach (var batch in await Task.WhenAll(reads.Select(QuietRead))) fresh.AddRange(batch);
 
             if (epoch != _lockEpoch) return;
 
-            // Dedupe by explorer URL (a tx that touches two of the user's own addresses is one event).
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            _onChainRows.Clear();
-            foreach (var r in rows.OrderByDescending(r => r.Ts))
-            {
-                if (r.Row.Explorer is { Length: > 0 } ex && !seen.Add(ex)) continue;
-                _onChainRows.Add(r.Row);
-            }
+            // This read together with every earlier one, each transaction once.
+            var all = HistoryStore.Merge(fresh, kept);
+            _historyStore.Save(ActiveWalletCacheKey, all);
+            ShowOnChainHistory(all);
             LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", Fx.Culture);
-            RebuildActivityAssets();
-            RebuildFilteredActivity();
-            RebuildRecentActivity(); // on-chain history just arrived — refresh the Portfolio rail too
-            RebuildTransactions();
         }
         catch
         {
@@ -414,6 +464,55 @@ public partial class MainViewModel
             if (load == _historyLoad) HistoryLoading = false;
             if (epoch == _lockEpoch) HistorySynced = true;
         }
+    }
+
+    /// <summary>This wallet's on-chain history as read so far, kept between runs (see <see cref="HistoryStore"/>).</summary>
+    private readonly HistoryStore _historyStore = new();
+
+    /// <summary>
+    /// Puts chain rows on screen: newest first, a transaction that touches two of the user's own addresses
+    /// listed once, and a local "Pending" row whose transaction the chain now lists marked confirmed.
+    /// </summary>
+    private void ShowOnChainHistory(IReadOnlyList<ChainTx> transactions)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var rows = new List<ActivityRowViewModel>(transactions.Count);
+        foreach (var t in transactions.OrderByDescending(t => t.UnixMs))
+        {
+            // One row per explorer link: a transaction seen through two of the user's addresses, or by two
+            // readers (a TRC-20 transfer is also a TRON transaction), is one event.
+            if (t.Explorer.Length > 0 && !seen.Add(t.Explorer)) continue;
+            rows.Add(ToActivityRow(t));
+        }
+
+        _onChainRows.Clear();
+        _onChainRows.AddRange(rows);
+        ConfirmLocalRowsSeenOnChain();
+        RebuildActivityAssets();
+        RebuildFilteredActivity();
+        RebuildRecentActivity(); // on-chain history just arrived — refresh the Portfolio rail too
+        RebuildTransactions();
+        PortfolioMovesChanged(); // and the balance chart is drawn through these transfers
+    }
+
+    /// <summary>
+    /// A send this wallet recorded as "Pending" is confirmed once an explorer lists its transaction —
+    /// until now the row said "Pending" for as long as it existed.
+    /// </summary>
+    private void ConfirmLocalRowsSeenOnChain()
+    {
+        if (_onChainRows.Count == 0) return;
+        var onChain = _onChainRows.Where(r => r.Explorer is { Length: > 0 })
+            .Select(r => r.Explorer!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var changed = false;
+        for (var i = 0; i < Activity.Count; i++)
+        {
+            var row = Activity[i];
+            if (row.Status != "Pending" || row.Explorer is not { Length: > 0 } link || !onChain.Contains(link)) continue;
+            Activity[i] = row with { Status = "Confirmed" };
+            changed = true;
+        }
+        if (changed) PersistActivity();
     }
 
     /// <summary>History for Nano, Decred, Dogecoin and transparent Zcash.</summary>

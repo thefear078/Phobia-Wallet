@@ -4,6 +4,7 @@
              xmlns:app="using:Umbrella.Wallet.App"
              xmlns:controls="using:Umbrella.Wallet.App.Controls"
              xmlns:pages="using:Umbrella.Wallet.App.Views.Pages"
+             xmlns:views="using:Umbrella.Wallet.App.Views"
              x:Class="Umbrella.Wallet.App.Views.MobileShell"
              x:DataType="vm:MainViewModel"
              x:CompileBindings="True"
@@ -611,6 +612,9 @@
         </StackPanel>
       </Border>
     </Panel>
+
+    <!-- Review, the send in flight and its receipt, over the whole screen (see SendSheet). -->
+    <views:SendSheet/>
 
     <!-- Notices, at the top. -->
     <Border IsHitTestVisible="False" VerticalAlignment="Top" HorizontalAlignment="Center" IsVisible="{Binding ToastVisible}" Margin="16,16,16,0">

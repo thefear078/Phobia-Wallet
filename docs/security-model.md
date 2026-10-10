@@ -181,7 +181,8 @@ addresses, and only an opt-in exchange connection may be marked as holding crede
 
 Settings → Danger zone wipes this device's copy: the encrypted seed, every additional wallet, settings
 and profile images, watch addresses, saved exchange keys, the **address book**, **private transaction
-notes**, the activity log, cached balances and prices, and the Monero wallet. The app itself and the
+notes**, the activity log, each wallet's kept transaction history, cached balances and prices, and the
+Monero wallet. The app itself and the
 bundled Tor client remain.
 
 Two of those were missing until 4.7, and they were the wrong two. The address book is the list of
