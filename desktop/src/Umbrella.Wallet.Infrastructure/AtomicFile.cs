@@ -23,9 +23,13 @@ public static class AtomicFile
 
         // Same directory, so the move is a rename on one volume rather than a copy across two.
         var temp = $"{path}.{Guid.NewGuid():N}.tmp";
+        var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None };
+        // Owner-only (0600) on Linux and macOS from the moment the file exists: the rename keeps the mode,
+        // so no other account on the computer can read what the wallet writes, even for an instant.
+        if (!OperatingSystem.IsWindows()) options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
         try
         {
-            using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (var stream = new FileStream(temp, options))
             {
                 stream.Write(contents);
                 stream.Flush(flushToDisk: true);
