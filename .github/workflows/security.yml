@@ -55,7 +55,7 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: "8.0.x"
-      - run: dotnet restore desktop/Umbrella.Wallet.sln
+      - run: dotnet restore desktop/Umbrella.Wallet.sln --locked-mode   # every package as packages.lock.json pins it, by hash
       - name: Fail on any vulnerable package
         run: |
           set -euo pipefail

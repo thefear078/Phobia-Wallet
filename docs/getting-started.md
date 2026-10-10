@@ -20,7 +20,7 @@ safely.
 ## 1. Download
 
 The current build is the **Beta**, a GitHub *pre-release*: get it from its
-**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
+**[release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.6)**. (GitHub's "Latest" label points at the last full release, 4.9.0, until a
 full 4.10.0 is out.)
 
 | Platform | File |
@@ -101,10 +101,19 @@ Tor hides your **IP** from explorers. It does **not** make Bitcoin/Ethereum priv
 1. **Receive:** pick the coin, confirm the **network** under the name, show QR / address. On UTXO
    chains, prefer a fresh address when the wallet offers one.
 2. **Send a tiny test amount first.** Blockchain transfers are final.
-3. On the review screen, check destination, amount, fee, and any privacy warnings.
+3. The amount box takes the **coin**, and says so on its right-hand side. The switch under it changes
+   the box to your display currency; the line beside the switch always shows the same amount the other
+   way round. Look at the unit before you look at the number.
+4. **Continue** opens the review over the page: check the amount, the whole destination, the fee, and
+   any warning in amber — a fee larger than the amount usually means the amount is in the wrong unit.
+   Type your password and confirm.
+5. The receipt says how it ended (*confirmed*, *waiting for a block*, or *no clear answer — check before
+   sending again*) and can be copied as text or saved as a picture.
+6. A **note for yourself** can be written on the form, on the receipt, or later under the transfer in
+   Activity (the pencil), together with a **name for the address** on its other side. Both are encrypted
+   and stay on the device. An address you have paid before is recognised; a look-alike of one is flagged.
 
-Every coin in the wallet sends except **Decred**, which can be received (including from a swap) but not
-sent yet; it is labelled *receive only*, and the Send picker never offers it.
+Every coin in the wallet sends.
 
 ## 8. Backup
 

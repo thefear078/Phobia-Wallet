@@ -43,6 +43,7 @@ public partial class MainViewModel
     partial void OnHasSendQuoteChanged(bool value)
     {
         OnPropertyChanged(nameof(CanExportSendPsbt));
+        NotifySendSheet();
         if (!value)
         {
             _exportedPsbt = null;

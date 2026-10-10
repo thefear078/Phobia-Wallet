@@ -276,43 +276,100 @@ public sealed class OnChainHistoryClient
         }
     }
 
-    /// <summary>Native SOL transfers for an address, via the public Solana RPC. Two calls: recent
-    /// signatures, then a single batched <c>getTransaction</c> for them. Best-effort — the free RPC
-    /// rate-limits, so it falls back to an empty list rather than blocking the feed.</summary>
-    public async Task<IReadOnlyList<ChainTx>> GetSolanaAsync(string address, int limit = 12, CancellationToken ct = default)
+    /// <summary>How many signatures of an address are listed in one call (the node's own maximum is 1000).</summary>
+    public const int SolanaSignaturePage = 200;
+
+    /// <summary>
+    /// SOL history for an address: its signatures, newest first, and the transactions behind those that
+    /// are not in <paramref name="known"/> — up to <paramref name="maxNew"/> of them in one go.
+    ///
+    /// It read the twelve newest from one server and nothing else, ever: an account with a hundred
+    /// transfers showed twelve, and none at all whenever that one server refused the batch. Now the
+    /// listed servers are tried in turn, the list goes back <see cref="SolanaSignaturePage"/> signatures,
+    /// and what the wallet has already read is not fetched again — so each read reaches further back
+    /// than the last (the caller keeps what was read: <c>HistoryStore</c>).
+    /// </summary>
+    public async Task<IReadOnlyList<ChainTx>> GetSolanaAsync(
+        string address, IReadOnlySet<string>? known = null, int maxNew = 40, CancellationToken ct = default)
     {
+        foreach (var server in Umbrella.Wallet.Core.Safety.ChainEndpoints.Candidates("SOL", "https://api.mainnet-beta.solana.com"))
+        {
+            if (await TrySolanaAsync(server, address, known, maxNew, ct) is { } rows) return rows;
+        }
+
+        return [];
+    }
+
+    /// <summary>Null when this server did not give the signature list at all — the next one is asked.</summary>
+    private static async Task<IReadOnlyList<ChainTx>?> TrySolanaAsync(
+        string server, string address, IReadOnlySet<string>? known, int maxNew, CancellationToken ct)
+    {
+        List<string> wanted;
         try
         {
             var sigReq = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getSignaturesForAddress\",\"params\":[\"" +
-                         address + "\",{\"limit\":" + limit + "}]}";
-            using var body1 = new System.Net.Http.StringContent(sigReq, System.Text.Encoding.UTF8, "application/json");
-            using var res1 = await Http.PostAsync("https://api.mainnet-beta.solana.com", body1, ct);
-            if (!res1.IsSuccessStatusCode) return [];
-            var j1 = await res1.Content.ReadAsStringAsync(ct);
-
-            var sigs = new List<string>();
-            using (var d1 = JsonDocument.Parse(j1))
-                if (d1.RootElement.TryGetProperty("result", out var r) && r.ValueKind == JsonValueKind.Array)
-                    foreach (var s in r.EnumerateArray())
-                    {
-                        var sg = Str(s, "signature");
-                        if (sg.Length > 0) sigs.Add(sg);
-                    }
-            if (sigs.Count == 0) return [];
-
-            var reqs = string.Join(",", sigs.Select((sg, i) =>
-                "{\"jsonrpc\":\"2.0\",\"id\":" + i + ",\"method\":\"getTransaction\",\"params\":[\"" + sg +
-                "\",{\"encoding\":\"json\",\"maxSupportedTransactionVersion\":0}]}"));
-            using var body2 = new System.Net.Http.StringContent("[" + reqs + "]", System.Text.Encoding.UTF8, "application/json");
-            using var res2 = await Http.PostAsync("https://api.mainnet-beta.solana.com", body2, ct);
-            if (!res2.IsSuccessStatusCode) return [];
-            var j2 = await res2.Content.ReadAsStringAsync(ct);
-            return ParseSolanaTransactions(j2, address);
+                         address + "\",{\"limit\":" + SolanaSignaturePage + "}]}";
+            using var body = new System.Net.Http.StringContent(sigReq, System.Text.Encoding.UTF8, "application/json");
+            using var res = await Http.PostAsync(server, body, ct);
+            if (!res.IsSuccessStatusCode) return null;
+            if (SolanaSignaturesToRead(await res.Content.ReadAsStringAsync(ct), known, maxNew) is not { } listed) return null;
+            wanted = listed;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch
         {
-            return [];
+            return null;
         }
+
+        // Ten at a time: public nodes turn away a large batch whole, and a small one that fails costs
+        // only its own ten. What was read before a failure is kept.
+        var rows = new List<ChainTx>();
+        foreach (var chunk in wanted.Chunk(10))
+        {
+            try
+            {
+                var reqs = string.Join(",", chunk.Select((sg, i) =>
+                    "{\"jsonrpc\":\"2.0\",\"id\":" + i + ",\"method\":\"getTransaction\",\"params\":[\"" + sg +
+                    "\",{\"encoding\":\"json\",\"maxSupportedTransactionVersion\":0}]}"));
+                using var body = new System.Net.Http.StringContent("[" + reqs + "]", System.Text.Encoding.UTF8, "application/json");
+                using var res = await Http.PostAsync(server, body, ct);
+                if (!res.IsSuccessStatusCode) break;
+                rows.AddRange(ParseSolanaTransactions(await res.Content.ReadAsStringAsync(ct), address));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch
+            {
+                break;
+            }
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// From a <c>getSignaturesForAddress</c> answer: the signatures worth fetching — successful ones the
+    /// wallet has not read yet, newest first, at most <paramref name="maxNew"/>. Null when the answer is
+    /// not a signature list (an error, a rate-limit page), which is not the same as an empty history.
+    /// </summary>
+    public static List<string>? SolanaSignaturesToRead(string json, IReadOnlySet<string>? known, int maxNew)
+    {
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object ||
+            !doc.RootElement.TryGetProperty("result", out var result) || result.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var wanted = new List<string>();
+        foreach (var entry in result.EnumerateArray())
+        {
+            if (wanted.Count >= maxNew) break;
+            // A transaction that failed moved nothing but the fee; it is not a transfer to list.
+            if (entry.TryGetProperty("err", out var err) && err.ValueKind != JsonValueKind.Null) continue;
+            var signature = Str(entry, "signature");
+            if (signature.Length == 0 || known?.Contains(signature) == true) continue;
+            wanted.Add(signature);
+        }
+
+        return wanted;
     }
 
     // ---- Parsers (static + string-in, so they can be unit-tested without the network) ----
@@ -362,7 +419,26 @@ public sealed class OnChainHistoryClient
             var ts = Long(result, "blockTime") * 1000;
             var sig = txn.TryGetProperty("signatures", out var sgs) && sgs.ValueKind == JsonValueKind.Array &&
                       sgs.GetArrayLength() > 0 ? sgs[0].GetString() ?? "" : "";
-            outList.Add(new ChainTx(incoming ? "Received" : "Sent", "SOL", amount, "", ts,
+
+            // The other side: the account whose balance moved the most the opposite way — whoever was
+            // paid by a send, whoever paid for a receipt. (The row used to name nobody.)
+            var other = "";
+            long otherMove = 0;
+            var at = 0;
+            foreach (var key in keys.EnumerateArray())
+            {
+                var move = (meta.TryGetProperty("postBalances", out var pob2) ? LamportsAt(pob2, at) : 0) -
+                           (meta.TryGetProperty("preBalances", out var pb2) ? LamportsAt(pb2, at) : 0);
+                var opposite = incoming ? -move : move;
+                if (at != idx && opposite > otherMove && key.ValueKind == JsonValueKind.String)
+                {
+                    otherMove = opposite;
+                    other = key.GetString() ?? "";
+                }
+                at++;
+            }
+
+            outList.Add(new ChainTx(incoming ? "Received" : "Sent", "SOL", amount, other, ts,
                 $"https://solscan.io/tx/{sig}", sig));
         }
         return outList;

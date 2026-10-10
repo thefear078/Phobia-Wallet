@@ -135,4 +135,32 @@ public sealed class SendLeakReportTests
             Assert.All(score.Findings, f => Assert.False(string.IsNullOrWhiteSpace(f.LimitCode)));
         }
     }
+
+    /// <summary>
+    /// An account chain has one address and no change output. The report used to praise a Solana send
+    /// for spending "from a single address" and sending "change to a fresh address" — two compliments
+    /// for things that did not happen. It gets one plain line instead.
+    /// </summary>
+    [Fact]
+    public void An_account_chain_is_not_praised_for_change_it_does_not_have()
+    {
+        var report = SendLeakReport.Build(Signals(tor: true, killSwitch: true) with { IsAccountChain = true });
+
+        Assert.True(Has(report, "accountAddress"));
+        Assert.False(Has(report, "freshChange"));
+        Assert.False(Has(report, "inputsSingle"));
+        Assert.False(Has(report, "changeReused"));
+        // Not something the user could have done differently on this network.
+        Assert.False(SendLeakReport.HasAvoidableExposure(report));
+    }
+
+    [Fact]
+    public void A_utxo_send_keeps_its_linkage_and_change_lines()
+    {
+        var report = SendLeakReport.Build(Signals(inputs: 1, freshChange: true));
+
+        Assert.False(Has(report, "accountAddress"));
+        Assert.True(Has(report, "inputsSingle"));
+        Assert.True(Has(report, "freshChange"));
+    }
 }

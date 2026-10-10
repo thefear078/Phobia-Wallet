@@ -46,6 +46,7 @@ public sealed class SolanaTransactionSender
             if (devFeeLamports > 0) devFeeTo = devFeeAddress.Trim();
         }
 
+        string? halfAnswered = null;
         foreach (var server in SolanaNetwork.Servers())
         {
             var host = new Uri(server).Host;
@@ -54,8 +55,13 @@ public sealed class SolanaTransactionSender
 
             var rentMinimum = await SolanaNetwork.LamportsAsync(server, SolanaRpc.Request("getMinimumBalanceForRentExemption", 0), ct);
             var destination = await SolanaNetwork.LamportsAsync(server, SolanaRpc.Request("getBalance", to, new { commitment = "confirmed" }), ct);
+            // Answered the first question and not the rest: the next server gets all three, rather
+            // than this one's silence ending the send.
             if (rentMinimum is null || destination is null)
-                return (null, $"Could not read the destination or the rent minimum from {host}. Nothing was sent.");
+            {
+                halfAnswered = host;
+                continue;
+            }
 
             var needed = lamports + devFeeLamports + SolanaRpc.BaseFeeLamports;
             if (balance < needed)
@@ -86,7 +92,9 @@ public sealed class SolanaTransactionSender
                 devFeeTo, devFeeLamports, server), null);
         }
 
-        return (null, "No Solana server answered. Check your connection (or Tor). Nothing was sent.");
+        return (null, halfAnswered is null
+            ? "No Solana server answered. Check your connection (or Tor). Nothing was sent."
+            : $"Could not read the destination or the rent minimum from {halfAnswered}. Nothing was sent.");
     }
 
     public async Task<SolSendOutcome> SignAndBroadcastAsync(SolSendQuote quote, byte[] privateKey, CancellationToken ct = default)
@@ -171,49 +179,127 @@ internal static class SolanaNetwork
     }
 
     /// <summary>
-    /// Signs the instructions with the fee payer's key against a fresh blockhash, submits once, and
-    /// follows the signature: confirmed and successful, confirmed and failed, or never landed before
-    /// the blockhash's last valid height — which is final, because after it the transaction can never
-    /// be included. Anything else is said as it is, never offered as a retry.
+    /// Signs the instructions with the fee payer's key against a fresh blockhash, submits, and follows
+    /// the signature — over the real network. The rules are <see cref="SolanaSubmission"/>'s.
     /// </summary>
-    public static async Task<SolSendOutcome> SignSubmitAndFollowAsync(
-        string server, byte[] feePayer, IReadOnlyList<SolanaInstruction> instructions, byte[] privateKey, CancellationToken ct)
+    public static Task<SolSendOutcome> SignSubmitAndFollowAsync(
+        string server, byte[] feePayer, IReadOnlyList<SolanaInstruction> instructions, byte[] privateKey, CancellationToken ct) =>
+        SolanaSubmission.RunAsync(ServersFrom(server), (s, request, token, broadcast) => CallAsync(s, request, token, broadcast),
+            Task.Delay, feePayer, instructions, privateKey, ct);
+
+    /// <summary><paramref name="first"/>, then every other listed server, each once.</summary>
+    public static IReadOnlyList<string> ServersFrom(string first)
     {
-        var (hashResult, _) = await CallAsync(server, SolanaRpc.Request("getLatestBlockhash", new { commitment = "confirmed" }), ct);
-        if ((hashResult is { } hr ? SolanaRpc.ParseBlockhash(hr) : null) is not { } recent)
-            return new SolSendOutcome(SolSubmitOutcome.Rejected, null, "Could not fetch a recent blockhash. Nothing was sent.");
+        var list = new List<string> { first };
+        foreach (var s in Servers())
+            if (!list.Contains(s, StringComparer.OrdinalIgnoreCase)) list.Add(s);
+        return list;
+    }
+}
+
+/// <summary>
+/// The one path every signed Solana transaction takes: a fresh blockhash, one signature, a submit,
+/// then following THAT signature until a confirmed block holds it or its blockhash expires.
+///
+/// The network is a parameter, so the rules that decide whether money moved are proved offline
+/// (<c>SolanaSubmissionTests</c>): a server that goes quiet is passed over rather than ending the send,
+/// the same signed bytes may be handed to several servers (one signature lands once, however many
+/// servers carry it), and an answer that never comes is followed up — never offered as a retry.
+/// </summary>
+public static class SolanaSubmission
+{
+    /// <summary>One JSON-RPC call: its result, its error, or neither when the server did not answer.</summary>
+    public delegate Task<(JsonElement? Result, string? Error)> Rpc(
+        string server, object request, CancellationToken ct, bool broadcast);
+
+    /// <summary>How long a blockhash is good for at two seconds a look: about a minute and a half.</summary>
+    public const int FollowAttempts = 45;
+
+    /// <summary>After this many looks with nothing seen, the other servers are given the transaction too.</summary>
+    public const int RebroadcastAfterAttempts = 3;
+
+    public static async Task<SolSendOutcome> RunAsync(
+        IReadOnlyList<string> servers, Rpc call, Func<TimeSpan, CancellationToken, Task> delay,
+        byte[] feePayer, IReadOnlyList<SolanaInstruction> instructions, byte[] privateKey, CancellationToken ct)
+    {
+        // The quote's server first, then the rest of the list. A server that went quiet between Review
+        // and Confirm used to end the send right here ("Could not fetch a recent blockhash") while two
+        // others were answering. A server the user chose is the whole list, and stays the only one asked.
+        string? server = null;
+        (byte[] Blockhash, ulong LastValidBlockHeight)? fetched = null;
+        foreach (var candidate in servers)
+        {
+            var (hashResult, _) = await call(candidate, SolanaRpc.Request("getLatestBlockhash", new { commitment = "confirmed" }), ct, false);
+            if (hashResult is { } hr && SolanaRpc.ParseBlockhash(hr) is { } parsed)
+            {
+                fetched = parsed;
+                server = candidate;   // the one that is answering takes the transaction
+                break;
+            }
+        }
+
+        if (fetched is not { } recent || server is null)
+            return new SolSendOutcome(SolSubmitOutcome.Rejected, null,
+                "No Solana server gave a recent blockhash, so nothing was signed or sent. Check your connection (or Tor) and try again.");
 
         var message = SolanaMessage.Compile(feePayer, instructions, recent.Blockhash);
         var signature = new byte[Ed25519.SignatureSize];
         Ed25519.Sign(privateKey, 0, message, 0, message.Length, signature, 0);
         var id = Encoders.Base58.EncodeData(signature);
-        var tx = SolanaMessage.Transaction(signature, message);
+        var submit = SolanaRpc.Request("sendTransaction", Convert.ToBase64String(SolanaMessage.Transaction(signature, message)),
+            new { encoding = "base64", preflightCommitment = "confirmed" });
 
         // The node simulates it first ("preflight"); a refusal there means nothing was sent or charged.
-        var (sent, refused) = await CallAsync(server, SolanaRpc.Request("sendTransaction",
-            Convert.ToBase64String(tx), new { encoding = "base64", preflightCommitment = "confirmed" }), ct, broadcast: true);
+        var (sent, refused) = await call(server, submit, ct, true);
         if (refused is not null) return new SolSendOutcome(SolSubmitOutcome.Rejected, null, refused);
         if (sent is { ValueKind: JsonValueKind.String } s && s.GetString() != id)
             return new SolSendOutcome(SolSubmitOutcome.Unknown, id,
                 $"The server answered with a different transaction id. Check {id} on an explorer before sending again.");
 
-        for (var attempt = 0; attempt < 45; attempt++)
+        // The first server to answer a read, the submitting one first. A server's error is not an
+        // answer here: these are questions every server can answer.
+        async Task<JsonElement?> Ask(object request)
         {
-            await Task.Delay(TimeSpan.FromSeconds(2), ct);
-            var (status, _) = await CallAsync(server, SolanaRpc.Request("getSignatureStatuses",
-                new[] { id }, new { searchTransactionHistory = false }), ct);
+            var (result, _) = await call(server, request, ct, false);
+            if (result is not null) return result;
+            foreach (var other in servers)
+            {
+                if (string.Equals(other, server, StringComparison.OrdinalIgnoreCase)) continue;
+                (result, _) = await call(other, request, ct, false);
+                if (result is not null) return result;
+            }
+            return null;
+        }
+
+        for (var attempt = 0; attempt < FollowAttempts; attempt++)
+        {
+            await delay(TimeSpan.FromSeconds(2), ct);
+
+            // Still nowhere after a few seconds: hand the SAME signed bytes to the other servers too.
+            // One signature can only ever land once, so this cannot pay twice; it only stops one
+            // server that accepted the transaction and never passed it on from deciding the outcome.
+            // Their answers are not waited for — the signature is what gets followed.
+            if (attempt == RebroadcastAfterAttempts)
+            {
+                foreach (var other in servers)
+                    if (!string.Equals(other, server, StringComparison.OrdinalIgnoreCase))
+                        _ = Quietly(call(other, submit, ct, true));
+            }
+
+            var status = await Ask(SolanaRpc.Request("getSignatureStatuses", new[] { id }, new { searchTransactionHistory = false }));
             if (status is null) continue;
 
             var (outcome, reason) = SolanaRpc.ParseSignatureStatus(status.Value);
             if (outcome is SolSubmitOutcome.Included or SolSubmitOutcome.FailedFeeCharged)
                 return new SolSendOutcome(outcome, id, reason);
 
-            var height = await LamportsAsync(server, SolanaRpc.Request("getBlockHeight", new { commitment = "confirmed" }), ct);
+            var height = await Ask(SolanaRpc.Request("getBlockHeight", new { commitment = "confirmed" })) is { } h
+                ? SolanaRpc.ParseLamports(h)
+                : null;
             if (height > recent.LastValidBlockHeight)
             {
                 // Past its last valid height: ask once more, across history, before calling it gone.
-                var (final, _) = await CallAsync(server, SolanaRpc.Request("getSignatureStatuses",
-                    new[] { id }, new { searchTransactionHistory = true }), ct);
+                var final = await Ask(SolanaRpc.Request("getSignatureStatuses", new[] { id }, new { searchTransactionHistory = true }));
                 var (last, lastReason) = final is { } f ? SolanaRpc.ParseSignatureStatus(f) : (SolSubmitOutcome.Unknown, null);
                 return last switch
                 {
@@ -229,5 +315,11 @@ internal static class SolanaNetwork
         return new SolSendOutcome(SolSubmitOutcome.Unknown, id,
             $"The network has not confirmed the transaction yet. It can only land within about a minute of sending, " +
             $"never after. Check {id} on an explorer before sending again.");
+    }
+
+    private static async Task Quietly(Task<(JsonElement? Result, string? Error)> call)
+    {
+        try { await call; }
+        catch { /* a second carrier that failed changes nothing: the signature is followed either way */ }
     }
 }

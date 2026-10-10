@@ -659,7 +659,9 @@ public sealed record ActivityRowViewModel(
     string? RetryAmount = null,
     string? RetryChain = null,
     string? TxId = null,
-    string? Note = null)
+    string? Note = null,
+    string? WalletId = null,
+    string? CounterpartyFull = null)
 {
     /// <summary>
     /// The amount as shown: at most eight significant digits after the leading zeros, in the wallet's
@@ -687,8 +689,38 @@ public sealed record ActivityRowViewModel(
         ? $"{T(Kind)} · {Asset}"
         : string.IsNullOrWhiteSpace(Amount) ? T(Asset) : $"{T(Asset)} · {T(Amount)}";
 
-    /// <summary>Under the title: the other side of a transfer, or what the event did.</summary>
-    public string Detail => T(Counterparty);
+    /// <summary>Under the title: the other side of a transfer — by the name the address book has for
+    /// it, when it has one — or what the event did.</summary>
+    public string Detail => CounterpartyLabel is { Length: > 0 } name
+        ? string.IsNullOrWhiteSpace(Counterparty) ? name : $"{name} · {T(Counterparty)}"
+        : T(Counterparty);
+
+    /// <summary>The name the user gave this row's other side (set by the feed from the address book).</summary>
+    public string? CounterpartyLabel { get; init; }
+
+    /// <summary>The note-and-name editor is open under this row.</summary>
+    public bool IsEditingNote { get; init; }
+
+    /// <summary>The other side's whole address is known, so it can be given a name.</summary>
+    public bool CanLabel => IsTransaction && !string.IsNullOrWhiteSpace(CounterpartyFull);
+
+    /// <summary>There is something to write on this row: a note on its transaction, a name for its address.</summary>
+    public bool CanAnnotate => CanHaveNote || CanLabel;
+
+    /// <summary>What tells this row from every other while its editor is open.</summary>
+    public string EditKey => !string.IsNullOrWhiteSpace(TxId) ? TxId! : $"{UnixMs}|{Asset}|{Amount}|{Counterparty}";
+
+    /// <summary>
+    /// The transaction id an explorer link ends in. A row the wallet wrote itself has the link but was
+    /// never given the id, so it could not carry a note until an explorer listed the same transaction.
+    /// </summary>
+    public static string? TxIdFromExplorer(string? explorer)
+    {
+        if (string.IsNullOrWhiteSpace(explorer)) return null;
+        var path = explorer.Split('?', '#')[0].TrimEnd('/');
+        var id = path[(path.LastIndexOf('/') + 1)..];
+        return id.Length >= 16 ? id : null;   // shorter than any transaction id: a page, not a transaction
+    }
 
     /// <summary>"≈ $3.42" under a transfer's amount (set by the feed from today's price).</summary>
     public string? FiatLabel { get; init; }
@@ -736,8 +768,12 @@ public sealed record ActivityRowViewModel(
 
     private static readonly Avalonia.Media.Geometry LockGlyph = Avalonia.Media.StreamGeometry.Parse(
         "M8 11 V8 C8 5.8 9.8 4 12 4 C14.2 4 16 5.8 16 8 V11 M6 11 H18 V20 H6 Z M12 14.5 V16.5");
+    // An onion: the bulb, one layer inside it, and the sprout on top — few enough lines to read at 19 px.
+    // (It was two nested leaf shapes that read as a flame or a drop, not as Tor.)
     private static readonly Avalonia.Media.Geometry OnionGlyph = Avalonia.Media.StreamGeometry.Parse(
-        "M12 3.5 C7.5 7.5 6.5 15 12 20.5 C17.5 15 16.5 7.5 12 3.5 Z M12 8.5 C9.8 11 9.8 15 12 17 C14.2 15 14.2 11 12 8.5 Z");
+        "M12 7.6 C8.2 9.9 5.2 12.3 5.2 15.4 C5.2 18.6 8.2 21 12 21 C15.8 21 18.8 18.6 18.8 15.4 C18.8 12.3 15.8 9.9 12 7.6 Z " +
+        "M12 11.8 C10.3 13.2 9.4 14.3 9.4 15.6 C9.4 17 10.5 18 12 18 C13.5 18 14.6 17 14.6 15.6 C14.6 14.3 13.7 13.2 12 11.8 Z " +
+        "M12 7.6 C12 5.7 12.8 4.3 14.7 3.2 M12 7.6 C11.6 6.1 10.6 5.1 9.1 4.7");
     private static readonly Avalonia.Media.Geometry GlobeGlyph = Avalonia.Media.StreamGeometry.Parse(
         "M12 3.5 C16.7 3.5 20.5 7.3 20.5 12 C20.5 16.7 16.7 20.5 12 20.5 C7.3 20.5 3.5 16.7 3.5 12 C3.5 7.3 7.3 3.5 12 3.5 Z M3.5 12 H20.5 M12 3.5 C9 7 9 17 12 20.5 M12 3.5 C15 7 15 17 12 20.5");
     private static readonly Avalonia.Media.Geometry ShieldGlyph = Avalonia.Media.StreamGeometry.Parse(

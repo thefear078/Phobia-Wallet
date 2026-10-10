@@ -888,6 +888,7 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.RequirePasswordForSend = value;
             _uiSettings.Save();
             OnPropertyChanged();
+            OnPropertyChanged(nameof(RequirePasswordForSendSwitch));
             if (IsUnlocked) PushActivity("Security", "Send password", value ? "on" : "off", "changed", "now");
             RefreshSecurityChecks();
         }
@@ -1015,6 +1016,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsMobileNav));
             OnPropertyChanged(nameof(IsDesktopHorizontalNav));
             OnPropertyChanged(nameof(ContentMaxWidth));
+            OnPropertyChanged(nameof(FormPageMinWidth));
             OnPropertyChanged(nameof(QuickActionColumns));
             OnPropertyChanged(nameof(ShowSideRail));
             if (!value) IsMoreSheetOpen = false;
@@ -1025,6 +1027,13 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Width cap for the main dashboard column — a phone-like column in mobile mode, the
     /// roomy desktop width otherwise.</summary>
     public double ContentMaxWidth => MobileMode ? 460 : 1120;
+
+    /// <summary>
+    /// How wide the Send and Swap forms stay in the desktop window. The content column is centred on its
+    /// widest child, so a form used to be as wide as whatever it happened to show: Swap shrank to a narrow
+    /// strip the moment its introductory note was closed. The phone layout takes the width it is given.
+    /// </summary>
+    public double FormPageMinWidth => MobileMode ? 0 : 580;
 
     /// <summary>The quick-action tiles wrap to two columns on the narrow phone layout so their
     /// labels don't clip; four across on the desktop.</summary>
@@ -1165,6 +1174,7 @@ public partial class MainViewModel : ViewModelBase
         SendSimulationWarnings.Clear();
 
         var sim = SendSimulation.Build(balance, amount, networkFee, changeReturned, dustThreshold);
+        _reviewFeeText = networkFee > 0 ? $"{Fmt(networkFee)} {symbol}" : string.Empty;
 
         foreach (var e in sim.Effects)
         {
@@ -1191,6 +1201,8 @@ public partial class MainViewModel : ViewModelBase
                     string.Format(Loc.Instance["sim.warnEmpties"], symbol),
                 SendWarningKind.FeeIsLargeShareOfAmount =>
                     string.Format(Loc.Instance["sim.warnFee"], $"{w.Value:P0}"),
+                SendWarningKind.FeeExceedsAmount =>
+                    string.Format(Loc.Instance["sim.warnFeeOver"], $"{Fmt(networkFee)} {symbol}", $"{Fmt(amount)} {symbol}"),
                 SendWarningKind.ChangeIsDust =>
                     Loc.Instance["sim.warnDust"],
                 _ =>
@@ -1199,6 +1211,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(HasSendSimulation));
+        OnPropertyChanged(nameof(HasSendReviewWarnings));
     }
 
     private void ClearSendSimulation()
@@ -1206,6 +1219,7 @@ public partial class MainViewModel : ViewModelBase
         SendSimulationRows.Clear();
         SendSimulationWarnings.Clear();
         OnPropertyChanged(nameof(HasSendSimulation));
+        OnPropertyChanged(nameof(HasSendReviewWarnings));
     }
     [ObservableProperty] private string _sendSuccess = string.Empty;
     private EthSendQuote? _sendQuote;
@@ -2309,6 +2323,8 @@ public partial class MainViewModel : ViewModelBase
             HasSendQuote = false;
         }
         SendFiatAmount = string.Empty; // a fresh asset starts the fiat quick-entry empty
+        SendAmountInFiat = false;      // ...and the amount box in the coin's own unit
+        NotifySendAmountUnit();
         OnPropertyChanged(nameof(SelectedSendBalance));
         OnPropertyChanged(nameof(SelectedSendBalanceLabel));
         OnPropertyChanged(nameof(SendAmountFiat));
@@ -2558,7 +2574,11 @@ public partial class MainViewModel : ViewModelBase
         if (symbol is "USDT" or "USDC") usdEach = 1m;
         else if (_priceUsd.TryGetValue(symbol, out var p) && p.Usd > 0) usdEach = p.Usd;
         else return string.Empty;
-        return "≈ " + Fx.Money((double)(amount * usdEach));
+        // Less than a hundredth of the display currency is said as that: "≈ 0.00" beside an amount about
+        // to be sent reads as "worth nothing", when the point is that it is worth almost nothing.
+        var usd = amount * usdEach;
+        if (amount > 0 && usd * Fx.Rate < 0.005m) return "< " + Fx.Money((double)(0.01m / Fx.Rate));
+        return "≈ " + Fx.Money((double)usd);
     }
 
     // --- Fiat quick-entry (§6.3 convenience): type a USD amount and the coin amount fills in below.
@@ -2600,8 +2620,9 @@ public partial class MainViewModel : ViewModelBase
         // Fiat only fills the coin field; an empty/invalid fiat value leaves the coin amount untouched, so
         // it can never silently wipe a coin amount the user typed directly.
         var coin = FiatConvert.FiatToCoinAmount(value, PriceForSelected() * Fx.Rate);
-        if (coin.Length > 0) SendAmount = coin;
+        if (coin.Length > 0 && !_fillingFiatFromCoin) SendAmount = coin;
         OnPropertyChanged(nameof(SendFiatCoinEquiv));
+        OnPropertyChanged(nameof(SendWillSendCoin));
     }
 
     // --- Network-check-on-paste (§4): a non-blocking sanity check that the destination matches the
@@ -2652,13 +2673,23 @@ public partial class MainViewModel : ViewModelBase
 
         // Snapshots: a refresh finishing in the background can rewrite these lists while they are read.
         var own = Accounts.ToArray().Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
+        // Whole addresses, from the rows that kept them: everyone this wallet has paid (trusted), and
+        // everyone who has paid it (seen, not trusted). The rows used to hold only "abcd…wxyz", which
+        // equals no address and resembles none — an address paid twice was a "first send" each time,
+        // and a look-alike of one went unnoticed.
+        var history = Activity.ToArray().Concat(_onChainRows.ToArray())
+            .Where(t => !string.IsNullOrWhiteSpace(t.CounterpartyFull) && !t.IsFailed)
+            .ToList();
         var known = _addressBookAll.ToArray().Select(e => e.Address)
-            .Concat(Transactions.ToArray().Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
+            .Concat(history.Where(t => t.Kind == "Sent").Select(t => t.CounterpartyFull!))
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var seen = history.Where(t => t.Kind == "Received").Select(t => t.CounterpartyFull!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        var result = Umbrella.Wallet.Core.Safety.AddressSafetyInspector.Inspect(dest, own, known);
+        var result = Umbrella.Wallet.Core.Safety.AddressSafetyInspector.Inspect(dest, own, known, seen);
         switch (result.Level)
         {
             case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.Lookalike:
@@ -2678,7 +2709,9 @@ public partial class MainViewModel : ViewModelBase
                 // actually well-formed for the chosen chain AND you have some history to be "new"
                 // against. On a fresh wallet with no contacts, everyone is new — that would be noise.
                 var sym = SelectedSendAsset?.Symbol;
-                if (known.Count > 0 &&
+                // ...and only once this wallet's history has been read: until then "never paid before"
+                // is a guess, and it was being said about addresses paid the day before.
+                if (known.Count > 0 && (HistorySynced || _isTonWallet || _isMoneroWallet) &&
                     DestinationAddressCheck.Check(sym, dest) == AddressShape.Matches)
                 {
                     SendSafetyTitle = Loc.Instance["send.firstTitle"];
@@ -2897,6 +2930,7 @@ public partial class MainViewModel : ViewModelBase
         if (SelectedSendBalanceUnknown) { SendError = Loc.Instance["balance.unavailable"]; return; }
         var bal = SelectedSendBalance;
         if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
+        SendAmountInFiat = false;
         SendAmount = Fmt(Math.Max(0m, bal - SendMaxReserve(SelectedSendAsset.Symbol)));
         SendError = string.Empty;
     }
@@ -2914,6 +2948,7 @@ public partial class MainViewModel : ViewModelBase
         if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
         var amount = AmountPresets.Of(bal, pct);
         if (amount.Length == 0) return;
+        SendAmountInFiat = false;
         SendAmount = amount;
         SendError = string.Empty;
     }
@@ -3608,7 +3643,9 @@ public partial class MainViewModel : ViewModelBase
         Activity.Clear();
         RecentActivity.Clear();
         _onChainRows.Clear();       // fetched chain history too — it re-pulls on the next Refresh
+        _otherWalletsActivity.Clear();
         _activityStore.Clear();
+        _historyStore.Clear();      // and what every wallet had read and kept
         LastHistorySync = "—";
         RebuildActivityAssets();
         RebuildFilteredActivity();
@@ -4893,6 +4930,10 @@ public partial class MainViewModel : ViewModelBase
         return row.Price == usd && row.Change24h == change ? row : row with { Price = usd, Change24h = change };
     }
 
+    /// <summary>How long to wait before each extra ask for the balances nobody answered for.</summary>
+    private static readonly TimeSpan[] UnreadRetryDelays =
+        [TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(25)];
+
     [RelayCommand]
     private async Task RefreshLiveDataAsync()
     {
@@ -5110,6 +5151,31 @@ public partial class MainViewModel : ViewModelBase
             // logging it flooded the Activity feed with identical "Sync · OK" rows. The live status
             // line below already shows the last-updated time; the Activity feed is for real events.
             StatusMessage = string.Format(Loc.Instance["status.live"], Holdings.Count, DateTime.Now.ToString("HH:mm:ss"));
+
+            // Whatever nobody answered for is asked again by itself a few seconds on — and twice more —
+            // instead of standing as "could not be read" until the next full refresh two minutes later.
+            // Quietly: the refresh is over as far as the screen is concerned. Not when nothing can leave
+            // the device at all (the kill-switch with no Tor yet): every ask would be refused on the spot,
+            // and Tor coming up starts a refresh of its own.
+            if (ReferenceEquals(_refreshCts, mine)) IsRefreshing = false;
+            var canAsk = !(PublicHttp.RequireProxy && string.IsNullOrEmpty(PublicHttp.ActiveProxy));
+            foreach (var wait in canAsk ? UnreadRetryDelays : [])
+            {
+                var unread = balanceTargets
+                    .Where(t => IndexOfAccount(t) is var at and >= 0 && Accounts[at].Balance != BalanceRead.Live)
+                    .ToList();
+                var unreadUtxo = Accounts.Any(a =>
+                    UtxoScanChains.Contains(a.Symbol, StringComparer.OrdinalIgnoreCase) &&
+                    a.SupportStatus == "Ready" && a.Balance != BalanceRead.Live);
+                if (unread.Count == 0 && !unreadUtxo) break;
+
+                await Task.Delay(wait, ct);
+                var again = unread.Select(ShowBalanceWhenRead).ToList();
+                if (unreadUtxo) again.Add(RefreshUtxoWalletsAsync(prices, ct));
+                await Task.WhenAll(again.Select(ShowWhenDone));
+                ct.ThrowIfCancellationRequested();
+                SaveBalanceCache();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -5812,6 +5878,7 @@ public partial class MainViewModel : ViewModelBase
     private void NotifyFiatEntry()
     {
         OnPropertyChanged(nameof(SendFiatPlaceholder));
+        NotifySendAmountUnit();
         OnPropertyChanged(nameof(ReceiveFiatPlaceholder));
         OnPropertyChanged(nameof(SendAmountFiat));
         OnPropertyChanged(nameof(SendFiatCoinEquiv));
@@ -6147,6 +6214,7 @@ public partial class MainViewModel : ViewModelBase
         _onChainRows.Clear();
         HistorySynced = false; // this wallet's history hasn't been pulled yet → show "loading", not "empty"
         if (!_isTonWallet && !_isMoneroWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history across the user's addresses
+        else _ = LoadTxNotesAsync();   // no history read to bring them in: this wallet's notes, for its own rows
     }
 
     private void SelectFirstReceive()
@@ -6822,6 +6890,15 @@ public partial class MainViewModel : ViewModelBase
     {
         RefreshHoldings();
         RecalcBalance();
+    }
+
+    /// <summary>Gives the Send screen prices without a network. Test hook for the amount box.</summary>
+    public void SetPricesForTest(IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices)
+    {
+        _priceUsd = prices;
+        OnPropertyChanged(nameof(SendAmountFiat));
+        OnPropertyChanged(nameof(FiatInputAvailable));
+        OnPropertyChanged(nameof(SendFiatCoinEquiv));
     }
 
     private static string SymbolFor(ChainId chain) => chain switch

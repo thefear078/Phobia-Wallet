@@ -11,6 +11,7 @@ Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Li
 
 | If you want to… | Start here |
 |---|---|
+| See everything the wallet does | [Feature tour](FEATURES.md), with screenshots |
 | Install and use the wallet | [Getting started](getting-started.md) · [User guides](guides/README.md) · [On Android](guides/android.md) |
 | Read everything in Ukrainian | [Посібник користувача](guides/user-guide-uk.md) |
 | Follow day-to-day engineering workflow | [WORKFLOW.md](WORKFLOW.md) |
@@ -29,6 +30,7 @@ Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Li
 
 | Document | Description |
 |---|---|
+| [Feature tour](FEATURES.md) | Every part of the wallet, with screenshots, and what it costs |
 | [Getting started](getting-started.md) | Download, verify, first wallet, Tor, first send |
 | [Android](guides/android.md) | The phone app: installing the APK, the layout, what it does not do yet |
 | [Swap](guides/swap.md) | Any coin for any coin: routes, review, paying, following a swap |
@@ -47,12 +49,12 @@ Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Li
 
 | Document | Description |
 |---|---|
-| [architecture.md](architecture.md) | Layers, data flow, Core vs Infrastructure |
+| [architecture.md](architecture.md) | Layers, data flow, the send path, repository layout |
 | [building.md](building.md) | Compile, test, package installers |
 | [WORKFLOW.md](WORKFLOW.md) | How to add coins and keep ROADMAP honest |
 | [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md) | Malware residual risk + PSBT / hardware path |
 | [LICENSE_CHANGE.md](../LICENSE_CHANGE.md) | MIT switch announcement |
-| [testing.md](testing.md) | What the suite protects |
+| [testing.md](testing.md) | Test layers, how to run them, coverage, what the suite protects, honest gaps |
 | [adding-a-chain.md](adding-a-chain.md) | Full procedure for a new cryptocurrency |
 | [12-coins-and-chains.md](12-coins-and-chains.md) | Capability matrix for every chain |
 | [localization.md](localization.md) | Languages and parity tests |
@@ -67,6 +69,7 @@ Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Li
 |---|---|
 | [THREAT_MODEL.md](../THREAT_MODEL.md) | Attack vectors, residual risk |
 | [security-model.md](security-model.md) | Crypto choices and explicit non-goals |
+| [SECURITY_REVIEW.md](SECURITY_REVIEW.md) | Self-review: secrets in logs, memory wiping, file permissions, local services |
 | [SECURITY.md](../SECURITY.md) | Private reporting process |
 | [AUDIT_STATUS.md](../AUDIT_STATUS.md) | External audit: none yet |
 | [BUILD_VERIFY.md](BUILD_VERIFY.md) | Verify a release against source |
@@ -101,7 +104,7 @@ See [`_index.yml`](_index.yml) for a structured index used by tooling and humans
 ## Repository layout (docs-related)
 
 ```
-UmbrellaWallet/
+Phobia-Wallet/
 ├── README.md                 ← product overview (start here)
 ├── MANIFESTO.md              ← core philosophy
 ├── SECURITY.md · PRIVACY.md · THREAT_MODEL.md
@@ -117,6 +120,6 @@ UmbrellaWallet/
 
 ---
 
-*Last updated: 2026-10-09 · Wallet version [4.10.0-beta.5](../VERSION) (shown as Phobia Beta)*
+*Last updated: 2026-10-10 · Wallet version [4.10.0-beta.6](../VERSION) (shown as Phobia Beta)*
 
 📖 This page is the documentation hub. Product overview: [README.md](../README.md).

@@ -269,6 +269,8 @@ public partial class MainViewModel
     {
         SendError = string.Empty;
         SendSuccess = string.Empty;
+        SendReceipt = null;
+        _reviewFeeText = string.Empty;
         HasSendQuote = false;
         ClearSendSimulation();
         HasSendPrivacy = false;
@@ -1194,7 +1196,7 @@ public partial class MainViewModel
             }
         }
 
-        await RunBusyAsync(async () =>
+        await RunSendAsync(async () =>
         {
             StatusMessage = Loc.Instance["status.signingBroadcast"];
             switch (_sendSymbol)
@@ -1313,12 +1315,13 @@ public partial class MainViewModel
                         // The network never said whether it took it. Recorded as Pending against the
                         // transaction id that was signed, and never offered as a retry: a second send
                         // would choose different coins and pay twice.
+                        ShowSendReceipt(SendReceiptState.Unclear, quote.Symbol, quote.Amount, quote.To,
+                            txid, txid is null ? null : explorer, error ?? Loc.Instance["send.errBroadcast"]);
                         ClearSendQuotes();
                         SendTo = string.Empty;
                         SendAmount = string.Empty;
-                        SendError = error ?? Loc.Instance["send.errBroadcast"];
                         StatusMessage = Loc.Instance["status.broadcastFailed"];
-                        PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", Shorten(quote.To), "now",
+                        PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", quote.To, "now",
                             txid is null ? null : $"https://{explorer}", "Pending");
                         break;
                     }
@@ -1341,12 +1344,13 @@ public partial class MainViewModel
                         {
                             // It may still land until its blockhash expires. Never offered as a retry: the
                             // transaction id is known, and a fresh send could pay twice.
+                            ShowSendReceipt(SendReceiptState.Unclear, "SOL", quote.AmountSol, quote.To,
+                                outcome.Signature, explorer, outcome.Message ?? Loc.Instance["send.errBroadcast"]);
                             ClearSendQuotes();
                             SendTo = string.Empty;
                             SendAmount = string.Empty;
-                            SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                             StatusMessage = Loc.Instance["status.broadcastFailed"];
-                            PushActivity("Sent", "SOL", $"-{Fmt(quote.AmountSol)}", Shorten(quote.To), "now",
+                            PushActivity("Sent", "SOL", $"-{Fmt(quote.AmountSol)}", quote.To, "now",
                                 explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                             break;
                         }
@@ -1354,7 +1358,7 @@ public partial class MainViewModel
                         // Included means a confirmed block holds it. A failure in a block cost only the
                         // fee and moved nothing, so it is a failed send like any other.
                         await FinishSendAsync(outcome.Outcome == SolSubmitOutcome.Included, outcome.Signature,
-                            outcome.Message, "SOL", quote.AmountSol, quote.To, explorer);
+                            outcome.Message, "SOL", quote.AmountSol, quote.To, explorer, confirmed: true);
                     }
                     finally
                     {
@@ -1395,7 +1399,7 @@ public partial class MainViewModel
                             SendAmount = string.Empty;
                             SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                             StatusMessage = Loc.Instance["status.broadcastFailed"];
-                            PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", Shorten(quote.To), "now",
+                            PushActivity("Sent", quote.Symbol, $"-{Fmt(quote.Amount)}", quote.To, "now",
                                 explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                             break;
                         }
@@ -1464,7 +1468,7 @@ public partial class MainViewModel
                             SendMemo = string.Empty;
                             SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                             StatusMessage = Loc.Instance["status.broadcastFailed"];
-                            PushActivity("Sent", "XLM", $"-{Fmt(quote.AmountXlm)}", Shorten(quote.To), "now",
+                            PushActivity("Sent", "XLM", $"-{Fmt(quote.AmountXlm)}", quote.To, "now",
                                 explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                             break;
                         }
@@ -1519,7 +1523,7 @@ public partial class MainViewModel
                         SendAmount = string.Empty;
                         SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                         StatusMessage = Loc.Instance["status.broadcastFailed"];
-                        PushActivity("Sent", "DOT", $"-{Fmt(quote.AmountDot)}", Shorten(quote.To), "now",
+                        PushActivity("Sent", "DOT", $"-{Fmt(quote.AmountDot)}", quote.To, "now",
                             explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                         break;
                     }
@@ -1548,7 +1552,7 @@ public partial class MainViewModel
                         SendMemo = string.Empty;
                         SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                         StatusMessage = Loc.Instance["status.broadcastFailed"];
-                        PushActivity("Sent", "ATOM", $"-{Fmt(quote.AmountAtom)}", Shorten(quote.To), "now",
+                        PushActivity("Sent", "ATOM", $"-{Fmt(quote.AmountAtom)}", quote.To, "now",
                             explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                         break;
                     }
@@ -1577,7 +1581,7 @@ public partial class MainViewModel
                         SendMemo = string.Empty;
                         SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                         StatusMessage = Loc.Instance["status.broadcastFailed"];
-                        PushActivity("Sent", "XRP", $"-{Fmt(quote.AmountXrp)}", Shorten(quote.To), "now",
+                        PushActivity("Sent", "XRP", $"-{Fmt(quote.AmountXrp)}", quote.To, "now",
                             explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                         break;
                     }
@@ -1607,7 +1611,7 @@ public partial class MainViewModel
                             SendAmount = string.Empty;
                             SendError = outcome.Message ?? Loc.Instance["send.errBroadcast"];
                             StatusMessage = Loc.Instance["status.broadcastFailed"];
-                            PushActivity("Sent", "NEAR", $"-{Fmt(quote.AmountNear)}", Shorten(quote.To), "now",
+                            PushActivity("Sent", "NEAR", $"-{Fmt(quote.AmountNear)}", quote.To, "now",
                                 explorer.Length > 0 ? $"https://{explorer}" : null, "Pending");
                             break;
                         }
@@ -1712,25 +1716,32 @@ public partial class MainViewModel
         }
 
         OnSwapPaymentSent(reference, to);   // it may have gone: a swap paid this way is followed, not retried
+        // Said on a receipt, with the id to check — not as a red line under a form that has just emptied.
+        ShowSendReceipt(SendReceiptState.Unclear, symbol, amount, to, reference, explorer,
+            error ?? Loc.Instance["send.errBroadcast"]);
         ClearSendQuotes();
         SendTo = string.Empty;
         SendAmount = string.Empty;
         SendMemo = string.Empty;
-        SendError = error ?? Loc.Instance["send.errBroadcast"];
         StatusMessage = Loc.Instance["status.broadcastFailed"];
         var link = string.IsNullOrWhiteSpace(explorer) ? null
             : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
-        PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link, "Pending");
+        PushActivity("Sent", symbol, $"-{Fmt(amount)}", to, "now", link, "Pending");
     }
 
-    private async Task FinishSendAsync(
-        bool ok, string? reference, string? error, string symbol, decimal amount, string to, string explorer)
+    /// <param name="confirmed">True only when the sender itself followed the transaction into a
+    /// confirmed block (Solana does). Everything else is "broadcast", and is recorded as Pending.</param>
+    private Task FinishSendAsync(
+        bool ok, string? reference, string? error, string symbol, decimal amount, string to, string explorer,
+        bool confirmed = false)
     {
         if (ok && reference is not null)
         {
             // Built BEFORE the quotes are cleared: the plan is what knows how many of the user's own
             // addresses funded this spend, and it is about to be thrown away (roadmap P1.12).
             BuildSendLeakReport(symbol);
+            ShowSendReceipt(confirmed ? SendReceiptState.Confirmed : SendReceiptState.Broadcast,
+                symbol, amount, to, reference, explorer);
             OnSwapPaymentSent(reference, to);   // the payment of a swap: the swap is now under way
             ClearSendQuotes();
             SendTo = string.Empty;
@@ -1740,9 +1751,12 @@ public partial class MainViewModel
             StatusMessage = Loc.Instance["status.txBroadcast"];
             var link = string.IsNullOrWhiteSpace(explorer) ? null
                 : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
-            // Just broadcast, not yet mined — mark it Pending so the feed is honest until it confirms.
-            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", link, "Pending");
-            await RefreshLiveDataAsync();
+            // Pending until a block is known to hold it, so the feed never says more than the wallet saw.
+            PushActivity("Sent", symbol, $"-{Fmt(amount)}", to, "now", link, confirmed ? "Confirmed" : "Pending");
+            // The receipt is on screen now. Reading every balance again took the better part of a
+            // minute over Tor, and the send stayed "busy" for all of it — so it happens behind the
+            // receipt, and once more a little later for the chains whose explorers lag a block.
+            RefreshAfterSend();
         }
         else
         {
@@ -1750,9 +1764,34 @@ public partial class MainViewModel
             StatusMessage = Loc.Instance["status.broadcastFailed"];
             // A failed broadcast never left this device, so record it as retryable (full destination and
             // amount kept in retry context, not shown, so Retry can safely re-open a pre-filled send).
-            PushActivity("Sent", symbol, $"-{Fmt(amount)}", Shorten(to), "now", null, "Failed",
+            PushActivity("Sent", symbol, $"-{Fmt(amount)}", to, "now", null, "Failed",
                 retryTo: to, retryAmount: amount.ToString(CultureInfo.InvariantCulture), retryChain: symbol);
         }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Balances after a send: at once, and again shortly after — both in the background.</summary>
+    private void RefreshAfterSend()
+    {
+        var epoch = _lockEpoch;
+        _ = RefreshLiveDataAsync();
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(25));
+            if (epoch != _lockEpoch || !IsUnlocked) return;
+            try { Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (epoch == _lockEpoch && !IsRefreshing) _ = RefreshLiveDataAsync(); }); }
+            catch { /* no dispatcher (tests): the first refresh is the only one */ }
+        });
+    }
+
+    /// <summary>Runs a confirmed send with the sheet showing it in flight, whatever way it ends.</summary>
+    private async Task RunSendAsync(Func<Task> send)
+    {
+        SendError = string.Empty;
+        IsSendingNow = true;
+        try { await RunBusyAsync(send); }
+        finally { IsSendingNow = false; }
     }
 
     private void ClearSendQuotes()

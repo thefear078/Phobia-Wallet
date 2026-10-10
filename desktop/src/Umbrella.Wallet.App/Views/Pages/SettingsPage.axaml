@@ -1067,9 +1067,34 @@
         <TextBlock Classes="eyebrow" Text="{Binding [sec.sendPw], Source={x:Static app:Loc.Instance}}"/>
         <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                    Text="{Binding [sec.sendPwOnBody], Source={x:Static app:Loc.Instance}}"/>
-        <ToggleSwitch IsChecked="{Binding RequirePasswordForSend, Mode=TwoWay}"
+        <!-- On at once; off only through the password: whoever sits down at an unlocked wallet is
+             exactly who this setting is there to stop. -->
+        <ToggleSwitch IsChecked="{Binding RequirePasswordForSendSwitch, Mode=TwoWay}"
                       OnContent="{Binding [sec.on], Source={x:Static app:Loc.Instance}}"
                       OffContent="{Binding [sec.off], Source={x:Static app:Loc.Instance}}"/>
+        <Border IsVisible="{Binding SendPasswordOffAsked}" Background="{DynamicResource UmCardAlt}"
+                BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="10" Padding="12,10">
+          <StackPanel Spacing="8">
+            <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"
+                       Text="{Binding [sec.sendPwOffAsk], Source={x:Static app:Loc.Instance}}"/>
+            <TextBox PasswordChar="•" MaxWidth="360" HorizontalAlignment="Left"
+                     Text="{Binding SendPasswordOffInput, Mode=TwoWay}"
+                     Watermark="{Binding [send.passwordWatermark], Source={x:Static app:Loc.Instance}}">
+              <TextBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding ConfirmSendPasswordOffCommand}"/>
+                <KeyBinding Gesture="Escape" Command="{Binding CancelSendPasswordOffCommand}"/>
+              </TextBox.KeyBindings>
+            </TextBox>
+            <TextBlock IsVisible="{Binding HasSendPasswordOffError}" Text="{Binding SendPasswordOffError}"
+                       Foreground="#E09A9A" FontSize="12" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="danger" Content="{Binding [sec.sendPwOffConfirm], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding ConfirmSendPasswordOffCommand}"/>
+              <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding CancelSendPasswordOffCommand}"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
 
         <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
 

@@ -84,6 +84,13 @@ specific commit — checked against the log, not against anything this project s
 gh attestation verify PhobiaWallet-Setup-Beta.exe --repo thefear078/Phobia-Wallet
 ```
 
+Since 4.10.0-beta.6 the signed attestation itself is on the release page too, as
+`provenance-<label>.sigstore.json`, so it can be checked without asking GitHub for it:
+
+```bash
+gh attestation verify PhobiaWallet-Setup-Beta.exe --repo thefear078/Phobia-Wallet --bundle provenance-Beta.sigstore.json
+```
+
 Each release also carries `PhobiaWallet-<label>-sbom.spdx.json`: every package that release builds from,
 with its version and licence (SPDX, from GitHub's dependency graph), covered by the same checksum and
 attestation.
@@ -95,7 +102,7 @@ You need the .NET SDK pinned in [`global.json`](../global.json) (8.0.423, latest
 ```bash
 git clone https://github.com/thefear078/Phobia-Wallet.git
 cd Phobia-Wallet
-git checkout v4.10.0-beta.5          # the tag on the release page — never a moving branch
+git checkout v4.10.0-beta.6          # the tag on the release page — never a moving branch
 dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"
 ```
 

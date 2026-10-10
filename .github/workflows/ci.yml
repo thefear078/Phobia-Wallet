@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: "8.0.x"
-      - run: dotnet restore desktop/Umbrella.Wallet.sln
+      - run: dotnet restore desktop/Umbrella.Wallet.sln --locked-mode   # every package as packages.lock.json pins it, by hash
       # Exclude the "Live" category — those smoke tests hit real public explorers and would be flaky
       # (and rate-limited) in CI. Run them on demand with: dotnet test --filter Category=Live
       - run: dotnet test desktop/Umbrella.Wallet.sln --no-restore --verbosity minimal --filter "Category!=Live"
@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: "8.0.x"
-      - run: dotnet restore desktop/Umbrella.Wallet.sln
+      - run: dotnet restore desktop/Umbrella.Wallet.sln --locked-mode   # every package as packages.lock.json pins it, by hash
       # Roadmap P0.8. Its own job so the kill-switch gate is visible as a gate, rather than three
       # tests inside a run of eight hundred. They put a listener on loopback and count connections:
       # with Tor-only armed nothing may reach it, and with it off the same client must — otherwise

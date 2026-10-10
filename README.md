@@ -1,593 +1,397 @@
 <div align="center">
 
-<img src="docs/assets/readme-banner.png" width="100%" alt="Phobia Wallet"/>
+<img src="docs/assets/readme-banner-v411.png" width="100%" alt="Phobia Wallet — crypto wallet"/>
 
 # Phobia Wallet
 
-**A self-custody crypto wallet for Windows, Linux and Android that never asks who you are.**
+### Open-source, non-custodial privacy wallet with Tor built in
 
-No account. No email. No phone number. No KYC. No tracking. No fee on your transfers.
+**18 blockchains in one encrypted vault — Monero as a full wallet — on Windows, Linux and Android.**<br/>
+No account · no email · no KYC · no tracking · no fee on your transfers.
 
-<sub>an independent project by <b>the fear</b></sub>
-
-> **Umbrella Wallet is now Phobia Wallet.** Same code, same keys, same encrypted vault — a new name and
-> a new look. Phobia is in **beta**, and a stable copy (4.9.0 and older) is never offered a beta by
-> itself: install the Beta from its release page over the old copy, and it keeps the vault and settings.
-> A beta copy finds the newer Beta by itself: on Windows one click installs it, and on Linux too (a Linux
-> copy from before 7 October 2026 unpacks the downloaded file over its folder instead). On Android, a copy
-> installed before 7 October 2026 takes one reinstall: the APK is now signed with a stable key
-> ([why](docs/guides/android.md#updating)).
-
-<br/>
-
-![CI](https://github.com/thefear078/Phobia-Wallet/actions/workflows/ci.yml/badge.svg)
-![CodeQL](https://github.com/thefear078/Phobia-Wallet/actions/workflows/codeql.yml/badge.svg)
-![Security](https://github.com/thefear078/Phobia-Wallet/actions/workflows/security.yml/badge.svg)
-![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release)
-![License](https://img.shields.io/badge/license-MIT-4B3F86)
+[![CI](https://github.com/thefear078/Phobia-Wallet/actions/workflows/ci.yml/badge.svg)](https://github.com/thefear078/Phobia-Wallet/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/thefear078/Phobia-Wallet/actions/workflows/codeql.yml/badge.svg)](https://github.com/thefear078/Phobia-Wallet/actions/workflows/codeql.yml)
+[![Semgrep](https://github.com/thefear078/Phobia-Wallet/actions/workflows/semgrep.yml/badge.svg)](https://github.com/thefear078/Phobia-Wallet/actions/workflows/semgrep.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/thefear078/Phobia-Wallet/badge)](https://scorecard.dev/viewer/?uri=github.com/thefear078/Phobia-Wallet)
+[![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release&color=6E5FB8)](https://github.com/thefear078/Phobia-Wallet/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4B3F86)](LICENSE)
 ![Version](https://img.shields.io/badge/version-Beta-2F6BEF)
-![Tests](https://img.shields.io/badge/tests-1900%2B%20offline-7DCF8F)
-![Platform fee](https://img.shields.io/badge/platform%20fee-none-7DCF8F)
+![Tests](https://img.shields.io/badge/tests-1%2C950%2B%20offline-7DCF8F)
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
-![Android](https://img.shields.io/badge/Android-beta%20APK-6E5FB8?logo=android&logoColor=white)
+![Android](https://img.shields.io/badge/Android-beta-6E5FB8?logo=android&logoColor=white)
 ![Tor](https://img.shields.io/badge/Tor-bundled-7D4698?logo=torproject&logoColor=white)
 ![Monero](https://img.shields.io/badge/Monero-full%20wallet-F26822?logo=monero&logoColor=white)
 
-**[⬇ Download Beta](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5)** ·
-[Verify your download](#verify-what-you-downloaded) ·
-[Build it yourself](docs/building.md) ·
+**[⬇ Download the Beta](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.6)** ·
+[Verify a download](docs/BUILD_VERIFY.md) ·
+[Build from source](#build-from-source) ·
+[Feature tour](docs/FEATURES.md) ·
 [Security](SECURITY.md) ·
-[The rules](MANIFESTO.md) ·
-[Threat model](THREAT_MODEL.md) ·
-[Privacy](PRIVACY.md) ·
-[**Docs index**](docs/INDEX.md) ·
-[Brand kit & posters](brand/README.md)
+[Docs](docs/INDEX.md) ·
+[Telegram](https://t.me/PhobiaStat)
 
 <br/>
 
-<img src="docs/assets/screenshot-portfolio-v410.png" width="88%" alt="Phobia Wallet portfolio"/>
+<img src="docs/assets/screenshot-portfolio-v410.png" width="88%" alt="Phobia Wallet — portfolio"/>
 
 </div>
 
----
+> [!NOTE]
+> **Phobia is in beta, and Umbrella Wallet is now Phobia Wallet** — same code, same keys, same encrypted
+> vault. A beta copy finds the newer Beta by itself; a stable 4.9.0 copy is never offered a beta, so install
+> the Beta over it and the vault and settings stay. An Android copy installed before 7 October 2026 needs
+> one reinstall ([why](docs/guides/android.md#updating)).
 
-## Documentation navigation
+## Why Phobia
 
-Official docs are one web: root philosophy/legal files + `docs/` deep-dives. **Hub:** [docs/INDEX.md](docs/INDEX.md).
+<table>
+<tr>
+<td width="33%" valign="top">
 
-```
-Phobia-Wallet/
-├── README.md                 ← you are here
-├── MANIFESTO.md              ← core philosophy (THE RULES)
-├── SECURITY.md · PRIVACY.md · THREAT_MODEL.md
-├── TERMS_OF_SERVICE.md · PRIVACY_POLICY.md · TRADEMARK_POLICY.md
-├── LEGAL/                    ← pointers to legal docs
-├── docs/
-│   ├── INDEX.md              ← documentation hub
-│   ├── getting-started.md
-│   ├── ROADMAP.md
-│   └── …
-└── .github/SUPPORT.md
-```
+### 🔐 Your keys, your device
+The 24-word seed is made and encrypted on your device (Argon2id → AES-256-GCM) and never leaves it. There
+is no account and no server that knows you exist — nobody can freeze, seize or "recover" your funds.
 
-| If you want to… | Read this first |
-|---|---|
-| Install and use | [Getting started](docs/getting-started.md) · [User guides](docs/guides/README.md) · [On Android](docs/guides/android.md) |
-| Swap, stake, connect | [Swap](docs/guides/swap.md) · [Staking](docs/guides/staking.md) · [Connect](docs/guides/connect.md) |
-| Read it in Ukrainian | [Посібник користувача](docs/guides/user-guide-uk.md) |
-| Understand the philosophy | [MANIFESTO.md](MANIFESTO.md) |
-| Know security guarantees | [THREAT_MODEL.md](THREAT_MODEL.md) |
-| Report a vulnerability | [SECURITY.md](SECURITY.md) |
-| Build from source | [Building](docs/building.md) |
-| Add a new coin | [Adding a chain](docs/adding-a-chain.md) |
-| See the backlog | [ROADMAP.md](docs/ROADMAP.md) |
-| Legal / store | [LEGAL/](LEGAL/README.md) · [Terms](TERMS_OF_SERVICE.md) · [Trademark](TRADEMARK_POLICY.md) |
+</td>
+<td width="33%" valign="top">
 
-## What this is
+### 🧅 Tor in the box
+One switch starts a bundled Tor client. A kill-switch fails closed, every kind of request gets its own
+circuit, and names never touch your DNS. The app tells you which server learns what.
 
-Phobia is a wallet for Windows and Linux — with an Android beta built from the same code — that holds
-your keys and nothing else of yours.
+</td>
+<td width="33%" valign="top">
 
-Your 24-word seed is generated on your machine, encrypted into a local vault with your password
-(Argon2id → AES-256-GCM), and never leaves the device. There is no server that knows you exist. There
-is no account to create, nothing to verify, and no way for us — or anyone holding this software — to
-freeze, seize, or recover your funds.
+### 🪙 One vault, 18 chains
+Bitcoin, Ethereum and every ERC-20, Monero as a real wallet, USDT on TRON, Solana, XRP and more — each one
+can receive, send, show its balance and read its history.
 
-It holds eighteen chains in one vault — plus the Ethereum networks that share your 0x address —
-including Monero as a **full** wallet rather than a receive-only stub, and ships Tor inside the binary
-so your balance lookups don't hand your IP address to a block explorer. What each chain can do today,
-receive, balance or send, is in [Coins](#coins) — nothing is listed as working before it does.
+</td>
+</tr>
+</table>
 
-## Why it exists
+## Key features
 
-Most wallets ask you to trade privacy for convenience, and most of them don't say so plainly.
+**Privacy**
+- Bundled **Tor** with a fail-closed kill-switch and a separate circuit per purpose — on the phone too.
+- **Settings → Privacy** lists every server the wallet contacts and what it learns; point any chain at your own node.
+- **Privacy Radar** shows, before you send, what the transaction would reveal on-chain — analysed offline.
+- No telemetry, no analytics, no crash reports. Nothing about you leaves the device.
 
-- Exchange wallets hold your keys and know your identity.
-- Most "private" wallets do one chain well. Feather is Monero. Sparrow is Bitcoin. If you hold both,
-  you run both.
-- Wallets with Tor support usually make you configure it. Which means most people don't.
-- Nearly every wallet takes a cut of your transfers, and many bury it.
+**Security**
+- Encrypted vault; your password again before every send; auto-lock; seed screens hidden from screenshots.
+- Warnings for **address poisoning**, wrong-network addresses and look-alikes of your own; a **duress password**.
+- One amount box with its unit on it, a review that puts warnings first, and a receipt for every send;
+  an unclear broadcast is settled against the chain — never offered as a retry that would pay twice.
+- Signed, attested releases with an SBOM; the code that derives keys and signs **rebuilds byte for byte**.
 
-Phobia is the wallet we wanted to exist: one vault for the coins people actually hold together,
-Tor as a switch instead of a setup guide, and no cut of your money.
+**Money**
+- **Monero** through the real `monero-wallet-rpc` on your machine; Bitcoin with coin control, Taproot, PSBT and PayJoin.
+- Tokens: every **ERC-20, TRC-20, SPL** (Token-2022 too) and TON jetton you hold.
+- **Swaps** between any coins, each on its own network, to your own address — the route named before you pay.
+- **Staking** for TRX, SOL and ATOM, signed in the wallet. **No platform fee**, ever.
 
-## What makes it different
+**Every day**
+- A balance chart drawn through your own transfers, an exchange-style market chart, Activity with fiat values
+  and the whole history the wallet has read, CSV export, encrypted notes on transfers and names for addresses.
+- 15 themes, 6 languages, desktop and phone layouts, updates that check their own checksums.
 
-**Monero and Bitcoin and USDT in one vault.**
-Not a Monero wallet with Bitcoin bolted on, and not a Bitcoin wallet that shows XMR as "coming soon".
-Monero runs the real `monero-wallet-rpc` locally over loopback, so its balance is computed on your
-machine because no explorer can compute it for you.
-
-**Tor is bundled, not assumed.**
-One switch. The wallet starts its own Tor client on port 9250 (or the next free port) — separate from
-a Tor Browser you may already be running — and routes every balance lookup, price fetch and broadcast
-through it, each kind of request on a circuit of its own, so the exit that saw your address is not the
-one that sees you spend from it. There is also a kill-switch: when it's on, a request
-that cannot go through Tor does not go at all, and the wallet brings Tor up by itself on launch so that
-never leaves you offline. On Android, point it at Orbot — see [Phobia on Android](docs/guides/android.md).
-
-**The Security Center tells you the truth, not a promise.**
-It reads live settings and reports what is *actually* protecting the wallet right now. If Tor is off,
-it says your IP is visible to every explorer you use. It will not flatter you — and one button turns on
-every protection it scores. Every send asks for your password again before anything is signed.
-
-<div align="center">
-<img src="docs/assets/screenshot-security-v410.png" width="80%" alt="Security Center"/>
-</div>
-
-**A market you can actually read.**
-The coin chart is an exchange chart: candles or a line, a volume band, the price axis on the right with
-the last price tagged, a crosshair on both axes and the hovered candle's open, high, low and close —
-with KuCoin and Bybit behind Binance, so it still draws over Tor.
-
-<div align="center">
-<img src="docs/assets/screenshot-market-v410.png" width="80%" alt="Market chart with candles"/>
-</div>
-
-**Stake from the wallet.**
-TRX, SOL and ATOM stake right here — freeze and vote on TRON, a stake account on Solana, a delegation on the
-Cosmos Hub — each built, checked and signed in the wallet and confirmed with your password like a send.
-The transaction TronGrid builds for TRON is decoded and compared with what you asked before it is signed.
-
-**Your balance, point by point.**
-The chart beside the balance follows the pointer: each point is what the coins you hold now were worth at
-that moment, when that was, and the move since the start — real prices, not a smoothed guess. A wallet of
-stablecoins draws as the flat line it is.
-
-**Activity you can scan.**
-Every event has its own icon, the list runs newest first under Today / Yesterday headings, and every
-transfer shows what it is worth.
-
-<div align="center">
-<img src="docs/assets/screenshot-activity-v410.png" width="80%" alt="Activity"/>
-</div>
-
-**You choose which server sees your addresses.**
-A wallet cannot read a chain by itself — it has to ask somebody, and on a transparent chain asking
-means *saying the address*. Tor hides your IP; it does not un-send an address. So Settings → Privacy
-names every server the wallet talks to and what each one learns, and lets you point any chain
-somewhere else — a different company, or a node you run. Monero, Bitcoin, Litecoin, Bitcoin Cash,
-Dogecoin, Ethereum, Solana, TON, Tron, Cardano, XRP, Stellar, Cosmos, NEAR and Polkadot.
-
-Two rules are enforced rather than suggested: a `.onion` node is never used without Tor and is never
-silently swapped for a clearnet one, and a plain `http://` endpoint is refused outright — choosing
-your own server *for privacy* and then sending addresses in clear would be worse than not choosing.
-
-**Privacy Radar.**
-Before you send, the wallet reads the transaction you are about to make and tells you what it would
-reveal on-chain — chiefly whether it links coins that were previously unconnected, which is how chain
-analysis de-anonymises people. The analysis runs offline, on your own data, for you.
-
-**No cut of your transfers.**
-You pay the network's miner/validator fee and nothing else. See [What this costs](#what-this-costs).
+See all of it, screen by screen, in the **[feature tour](docs/FEATURES.md)**.
 
 ## Screenshots
 
-| Welcome | Unlock |
-|---|---|
-| <img src="docs/assets/screenshot-welcome-v410.png" alt="Welcome"/> | <img src="docs/assets/screenshot-unlock-v410.png" alt="Unlock"/> |
-| **Receive** | **Settings** |
-| <img src="docs/assets/screenshot-receive-v410.png" alt="Receive"/> | <img src="docs/assets/screenshot-settings-v410.png" alt="Settings"/> |
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/screenshot-market-v410.png" alt="Market"/><br/><sub><b>Market</b> — candles, volume, crosshair, over Tor</sub></td>
+<td width="50%"><img src="docs/assets/screenshot-security-v410.png" alt="Security Center"/><br/><sub><b>Security Center</b> — what actually protects you, right now</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/screenshot-activity-v410.png" alt="Activity"/><br/><sub><b>Activity</b> — every chain's history, with what it was worth</sub></td>
+<td width="50%"><img src="docs/assets/screenshot-receive-v410.png" alt="Receive"/><br/><sub><b>Receive</b> — the network printed under every coin</sub></td>
+</tr>
+</table>
 
-The default look is **Phobia's midnight violet** — bold and quiet: a near-black page, charcoal cards,
-one violet accent, clean type, crystal mountains on the horizon and the large crystal on the balance card.
-Motion is Phobia's own and each piece has a switch: crystals floating up behind the page, glints
-twinkling across it, a sweep of light over the balance card. **15 themes**
-share that design in their own colours — the glow behind the page, the mountains and both logos take the
-theme's hue — and the gold that was Umbrella's default is still there as **Honey gold**:
+<p align="center">
+<img src="docs/assets/screenshot-android-home-v410.png" width="28%" alt="Android — home"/>
+<img src="docs/assets/screenshot-android-assets-v410.png" width="28%" alt="Android — assets"/>
+<img src="docs/assets/screenshot-android-quick-v410.png" width="28%" alt="Android — quick actions"/>
+<br/><sub>The same wallet on Android, with its own Tor and Monero service · <a href="docs/FEATURES.md#themes-and-languages">15 themes</a></sub>
+</p>
 
-| Honey gold · light on black | Uniswap · hot pink |
-|---|---|
-| <img src="docs/assets/theme-gold-v410.png" alt="Honey gold theme"/> | <img src="docs/assets/theme-uniswap-v410.png" alt="Uniswap theme"/> |
-| **Void · electric OLED** | **Navy · the classic blue** |
-| <img src="docs/assets/theme-void-v410.png" alt="Void theme"/> | <img src="docs/assets/theme-navy-v410.png" alt="Navy theme"/> |
+## Supported coins
 
-## Coins
-
-Every row in the wallet prints the network under the coin name, because sending on the wrong network
-is the most common way people lose money.
+Every row in the wallet prints the network under the coin name — sending on the wrong network is the
+most common way people lose money.
 
 | Coin | Receive | Balance | Send | History | Swap | Notes |
 |---|:---:|:---:|:---:|:---:|:---:|---|
-| Bitcoin (BTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84 native SegWit, full HD scan |
-| Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address — **and now sendable**, fee in ETH |
-| Litecoin (LTC) | ✅ | ✅ | ✅ | ✅ | ✅ | BIP84, full HD scan |
-| Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | real UTXO spend |
-| Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | ✅ | CashAddr, SIGHASH_FORKID |
+| Bitcoin (BTC) | ✅ | ✅ | ✅ | ✅ | ✅ | native SegWit, full HD scan, coin control, PSBT, PayJoin |
+| Ethereum (ETH) | ✅ | ✅ | ✅ | ✅ | ✅ | + every ERC-20 at the same address, fee in ETH |
+| Litecoin (LTC) | ✅ | ✅ | ✅ | ✅ | ✅ | native SegWit, full HD scan |
+| Dogecoin (DOGE) | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| Bitcoin Cash (BCH) | ✅ | ✅ | ✅ | ✅ | ✅ | CashAddr |
 | Monero (XMR) | ✅ | ✅ | ✅ | ✅ | ✅ | local `monero-wallet-rpc`, loopback only |
-| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | ✅ | SPL tokens send too, Token-2022 (PayPal USD) included when its extensions allow |
+| Solana (SOL) | ✅ | ✅ | ✅ | ✅ | ✅ | + SPL tokens, Token-2022 when its extensions allow |
 | TRON (TRX) | ✅ | ✅ | ✅ | ✅ | ✅ | + every TRC-20 at the same address |
 | USDT (TRC-20) | ✅ | ✅ | ✅ | ✅ | ✅ | same address as TRX; fee paid in TRX |
-| TON | ✅ | ✅ | ✅ | ✅ | 🟡 | wallet v4R2, pinned to `@ton/ton` |
-| Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | ✅ | CIP-1852, BIP32-Ed25519 |
+| TON | ✅ | ✅ | ✅ | ✅ | 🟡 | wallet v4R2, jettons |
+| Cardano (ADA) | ✅ | ✅ | ✅ | ✅ | ✅ | CIP-1852 |
 | Zcash (ZEC) | ✅ | ✅ | ✅ | ✅ | ✅ | **transparent `t1…` only** — not shielded |
-| XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | ✅ | destination tag for exchange deposits; an address becomes an account once it receives the network's reserve |
-| Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | ✅ | SEP-0005, restores in LOBSTR / Solar / Ledger; memo for exchange deposits |
-| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | ✅ | ✅ | memo for exchange deposits; the balance is *available* ATOM — staked ATOM is not counted |
-| NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | ✅ | from your implicit account, to any `.near` name or implicit account; swaps through the Exolix exchange |
-| Polkadot (DOT) | ✅ | ✅ | ✅ | ✅ | — | sr25519, same account as Polkadot.js / Nova; balance adds Asset Hub + relay; sends from Asset Hub; no route trades native DOT, so no swap |
-| Nano (XNO) | ✅ | ✅ | ✅ | ✅ | ✅ | restores in Ledger / Trust / Nault (BIP39); no fee — a send pockets what it needs first, with proof of work computed on your device |
-| Decred (DCR) | ✅ | ✅ | ✅ | ✅ | ✅ | the BIP44 account Trust Wallet / Ledger / Exodus use (Decrediton derives differently); Decred's own signature hash, checked against transactions the network accepted |
-| Linea (ETH) | ✅ | ✅ | ✅ | — | — | same `0x` as mainnet; no history source answers without an API key (your own sends still show) |
-| zkSync Era (ETH) | ✅ | ✅ | ✅ | ✅ | — | the gas comes from zkSync's own estimate, not Ethereum's 21,000; history while you hold ETH there |
+| XRP Ledger (XRP) | ✅ | ✅ | ✅ | ✅ | ✅ | destination tag for exchange deposits |
+| Stellar (XLM) | ✅ | ✅ | ✅ | ✅ | ✅ | memo for exchange deposits |
+| Cosmos Hub (ATOM) | ✅ | ✅ | ✅ | ✅ | ✅ | memo; staked ATOM not counted in the balance |
+| NEAR Protocol (NEAR) | ✅ | ✅ | ✅ | ✅ | ✅ | implicit account, to any `.near` name |
+| Polkadot (DOT) | ✅ | ✅ | ✅ | ✅ | — | same account as Polkadot.js / Nova; no route trades native DOT |
+| Nano (XNO) | ✅ | ✅ | ✅ | ✅ | ✅ | no fee — proof of work computed on your device |
+| Decred (DCR) | ✅ | ✅ | ✅ | ✅ | ✅ | the BIP44 account of Trust Wallet / Ledger / Exodus |
+| Linea (ETH) | ✅ | ✅ | ✅ | — | — | no keyless history source; your own sends still show |
+| zkSync Era (ETH) | ✅ | ✅ | ✅ | ✅ | — | history while you hold ETH there |
 
-Plus the native coin of every major EVM network at the same `0x` address (BNB, MATIC, AVAX, FTM, CRO,
-and ETH on Arbitrum / Optimism / Base), and NFTs listed by name and count with **no image fetch**, so
-viewing them never leaks your IP.
-
-Coins swap for one another, each on its own network, and always to your own address. The route is chosen
-by trust and named before you pay: **THORChain** first (nobody holds your coins), then **NEAR Intents** (a
-smart contract holds them for the swap and refunds you if it cannot be filled; +0.25% without a partner
-key), and the **Exolix** exchange last — the route for Monero, Nano, Decred and NEAR, which nothing
-decentralised reaches, and otherwise only when the other two cannot quote the pair. It holds the coins for
-the minutes of the swap, and the screen says so in a warning colour. 🟡 in the table: a route exists but
-did not quote that coin when this was written.
+Plus the native coin of the major EVM networks at your `0x` address (BNB, MATIC, AVAX, FTM, CRO, and ETH on
+Arbitrum, Optimism and Base), and NFTs listed by name with **no image fetch**. 🟡 = a swap route exists but did
+not quote that coin when last checked. Per-chain detail: **[docs/12-coins-and-chains.md](docs/12-coins-and-chains.md)**.
 
 ## Download
 
-<img src="docs/assets/logo-phobia.png" width="64" align="left" alt="" hspace="14"/>
+<img src="docs/assets/logo-phobia.png" width="56" align="right" alt="Phobia icon"/>
 
-The current build is the **Beta** of 9 October 2026 — its [release page](https://github.com/thefear078/Phobia-Wallet/releases/tag/v4.10.0-beta.5) has every file below. It is a
-pre-release, so GitHub does not label it “Latest”; older builds are on the
-[releases page](https://github.com/thefear078/Phobia-Wallet/releases).
-This is the icon you will see once it is installed.
-
-<br clear="left"/>
+The current build is the **Beta** of 10 October 2026, a GitHub pre-release; older builds are on the
+[releases page](https://github.com/thefear078/Phobia-Wallet/releases). The icon on the right is what you
+will see once it is installed.
 
 | | |
 |---|---|
-| **Windows installer** | [`PhobiaWallet-Setup-Beta.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Setup-Beta.exe) |
-| **Windows portable** | [`PhobiaWallet-Beta-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-win-x64-portable.exe) — one file, no install, leaves nothing behind |
-| **Linux** | [`PhobiaWallet-Beta-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-linux-x64.tar.gz) |
-| **Android** | [`PhobiaWallet-Beta-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/PhobiaWallet-Beta-android.apk) — Android 7.0 or newer; [how to install](docs/guides/android.md) |
-| **Checksums** | [`SHA256SUMS-Beta.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.5/SHA256SUMS-Beta.txt) |
+| **Windows installer** | [`PhobiaWallet-Setup-Beta.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/PhobiaWallet-Setup-Beta.exe) |
+| **Windows portable** | [`PhobiaWallet-Beta-win-x64-portable.exe`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/PhobiaWallet-Beta-win-x64-portable.exe) — one file, no install |
+| **Linux** | [`PhobiaWallet-Beta-linux-x64.tar.gz`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/PhobiaWallet-Beta-linux-x64.tar.gz) — Tor and Monero included |
+| **Android** | [`PhobiaWallet-Beta-android.apk`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/PhobiaWallet-Beta-android.apk) — Android 7.0+, [how to install](docs/guides/android.md) |
+| **Checksums** | [`SHA256SUMS-Beta.txt`](https://github.com/thefear078/Phobia-Wallet/releases/download/v4.10.0-beta.6/SHA256SUMS-Beta.txt) |
 
-Portable mode matters if you don't want the wallet to be installed on the machine at all: it runs
-from the file you downloaded and keeps its data next to it.
-
-The page also carries the same files with a number in the name (`PhobiaWallet-Setup-Beta-5.exe`, with
-their own `SHA256SUMS-Beta-5.txt`). They are byte-for-byte the files above, there for copies from before
-8 October 2026, whose updater looks for numbered names. You need only the unnumbered ones.
-
-**On a phone:** the Android app is the same wallet — the same keys, signing code, coins and screens —
-laid out for a phone. The APK carries Tor and the Monero service too — the projects' own
-Android builds, checked against their signed sums — so the phone has the same Tor switch, kill-switch and
-Monero balance as the desktop ([Orbot](https://orbot.app) works as well). The
-[Android guide](docs/guides/android.md) says how, and what else differs.
-
-<img src="docs/assets/screenshot-android-home-v410.png" width="32%" alt="Phobia on Android — home"/> <img src="docs/assets/screenshot-android-assets-v410.png" width="32%" alt="Phobia on Android — assets and market"/> <img src="docs/assets/screenshot-android-quick-v410.png" width="32%" alt="Phobia on Android — quick actions"/>
-
-### Verify what you downloaded
-
-Every release ships a checksum list — `SHA256SUMS-Beta.txt` for the Beta, `SHA256SUMS-<version>.txt`
-for a full release. Check it before you run anything:
+**Check before you run anything:**
 
 ```bash
-# Linux / macOS — run in the folder with the download and the sums file
-sha256sum -c SHA256SUMS-Beta.txt --ignore-missing
+sha256sum -c SHA256SUMS-Beta.txt --ignore-missing                      # the file is the one published
+gh attestation verify PhobiaWallet-Setup-Beta.exe --repo thefear078/Phobia-Wallet   # and it was built here
 ```
 
-```powershell
-# Windows PowerShell — compare against the matching line in the sums file
-Get-FileHash .\PhobiaWallet-Setup-Beta.exe -Algorithm SHA256
-```
-
-If the hash does not match, do not run it. Every Windows executable and the APK are also
-signed by the author — Windows thumbprint `89C2D871C195D57C14D1911B6C47629DE052C553`, Android
-certificate SHA-256 `C3:80:0E:…:95:72:D1` (in full in [SECURITY.md](SECURITY.md#verifying-what-you-run)).
-The Windows certificate is self-signed for now, so Windows still names no publisher: check the thumbprint.
-Every file also has a build attestation (`gh attestation verify <file> --repo thefear078/Phobia-Wallet`)
-and each release an SBOM. All four checks, and building it yourself — the managed assemblies that derive
-keys and sign come out byte-identical — are in **[docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md)**.
-
-## Get started
-
-1. **Create** a new wallet, or **import** any BIP39 phrase (12/15/18/21/24 words) from another wallet.
-   The derived addresses will match the original exactly.
-2. Write the 24 words on **paper**. The wallet then asks you for three of them at random — not
-   theatre, it is the only way to catch a phrase you wrote down wrong while it still costs nothing.
-3. Turn **Tor** on in Settings *before* you unlock, if you don't want your addresses queried over
-   clearnet even once.
-4. Send a **small test amount** to any new address first. A blockchain transfer is final.
-
-While your seed phrase or Monero keys are on screen, the window is excluded from screenshots and
-screen sharing on Windows, and from screenshots, recording and the recent-apps preview on Android. Linux
-has no such switch for an app to throw, and the Security Center says so. A camera pointed at the screen
-still works everywhere, so reveal them alone.
-
-## Architecture
+Every file goes through the same chain before it reaches you, and every link of it can be checked
+without trusting this page:
 
 ```mermaid
-flowchart TB
-    subgraph UI["Umbrella.Wallet.App — Avalonia UI"]
-        V["Views (XAML)"]
-        VM["MainViewModel (partial classes)"]
-        LOC["Localization · 6 languages"]
-        THEME["Theming · 15 themes"]
-    end
-
-    subgraph CORE["Umbrella.Wallet.Core — pure, offline, testable"]
-        SEED["BIP39 seed"]
-        DERIVE["Derivation<br/>BIP32 · SLIP-0010 · BIP32-Ed25519"]
-        UTXO["UTXO scan + spend planner"]
-        SAFETY["Safety<br/>Privacy Radar · spam · address checks"]
-        AMOUNT["AmountInput<br/>locale-safe parsing"]
-    end
-
-    subgraph INFRA["Umbrella.Wallet.Infrastructure — I/O"]
-        VAULT["Encrypted vault<br/>Argon2id → AES-256-GCM"]
-        HTTP["PublicHttp"]
-        TOR["Bundled Tor client :9250"]
-        XMRRPC["monero-wallet-rpc<br/>loopback only"]
-        SIGN["Signers<br/>NBitcoin · Nethereum · BouncyCastle"]
-    end
-
-    EXPL["Public explorers / RPCs"]
-
-    V --> VM
-    VM --> CORE
-    VM --> INFRA
-    HTTP -->|"when Tor is on"| TOR --> EXPL
-    HTTP -.->|"direct, unless kill-switch"| EXPL
-    INFRA --> XMRRPC
-    VAULT -->|"decrypted only in memory"| SEED
-    SEED --> DERIVE --> SIGN
-
-    classDef secret fill:#2E1013,stroke:#EE3244,color:#fff
-    class SEED,VAULT,SIGN secret
+flowchart LR
+    A["Tagged commit<br/>on main"] --> B["CI gates<br/>tests · CodeQL · Semgrep<br/>device checks"]
+    B --> C["Built on GitHub runners<br/>Windows · Linux · Android"]
+    C --> D["Signed<br/>Authenticode · APK key"]
+    D --> E["SHA256SUMS<br/>self-checked"]
+    E --> F["Attested<br/>Sigstore provenance · SBOM"]
+    F --> G["Release page"]
+    G --> H(["You verify:<br/>checksum · signature<br/>attestation · rebuild"])
+    classDef you fill:#1F3B2C,stroke:#7DCF8F,color:#fff
+    class H you
 ```
 
-**The rule the layout enforces:** `Core` never touches the network, so every piece of money logic —
-derivation, UTXO selection, fee maths, amount parsing, privacy analysis — is testable offline against
-known vectors. Anything that talks to the outside world lives in `Infrastructure` and goes through one
-Tor-aware HTTP client.
+Windows files and the APK are also signed by the author (Windows thumbprint
+`89C2D871C195D57C14D1911B6C47629DE052C553`, self-signed for now; APK certificate in
+[SECURITY.md](SECURITY.md#verifying-what-you-run)). All the checks, and rebuilding it yourself:
+**[docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md)**. The release page also carries numbered copies
+(`…-Beta-5…`) — the same bytes, for older copies' updaters; you need only the files above.
 
-### What leaves your device
+## Quick start
 
-| Never leaves | Leaves (to public explorers / RPCs) |
-|---|---|
-| Your seed phrase | The addresses you look up |
-| Every private key | Transactions you broadcast |
-| Your vault password | Coin prices you fetch |
-| Your private transaction notes | *(all of it behind Tor when Tor is on)* |
+### Use it
 
-There is no account, no email, no telemetry and no analytics of any kind.
+1. **Create** a wallet, or **import** any BIP39 phrase (12–24 words) — the addresses match the original wallet.
+2. Write the 24 words on **paper**; the wallet then asks for three of them, to catch a mistake while it costs nothing.
+3. Turn **Tor** on in Settings *before* you unlock, so no address is ever queried over clearnet.
+4. Send a **small test amount** to any new address first. A blockchain transfer is final.
 
-## Repository layout
+More in **[docs/getting-started.md](docs/getting-started.md)** and the **[user guides](docs/guides/README.md)**
+(also [in Ukrainian](docs/guides/user-guide-uk.md)).
 
-```
-desktop/
-  src/
-    Umbrella.Wallet.Core/            pure logic — no network, no UI
-      Chains/                        chain catalog, address validation
-      Derivation/                    BIP32 / SLIP-0010 / Ed25519 derivation
-      Utxo/                          HD scan, spend planner, fee levels
-      Safety/                        Privacy Radar, spam detection, token identity
-      Amounts/                       locale-safe amount parsing
-      Chart/                         candle aggregation
-    Umbrella.Wallet.Infrastructure/  everything that does I/O
-      Network/                       explorers, RPC, senders, Tor
-      EncryptedFileSeedVault.cs      Argon2id → AES-256-GCM vault
-      AtomicFile.cs                  every save is all-or-nothing
-    Umbrella.Wallet.App/             Avalonia UI, desktop and phone layouts
-      Views/                         XAML
-      ViewModels/                    MainViewModel, split by feature
-      Localization.cs                every user-facing string, 6 languages
-      Theming.cs                     15 themes
-      GuideContent.cs                the in-app guide
-    Umbrella.Wallet.Android/         the Android head (hosts the App project)
-  tests/
-    Umbrella.Wallet.Core.Tests/      about 1,860 offline tests
-    Umbrella.Wallet.UiTests/         every screen drawn headless, desktop and phone
-  installer/                         Inno Setup script
-  scripts/                           release, signing, Tor/Monero staging
-docs/                                everything in this README's Docs section
-```
+### Build from source
 
-## Build it yourself
-
-You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Nothing else.
+You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (pinned in [`global.json`](global.json)). Nothing else.
 
 ```bash
 git clone https://github.com/thefear078/Phobia-Wallet.git
 cd Phobia-Wallet
-dotnet build desktop/Umbrella.Wallet.sln -c Release
+dotnet build desktop/Umbrella.Wallet.sln -c Release                                 # build
+dotnet run --project desktop/src/Umbrella.Wallet.App                                # run
+dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"        # ~1,950 offline tests
 ```
 
-```bash
-# run it
-dotnet run --project desktop/src/Umbrella.Wallet.App
+Installers, the portable exe, the Linux tarball and the Android APK: **[docs/building.md](docs/building.md)**.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Device["Your device"]
+        direction TB
+        UI["App — Avalonia UI<br/>desktop and phone layouts"]
+        subgraph Core["Core — pure, offline, testable"]
+            K["Keys and derivation<br/>BIP39 · BIP32 · SLIP-10 · sr25519"]
+            P["Spend planning · fees<br/>Privacy Radar · address safety"]
+            S["Transaction builders and signers<br/>one per chain format"]
+        end
+        subgraph Infra["Infrastructure — the only I/O"]
+            V[("Encrypted vault<br/>Argon2id → AES-256-GCM")]
+            H["PublicHttp<br/>one client, kill-switch"]
+            T["Bundled Tor<br/>a circuit per purpose"]
+            X["monero-wallet-rpc<br/>loopback, random login"]
+        end
+    end
+    subgraph Net["Public networks"]
+        E["Block explorers and RPC nodes"]
+        R["Prices · swap routes · updates"]
+        M["Monero node"]
+    end
+    UI --> Core
+    UI --> Infra
+    V -- "decrypted in memory only" --> K
+    K --> S
+    P --> S
+    H --> T
+    T --> E
+    T --> R
+    H -. "direct only when Tor-only is off" .-> E
+    X -- "through Tor when on" --> M
+
+    classDef secret fill:#2E1013,stroke:#EE3244,color:#fff
+    class V,K,S secret
 ```
 
-```bash
-# the full offline test suite — no network required
-dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"
+**The rule the layout enforces:** `Core` never touches the network, so every piece of money logic —
+derivation, coin selection, fee maths, amount parsing, transaction formats, privacy analysis — is tested
+offline against published vectors and real mainnet transactions. Everything that talks to the outside
+world lives in `Infrastructure` and goes through one Tor-aware client. Layers, data flow and the send path:
+**[docs/architecture.md](docs/architecture.md)**.
+
+## Security and privacy
+
+Sending is where a wallet loses people's money, so every chain's send takes the same guarded path:
+
+```mermaid
+flowchart LR
+    A["Destination<br/>and amount"] --> B{"Valid for this network?<br/>A look-alike of one<br/>in your history?"}
+    B -- "no" --> X["Stopped, with the reason"]
+    B -- "yes" --> C["Coins and fee read<br/>over Tor"]
+    C --> D["Review: fee, balance<br/>before and after,<br/>Privacy Radar"]
+    D --> E["Your password"]
+    E --> F["Signed on this device<br/>every signature verified"]
+    F --> G["Broadcast on a<br/>separate Tor circuit"]
+    G --> H{"Clear answer?"}
+    H -- "yes" --> I(["Sent / refused"])
+    H -- "no" --> J["Settled by transaction id —<br/>never a blind retry"]
+    classDef stop fill:#2E1013,stroke:#EE3244,color:#fff
+    class X stop
 ```
 
-Producing installers, the portable build and checksums is documented in
-**[docs/building.md](docs/building.md)**.
+The step by step, with what each one prevents: [docs/architecture.md](docs/architecture.md#the-send-path).
 
-## Tests
-
-More than 1,860 offline tests, run on every push by [CI](.github/workflows/ci.yml). They are not there
-for a badge — several classes of them exist because the alternative is losing money:
-
-- **Derivation** is pinned byte-for-byte to official test vectors and to the reference libraries
-  (`@ton/ton` for TON, `cardano-serialization-lib` for ADA). An address the wallet shows you is an
-  address the original wallet would show.
-- **Amount parsing** is pinned because `"0,5"` parsed naively reads as `5` — ten times the amount.
-- **Spend planning** is pinned so a partial network scan can never quietly lower a balance, and a fee
-  level can never drop below the relay floor and strand a transaction.
-- **Localization parity** fails if any language is missing a key, so a feature cannot silently render
-  in English inside a translated wallet.
-- **Theme contrast** fails if body text, muted text, or a button label falls below WCAG AA.
-- **Signing** for every new format — Taproot, PSBT, PayJoin, Stellar — is pinned to transactions the
-  reference implementations build (BIP test vectors, NBitcoin, the Stellar Go SDK), never to the
-  wallet's own output.
-- **Busy explorers** are pinned too: a timeout is not a cancel, a 429 is waited out, and an unread
-  balance is never shown as zero.
-- **Privacy on the wire**: a SOCKS5 server on loopback reads each request's circuit label off the
-  handshake, a listener proves the kill-switch opens no socket, and the Monero service's login is
-  checked against the real `monero-wallet-rpc`.
-- **Screens as drawn**: every section, desktop and phone, is rendered headless with the real styles, and
-  a screen that shows an object's type name instead of words fails the build.
-
-`--filter "Category!=Live"` excludes the handful of tests that hit real explorers, so the default run
-is fully offline and deterministic.
-
-## Diagnostics
-
-| Symptom | Where to look |
+| Never leaves your device | Leaves it (behind Tor when Tor is on) |
 |---|---|
-| Balance is slow or missing | Security Center → is Tor on? Tor adds latency by design |
-| Monero balance stuck at "Scanning…" | It is a real wallet syncing, not an API call — it takes time |
-| A coin shows "Not ready" | That chain's adapter is not implemented; it is never a fake address |
-| Send fails with "not synced" | A partial scan refuses to spend rather than risk a wrong balance |
-| An unknown token appeared | Suspected spam airdrops are folded away — see the notice above Holdings |
+| Your seed phrase and every private key | The addresses you look up |
+| Your vault password | Transactions you broadcast |
+| Your private transaction notes | Coin prices you fetch (one fixed list for everyone) |
 
-More in **[docs/troubleshooting.md](docs/troubleshooting.md)**.
+- **[SECURITY.md](SECURITY.md)** — how to report a vulnerability (privately, [via an advisory](https://github.com/thefear078/Phobia-Wallet/security/advisories/new)), what is in scope, how we respond.
+- **[THREAT_MODEL.md](THREAT_MODEL.md)** — what is defended, and where the defence ends.
+- **[PRIVACY.md](PRIVACY.md)** — every server the wallet contacts and what it learns.
+- **[docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)** — the code read from an attacker's side: secrets in logs, memory, files at rest, local services.
 
-## What this costs
+No external audit has been done yet ([AUDIT_STATUS.md](AUDIT_STATUS.md)). Please don't open a public issue
+for anything that could put funds at risk.
 
-**Phobia takes no cut of your transfers.** You pay the network's own miner/validator fee and nothing
-else — no platform fee, no subscription, no withdrawal fee, no account fee. A wallet that holds your
-own keys should not charge you for touching your own money.
+## Quality
 
-It is funded instead by:
+- **1,950+ offline tests** on every push: derivation and signing pinned to official vectors and to
+  transactions the networks accepted, amount parsing, spend planning, privacy on the wire (a SOCKS5 server
+  reads each request's circuit, a listener proves the kill-switch opens no socket), and every screen
+  rendered headless on desktop and phone.
+- **Device checks** on every pull request: the APK on an Android emulator with its Tor bootstrapping, and
+  the Linux build on a virtual display reaching check.torproject.org through its own Tor.
+- **Static analysis and supply chain:** CodeQL, Semgrep, Dependabot, dependency review, gitleaks, secret
+  scanning, OpenSSF Scorecard; Tor and Monero pinned to their projects' signed hashes; a reproducible-build check.
+- **Coverage** published weekly. How it all fits together: **[docs/testing.md](docs/testing.md)**.
 
-- **[GitHub Sponsors](https://github.com/sponsors/thefear078)**
-- **Bounties** — anyone can fund a specific coin or feature
-- **A small swap spread**, later and only on swaps, which are optional in a way a send is not
+### Results
 
-There is no advertising and no tracking, and there will not be. Those are the two things that would
-make everything else on this page untrue.
+Measured on **9–10 October 2026** against `main` and the current Beta — re-run them yourself with the commands
+in [docs/testing.md](docs/testing.md) and [docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md).
 
-## Security
-
-The short version:
-
-- Seed generated with the OS CSPRNG, 256-bit entropy, BIP39.
-- Vault: Argon2id (m=64 MiB, t=4, p=2) → AES-256-GCM with versioned associated data.
-- Keys are decrypted into memory only for the moment they are used, then zeroed.
-- Seed and key screens set `WDA_EXCLUDEFROMCAPTURE` on Windows and `FLAG_SECURE` on Android, so
-  screenshots and screen sharing see nothing.
-- Auto-lock on idle and on minimise; `Ctrl+L` locks instantly.
-- Every network call goes through one Tor-aware client; the kill-switch makes "no Tor" mean "no
-  request", not "quietly direct". Over Tor, each purpose (address lookups, broadcasts, prices, swaps…)
-  gets its own circuit, and names are resolved by Tor, never by this machine's DNS.
-- The local Monero service runs with a random login only this user can read, so neither a web page nor
-  another account on the machine can ask it to send.
-
-The long version, including the threat model and what Phobia explicitly does **not** protect you
-from, is in **[SECURITY.md](SECURITY.md)**.
-
-Found a vulnerability? [Report it privately](https://github.com/thefear078/Phobia-Wallet/security/advisories/new).
-Please don't open a public issue for anything that could put funds at risk.
+| Check | Result |
+|---|---|
+| Offline test suite | ✅ **1,958 / 1,958** passed · rendered screens **4 / 4** |
+| Line coverage of the offline suite | **Core 90.6 %** — the money logic: derivation, signing, fees, parsing · Infrastructure 41.9 % (network code; the live tests cover it instead) · App 54.1 % · **58.5 %** overall ([by assembly](docs/testing.md#coverage)) |
+| Static analysis | ✅ CodeQL: **0** open alerts · ✅ Semgrep: **0** findings — 76 rules over 427 C# files, the workflows and secrets |
+| Live tests against real explorers and nodes | ✅ **48 / 49** — the one left: an explorer rate-limiting this machine |
+| Android emulator: app starts, bundled Tor bootstraps | ✅ passed |
+| Linux desktop: the build reaches check.torproject.org through its own Tor | ✅ passed |
+| Release files against their checksum lists | ✅ **11 / 11** byte for byte |
+| Build attestations (Sigstore) · Windows signatures | ✅ all verified · ✅ thumbprint `89C2…C553`, timestamped |
+| Decred send: a wrong-key payment from a real coin | ✅ refused by mainnet **only** at the signature |
+| Dependabot · secret scanning alerts | ✅ **0** open · ✅ **0** open |
+| OpenSSF Scorecard | **6.2 / 10** before this round of fixes (workflow permissions, pinned packages, provenance on releases); most of the rest needs a second reviewer, fuzzing and the OpenSSF best-practices badge ([live score](https://scorecard.dev/viewer/?uri=github.com/thefear078/Phobia-Wallet)) |
+| External security audit | ❌ none yet — [AUDIT_STATUS.md](AUDIT_STATUS.md) |
 
 ## Roadmap
 
-Being honest about what exists and what doesn't. Full backlog (coins, security, UX, hardware):
-**[docs/ROADMAP.md](docs/ROADMAP.md)**.
-
 | | |
 |---|---|
-| ✅ Shipped | 18 chains, Tor + kill-switch with per-purpose circuits, Monero full wallet, swaps, Security Center, Privacy Radar, CSV export, encrypted notes, themes, 6 languages · duress password · transaction simulation · Tor/Monero pinned to upstream's signed sums · one capability matrix · any held ERC-20 / TRC-20 / jetton · restored Taproot found and spent · PayJoin when a payment link offers it · PSBT export, review and signing · keyless release attestations · signed Windows and Android builds, SBOM, immutable release tags |
-| 🔜 Next | **Seedless watch-only mode** · Ledger / Trezor |
-| 🧪 Beta | **Android** (APK with its own Tor and Monero service; checks for updates, Android installs them) |
-| 🗓 Planned | Installers that rebuild byte for byte (the signing code already does) · a CA-issued Windows certificate · external security audit |
-| ❌ Not planned | Any advertising · any telemetry · custody of your funds · venture funding |
+| ✅ Shipped | 18 chains with send and history · Tor + kill-switch · Monero full wallet · swaps · staking · Security Center · Privacy Radar · PSBT and PayJoin · duress password · signed, attested releases with SBOM |
+| 🔜 Next | Seedless watch-only mode · Ledger / Trezor |
+| 🧪 Beta | Android, with its own Tor and Monero service |
+| 🗓 Planned | Byte-for-byte reproducible installers · a CA-issued Windows certificate · an external security audit |
+| ❌ Never | Advertising · telemetry · custody of your funds · venture funding |
 
-## Documentation
-
-| | |
-|---|---|
-| [docs/INDEX.md](docs/INDEX.md) | **Central documentation hub** — start here |
-| [docs/getting-started.md](docs/getting-started.md) | Install, verify, first wallet |
-| [docs/guides/](docs/guides/README.md) | **User guides** — Android, swap, staking, connect, wallets and settings, and a full guide in Ukrainian |
-| [MANIFESTO.md](MANIFESTO.md) | The rules this wallet is held to — **do not dilute this tone** |
-| [THREAT_MODEL.md](THREAT_MODEL.md) | Attack vectors: what is defended, and where the defence ends |
-| [PRIVACY.md](PRIVACY.md) | Technical privacy: what leaves this machine |
-| [PRIVACY_POLICY.md](PRIVACY_POLICY.md) | **Formal privacy policy** (App Store / Play) |
-| [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md) | **Terms of use** (non-custodial, 18+, liability) |
-| [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md) | Name and logo protection |
-| [APP_STORE_NOTES.md](APP_STORE_NOTES.md) | Approved store wording |
-| [GEO_BLOCKING.md](GEO_BLOCKING.md) | Restricted jurisdictions (store compliance) |
-| [AUDIT_STATUS.md](AUDIT_STATUS.md) | External audit status — none yet |
-| [CONTACT.md](CONTACT.md) | GitHub · Telegram · TikTok · Reddit |
-| [LEGAL/README.md](LEGAL/README.md) | Legal document map |
-| [docs/README.md](docs/README.md) | Engineering docs index |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Single backlog (coins, security, store/legal) |
-| [docs/architecture.md](docs/architecture.md) | How the layers fit together and why |
-| [docs/building.md](docs/building.md) | Build, run, test, package installers |
-| [docs/security-model.md](docs/security-model.md) | Threat model, crypto choices, what is not protected |
-| [docs/forking.md](docs/forking.md) | Fork it: what to change, what not to, licence limits |
-| [docs/adding-a-chain.md](docs/adding-a-chain.md) | Add a coin end to end, with the safety gates |
-| [docs/localization.md](docs/localization.md) | Add or fix a language |
-| [docs/theming.md](docs/theming.md) | Add a theme that passes the contrast tests |
-| [docs/testing.md](docs/testing.md) | What the suite covers and how to extend it |
-| [docs/troubleshooting.md](docs/troubleshooting.md) | Diagnosing a misbehaving wallet |
-| [docs/PRE_BETA_CHECKLIST.md](docs/PRE_BETA_CHECKLIST.md) | Public beta gate (what is left) |
-| [docs/WORKFLOW.md](docs/WORKFLOW.md) | How to add coins and keep ROADMAP honest |
-| [docs/REPO_HARDENING.md](docs/REPO_HARDENING.md) | Live GitHub security / legal status |
-| [CHANGELOG.md](CHANGELOG.md) | Every release |
-| [.github/SUPPORT.md](.github/SUPPORT.md) | How to get help (never share seeds) |
-
-## The honest part
-
-- A blockchain transfer is **final**. Nobody can reverse it — not us, not a support desk.
-- If you lose the 24 words **and** the vault password, the funds are gone. That is what self-custody
-  means, and it is the trade you are making for nobody being able to freeze them.
-- Tor hides your IP from explorers. It does not make a transparent chain private: Bitcoin, Ethereum
-  and the rest are public ledgers, and Privacy Radar exists to tell you what yours reveals.
-- Zcash here is transparent addresses only. It is listed that way rather than implying shielded
-  privacy the wallet does not provide.
-- No external security audit has been done yet — see [AUDIT_STATUS.md](AUDIT_STATUS.md). Tests and
-  public CI are evidence, not a substitute.
+The full backlog: **[docs/ROADMAP.md](docs/ROADMAP.md)** · every release: **[CHANGELOG.md](CHANGELOG.md)**.
 
 ## Contributing
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md), and
-[docs/forking.md](docs/forking.md) if you are building on top of this.
+Phobia is MIT-licensed and welcomes contributions — start with an issue labelled
+[**good first issue**](https://github.com/thefear078/Phobia-Wallet/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+or [**help wanted**](https://github.com/thefear078/Phobia-Wallet/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 
-Anything touching the send path, the vault, or key derivation needs tests. That is not bureaucracy:
-those are the paths where a bug costs somebody their money.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — setup, tests, what a good pull request looks like.
+- **[Add a coin](docs/adding-a-chain.md)** · **[a language](docs/localization.md)** · **[a theme](docs/theming.md)** · **[fork it](docs/forking.md)**.
+
+Anything that touches the send path, the vault or key derivation needs tests — those are the paths where a
+bug costs somebody their money.
+
+## Documentation
+
+| Use the wallet | Trust the wallet | Work on the wallet |
+|---|---|---|
+| [Getting started](docs/getting-started.md) | [Security policy](SECURITY.md) | [Architecture](docs/architecture.md) |
+| [User guides](docs/guides/README.md) · [Українською](docs/guides/user-guide-uk.md) | [Threat model](THREAT_MODEL.md) | [Building](docs/building.md) |
+| [Android](docs/guides/android.md) | [Privacy](PRIVACY.md) | [Testing and QA](docs/testing.md) |
+| [Feature tour](docs/FEATURES.md) | [Verify a release](docs/BUILD_VERIFY.md) | [Adding a chain](docs/adding-a-chain.md) |
+| [Coins and chains](docs/12-coins-and-chains.md) | [Security self-review](docs/SECURITY_REVIEW.md) | [Roadmap](docs/ROADMAP.md) |
+| [Troubleshooting](docs/troubleshooting.md) | [The rules (MANIFESTO)](MANIFESTO.md) | [All documentation](docs/INDEX.md) |
+
+## The honest part
+
+- A blockchain transfer is **final** — nobody can reverse it, not us, not a support desk.
+- Lose the 24 words **and** the vault password and the funds are gone. That is what self-custody means.
+- Tor hides your IP from explorers; it does not make a transparent chain private. Privacy Radar exists to
+  show you what yours reveals.
+- Zcash here is transparent addresses only, and is listed that way.
+- No external security audit yet. Tests, public CI and this repository are evidence, not a substitute.
 
 ## License
 
-**MIT** for the code — see [LICENSE](LICENSE) and [LICENSE_CHANGE.md](LICENSE_CHANGE.md). Brand names
-and logos remain under [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md). Forking guide:
-[docs/forking.md](docs/forking.md). Summary: [LEGAL/LICENSE_SUMMARY.md](LEGAL/LICENSE_SUMMARY.md).
-Third-party: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+**MIT** for the code — [LICENSE](LICENSE). The names and logos stay under [TRADEMARK_POLICY.md](TRADEMARK_POLICY.md)
+([forking guide](docs/forking.md)). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ---
 
-## Who makes this
-
 <div align="center">
 
-<img src="docs/assets/logo-thefear-ghost.png" width="128" alt="the fear"/>
+<img src="docs/assets/logo-thefear-ghost.png" width="112" alt="the fear"/>
 
 ### the fear
 
@@ -597,7 +401,7 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 <br/>
 
 <a href="https://t.me/PhobiaStat">
-  <img src="docs/assets/logo-telegram-channel.png" width="72" alt="Phobia Wallet on Telegram"/>
+  <img src="docs/assets/logo-telegram-channel.png" width="64" alt="Phobia Wallet on Telegram"/>
 </a>
 
 **[t.me/PhobiaStat](https://t.me/PhobiaStat)** ·
@@ -605,18 +409,12 @@ which is exactly why there is no tracking and no cut of your transfers.</sub>
 [TikTok @thefear078](https://www.tiktok.com/@thefear078) ·
 [Reddit u/Particular_Lime_7004](https://www.reddit.com/user/Particular_Lime_7004)
 
-<sub>Releases, security notes and contact — see [CONTACT.md](CONTACT.md).<br/>
-Nobody there will ever ask you for your seed phrase.</sub>
-
-<br/>
+<sub>Nobody there will ever ask you for your seed phrase.</sub>
 
 [💖 Sponsor this work](https://github.com/sponsors/thefear078) ·
 [Terms](TERMS_OF_SERVICE.md) ·
 [Privacy Policy](PRIVACY_POLICY.md) ·
-[Audit status](AUDIT_STATUS.md)
-
-<br/>
-<br/>
+[Contact](CONTACT.md)
 
 <sub>© 2026 Phobia Wallet · by <b>the fear</b></sub>
 

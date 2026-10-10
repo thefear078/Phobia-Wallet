@@ -50,16 +50,24 @@ public static class AddressSafetyInspector
     private const int PrefixMatch = 6;
     private const int SuffixMatch = 5;
 
+    /// <param name="seenAddresses">
+    /// Addresses that appear in the wallet's history without ever having been paid — whoever sent it
+    /// something. Not trusted (a poisoner gets into the history exactly by sending dust), so a match
+    /// here is still a first payment; but a destination that is the look-alike of a known address is
+    /// flagged whether or not it has been seen.
+    /// </param>
     public static AddressSafetyResult Inspect(
         string? destination,
         IReadOnlyCollection<string>? ownAddresses,
-        IReadOnlyCollection<string>? knownAddresses)
+        IReadOnlyCollection<string>? knownAddresses,
+        IReadOnlyCollection<string>? seenAddresses = null)
     {
         var dest = (destination ?? string.Empty).Trim();
         if (dest.Length == 0) return new AddressSafetyResult(AddressSafetyLevel.NewRecipient);
 
         var own = ownAddresses ?? [];
         var known = knownAddresses ?? [];
+        var seen = seenAddresses ?? [];
 
         // Sending to one of your own addresses.
         foreach (var o in own)
@@ -71,6 +79,15 @@ public static class AddressSafetyInspector
 
         // Poisoning lookalike: resembles a known-good OR own address without being it.
         foreach (var candidate in Enumerate(known, own))
+        {
+            if (Eq(candidate, dest)) continue;
+            if (IsLookalike(dest, candidate))
+                return new AddressSafetyResult(AddressSafetyLevel.Lookalike, candidate);
+        }
+
+        // ...or resembles somebody who once paid this wallet, without being them: the same trick aimed
+        // at a refund. (Being one of them exactly is just a first payment to a familiar sender.)
+        foreach (var candidate in seen)
         {
             if (Eq(candidate, dest)) continue;
             if (IsLookalike(dest, candidate))

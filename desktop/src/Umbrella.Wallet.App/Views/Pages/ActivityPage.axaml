@@ -128,25 +128,6 @@
       </StackPanel>
     </Border>
 
-    <!-- Private note editor (encrypted at rest). Opens when 📝 is tapped on a transaction. -->
-    <Border IsVisible="{Binding IsEditingNote}" Background="{DynamicResource UmCard}"
-            BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="10"
-            Padding="12" Margin="0,0,0,10">
-      <StackPanel Spacing="8">
-        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
-                   Text="{Binding [notes.title], Source={x:Static app:Loc.Instance}}"/>
-        <TextBox Text="{Binding NoteDraft}" AcceptsReturn="True" MaxLength="280" MinHeight="54"
-                 TextWrapping="Wrap"
-                 Watermark="{Binding [notes.placeholder], Source={x:Static app:Loc.Instance}}"/>
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Content="{Binding [notes.save], Source={x:Static app:Loc.Instance}}"
-                  Command="{Binding SaveNoteCommand}"/>
-          <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
-                  Command="{Binding CancelEditNoteCommand}"/>
-        </StackPanel>
-      </StackPanel>
-    </Border>
-
     <ItemsControl ItemsSource="{Binding FilteredActivity}" IsVisible="{Binding HasFilteredActivity}">
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:ActivityRowViewModel">
@@ -201,25 +182,66 @@
                           CommandParameter="{Binding}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
-                  <!-- Add / edit a private (encrypted) note on this transaction. -->
-                  <Button Classes="ghost" Padding="6,2" MinHeight="0" VerticalAlignment="Center"
-                          IsVisible="{Binding CanHaveNote}" Content="📝"
-                          ToolTip.Tip="{Binding [notes.add], Source={x:Static app:Loc.Instance}}"
+                  <!-- A private note on this transaction, and a name for the address on its other side.
+                       The editor opens under this row. -->
+                  <Button Classes="ghost" Padding="7,3" MinHeight="0" VerticalAlignment="Center"
+                          IsVisible="{Binding CanAnnotate}"
+                          ToolTip.Tip="{Binding [notes.edit], Source={x:Static app:Loc.Instance}}"
+                          AutomationProperties.Name="{Binding [notes.edit], Source={x:Static app:Loc.Instance}}"
                           Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).BeginEditNoteCommand}"
-                          CommandParameter="{Binding}"/>
+                          CommandParameter="{Binding}">
+                    <Path Data="M4 20 H8 L18.5 9.5 L14.5 5.5 L4 16 Z M13 7 L17 11" Width="14" Height="14" Stretch="Uniform"
+                          Stroke="{DynamicResource UmTextDim}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"/>
+                  </Button>
                   <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center"/>
                   <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="11" Text="↗" IsVisible="{Binding HasLink}" VerticalAlignment="Center"/>
                 </StackPanel>
               </Grid>
               <!-- The saved private note, shown under the row when present. -->
-              <TextBlock IsVisible="{Binding HasNote}" Text="{Binding Note}" Margin="54,0,0,0"
-                         FontSize="11.5" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap"/>
+              <Border IsVisible="{Binding HasNote}" Margin="54,2,0,0" HorizontalAlignment="Left" CornerRadius="8" Padding="9,5"
+                      Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1">
+                <TextBlock Text="{Binding Note}" FontSize="11.5" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap"/>
+              </Border>
               </StackPanel>
             </Border>
           </Button>
+          <!-- The editor, under the row it belongs to. Outside the row's own button, so typing in it
+               and pressing its buttons is not a click on the row. -->
+          <Border IsVisible="{Binding IsEditingNote}" Margin="14,-2,14,10" Padding="14,12" CornerRadius="12"
+                  Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmAccent}" BorderThickness="1">
+            <StackPanel Spacing="9">
+              <StackPanel Spacing="4" IsVisible="{Binding CanHaveNote}">
+                <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                           Text="{Binding [notes.title], Source={x:Static app:Loc.Instance}}"/>
+                <TextBox AcceptsReturn="True" MaxLength="280" MinHeight="50" TextWrapping="Wrap"
+                         Text="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NoteDraft, Mode=TwoWay}"
+                         Watermark="{Binding [notes.placeholder], Source={x:Static app:Loc.Instance}}"/>
+              </StackPanel>
+              <StackPanel Spacing="4" IsVisible="{Binding CanLabel}">
+                <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                           Text="{Binding [notes.labelTitle], Source={x:Static app:Loc.Instance}}"/>
+                <TextBox MaxLength="60"
+                         Text="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NoteLabelDraft, Mode=TwoWay}"
+                         Watermark="{Binding [notes.labelPh], Source={x:Static app:Loc.Instance}}"/>
+                <SelectableTextBlock Classes="mono" FontSize="10.5" TextWrapping="Wrap"
+                                     Foreground="{DynamicResource UmTextMuted}" Text="{Binding CounterpartyFull}"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="primary" MinHeight="0" Padding="16,7"
+                        Content="{Binding [common.save], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SaveNoteCommand}"/>
+                <Button Classes="ghost" MinHeight="0" Padding="14,7"
+                        Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).CancelEditNoteCommand}"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
           </StackPanel>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+    <!-- The list is drawn a page at a time; the rest of the history is one press away. -->
+    <Button Classes="ghost" HorizontalAlignment="Center" IsVisible="{Binding HasMoreActivity}"
+            Content="{Binding MoreActivityLabel}" Command="{Binding ShowMoreActivityCommand}"/>
   </StackPanel>
 </UserControl>
