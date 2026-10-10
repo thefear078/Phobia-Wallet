@@ -151,9 +151,19 @@ public partial class MainViewModel
     // as the user typing a (rounded) currency figure over the exact coin amount they entered.
     private bool _fillingFiatFromCoin;
 
+    /// <summary>True — with the reason on screen — while the Send form holds a swap's payment, whose
+    /// amount is the route's quote and not the user's to change here.</summary>
+    private bool SwapPaymentIsFixed()
+    {
+        if (!HasSwapPayment || _pendingSwap is not { } paying) return false;
+        SendError = string.Format(Loc.Instance["swap.err.exactAmount"], Fmt(paying.AmountIn), paying.From.Symbol);
+        return true;
+    }
+
     [RelayCommand]
     private void ToggleSendAmountUnit()
     {
+        if (SwapPaymentIsFixed()) return;
         if (!SendAmountInFiat)
         {
             if (!FiatInputAvailable) return;   // no price, nothing to convert with

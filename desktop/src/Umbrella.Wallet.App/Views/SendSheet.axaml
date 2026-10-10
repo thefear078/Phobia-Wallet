@@ -295,6 +295,16 @@
                   </StackPanel>
                 </Border>
 
+                <!-- This send paid a swap: the swap's own state, as the route reports it, kept up to date. -->
+                <Border IsVisible="{Binding HasSwapTrack}" Background="{DynamicResource UmCardAlt}"
+                        BorderBrush="{DynamicResource UmAccent}" BorderThickness="1" CornerRadius="12" Padding="14,9">
+                  <StackPanel Spacing="3">
+                    <TextBlock FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding SwapTrackTitle}"/>
+                    <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmAccentBright}"
+                               Text="{Binding SwapTrackStatus}"/>
+                  </StackPanel>
+                </Border>
+
                 <!-- Your own note, part of the picture when there is one. -->
                 <Border IsVisible="{Binding HasReceiptNote}" Background="{DynamicResource UmCardAlt}"
                         BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="12" Padding="14,9">

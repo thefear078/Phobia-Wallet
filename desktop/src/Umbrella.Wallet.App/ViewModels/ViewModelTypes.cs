@@ -847,6 +847,7 @@ public sealed record ActivityRowViewModel(
     public string StatusColor => Status switch
     {
         "Pending" => "#E7CA83",
+        "Refunded" => "#E7CA83",   // the money is back; the swap did not happen
         "Failed" => "#E08A8A",
         _ => "#5AC8B4",
     };

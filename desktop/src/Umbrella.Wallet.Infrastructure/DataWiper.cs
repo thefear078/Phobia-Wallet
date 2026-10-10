@@ -56,6 +56,7 @@ public static class DataWiper
         DeleteDir(Path.Combine(root, "found"));                 // addresses each wallet holds at other apps' paths
         DeleteFile(Path.Combine(root, "activity.json"));        // local activity / transaction log
         DeleteDir(Path.Combine(root, "history"));               // each wallet's on-chain history as read so far
+        DeleteFile(Path.Combine(root, "swaps.json"));           // the swaps paid for from this device, and how they ended
         DeleteFile(Path.Combine(root, "balances.json"));        // cached balances (device-only display cache)
         DeleteFile(Path.Combine(root, "exchanges.bin"));        // encrypted exchange API keys
         DeleteFile(Path.Combine(root, "ui-settings.json"));     // theme, language, profile paths

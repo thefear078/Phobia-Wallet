@@ -56,6 +56,19 @@ public static class BalanceReadout
             ? $"— {symbol}"
             : $"{amount.ToString("N6", Fx.Culture)} {symbol}";   // in the wallet's own number format
 
+    /// <summary>
+    /// A fresh reading of a row the wallet has just sent from. Until an explorer has seen the send its
+    /// reading is the OLD balance, and showing it would put the money back on screen for a minute; so
+    /// the send is still taken off it. Once the reading has dropped by itself — by at least half of what
+    /// was sent, which covers a fee that turned out smaller — the explorer has caught up and its figure
+    /// stands as it is.
+    /// </summary>
+    /// <returns>What to show, and whether the reading already includes the send.</returns>
+    public static (double Shown, bool CaughtUp) LessUnseenDebit(double read, double before, double debit) =>
+        read <= before - (debit / 2)
+            ? (read, true)
+            : (Math.Max(0, read - debit), false);
+
     /// <summary>Only a live or cached reading may contribute to the portfolio total.</summary>
     public static bool CountsTowardsTotal(BalanceRead state) => state != BalanceRead.Unknown;
 }

@@ -45,7 +45,10 @@ public partial class MainViewModel
     /// <summary>A swap payment handed to the Send screen and not sent yet.</summary>
     private sealed record PendingSwap(
         SwapProvider Provider, SwapAsset From, SwapAsset To, decimal AmountIn, decimal ExpectedOut,
-        string DepositAddress, string? Memo, string? OrderId, string? TxId = null);
+        string DepositAddress, string? Memo, string? OrderId, string? TxId = null, long StartedMs = 0);
+
+    /// <summary>The swaps paid for from this device, kept so each is followed to its end (see <see cref="SwapStore"/>).</summary>
+    private readonly SwapStore _swapStore = new();
 
     private PendingSwap? _pendingSwap;
     private PendingSwap? _trackedSwap;
@@ -174,14 +177,28 @@ public partial class MainViewModel
     private WalletAccountViewModel? SwapPayingAccount() =>
         SwapFromAsset is { } from && SwapSendKeyFor(from) is { } key ? AccountForSendKey(key) : null;
 
-    /// <summary>Puts the whole balance of the paying coin into the amount (the network fee is still taken
-    /// when it is sent, so the review says what is left).</summary>
+    /// <summary>
+    /// Puts into the amount everything of the paying coin that can actually be paid: the balance less
+    /// what the payment's own network fee needs (the same reserve as Send's "Max").
+    ///
+    /// It used to put in the whole balance. The route was then quoted an amount the wallet could not
+    /// send — the fee had nowhere to come from — and on 2026-10-10 the payment that did go out was
+    /// smaller than the quote, so the route held it until its deadline instead of swapping it.
+    /// </summary>
     [RelayCommand]
     private void SwapUseBalance()
     {
+        if (SwapSpendable() is not { } spendable || spendable <= 0) return;
+        SwapAmount = spendable.ToString("0.########", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The most of the paying coin a swap can be for; null while its balance has not been read.</summary>
+    private decimal? SwapSpendable()
+    {
         var account = SwapPayingAccount();
-        if (account is null || account.Balance == BalanceRead.Unknown || account.Amount <= 0) return;
-        SwapAmount = ((decimal)account.Amount).ToString("0.########", CultureInfo.InvariantCulture);
+        if (account is null || account.Balance == BalanceRead.Unknown || SwapFromAsset is not { } from) return null;
+        var reserve = SwapSendKeyFor(from) is { } key ? SendMaxReserve(key) : 0m;
+        return Math.Max(0m, (decimal)account.Amount - reserve);
     }
 
     // --- Which coins ---------------------------------------------------------------------------------
@@ -347,6 +364,14 @@ public partial class MainViewModel
         if (from.Key == to.Key) { SwapError = Loc.Instance["swap.err.same"]; return; }
         // Same reason as the send field: a comma decimal must not be read as a group separator.
         if (!AmountInput.TryParsePositive(SwapAmount, out var amount)) { SwapError = Loc.Instance["swap.err.amount"]; return; }
+
+        // More than can be paid once the network fee is counted: said here, before a route is asked
+        // for a deposit address that a short payment would then sit at.
+        if (SwapSpendable() is { } spendable && amount > spendable)
+        {
+            SwapError = string.Format(Loc.Instance["swap.err.spendable"], Fmt(spendable), from.Symbol);
+            return;
+        }
 
         var destination = SwapAddressFor(to);
         if (destination is null) { SwapError = string.Format(Loc.Instance["swap.err.cannotReceive"], to.Display); return; }
@@ -731,6 +756,7 @@ public partial class MainViewModel
             _choosingSendAsset = false;
         }
 
+        SendAmountInFiat = false;   // the route's amount is in the coin; the box shows the coin
         SendTo = payment.DepositAddress;
         SendAmount = payment.AmountIn.ToString("0.##################", CultureInfo.InvariantCulture);
         SendMemo = payment.Memo ?? string.Empty;
@@ -741,7 +767,7 @@ public partial class MainViewModel
 
     /// <summary>Called when a send is broadcast (or may have been): if it paid the pending swap, the swap
     /// is now under way — logged, told to the service, and followed.</summary>
-    private void OnSwapPaymentSent(string? txid, string to)
+    private void OnSwapPaymentSent(string? txid, string to, decimal sent)
     {
         var payment = _pendingSwap;
         if (payment is null || !string.Equals(to.Trim(), payment.DepositAddress, StringComparison.Ordinal)) return;
@@ -751,10 +777,12 @@ public partial class MainViewModel
         if (payment.Provider == SwapProvider.NearIntents && txid is not null)
             _ = _intents.SubmitDepositAsync(txid, payment.DepositAddress, payment.Memo);
 
+        // The row says what LEFT, and "pending" until the route says how it ended — it used to say the
+        // quoted amount, and "confirmed", from the moment the payment was sent.
         var track = SwapTrackLink(payment with { TxId = txid });
-        PushActivity("Swap", $"{payment.From.Symbol}→{payment.To.Symbol}", $"-{Fmt(payment.AmountIn)}",
-            SwapProviderName(payment.Provider), "now", track);
-        TrackSwap(payment with { TxId = txid });
+        var row = PushActivity("Swap", $"{payment.From.Symbol}→{payment.To.Symbol}", $"-{Fmt(sent)}",
+            SwapProviderName(payment.Provider), "now", track, "Pending");
+        TrackSwap(payment with { TxId = txid, AmountIn = sent, StartedMs = row?.UnixMs ?? DateTimeOffset.Now.ToUnixTimeMilliseconds() });
         InvalidateSwap();
         SwapAmount = string.Empty;
     }
@@ -770,8 +798,9 @@ public partial class MainViewModel
 
     private CancellationTokenSource? _swapTrackCts;
 
-    private void TrackSwap(PendingSwap swap)
+    private void TrackSwap(PendingSwap swap, bool resumed = false)
     {
+        if (!resumed) _swapStore.Upsert(ToEntry(swap, string.Empty, ended: false));
         _trackedSwap = swap;
         SwapTrackTitle = $"{swap.From.Display} → {swap.To.Display} · ≈ {Fmt(swap.ExpectedOut)} {swap.To.Symbol} · {SwapProviderName(swap.Provider)}";
         SwapTrackStatus = Loc.Instance["swap.st.sent"];
@@ -783,14 +812,69 @@ public partial class MainViewModel
         _ = FollowSwapAsync(cts.Token);
     }
 
-    /// <summary>Asks for the swap's state every half minute until it ends (or two hours pass).</summary>
+    /// <summary>
+    /// Asks for the swap's state until it ends (or two hours pass): every few seconds at first — a swap
+    /// that takes half a minute was being noticed up to half a minute late — then every half minute.
+    /// </summary>
     private async Task FollowSwapAsync(CancellationToken ct)
     {
-        for (var i = 0; i < 240 && !ct.IsCancellationRequested; i++)
+        for (var i = 0; i < 250 && !ct.IsCancellationRequested; i++)
         {
-            try { await Task.Delay(TimeSpan.FromSeconds(i == 0 ? 15 : 30), ct); }
+            try { await Task.Delay(SwapPollDelay(i), ct); }
             catch (OperationCanceledException) { return; }
             if (await RefreshSwapStatusCoreAsync()) return;
+        }
+    }
+
+    /// <summary>The wait before look number <paramref name="look"/>: 6, 6, 8, 10, 12, 15, 20 seconds, then 30.</summary>
+    public static TimeSpan SwapPollDelay(int look) => TimeSpan.FromSeconds(look switch
+    {
+        0 or 1 => 6,
+        2 => 8,
+        3 => 10,
+        4 => 12,
+        5 => 15,
+        6 => 20,
+        _ => 30,
+    });
+
+    private SwapStore.Entry ToEntry(PendingSwap swap, string status, bool ended) => new(
+        _registry.Active?.Id ?? "default", swap.Provider.ToString(), swap.From.Key, swap.To.Key, swap.AmountIn,
+        swap.ExpectedOut, swap.DepositAddress, swap.Memo, swap.OrderId, swap.TxId, swap.StartedMs, status, ended);
+
+    /// <summary>
+    /// The newest swap this wallet paid for and has not seen end, picked up again. Without this a swap
+    /// was forgotten the moment the wallet locked: nothing asked how it ended, and its row never changed.
+    /// </summary>
+    private void ResumeSwapTracking()
+    {
+        if (_trackedSwap is not null) return;
+        var wallet = _registry.Active?.Id ?? "default";
+        var oldest = DateTimeOffset.UtcNow.Subtract(SwapStore.Keep).ToUnixTimeMilliseconds();
+        var entry = _swapStore.Load()
+            .Where(e => e.WalletId == wallet && !e.Ended && e.StartedMs >= oldest)
+            .OrderByDescending(e => e.StartedMs)
+            .FirstOrDefault();
+        if (entry is null || !Enum.TryParse<SwapProvider>(entry.Provider, out var provider)) return;
+        if (SwapCatalog.Find(entry.FromKey) is not { } from || SwapCatalog.Find(entry.ToKey) is not { } to) return;
+
+        TrackSwap(new PendingSwap(provider, from, to, entry.AmountIn, entry.ExpectedOut, entry.DepositAddress,
+            entry.Memo, entry.OrderId, entry.TxId, entry.StartedMs), resumed: true);
+    }
+
+    /// <summary>The swap's row in Activity follows the swap: pending, done, refunded or failed.</summary>
+    private void SetSwapRowStatus(PendingSwap swap, string status)
+    {
+        if (swap.StartedMs <= 0) return;
+        for (var i = 0; i < Activity.Count; i++)
+        {
+            var row = Activity[i];
+            if (row.Kind != "Swap" || row.UnixMs != swap.StartedMs || row.Status == status) continue;
+            Activity[i] = row with { Status = status };
+            PersistActivity();
+            RebuildFilteredActivity();
+            RebuildRecentActivity();
+            return;
         }
     }
 
@@ -802,18 +886,70 @@ public partial class MainViewModel
     {
         var swap = _trackedSwap;
         if (swap is null) return true;
-        var raw = swap.Provider switch
+        IntentsStatus? detail = null;
+        string? raw;
+        switch (swap.Provider)
         {
-            SwapProvider.NearIntents => await _intents.StatusAsync(swap.DepositAddress, swap.Memo),
-            SwapProvider.Exolix when swap.OrderId is not null => await _exolix.StatusAsync(swap.OrderId),
-            _ => null,
-        };
-        if (raw is null || !ReferenceEquals(swap, _trackedSwap)) return swap.Provider == SwapProvider.Thorchain;
+            case SwapProvider.NearIntents:
+                detail = await _intents.StatusDetailAsync(swap.DepositAddress, swap.Memo);
+                raw = detail?.Status;
+                break;
+            case SwapProvider.Exolix when swap.OrderId is not null:
+                raw = await _exolix.StatusAsync(swap.OrderId);
+                break;
+            default:
+                raw = null;
+                break;
+        }
+        if (!ReferenceEquals(swap, _trackedSwap)) return true;
+        if (raw is null)
+        {
+            // THORChain is followed on its own tracker page, not here: its entry is closed so that it
+            // is not picked up again at every unlock.
+            if (swap.Provider == SwapProvider.Thorchain) _swapStore.Upsert(ToEntry(swap, "SENT", ended: true));
+            return swap.Provider == SwapProvider.Thorchain;
+        }
 
         var (key, ended) = SwapStatusKey(raw);
-        SwapTrackStatus = Loc.Instance[key];
-        if (ended && key == "swap.st.done") await RefreshLiveDataAsync();
+        var text = SwapStatusText(key, swap, detail);
+        var changed = text != SwapTrackStatus;
+        SwapTrackStatus = text;
+        _swapStore.Upsert(ToEntry(swap, raw, ended));
+        SetSwapRowStatus(swap, key switch
+        {
+            "swap.st.done" => "Confirmed",
+            "swap.st.refunded" => "Refunded",
+            "swap.st.failed" => "Failed",
+            _ => "Pending",
+        });
+
+        // Said once, wherever the user is: the swap page is rarely the one open when it ends.
+        if (ended || (changed && key == "swap.st.incomplete"))
+            ShowToast(text, isError: key is "swap.st.failed" or "swap.st.incomplete");
+        if (ended && key is "swap.st.done" or "swap.st.refunded") await RefreshLiveDataAsync();
         return ended;
+    }
+
+    /// <summary>
+    /// The state in words, with the figures the route gives: how much arrived against how much was
+    /// quoted, and when a short payment starts being sent back.
+    /// </summary>
+    private static string SwapStatusText(string key, PendingSwap swap, IntentsStatus? detail)
+    {
+        var L = Loc.Instance;
+        if (detail is null) return L[key];
+        switch (key)
+        {
+            case "swap.st.incomplete" when detail.Deposited is not null && detail.Quoted is not null:
+                var until = detail.Deadline is { } deadline ? deadline.ToLocalTime().ToString("HH:mm", Fx.Culture) : "—";
+                return string.Format(L["swap.st.incompleteDetail"], detail.Deposited, detail.Quoted, swap.From.Symbol, until);
+            case "swap.st.done" when detail.Delivered is not null:
+                return string.Format(L["swap.st.doneDetail"], detail.Delivered, swap.To.Symbol);
+            case "swap.st.refunded" when detail.Refunded is not null:
+                return string.Format(L["swap.st.refundedDetail"], detail.Refunded, swap.From.Symbol);
+            default:
+                return L[key];
+        }
     }
 
     /// <summary>A route's own state word mapped onto the screen's few, and whether it is final.</summary>

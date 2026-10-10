@@ -309,6 +309,16 @@ public partial class MainViewModel
             return;
         }
 
+        // Paying a swap: the route quoted exactly this amount to exactly this address. A smaller payment
+        // is not a smaller swap — it sits at the route's address until the deadline and is then sent
+        // back. On 2026-10-10 that is what "Max" on this screen did to a swap of the whole balance.
+        if (HasSwapPayment && _pendingSwap is { } paying && amount != paying.AmountIn)
+        {
+            SendAmount = paying.AmountIn.ToString("0.##################", CultureInfo.InvariantCulture);
+            SendError = string.Format(Loc.Instance["swap.err.exactAmount"], Fmt(paying.AmountIn), paying.From.Symbol);
+            return;
+        }
+
         // An ERC-20 picker entry carries its contract, not a ticker, so it branches before any of
         // the chain-name normalisation below can mangle it (roadmap N.1).
         if (ContractFromSendKey(SendChain.Trim()) is not null)
@@ -1715,7 +1725,7 @@ public partial class MainViewModel
             return;
         }
 
-        OnSwapPaymentSent(reference, to);   // it may have gone: a swap paid this way is followed, not retried
+        OnSwapPaymentSent(reference, to, amount);   // it may have gone: a swap paid this way is followed, not retried
         // Said on a receipt, with the id to check — not as a red line under a form that has just emptied.
         ShowSendReceipt(SendReceiptState.Unclear, symbol, amount, to, reference, explorer,
             error ?? Loc.Instance["send.errBroadcast"]);
@@ -1742,7 +1752,8 @@ public partial class MainViewModel
             BuildSendLeakReport(symbol);
             ShowSendReceipt(confirmed ? SendReceiptState.Confirmed : SendReceiptState.Broadcast,
                 symbol, amount, to, reference, explorer);
-            OnSwapPaymentSent(reference, to);   // the payment of a swap: the swap is now under way
+            var spentFrom = SelectedSendAsset?.Symbol;   // read before the form is cleared
+            OnSwapPaymentSent(reference, to, amount);   // the payment of a swap: the swap is now under way
             ClearSendQuotes();
             SendTo = string.Empty;
             SendAmount = string.Empty;
@@ -1753,10 +1764,12 @@ public partial class MainViewModel
                 : explorer.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? explorer : $"https://{explorer}";
             // Pending until a block is known to hold it, so the feed never says more than the wallet saw.
             PushActivity("Sent", symbol, $"-{Fmt(amount)}", to, "now", link, confirmed ? "Confirmed" : "Pending");
+            // What left is known now: the row it came from shows it at once.
+            ShowDebitNow(spentFrom, amount);
             // The receipt is on screen now. Reading every balance again took the better part of a
             // minute over Tor, and the send stayed "busy" for all of it — so it happens behind the
             // receipt, and once more a little later for the chains whose explorers lag a block.
-            RefreshAfterSend();
+            RefreshAfterSend(spentFrom);
         }
         else
         {
@@ -1771,18 +1784,14 @@ public partial class MainViewModel
         return Task.CompletedTask;
     }
 
-    /// <summary>Balances after a send: at once, and again shortly after — both in the background.</summary>
-    private void RefreshAfterSend()
+    /// <summary>
+    /// Balances after a send, behind the receipt: everything once, then the one row the money left —
+    /// read by itself at short intervals until an explorer shows the send (see FollowBalanceAsync).
+    /// </summary>
+    private void RefreshAfterSend(string? spentFrom)
     {
-        var epoch = _lockEpoch;
         _ = RefreshLiveDataAsync();
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(TimeSpan.FromSeconds(25));
-            if (epoch != _lockEpoch || !IsUnlocked) return;
-            try { Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (epoch == _lockEpoch && !IsRefreshing) _ = RefreshLiveDataAsync(); }); }
-            catch { /* no dispatcher (tests): the first refresh is the only one */ }
-        });
+        _ = FollowBalanceAsync(spentFrom);
     }
 
     /// <summary>Runs a confirmed send with the sheet showing it in flight, whatever way it ends.</summary>

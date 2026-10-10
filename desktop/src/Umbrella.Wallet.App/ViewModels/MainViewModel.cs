@@ -1175,6 +1175,7 @@ public partial class MainViewModel : ViewModelBase
 
         var sim = SendSimulation.Build(balance, amount, networkFee, changeReturned, dustThreshold);
         _reviewFeeText = networkFee > 0 ? $"{Fmt(networkFee)} {symbol}" : string.Empty;
+        (_reviewFee, _reviewFeeSymbol) = (networkFee, symbol);
 
         foreach (var e in sim.Effects)
         {
@@ -2271,6 +2272,7 @@ public partial class MainViewModel : ViewModelBase
         {
             SelectFirstReceive();
         }
+        WatchReceiveAddress(value == "Receive");
 
         // The Security Center reads live state, so it is rebuilt every time it is opened rather than
         // cached — a stale "protected" row would be worse than no row at all.
@@ -2927,6 +2929,7 @@ public partial class MainViewModel : ViewModelBase
     private void SetMaxAmount()
     {
         if (SelectedSendAsset is null) return;
+        if (SwapPaymentIsFixed()) return;
         if (SelectedSendBalanceUnknown) { SendError = Loc.Instance["balance.unavailable"]; return; }
         var bal = SelectedSendBalance;
         if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
@@ -2942,6 +2945,7 @@ public partial class MainViewModel : ViewModelBase
     private void SetAmountPercent(string? percent)
     {
         if (SelectedSendAsset is null) return;
+        if (SwapPaymentIsFixed()) return;
         if (!int.TryParse(percent, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pct)) return;
         if (SelectedSendBalanceUnknown) { SendError = Loc.Instance["balance.unavailable"]; return; }
         var bal = SelectedSendBalance;
@@ -3645,6 +3649,7 @@ public partial class MainViewModel : ViewModelBase
         _onChainRows.Clear();       // fetched chain history too — it re-pulls on the next Refresh
         _otherWalletsActivity.Clear();
         _activityStore.Clear();
+        _swapStore.Clear();
         _historyStore.Clear();      // and what every wallet had read and kept
         LastHistorySync = "—";
         RebuildActivityAssets();
@@ -4984,6 +4989,7 @@ public partial class MainViewModel : ViewModelBase
                 // when nobody answered. Keeping the old number and marking the row is the difference
                 // between "we could not ask" and "there is nothing there" (MANIFESTO §4 / P0.6).
                 var (amount, state) = BalanceReadout.Apply(read?.NativeAmount, current.Amount, current.Balance);
+                if (read is not null) amount = WithPendingDebit(current, amount);
                 Accounts[idx] = WithPrice(current with { Amount = amount, Balance = state }, freshPrices);
                 RefreshHoldings();
                 RecalcBalance();
@@ -6210,6 +6216,7 @@ public partial class MainViewModel : ViewModelBase
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
         LoadAddressBook(); // saved Send destinations for this device
+        ResumeSwapTracking(); // a swap paid before the wallet was closed is followed to its end
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
         _onChainRows.Clear();
         HistorySynced = false; // this wallet's history hasn't been pulled yet → show "loading", not "empty"
@@ -6890,6 +6897,20 @@ public partial class MainViewModel : ViewModelBase
     {
         RefreshHoldings();
         RecalcBalance();
+    }
+
+    /// <summary>Puts a swap's payment on the Send form as the swap screen would, without a route to ask.
+    /// Test hook for the rule that such a payment is exactly its quote.</summary>
+    public void SetSwapPaymentForTest(string fromKey, string toKey, decimal amountIn, string depositAddress)
+    {
+        var from = Umbrella.Wallet.Infrastructure.Network.SwapCatalog.Find(fromKey)!;
+        var to = Umbrella.Wallet.Infrastructure.Network.SwapCatalog.Find(toKey)!;
+        _pendingSwap = new PendingSwap(Umbrella.Wallet.Infrastructure.Network.SwapProvider.NearIntents, from, to, amountIn, 0m,
+            depositAddress, null, null);
+        SendAmountInFiat = false;
+        SendTo = depositAddress;
+        SendAmount = amountIn.ToString("0.##################", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(HasSwapPayment));
     }
 
     /// <summary>Gives the Send screen prices without a network. Test hook for the amount box.</summary>

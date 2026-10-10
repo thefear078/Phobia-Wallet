@@ -108,6 +108,48 @@ public sealed class TronStakingClient
         }
     }
 
+    /// <summary>
+    /// What voting pays in a year, percent, from the chain's own parameters and the votes cast now —
+    /// before the Super Representative's own cut. Null when the network did not answer.
+    /// </summary>
+    public async Task<decimal?> VoteYieldAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var witnesses = await WitnessesAsync(ct);
+            if (witnesses.Count == 0) return null;
+            using var res = await Read.GetAsync($"{ApiBase}/wallet/getchainparameters", ct);
+            if (!res.IsSuccessStatusCode) return null;
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
+            if (VotePayPerBlock(doc.RootElement) is not { } pay) return null;
+            var votes = witnesses.OrderBy(w => w.Rank).Take(StakingYield.TronRewardedWitnesses).Sum(w => w.Votes);
+            return StakingYield.Tron(pay, votes);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The <c>getWitness127PayPerBlock</c> chain parameter, in sun.</summary>
+    public static long? VotePayPerBlock(JsonElement chainParameters)
+    {
+        if (chainParameters.ValueKind != JsonValueKind.Object ||
+            !chainParameters.TryGetProperty("chainParameter", out var list) || list.ValueKind != JsonValueKind.Array)
+            return null;
+        foreach (var p in list.EnumerateArray())
+        {
+            if (p.TryGetProperty("key", out var k) && k.GetString() == "getWitness127PayPerBlock" &&
+                p.TryGetProperty("value", out var v) && v.TryGetInt64(out var sun))
+                return sun;
+        }
+        return null;
+    }
+
     public static IReadOnlyList<TronWitness> ParseWitnesses(JsonElement root)
     {
         if (!root.TryGetProperty("witnesses", out var list) || list.ValueKind != JsonValueKind.Array) return [];
@@ -298,6 +340,31 @@ public sealed class SolanaStakingClient
         return [];
     }
 
+    /// <summary>
+    /// What staking pays in a year, percent: the inflation going to validators over the share of SOL
+    /// that is staked — before a validator's commission. Null when no server gave all three figures.
+    /// </summary>
+    public async Task<decimal?> YieldAsync(IReadOnlyList<SolanaValidator> validators, CancellationToken ct = default)
+    {
+        if (validators.Count == 0) return null;
+        var staked = validators.Sum(v => (decimal)v.ActivatedLamports);
+        foreach (var server in SolanaNetwork.Servers())
+        {
+            var (inflation, _) = await SolanaNetwork.CallAsync(server, SolanaRpc.Request("getInflationRate"), ct);
+            if (inflation is not { ValueKind: JsonValueKind.Object } rate ||
+                !rate.TryGetProperty("validator", out var v) || !v.TryGetDecimal(out var validatorInflation)) continue;
+
+            // Not every public server answers this one (it reads an index); the next is asked.
+            var (supply, _) = await SolanaNetwork.CallAsync(server,
+                SolanaRpc.Request("getSupply", new { commitment = "finalized", excludeNonCirculatingAccountsList = true }), ct);
+            if (supply is not { ValueKind: JsonValueKind.Object } s || !s.TryGetProperty("value", out var value) ||
+                !value.TryGetProperty("total", out var t) || !t.TryGetDecimal(out var total)) continue;
+
+            return StakingYield.Solana(validatorInflation, staked, total);
+        }
+        return null;
+    }
+
     /// <summary>A new stake of <paramref name="sol"/> to <paramref name="voteAccount"/> at the next free seed.</summary>
     public async Task<(StakeQuote? Quote, string? Error)> StakeAsync(
         string wallet, decimal sol, string voteAccount, SolStakePosition position, CancellationToken ct = default)
@@ -412,6 +479,40 @@ public sealed class CosmosStakingClient
             if (body is { } b && CosmosStaking.ParseValidators(b) is { Count: > 0 } list) return list;
         }
         return [];
+    }
+
+    /// <summary>
+    /// What delegating pays in a year, percent: the Hub's inflation, less its community tax, on the
+    /// whole supply, over what is bonded — before a validator's commission. Null when no server gave
+    /// all four figures.
+    /// </summary>
+    public async Task<decimal?> YieldAsync(CancellationToken ct = default)
+    {
+        foreach (var server in Servers())
+        {
+            var inflation = GetAsync($"{server}/cosmos/mint/v1beta1/inflation", ct);
+            var pool = GetAsync($"{server}/cosmos/staking/v1beta1/pool", ct);
+            var distribution = GetAsync($"{server}/cosmos/distribution/v1beta1/params", ct);
+            var supply = GetAsync($"{server}/cosmos/bank/v1beta1/supply/by_denom?denom=uatom", ct);
+            await Task.WhenAll(inflation, pool, distribution, supply);
+
+            if (Number(inflation.Result, "inflation") is not { } rate ||
+                Number(Child(pool.Result, "pool"), "bonded_tokens") is not { } bonded ||
+                Number(Child(distribution.Result, "params"), "community_tax") is not { } tax ||
+                Number(Child(supply.Result, "amount"), "amount") is not { } total) continue;
+
+            return StakingYield.Cosmos(rate, tax, bonded, total);
+        }
+        return null;
+
+        static JsonElement? Child(JsonElement? e, string name) =>
+            e is { ValueKind: JsonValueKind.Object } o && o.TryGetProperty(name, out var c) ? c : null;
+        static decimal? Number(JsonElement? e, string name) =>
+            e is { ValueKind: JsonValueKind.Object } o && o.TryGetProperty(name, out var v) &&
+            decimal.TryParse(v.ValueKind == JsonValueKind.String ? v.GetString() : v.GetRawText(),
+                System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n)
+                ? n
+                : null;
     }
 
     /// <summary>Builds and simulates a staking transaction; the quote carries the gas and fee the node asked for.</summary>

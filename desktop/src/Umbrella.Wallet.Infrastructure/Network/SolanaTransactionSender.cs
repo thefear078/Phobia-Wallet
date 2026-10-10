@@ -50,11 +50,18 @@ public sealed class SolanaTransactionSender
         foreach (var server in SolanaNetwork.Servers())
         {
             var host = new Uri(server).Host;
-            var balance = await SolanaNetwork.LamportsAsync(server, SolanaRpc.Request("getBalance", from, new { commitment = "confirmed" }), ct);
+            // The same three questions to the same server as before, asked at once instead of one after
+            // another: over Tor each round-trip is a second or two, and the review waited for all three.
+            var balanceRead = SolanaNetwork.LamportsAsync(server, SolanaRpc.Request("getBalance", from, new { commitment = "confirmed" }), ct);
+            var rentRead = SolanaNetwork.LamportsAsync(server, SolanaRpc.Request("getMinimumBalanceForRentExemption", 0), ct);
+            var destinationRead = SolanaNetwork.LamportsAsync(server, SolanaRpc.Request("getBalance", to, new { commitment = "confirmed" }), ct);
+            await Task.WhenAll(balanceRead, rentRead, destinationRead);
+
+            var balance = balanceRead.Result;
             if (balance is null) continue;   // this server did not answer; try the next
 
-            var rentMinimum = await SolanaNetwork.LamportsAsync(server, SolanaRpc.Request("getMinimumBalanceForRentExemption", 0), ct);
-            var destination = await SolanaNetwork.LamportsAsync(server, SolanaRpc.Request("getBalance", to, new { commitment = "confirmed" }), ct);
+            var rentMinimum = rentRead.Result;
+            var destination = destinationRead.Result;
             // Answered the first question and not the rest: the next server gets all three, rather
             // than this one's silence ending the send.
             if (rentMinimum is null || destination is null)

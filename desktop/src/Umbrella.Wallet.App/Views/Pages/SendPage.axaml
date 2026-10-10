@@ -20,8 +20,13 @@
     <!-- Paying a swap: what it buys and through whom, above the fields it filled in. -->
     <Border IsVisible="{Binding HasSwapPayment}" Background="{DynamicResource UmCardAlt}"
             BorderBrush="{DynamicResource UmAccent}" BorderThickness="1" CornerRadius="10" Padding="12,10">
-      <TextBlock Text="{Binding SwapPaymentBanner}" TextWrapping="Wrap" FontSize="12.5"
-                 Foreground="{DynamicResource UmText}"/>
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding SwapPaymentBanner}" TextWrapping="Wrap" FontSize="12.5"
+                   Foreground="{DynamicResource UmText}"/>
+        <!-- The route quoted exactly this amount to exactly this address: neither is changed here. -->
+        <TextBlock Text="{Binding [swap.payLocked], Source={x:Static app:Loc.Instance}}" TextWrapping="Wrap"
+                   FontSize="11.5" Foreground="{DynamicResource UmTextDim}"/>
+      </StackPanel>
     </Border>
 
     <!-- Step 1 · what & where -->
@@ -169,7 +174,8 @@
           <Grid ColumnDefinitions="*,Auto">
             <Panel Grid.Column="0">
               <TextBox Classes="bare" Text="{Binding SendAmount}" Watermark="0.0" FontSize="22" FontWeight="SemiBold"
-                       BorderThickness="0" Background="Transparent" IsVisible="{Binding SendAmountInCoin}"/>
+                       BorderThickness="0" Background="Transparent" IsVisible="{Binding SendAmountInCoin}"
+                       IsReadOnly="{Binding HasSwapPayment}"/>
               <TextBox Classes="bare" Text="{Binding SendFiatAmount}" Watermark="0.00" FontSize="22" FontWeight="SemiBold"
                        BorderThickness="0" Background="Transparent" IsVisible="{Binding SendAmountInFiat}"/>
             </Panel>
@@ -202,7 +208,7 @@
           </Button>
         </Grid>
         <!-- Quick amounts: a share of the balance, or the fee-aware Max. They write the coin amount. -->
-        <StackPanel Orientation="Horizontal" Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !HasSwapPayment}">
           <Button Classes="ghost" MinHeight="0" Padding="14,7"
                   Content="25%" Command="{Binding SetAmountPercentCommand}" CommandParameter="25"/>
           <Button Classes="ghost" MinHeight="0" Padding="14,7"

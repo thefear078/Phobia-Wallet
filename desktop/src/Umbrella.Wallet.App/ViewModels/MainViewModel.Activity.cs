@@ -29,7 +29,7 @@ namespace Umbrella.Wallet.App.ViewModels;
 /// </summary>
 public partial class MainViewModel
 {
-    private void PushActivity(string kind, string asset, string amount, string counter, string when,
+    private ActivityRowViewModel? PushActivity(string kind, string asset, string amount, string counter, string when,
         string? explorer = null, string status = "Confirmed",
         string? retryTo = null, string? retryAmount = null, string? retryChain = null,
         string? txId = null, string? note = null)
@@ -37,7 +37,7 @@ public partial class MainViewModel
         // UI-preference changes (theme, currency, language, layout, animations…) are not wallet events —
         // logging them turned the activity feed into a developer log. Only real events (transactions,
         // security actions) belong here, so Settings-category entries are dropped.
-        if (string.Equals(kind, "Settings", StringComparison.OrdinalIgnoreCase)) return;
+        if (string.Equals(kind, "Settings", StringComparison.OrdinalIgnoreCase)) return null;
 
         // Real timestamp so persisted history reads correctly after a restart (callers pass "now").
         var isNow = string.Equals(when, "now", StringComparison.OrdinalIgnoreCase);
@@ -60,8 +60,9 @@ public partial class MainViewModel
         }
 
         txId ??= walletId is null ? null : ActivityRowViewModel.TxIdFromExplorer(explorer);
-        Activity.Insert(0, new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer,
-            status, unixMs, retryTo, retryAmount, retryChain, txId, note ?? TxNoteFor(txId), walletId, counterFull));
+        var pushed = new ActivityRowViewModel(kind, asset, amount, counter, stamp, explorer,
+            status, unixMs, retryTo, retryAmount, retryChain, txId, note ?? TxNoteFor(txId), walletId, counterFull);
+        Activity.Insert(0, pushed);
         while (Activity.Count > 60) Activity.RemoveAt(Activity.Count - 1);
 
         RebuildRecentActivity();
@@ -71,6 +72,7 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(HasActivity));
         PersistActivity();
         if (walletId is not null) PortfolioMovesChanged();   // a transfer just made is part of the balance's story
+        return pushed;
     }
 
     /// <summary>The Portfolio rail's five most-recent events — from the MERGED feed (local + on-chain),
