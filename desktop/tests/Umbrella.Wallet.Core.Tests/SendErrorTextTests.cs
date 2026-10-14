@@ -40,7 +40,7 @@ public sealed class SendErrorTextTests : IDisposable
 
         var shown = SendErrorText.Localize(original);
 
-        Assert.Equal("Переказ не вдався. Нічого не надіслано.\n" + original, shown);
+        Assert.Equal("Транзакцію не виконано. Нічого не надіслано.\n" + original, shown);
     }
 
     [Theory]

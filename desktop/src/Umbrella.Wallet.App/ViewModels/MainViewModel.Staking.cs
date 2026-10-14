@@ -112,6 +112,10 @@ public partial class MainViewModel
     [ObservableProperty] private StakeValidatorOption? _selectedStakeValidator;
     [ObservableProperty] private string _stakeReview = string.Empty;
     [ObservableProperty] private string _stakeError = string.Empty;
+
+    /// <summary>A staking action's error as the user reads it — the network clients write English
+    /// (<see cref="SendErrorText"/>).</summary>
+    public string StakeErrorShown => SendErrorText.Localize(StakeError);
     [ObservableProperty] private string _stakeResult = string.Empty;
     [ObservableProperty] private string _stakePassword = string.Empty;
     [ObservableProperty] private bool _isStakeWorking;
@@ -123,7 +127,11 @@ public partial class MainViewModel
     public bool HasStakeResult => !string.IsNullOrEmpty(StakeResult);
 
     partial void OnStakeReviewChanged(string value) => OnPropertyChanged(nameof(HasStakeReview));
-    partial void OnStakeErrorChanged(string value) => OnPropertyChanged(nameof(HasStakeError));
+    partial void OnStakeErrorChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasStakeError));
+        OnPropertyChanged(nameof(StakeErrorShown));
+    }
     partial void OnStakeResultChanged(string value) => OnPropertyChanged(nameof(HasStakeResult));
     partial void OnStakeAmountChanged(string value) => StakeReview = string.Empty;
     partial void OnSelectedStakeValidatorChanged(StakeValidatorOption? value) => StakeReview = string.Empty;

@@ -76,7 +76,7 @@
 
         <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsStakeWorking}" Height="3" MinHeight="3"/>
         <Border IsVisible="{Binding HasStakeError}" Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
-          <TextBlock Text="{Binding StakeError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+          <TextBlock Text="{Binding StakeErrorShown}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
         </Border>
         <TextBlock Text="{Binding StakeResult}" IsVisible="{Binding HasStakeResult}" Foreground="{DynamicResource UmPos}" FontSize="12.5" TextWrapping="Wrap"/>
       </StackPanel>
