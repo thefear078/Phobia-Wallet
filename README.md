@@ -158,7 +158,7 @@ not quote that coin when last checked. Per-chain detail: **[docs/12-coins-and-ch
 
 <img src="docs/assets/logo-phobia.png" width="56" align="right" alt="Phobia icon"/>
 
-The current build is the **Beta** of 10 October 2026, a GitHub pre-release; older builds are on the
+The current build is the **Beta** of 14 October 2026, a GitHub pre-release; older builds are on the
 [releases page](https://github.com/thefear078/Phobia-Wallet/releases). The icon on the right is what you
 will see once it is installed.
 

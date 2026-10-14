@@ -93,9 +93,9 @@
       },
       "xunit.runner.visualstudio": {
         "type": "Direct",
-        "requested": "[2.8.2, )",
-        "resolved": "2.8.2",
-        "contentHash": "vm1tbfXhFmjFMUmS4M0J0ASXz3/U5XvXBa6DOQUL3fEz4Vt6YPhv+ESCarx6M6D+9kJkJYZKCNvJMas1+nVfmQ=="
+        "requested": "[4.0.1, )",
+        "resolved": "4.0.1",
+        "contentHash": "8CoAaZkniVekR1ycJyxn+hOz+6ZQCDPcoIsIs6ujd4WyFcBMlxGNU15Qb8Uxd4iO4UmOuETb0M6vzBbwX/mfLA=="
       },
       "Avalonia": {
         "type": "Transitive",
@@ -318,8 +318,8 @@
       },
       "NBitcoin": {
         "type": "Transitive",
-        "resolved": "10.0.14",
-        "contentHash": "7gkhwD86mBkcY8l4vrq75gPnUPAeafe29pCcuo4OFDqaGEKSwdFKJxgTvz+KZ56wzfC63gaKGwvE/PXV20Q6HQ==",
+        "resolved": "10.0.16",
+        "contentHash": "v5bi8ry8W6UpB5qxDotEfCF1bwvXv5ZhDDpmYgIlZvl/JPADNiRVVIBNlBTYiUFTMe7Zx7U73iBC+03Citio4A==",
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "1.0.0",
           "Newtonsoft.Json": "13.0.4"
@@ -327,10 +327,10 @@
       },
       "NBitcoin.Altcoins": {
         "type": "Transitive",
-        "resolved": "6.0.9",
-        "contentHash": "WZ2JE/HH8xValAqD4BB77ser/3bY/rtC1jW3z1NroHNradyL41mSDSOCjxYC2J+ajY4B7sool/0YXG7QxR8gcg==",
+        "resolved": "6.0.10",
+        "contentHash": "MbYhKhzXJwVIoAJdzNv/A9v7DlczyK5Odf+zpMLYv1dBF5qWdIKBGeibZ5uEMWH92ddjy4mSO8vsZ5O9pNzfKQ==",
         "dependencies": {
-          "NBitcoin": "10.0.14"
+          "NBitcoin": "10.0.16"
         }
       },
       "NBitcoin.Secp256k1": {
@@ -1059,8 +1059,8 @@
         "type": "Project",
         "dependencies": {
           "BouncyCastle.Cryptography": "[2.7.0, )",
-          "NBitcoin": "[10.0.14, )",
-          "NBitcoin.Altcoins": "[6.0.9, )",
+          "NBitcoin": "[10.0.16, )",
+          "NBitcoin.Altcoins": "[6.0.10, )",
           "Nethereum.Util": "[7.0.0, )"
         }
       },

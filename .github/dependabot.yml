@@ -17,6 +17,12 @@ updates:
     groups:
       desktop-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # Avalonia 12 is a migration, not an update: its API changes reach every view, and its PRs failed
+      # every build (October 2026). It is planned as work of its own; 11.x minor and patch releases
+      # still come through the group above.
+      - dependency-name: "Avalonia*"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
       include: "scope"

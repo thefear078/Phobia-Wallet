@@ -4,7 +4,7 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [4.10.0-beta.6] — Beta of 10 October 2026 (a GitHub pre-release) — sending you can read, swaps followed to their end, history that is kept, notes and names
+## [4.10.0-beta.6] — Beta of 14 October 2026 (a GitHub pre-release) — sending you can read, swaps followed to their end, history that is kept, notes and names
 
 ### Sending
 
@@ -163,11 +163,13 @@ amount to fit. A route holds a short payment until the quote's deadline and only
 - Swap and Send: coin logos in the pickers, both Swap pickers on one line and one width, a card that
   keeps its width when the introductory note is closed. The Tor rows of Activity carry an onion.
 
-### Bundled Tor
+### Bundled Tor and libraries
 
 - **Tor 15.0.25** (Tor 0.4.9.14) on Windows, Linux and Android. 15.0.24 was pruned from the Tor
   Project's mirror, which stopped the supply-chain check. Every hash is the one in Tor's signed sums
   file for 15.0.25, its signature checked against the pinned Tor Browser Developers key.
+- NBitcoin 10.0.16 and NBitcoin.Altcoins 6.0.10 — patch releases of the library behind Bitcoin-family
+  signing; every signing test vector still passes. The test runner moves to xunit.runner.visualstudio 4.
 
 ### Repository, security checks and documentation
 
