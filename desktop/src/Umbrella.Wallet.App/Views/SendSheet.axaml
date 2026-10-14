@@ -180,7 +180,7 @@
 
             <Border IsVisible="{Binding HasSendError}" Background="#2A1618" BorderBrush="#7A3034"
                     BorderThickness="1" CornerRadius="8" Padding="12,9">
-              <SelectableTextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+              <SelectableTextBlock Text="{Binding SendErrorShown}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
             </Border>
 
             <!-- The password once more before anything is signed (Settings → Security). Enter confirms. -->
@@ -277,7 +277,7 @@
                   <StackPanel Spacing="5">
                     <SelectableTextBlock Text="{Binding SendReceipt.Note}" Foreground="#E7CA83" FontSize="12" TextWrapping="Wrap"/>
                     <!-- What the server (or the silence) actually said, for whoever needs the exact words. -->
-                    <SelectableTextBlock IsVisible="{Binding SendReceipt.HasDetail}" Text="{Binding SendReceipt.Detail}"
+                    <SelectableTextBlock IsVisible="{Binding SendReceipt.HasDetail}" Text="{Binding SendReceipt.DetailShown}"
                                          Foreground="#B9A873" FontSize="10.5" TextWrapping="Wrap"/>
                   </StackPanel>
                 </Border>

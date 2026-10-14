@@ -178,6 +178,13 @@ amount to fit. A route holds a short payment until the quote's deadline and only
 - Prose with a maximum width was centred on a wide window rather than starting at the left edge — a
   provider's description sat off to the right of its name. Ten such blocks (Buy, P2P, Activity, NFT,
   Settings) start at the left now. The Buy and P2P tiles of Explore wrap instead of being cut.
+- **A send that fails says why in your language.** The senders' messages were English whatever the
+  language. The ones people meet — a wrong or own address, the amount, too little money, a network that
+  did not answer, an account not yet activated, a minimum transfer — are translated whole in all six
+  languages, with the server, figure or transaction id they carry. The rare, technical rest read a
+  sentence in your language saying what kind of trouble it is ("The network did not answer as expected",
+  "The transfer could not be made — nothing was sent"), with the original line under it. A test reads
+  the senders, so a new message nothing can place fails the build.
 - The connection chip above the lock button says **NETWORK BLOCKED**, not "BLOCKED" — beside a padlock
   it read as "the wallet is locked".
 - Staking: the note no longer calls the rates "typical, approximate" — they are computed from each

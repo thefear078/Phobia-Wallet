@@ -37,6 +37,9 @@ public sealed record SendReceiptVm(
     string Detail = "")
 {
     public bool IsConfirmed => State == SendReceiptState.Confirmed;
+
+    /// <summary>The detail as the user reads it, in the wallet's language.</summary>
+    public string DetailShown => SendErrorText.Localize(Detail);
     public bool IsUnclear => State == SendReceiptState.Unclear;
 
     public string Title => Loc.Instance[State switch
@@ -212,7 +215,15 @@ public partial class MainViewModel
 
     partial void OnSendReceiptChanged(SendReceiptVm? value) => NotifySendSheet();
 
-    partial void OnSendErrorChanged(string value) => OnPropertyChanged(nameof(HasSendError));
+    partial void OnSendErrorChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasSendError));
+        OnPropertyChanged(nameof(SendErrorShown));
+    }
+
+    /// <summary>The send error as the user reads it: in the wallet's language (<see cref="SendErrorText"/>).
+    /// <see cref="SendError"/> keeps the sender's own words.</summary>
+    public string SendErrorShown => SendErrorText.Localize(SendError);
 
     private void NotifySendSheet()
     {

@@ -344,6 +344,8 @@ public partial class MainViewModel : ViewModelBase
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
             RelocalizeVenues();   // the Buy and P2P lists' lines
+            OnPropertyChanged(nameof(SendErrorShown));   // a send error on screen, in the new language
+            if (SendReceipt is { } receipt) SendReceipt = receipt with { };
             RefreshPrivateSendPlan();  // its steps and limits are prose, not codes
             RefreshMoneroNodeStatus(); // its wording is prose, not a code
             BuildCounterparties();     // the disclosure list is prose too

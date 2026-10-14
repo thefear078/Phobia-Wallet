@@ -412,7 +412,7 @@
 
         <Border IsVisible="{Binding HasSendError}"
                 Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
-          <SelectableTextBlock Text="{Binding SendError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+          <SelectableTextBlock Text="{Binding SendErrorShown}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
         </Border>
         <!-- One button: it reads the fee and opens the review over the page (SendSheet). -->
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
