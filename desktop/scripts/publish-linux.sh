@@ -30,13 +30,13 @@ helper_missing() {
 
 # Both hashes are pinned, never taken from the server that serves the file. Each was read from the
 # project's own signed sums file, its signature checked against the key the Windows scripts pin:
-#   Tor:    sha256sums-signed-build.txt for 15.0.24 — Tor Browser Developers EF6E286DDA85EA2A4BA7DE684E2C6E8793298290
+#   Tor:    sha256sums-signed-build.txt for 15.0.25 — Tor Browser Developers EF6E286DDA85EA2A4BA7DE684E2C6E8793298290
 #   Monero: getmonero.org/downloads/hashes.txt — binaryFate 81AC591FE9C4B65C5806AFC3F0AF4D462A0BDF92
 # 14.5.7, pinned here before, had vanished upstream: Linux builds since then shipped without Tor.
 
 # --- Tor (expert bundle, linux-x86_64) ---
-TOR_VERSION="${TOR_VERSION:-15.0.24}"
-TOR_SHA256="${TOR_SHA256:-8e012ec6815d7899cb64011582e2dade88e74119c6661068a2a3252de0ccd7f2}"
+TOR_VERSION="${TOR_VERSION:-15.0.25}"
+TOR_SHA256="${TOR_SHA256:-19cf18726eecb362e0f21d27afa9ea9efe5da928bfdfbb1ceb5fe54519e87f4a}"
 TOR_ARCHIVE="tor-expert-bundle-linux-x86_64-${TOR_VERSION}.tar.gz"
 if [ ! -f "${OUT}/tor/tor" ]; then
     echo "Fetching Tor ${TOR_VERSION}…"

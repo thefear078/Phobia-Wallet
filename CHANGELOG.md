@@ -163,6 +163,12 @@ amount to fit. A route holds a short payment until the quote's deadline and only
 - Swap and Send: coin logos in the pickers, both Swap pickers on one line and one width, a card that
   keeps its width when the introductory note is closed. The Tor rows of Activity carry an onion.
 
+### Bundled Tor
+
+- **Tor 15.0.25** (Tor 0.4.9.14) on Windows, Linux and Android. 15.0.24 was pruned from the Tor
+  Project's mirror, which stopped the supply-chain check. Every hash is the one in Tor's signed sums
+  file for 15.0.25, its signature checked against the pinned Tor Browser Developers key.
+
 ### Repository, security checks and documentation
 
 Nothing in this part changes what the wallet does with your coins; it changes what can be checked about it.
