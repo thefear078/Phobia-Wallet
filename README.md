@@ -16,7 +16,7 @@ No account · no email · no KYC · no tracking · no fee on your transfers.
 [![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release&color=6E5FB8)](https://github.com/thefear078/Phobia-Wallet/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4B3F86)](LICENSE)
 ![Version](https://img.shields.io/badge/version-Beta-2F6BEF)
-![Tests](https://img.shields.io/badge/tests-1%2C950%2B%20offline-7DCF8F)
+![Tests](https://img.shields.io/badge/tests-2%2C000%2B%20offline-7DCF8F)
 
 ![Windows](https://img.shields.io/badge/Windows-ready-4B3F86?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-ready-6E5FB8?logo=linux&logoColor=white)
@@ -220,7 +220,7 @@ git clone https://github.com/thefear078/Phobia-Wallet.git
 cd Phobia-Wallet
 dotnet build desktop/Umbrella.Wallet.sln -c Release                                 # build
 dotnet run --project desktop/src/Umbrella.Wallet.App                                # run
-dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"        # ~1,950 offline tests
+dotnet test desktop/Umbrella.Wallet.sln -c Release --filter "Category!=Live"        # ~2,000 offline tests
 ```
 
 Installers, the portable exe, the Linux tarball and the Android APK: **[docs/building.md](docs/building.md)**.
@@ -308,7 +308,7 @@ for anything that could put funds at risk.
 
 ## Quality
 
-- **1,950+ offline tests** on every push: derivation and signing pinned to official vectors and to
+- **2,000+ offline tests** on every push: derivation and signing pinned to official vectors and to
   transactions the networks accepted, amount parsing, spend planning, privacy on the wire (a SOCKS5 server
   reads each request's circuit, a listener proves the kill-switch opens no socket), and every screen
   rendered headless on desktop and phone.
@@ -320,15 +320,15 @@ for anything that could put funds at risk.
 
 ### Results
 
-Measured on **9–10 October 2026** against `main` and the current Beta — re-run them yourself with the commands
+Measured on **9–14 October 2026** against `main` and the current Beta — re-run them yourself with the commands
 in [docs/testing.md](docs/testing.md) and [docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md).
 
 | Check | Result |
 |---|---|
-| Offline test suite | ✅ **1,958 / 1,958** passed · rendered screens **4 / 4** |
+| Offline test suite | ✅ **2,009 / 2,009** passed · rendered screens **4 / 4** |
 | Line coverage of the offline suite | **Core 90.6 %** — the money logic: derivation, signing, fees, parsing · Infrastructure 41.9 % (network code; the live tests cover it instead) · App 54.1 % · **58.5 %** overall ([by assembly](docs/testing.md#coverage)) |
 | Static analysis | ✅ CodeQL: **0** open alerts · ✅ Semgrep: **0** findings — 76 rules over 427 C# files, the workflows and secrets |
-| Live tests against real explorers and nodes | ✅ **48 / 49** — the one left: an explorer rate-limiting this machine |
+| Live tests against real explorers and nodes | ✅ **54 / 55** — the one left: both Decred explorers rate-limiting this machine (429) during the Decred send check |
 | Android emulator: app starts, bundled Tor bootstraps | ✅ passed |
 | Linux desktop: the build reaches check.torproject.org through its own Tor | ✅ passed |
 | Release files against their checksum lists | ✅ **11 / 11** byte for byte |
