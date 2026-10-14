@@ -40,11 +40,16 @@
           <Border Background="{DynamicResource UmInput}" BorderBrush="{DynamicResource UmBorder2}"
                   BorderThickness="1" CornerRadius="16" Padding="16,12,16,14">
             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
-              <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"
-                         Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
-              <!-- Which wallet pays, on its own line at the top right, never under the coin picker. -->
-              <TextBlock Grid.Column="1" FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapWalletLabel}"
-                         HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+              <!-- The label keeps its whole width; which wallet pays takes what is left of the line and is
+                   shortened with an ellipsis. Both sat in the grid's two columns, the second as wide as the
+                   coin picker below it — on a phone that left the label a third of the line, cut and
+                   running into the wallet's name. -->
+              <DockPanel Grid.ColumnSpan="2" LastChildFill="True">
+                <TextBlock DockPanel.Dock="Left" Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"
+                           Text="{Binding [swap.from], Source={x:Static app:Loc.Instance}}"/>
+                <TextBlock FontSize="11" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapWalletLabel}" Margin="12,0,0,0"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+              </DockPanel>
               <TextBox Grid.Row="1" Classes="bare" Text="{Binding SwapAmount}" Watermark="0.0" BorderThickness="0" Padding="0"
                        MinHeight="0" Background="Transparent" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
               <!-- What it holds of this coin (click: use it all). -->
@@ -96,7 +101,7 @@
           <Border Grid.Row="2" Background="{DynamicResource UmInput}"
                   BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="16" Padding="16,14,16,12">
             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="6">
-              <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+              <TextBlock Grid.ColumnSpan="2" Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
                          Text="{Binding [swap.to], Source={x:Static app:Loc.Instance}}"/>
               <Panel Grid.Row="1" VerticalAlignment="Center">
                 <TextBlock Text="{Binding SwapExpectedOut}" FontSize="24" FontWeight="SemiBold"

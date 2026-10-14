@@ -24,7 +24,7 @@ public sealed partial class StakeChainViewModel : ObservableObject
     [ObservableProperty] private string _staked = "—";
     [ObservableProperty] private string _rewards = "—";
     [ObservableProperty] private string _pending = string.Empty;
-    [ObservableProperty] private string _apr = string.Empty;
+    [ObservableProperty] private string _apr = "—";   // until the network's own figures are read
     [ObservableProperty] private string _note = string.Empty;
     [ObservableProperty] private bool _loading = true;
     [ObservableProperty] private bool _canClaim;

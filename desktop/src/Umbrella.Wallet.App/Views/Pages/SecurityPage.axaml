@@ -65,23 +65,35 @@
       </Grid>
     </Border>
 
-    <!-- Score header: how many switchable protections are on, right now. -->
-    <Border Classes="card" Padding="18,14">
-      <Grid ColumnDefinitions="*,Auto">
+    <!-- Score header: how many switchable protections are on, right now. On a phone the two buttons
+         go under the score and wrap: side by side they were wider than the screen, the second one cut
+         off at its edge and the score itself squeezed out. -->
+    <Border Classes="card" Padding="18,14" Container.Name="secScore" Container.Sizing="Width">
+      <Border.Styles>
+        <Style Selector="WrapPanel.secActions"><Setter Property="Grid.Column" Value="1"/></Style>
+        <ContainerQuery Name="secScore" Query="max-width:620">
+          <Style Selector="WrapPanel.secActions">
+            <Setter Property="Grid.Column" Value="0"/>
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="Margin" Value="0,12,0,0"/>
+          </Style>
+        </ContainerQuery>
+      </Border.Styles>
+      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
         <StackPanel Spacing="4">
           <TextBlock FontSize="20" FontWeight="SemiBold" Foreground="{Binding SecurityScoreColor}"
                      Text="{Binding SecurityScoreLabel}"/>
           <TextBlock FontSize="11.5" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
                      Text="{Binding ConnectionLabel}"/>
         </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-          <Button Classes="primary" Padding="14,6" MinHeight="0"
+        <WrapPanel Classes="secActions" VerticalAlignment="Center">
+          <Button Classes="primary" Padding="14,6" MinHeight="0" Margin="0,0,8,6"
                   Content="{Binding [sec.allOn], Source={x:Static app:Loc.Instance}}"
                   Command="{Binding EnableRecommendedSecurityCommand}"/>
-          <Button Classes="ghost" Padding="14,6" MinHeight="0"
+          <Button Classes="ghost" Padding="14,6" MinHeight="0" Margin="0,0,0,6"
                   Content="{Binding [sec.refresh], Source={x:Static app:Loc.Instance}}"
                   Command="{Binding RefreshSecurityCommand}"/>
-        </StackPanel>
+        </WrapPanel>
       </Grid>
     </Border>
 

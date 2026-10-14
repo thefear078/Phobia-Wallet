@@ -162,6 +162,17 @@ amount to fit. A route holds a short payment until the quote's deadline and only
 
 - Swap and Send: coin logos in the pickers, both Swap pickers on one line and one width, a card that
   keeps its width when the introductory note is closed. The Tor rows of Activity carry an onion.
+- **On a phone** (every screen rendered at 390 px and checked): the Market list showed a logo and a dash
+  per coin — its price, change, sparkline and "this wallet" columns took 506 pixels of every row, the
+  coin's name none; on a narrow screen the sparkline and "this wallet" go and the name is back, and the
+  chart window moves under the title instead of over its status line. Swap's "From (you pay)" and "To
+  (you receive)" were cut off and ran into the wallet's name. Security's two buttons were wider than
+  the screen, the second one cut at its edge and the score squeezed out; they now wrap under the score.
+  Send's address label ran off the right edge.
+- The connection chip above the lock button says **NETWORK BLOCKED**, not "BLOCKED" — beside a padlock
+  it read as "the wallet is locked".
+- Staking: the note no longer calls the rates "typical, approximate" — they are computed from each
+  network's own figures — and a yield not read yet shows a dash, not an empty space.
 
 ### Bundled Tor and libraries
 
