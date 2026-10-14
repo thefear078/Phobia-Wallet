@@ -343,6 +343,7 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
+            RelocalizeVenues();   // the Buy and P2P lists' lines
             RefreshPrivateSendPlan();  // its steps and limits are prose, not codes
             RefreshMoneroNodeStatus(); // its wording is prose, not a code
             BuildCounterparties();     // the disclosure list is prose too
@@ -4409,6 +4410,17 @@ public partial class MainViewModel : ViewModelBase
             "Global multi-coin P2P with non-custodial escrow and hundreds of payment methods; you hold the keys throughout.",
             "https://localcoinswap.com", "LCS", "#16A34A"),
     ];
+
+    /// <summary>
+    /// Redraws the Buy and P2P lists after a language switch: each row's text is computed when the row
+    /// is drawn, so a row is replaced by an equal copy to have it drawn again.
+    /// </summary>
+    private void RelocalizeVenues()
+    {
+        foreach (var list in new[] { P2pVenues, OnRampVenues })
+            for (var i = 0; i < list.Count; i++)
+                list[i] = list[i] with { };
+    }
 
     /// <summary>Card/bank fiat on-ramps for the Buy page. Every one delivers the crypto straight to a
     /// self-custody address you paste at checkout — Umbrella never holds funds or takes a cut. KYC and

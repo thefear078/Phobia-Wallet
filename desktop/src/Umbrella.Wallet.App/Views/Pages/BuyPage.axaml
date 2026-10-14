@@ -9,10 +9,21 @@
              x:Class="Umbrella.Wallet.App.Views.Pages.BuyPage"
              x:DataType="vm:MainViewModel"
              x:CompileBindings="True">
-  <StackPanel Classes="page" Spacing="14">
+  <UserControl.Styles>
+    <!-- Three steps side by side on a desktop; one under another on a phone, where three columns left
+         each heading a third of the line, cut ("1 · Скопіюйте ад"). -->
+    <Style Selector="UniformGrid.buySteps"><Setter Property="Columns" Value="3"/></Style>
+    <Style Selector="UniformGrid.buySteps > StackPanel"><Setter Property="Margin" Value="0,0,14,0"/></Style>
+    <ContainerQuery Name="buyPage" Query="max-width:620">
+      <Style Selector="UniformGrid.buySteps"><Setter Property="Columns" Value="1"/></Style>
+      <Style Selector="UniformGrid.buySteps > StackPanel"><Setter Property="Margin" Value="0,0,0,10"/></Style>
+    </ContainerQuery>
+  </UserControl.Styles>
+
+  <StackPanel Classes="page" Spacing="14" Container.Name="buyPage" Container.Sizing="Width">
     <StackPanel Spacing="4">
       <TextBlock Classes="serif" FontSize="26" Text="{Binding [section.buyCrypto], Source={x:Static app:Loc.Instance}}"/>
-      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12"
+      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                  Text="{Binding [sec.buyDesc], Source={x:Static app:Loc.Instance}}"/>
     </StackPanel>
 
@@ -26,30 +37,32 @@
                   CommandParameter="buy.howTo" ToolTip.Tip="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"
                   AutomationProperties.Name="{Binding [common.closeNote], Source={x:Static app:Loc.Instance}}"/>
         </Grid>
-        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14">
+        <UniformGrid Classes="buySteps">
           <StackPanel Spacing="4">
-            <TextBlock Text="{Binding [buy.step1], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+            <TextBlock Text="{Binding [buy.step1], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding [buy.step1body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
                        Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
           </StackPanel>
-          <StackPanel Grid.Column="1" Spacing="4">
-            <TextBlock Text="{Binding [buy.step2], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+          <StackPanel Spacing="4">
+            <TextBlock Text="{Binding [buy.step2], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding [buy.step2body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
                        Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
           </StackPanel>
-          <StackPanel Grid.Column="2" Spacing="4">
-            <TextBlock Text="{Binding [buy.step3], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
+          <StackPanel Spacing="4">
+            <TextBlock Text="{Binding [buy.step3], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap"/>
             <TextBlock Text="{Binding [buy.step3body], Source={x:Static app:Loc.Instance}}" FontSize="11.5"
                        Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap"/>
           </StackPanel>
-        </Grid>
+        </UniformGrid>
       </StackPanel>
     </Border>
-    <StackPanel Orientation="Horizontal" Spacing="10">
-      <Button Classes="primary" Content="{Binding [buy.showAddresses], Source={x:Static app:Loc.Instance}}"
+    <!-- Wraps on a phone: side by side the second button ran off the screen. -->
+    <WrapPanel>
+      <Button Classes="primary" Content="{Binding [buy.showAddresses], Source={x:Static app:Loc.Instance}}" Margin="0,0,10,8"
               Command="{Binding SelectSectionCommand}" CommandParameter="Receive"/>
-      <Button Classes="ghost" Content="{Binding [buy.copyPrimary], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyPrimaryAddressCommand}"/>
-    </StackPanel>
+      <Button Classes="ghost" Content="{Binding [buy.copyPrimary], Source={x:Static app:Loc.Instance}}" Margin="0,0,0,8"
+              Command="{Binding CopyPrimaryAddressCommand}"/>
+    </WrapPanel>
 
     <TextBlock Classes="eyebrow" Text="{Binding [buy.providers], Source={x:Static app:Loc.Instance}}" Margin="2,4,0,0"/>
 
@@ -64,16 +77,17 @@
                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="{Binding Name}" FontSize="14.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding Kind, Converter={StaticResource ActivityLabel}}" FontSize="11" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"/>
+                  <!-- Wraps: name, kind and badge on one line were wider than a phone. -->
+                  <WrapPanel>
+                    <TextBlock Text="{Binding Name}" FontSize="14.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,2"/>
+                    <TextBlock Text="{Binding KindLabel}" FontSize="11" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center" Margin="0,0,8,2"/>
                     <Border Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmAccentDim}" BorderThickness="1"
                             CornerRadius="5" Padding="6,1" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Custody}" FontSize="9.5" Foreground="{DynamicResource UmTextSoft}"/>
+                      <TextBlock Text="{Binding CustodyLabel}" FontSize="9.5" Foreground="{DynamicResource UmTextSoft}"/>
                     </Border>
-                  </StackPanel>
-                  <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource UmTextDim}"
-                             TextWrapping="Wrap" MaxWidth="620"/>
+                  </WrapPanel>
+                  <TextBlock Text="{Binding DescriptionLabel}" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                             TextWrapping="Wrap" MaxWidth="620" HorizontalAlignment="Left"/>
                 </StackPanel>
                 <Button Grid.Column="2" Classes="ghost" Content="{Binding [common.open], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
                         Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).OpenUrlCommand}"
@@ -88,7 +102,7 @@
     <Border Classes="card" Background="{DynamicResource UmCardAlt}">
       <StackPanel Spacing="6">
         <TextBlock Text="{Binding [sec.beforeBuy], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
-        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
+        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="720"
                    Text="{Binding [buy.disclaimer], Source={x:Static app:Loc.Instance}}"/>
       </StackPanel>
     </Border>

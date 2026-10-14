@@ -34,7 +34,7 @@
     <Border IsVisible="{Binding HasHistoryGaps}" Background="#33E7CA83" BorderBrush="#7A6230"
             BorderThickness="1" CornerRadius="10" Padding="12,9">
       <TextBlock Text="{Binding HistoryGapNote}" Foreground="#E7CA83" FontSize="11.5"
-                 LineHeight="17" TextWrapping="Wrap" MaxWidth="720"/>
+                 LineHeight="17" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="720"/>
     </Border>
 
     <!-- Last sync + on-demand refresh: the history is fetched from public explorers, so tell

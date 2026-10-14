@@ -15,13 +15,13 @@
       <TextBlock Classes="serif" FontSize="26" Text="{Binding [nav.nfts], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
       <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/67.json" Width="46" Height="46" VerticalAlignment="Center" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}"/>
     </StackPanel>
-    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" MaxWidth="560" TextWrapping="Wrap"
+    <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" HorizontalAlignment="Left" MaxWidth="560" TextWrapping="Wrap"
                Text="{Binding [nft.desc], Source={x:Static app:Loc.Instance}}"/>
 
     <Border Classes="card" Background="{DynamicResource UmCardAlt}" Padding="16,12">
       <StackPanel Spacing="4">
         <TextBlock Text="{Binding [sec.nftOrigin], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="12.5"/>
-        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
+        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="640"
                    Text="{Binding [sec.nftDesc], Source={x:Static app:Loc.Instance}}"/>
       </StackPanel>
     </Border>

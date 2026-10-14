@@ -267,7 +267,23 @@ public sealed partial class CoinControlUtxoVm : ObservableObject
 
 /// <summary>One row in the P2P & DEX directory — a self-custody venue the user opens externally.</summary>
 public sealed record P2pVenue(
-    string Name, string Kind, string Custody, string Description, string Url, string Tag, string Accent);
+    string Name, string Kind, string Custody, string Description, string Url, string Tag, string Accent)
+{
+    // The catalogue is written in English; these are what the Buy and P2P pages show, in the wallet's
+    // language ("venue.kind.<kind>", "venue.custody.<custody>", "venue.desc.<tag>"), the English as written
+    // when a line has no translation. They were shown as written — English inside a Ukrainian wallet.
+    public string KindLabel => Translate("venue.kind." + Slug(Kind), Kind);
+    public string CustodyLabel => Translate("venue.custody." + Slug(Custody), Custody);
+    public string DescriptionLabel => Translate("venue.desc." + Tag.ToLowerInvariant(), Description);
+
+    private static string Translate(string key, string english)
+    {
+        var text = Umbrella.Wallet.App.Loc.Instance[key];
+        return text == key ? english : text;
+    }
+
+    private static string Slug(string text) => new(text.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+}
 
 /// <summary>A searchable Settings entry: a label, the pane it lives in, and hidden keywords.</summary>
 /// <summary>One thing Settings search can find: the string that titles it, its pane, every string the
