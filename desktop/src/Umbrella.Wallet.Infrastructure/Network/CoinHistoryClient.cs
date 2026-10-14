@@ -164,13 +164,13 @@ public sealed class CoinHistoryClient
     /// <summary>Recent Dogecoin transactions across the wallet's addresses, from BlockCypher (where the
     /// balance comes from).</summary>
     public Task<IReadOnlyList<ChainTx>> GetDogecoinAsync(
-        IReadOnlyCollection<string> addresses, int limit = 25, CancellationToken ct = default) =>
+        IReadOnlyCollection<string> addresses, int limit = HistoryPage.BlockCypher, CancellationToken ct = default) =>
         GetBlockcypherHistoryAsync("doge", "DOGE", addresses, limit, ct);
 
     /// <summary>Recent Litecoin transactions across the wallet's addresses, from BlockCypher - litecoinspace,
     /// the old source, stopped answering address lookups.</summary>
     public Task<IReadOnlyList<ChainTx>> GetLitecoinAsync(
-        IReadOnlyCollection<string> addresses, int limit = 25, CancellationToken ct = default) =>
+        IReadOnlyCollection<string> addresses, int limit = HistoryPage.BlockCypher, CancellationToken ct = default) =>
         GetBlockcypherHistoryAsync("ltc", "LTC", addresses, limit, ct);
 
     private async Task<IReadOnlyList<ChainTx>> GetBlockcypherHistoryAsync(
@@ -271,10 +271,9 @@ public sealed class CoinHistoryClient
 
         try
         {
-            using var res = await Http.GetAsync(
-                $"https://sandbox-api.3xpl.com/zcash/address/{Uri.EscapeDataString(address)}?data=events&limit=100", ct);
-            if (!res.IsSuccessStatusCode) return [];
-            return Parse3xplZcash(await res.Content.ReadAsStringAsync(ct));
+            var json = await ThreeXpl.GetAsync(
+                Http, $"{ThreeXpl.Root}/zcash/address/{Uri.EscapeDataString(address)}?data=events&limit=100", ct);
+            return json is null ? [] : Parse3xplZcash(json);
         }
         catch
         {

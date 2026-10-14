@@ -77,6 +77,26 @@ public sealed class AccountHistoryLiveTests
         Assert.All(rows, r => Assert.StartsWith(explorer, r.Explorer));
     }
 
+    public static TheoryData<int> EvmEventSources() => new() { 0, 1, 2, 3, 4 };
+
+    [Theory]
+    [MemberData(nameof(EvmEventSources))]
+    public async Task Each_evm_network_read_from_3xpl_answers_with_events(int which)
+    {
+        Online();
+        var (network, chain, asset, explorer) = OnChainHistoryClient.EvmSideEvents[which];
+        // Public addresses that move the native coin there every day: a cross-chain relayer on the
+        // rollups and BNB Chain, an exchange on Polygon (where the relayer's recent events move nothing).
+        var busy = network == "Polygon"
+            ? "0xF977814e90dA44bFA03b6295A0616a897441aceC"
+            : "0xf70da97812CB96acDF810712Aa562db8dfA3dbEF";
+        var rows = await new OnChainHistoryClient().GetEvmEventsAsync(busy, chain, asset, explorer);
+        Assert.True(rows.Count > 0, $"{network}: no rows from 3xpl's {chain}");
+        Assert.All(rows, r => Assert.Equal(asset, r.Asset));
+        Assert.All(rows, r => Assert.StartsWith(explorer, r.Explorer));
+        Assert.All(rows, r => Assert.True(r.UnixMs > 0));
+    }
+
     [Fact]
     public async Task Polkadot_history_reads_asset_hub_and_the_relay_chain()
     {
@@ -87,5 +107,27 @@ public sealed class AccountHistoryLiveTests
         // Its own sends on Asset Hub link by the hash they were submitted under, as the Send screen does.
         Assert.Contains(rows, r => r.Kind == "Sent" && r.Explorer.Contains("/extrinsic/0x", StringComparison.Ordinal));
         Assert.All(rows, r => Assert.Equal("DOT", r.Asset));
+    }
+
+    [Fact]
+    public async Task The_address_free_questions_of_the_warm_up_are_answered_by_the_real_servers()
+    {
+        Online();
+        // Asked the way the wallet asks them: all at once, the slow ones benched. With a working
+        // connection most must answer — the check is only useful if its questions exist on the servers.
+        var asked = ExplorerWarmUp.Questions();
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("PhobiaWallet-tests");
+
+        var slow = await ExplorerWarmUp.RunAsync(
+            async (url, ct) =>
+            {
+                using var res = await http.GetAsync(url, ct);
+                return res.IsSuccessStatusCode;
+            },
+            asked, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(4), _ => { }, CancellationToken.None);
+
+        Assert.True(asked.Count >= 4, "Bitcoin's and Litecoin's servers and Bitcore");
+        Assert.True(slow.Count <= asked.Count / 2, $"not answering: {string.Join(", ", slow)}");
     }
 }

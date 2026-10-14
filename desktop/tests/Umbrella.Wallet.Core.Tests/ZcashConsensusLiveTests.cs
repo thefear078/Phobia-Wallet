@@ -19,68 +19,66 @@ public class ZcashConsensusLiveTests
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
 
-    [Fact]
-    public async Task Branch_ids_still_match_Zcashs_own_source()
+    private const string Zebra = "https://raw.githubusercontent.com/ZcashFoundation/zebra/main/";
+
+    /// <summary>Zebra's mainnet activation heights, by upgrade name (NU6_3, CANOPY …).</summary>
+    private static async Task<Dictionary<string, uint>> MainnetHeightsAsync()
     {
-        var upgrades = await Http.GetStringAsync(
-            "https://raw.githubusercontent.com/zcash/zcash/master/src/consensus/upgrades.cpp");
-        var chainparams = await Http.GetStringAsync(
-            "https://raw.githubusercontent.com/zcash/zcash/master/src/chainparams.cpp");
+        var constants = await Http.GetStringAsync(Zebra + "zebra-chain/src/parameters/constants.rs");
+        var start = constants.IndexOf("pub mod mainnet", StringComparison.Ordinal);
+        Assert.True(start >= 0, "constants.rs no longer has a mainnet module — the source layout changed.");
+        var end = constants.IndexOf("pub mod testnet", start, StringComparison.Ordinal);
+        var mainnet = end > start ? constants[start..end] : constants[start..];
 
-        // .nBranchId = 0x…, .strName = "…" — in upgrade order.
-        var branches = Regex.Matches(upgrades, @"\.nBranchId = (0x[0-9a-fA-F]+|0),\s*\.strName = ""([^""]+)""")
-            .Select(m => (Name: m.Groups[2].Value, Id: Convert.ToUInt32(m.Groups[1].Value, m.Groups[1].Value.StartsWith("0x") ? 16 : 10)))
-            .Where(b => b.Name is not ("Test dummy" or "ZFUTURE"))
-            .ToList();
-
-        // chainparams.cpp lists mainnet first, then testnet, then regtest — so the FIRST height each
-        // upgrade is given is the mainnet one.
-        var mainnet = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
-        foreach (Match m in Regex.Matches(chainparams, @"UPGRADE_(\w+)\]\.nActivationHeight = (\d+);"))
-            mainnet.TryAdd(m.Groups[1].Value, uint.Parse(m.Groups[2].Value));
-
-        Assert.NotEmpty(mainnet);
-        var checkedAny = false;
-
-        foreach (var (name, id) in branches)
-        {
-            if (!mainnet.TryGetValue(name.Replace(".", "_"), out var height)) continue;   // Sprout, or not scheduled
-            Assert.Equal(id, ZcashTransactions.ConsensusBranchId(height));
-            Assert.NotEqual(id, ZcashTransactions.ConsensusBranchId(height - 1));
-            checkedAny = true;
-        }
-
-        Assert.True(checkedAny, "No upgrade could be matched to an activation height — the source layout changed.");
+        var heights = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match m in Regex.Matches(mainnet, @"pub const (\w+): Height = Height\(([\d_]+)\);"))
+            heights.TryAdd(m.Groups[1].Value, uint.Parse(m.Groups[2].Value.Replace("_", "")));
+        return heights;
     }
 
     [Fact]
-    public async Task Version_4_transactions_are_still_being_mined()
+    public async Task Branch_ids_still_match_the_node_zcash_runs_on()
     {
-        // The wallet builds v4. Mainnet now also produces v5 and v6, and a consensus rule that stopped
-        // accepting v4 would make every Zcash send fail — so this asks the chain rather than the spec.
-        using var blocks = await Json("https://api.blockchair.com/zcash/blocks?limit=3");
-        var versions = new List<int>();
+        // zcashd — read here until 2026-10-14 — is deprecated and stopped listing upgrades at NU6.2, so
+        // this check passed while the wallet was a whole upgrade (NU6.3) behind. Zebra is the node.
+        var upgrades = await Http.GetStringAsync(Zebra + "zebra-chain/src/parameters/network_upgrade.rs");
+        var branches = Regex.Matches(upgrades, @"\((\w+), ConsensusBranchId\(0x([0-9a-fA-F]+)\)\)")
+            .Select(m => (Name: m.Groups[1].Value, Id: Convert.ToUInt32(m.Groups[2].Value, 16)))
+            .Where(b => b.Name != "ZFuture")
+            .ToList();
+        var heights = await MainnetHeightsAsync();
 
-        foreach (var block in blocks.RootElement.GetProperty("data").EnumerateArray())
+        Assert.NotEmpty(branches);
+        var scheduled = 0;
+        foreach (var (name, id) in branches)
         {
-            await Task.Delay(1500);
-            var id = block.GetProperty("id").GetInt64();
-            using var dashboard = await Json($"https://api.blockchair.com/zcash/dashboards/block/{id}");
-            var hashes = dashboard.RootElement.GetProperty("data").GetProperty(id.ToString())
-                .GetProperty("transactions").EnumerateArray().Take(8).Select(h => h.GetString()!).ToArray();
-            if (hashes.Length == 0) continue;
-
-            await Task.Delay(1500);
-            using var txs = await Json($"https://api.blockchair.com/zcash/dashboards/transactions/{string.Join(",", hashes)}");
-            foreach (var entry in txs.RootElement.GetProperty("data").EnumerateObject())
-            {
-                if (entry.Value.TryGetProperty("transaction", out var tx) && tx.TryGetProperty("version", out var v))
-                    versions.Add(v.GetInt32());
-            }
+            if (!heights.TryGetValue(name, out var height)) continue;   // not scheduled on mainnet (NU7)
+            Assert.True(id == ZcashTransactions.ConsensusBranchId(height), $"{name} at {height}: Zebra says 0x{id:x8}, the wallet 0x{ZcashTransactions.ConsensusBranchId(height):x8}");
+            Assert.NotEqual(id, ZcashTransactions.ConsensusBranchId(height - 1));
+            scheduled++;
         }
 
-        Assert.NotEmpty(versions);
-        Assert.Contains(4, versions);
+        // Overwinter through the newest scheduled one; fewer means the names no longer line up.
+        Assert.True(scheduled >= 10, $"only {scheduled} upgrades matched to a mainnet height — the source layout changed.");
+    }
+
+    [Fact]
+    public async Task Version_4_is_still_accepted_under_the_newest_mainnet_upgrade()
+    {
+        // The wallet builds v4. Wallets have moved to v5 and v6, so counting versions in recent blocks
+        // says nothing (on 2026-10-14 every one sampled was v6). The node's own rule is asked instead:
+        // the upgrades its v4 check lets through, against the newest one scheduled on mainnet.
+        var heights = await MainnetHeightsAsync();
+        var newest = heights.Where(h => h.Key.StartsWith("NU", StringComparison.Ordinal))
+            .OrderByDescending(h => h.Value).First().Key;   // "NU6_3"
+        var variant = "NetworkUpgrade::Nu" + newest[2..];   // "NetworkUpgrade::Nu6_3"
+
+        var verifier = await Http.GetStringAsync(Zebra + "zebra-consensus/src/transaction.rs");
+        var start = verifier.IndexOf("fn verify_v4_transaction_network_upgrade", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the v4 rule is no longer where it was — the source layout changed.");
+        var accepted = verifier[start..verifier.IndexOf("=> Ok(())", start, StringComparison.Ordinal)];
+
+        Assert.Matches(Regex.Escape(variant) + @"(?!\w)", accepted);   // Nu6_3 itself, not Nu6 or Nu6_1
     }
 
     [Fact]

@@ -921,6 +921,10 @@ public partial class MainViewModel
 
         var fullWalk = targets.ToDictionary(t => t.Symbol, t => DueForFullUtxoScan(t.Symbol), StringComparer.OrdinalIgnoreCase);
 
+        // Which servers are answering is asked first, with a question that names no address — so a scan
+        // does not spend fifteen seconds through Tor finding out that its first server hangs.
+        if (targets.Count > 0) await ExplorerWarmUp.EnsureAsync(ct);
+
         async Task<UtxoScanResult?> ScanOrNullAsync(string symbol, ChainId chain)
         {
             try

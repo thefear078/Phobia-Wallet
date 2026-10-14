@@ -3,6 +3,34 @@ using System.Text.Json;
 
 namespace Umbrella.Wallet.Infrastructure.Network;
 
+/// <summary>
+/// How many transactions one history read asks each source for.
+///
+/// These were 25–30 everywhere: an address with two hundred transfers showed the newest couple of dozen
+/// and nothing older, ever. Each is now what its source hands out for the price of ONE request — no
+/// more calls, no more addresses told to anybody, just a longer answer. What is read is kept and added
+/// to (HistoryStore), so older pages still accumulate behind these.
+/// </summary>
+public static class HistoryPage
+{
+    /// <summary>TronGrid: 200 a page is its maximum.</summary>
+    public const int Tron = 200;
+    /// <summary>Etherscan-style explorers (Routescan, Blockscout).</summary>
+    public const int Evm = 100;
+    /// <summary>toncenter: 100 a call.</summary>
+    public const int Ton = 100;
+    /// <summary>The XRP Ledger's account_tx.</summary>
+    public const int Xrp = 100;
+    /// <summary>Horizon: 200 a page is its maximum.</summary>
+    public const int Stellar = 200;
+    /// <summary>Statescan.</summary>
+    public const int Polkadot = 100;
+    /// <summary>A Cosmos archive node answers slowly and limits hard: a modest page.</summary>
+    public const int Cosmos = 50;
+    /// <summary>BlockCypher's maximum.</summary>
+    public const int BlockCypher = 50;
+}
+
 /// <summary>One normalized on-chain transaction, ready to show in the Transactions list.</summary>
 public sealed record ChainTx(
     string Kind,          // "Sent" | "Received"
@@ -26,7 +54,7 @@ public sealed class OnChainHistoryClient
 
     /// <summary>TRC-20 token transfers (USDT and friends) for a TRON base58 address.</summary>
     public async Task<IReadOnlyList<ChainTx>> GetTronTrc20Async(
-        string address, int limit = 30, CancellationToken ct = default)
+        string address, int limit = HistoryPage.Tron, CancellationToken ct = default)
     {
         try
         {
@@ -107,7 +135,7 @@ public sealed class OnChainHistoryClient
 
     /// <summary>Native TRX transfers for a TRON base58 (T…) address, via Trongrid.</summary>
     public async Task<IReadOnlyList<ChainTx>> GetTronNativeAsync(
-        string address, int limit = 30, CancellationToken ct = default)
+        string address, int limit = HistoryPage.Tron, CancellationToken ct = default)
     {
         string meHex;
         try { meHex = TronBase58ToHex(address); } catch { return []; }
@@ -170,21 +198,51 @@ public sealed class OnChainHistoryClient
         }
     }
 
-    /// <summary>Native ETH transfers, via Blockscout's keyless API (Etherscan-compatible shape).</summary>
+    /// <summary>
+    /// Native ETH transfers, via Blockscout's keyless API (Etherscan-compatible shape) — and, when
+    /// Blockscout does not answer with a list at all (down, a challenge page, "rate limit reached"),
+    /// from 3xpl. An answered, empty list is an answer: nothing else is asked.
+    /// </summary>
     public async Task<IReadOnlyList<ChainTx>> GetEthereumAsync(string address, CancellationToken ct = default)
     {
         try
         {
             var url = "https://eth.blockscout.com/api?module=account&action=txlist" +
-                      $"&address={Uri.EscapeDataString(address)}&sort=desc&page=1&offset=25";
+                      $"&address={Uri.EscapeDataString(address)}&sort=desc&page=1&offset={HistoryPage.Evm}";
             using var res = await Http.GetAsync(url, ct);
-            if (!res.IsSuccessStatusCode) return [];
-            var json = await res.Content.ReadAsStringAsync(ct);
-            return ParseEvmTxlist(json, address, "ETH", "https://etherscan.io/tx/", 18);
+            if (res.IsSuccessStatusCode)
+            {
+                var json = await res.Content.ReadAsStringAsync(ct);
+                if (IsTxlist(json)) return ParseEvmTxlist(json, address, "ETH", "https://etherscan.io/tx/", 18);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {
-            return [];
+            // not an answer: 3xpl below
+        }
+
+        return await GetEvmEventsAsync(address, "ethereum", "ETH", "https://etherscan.io/tx/", ct);
+    }
+
+    /// <summary>
+    /// True when an Etherscan-shaped answer carries a LIST of transactions, even an empty one. A refusal
+    /// comes in the same envelope with a sentence where the list should be.
+    /// </summary>
+    public static bool IsTxlist(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind == JsonValueKind.Object &&
+                   doc.RootElement.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Array;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 
@@ -193,7 +251,7 @@ public sealed class OnChainHistoryClient
     /// sends are linked to (what the Send screen stores, so a payment made here is one row). Checked
     /// 2026-10-08: Blockscout's Base, Arbitrum and Polygon instances answer with a Cloudflare challenge,
     /// Routescan serves only Ethereum and Avalanche, and the Etherscan family and Ankr need an API key —
-    /// so Base, Arbitrum, Polygon, BNB, Linea, Fantom and Cronos have no history source.
+    /// those networks are read from 3xpl instead (<see cref="EvmSideEvents"/>).
     /// </summary>
     public static readonly IReadOnlyList<(string Network, string Api, string Asset, string Explorer)> EvmSideHistory =
     [
@@ -208,7 +266,7 @@ public sealed class OnChainHistoryClient
     {
         try
         {
-            var url = $"{api}?module=account&action=txlist&address={Uri.EscapeDataString(address)}&sort=desc&page=1&offset=25";
+            var url = $"{api}?module=account&action=txlist&address={Uri.EscapeDataString(address)}&sort=desc&page=1&offset={HistoryPage.Evm}";
             using var res = await Http.GetAsync(url, ct);
             if (!res.IsSuccessStatusCode) return [];
             return ParseEvmTxlist(await res.Content.ReadAsStringAsync(ct), address, asset, explorer, 18);
@@ -219,8 +277,101 @@ public sealed class OnChainHistoryClient
         }
     }
 
+    /// <summary>
+    /// The EVM networks no Etherscan-shaped indexer serves without a key, read from 3xpl's keyless API
+    /// instead — the source Zcash's history already falls back to. Checked 2026-10-10 against a public
+    /// address: Base, Arbitrum One, Linea, BNB Chain and Polygon answer with real transfers. Fantom
+    /// answers with nothing for an address that is busy there, and Cronos is not a chain it knows —
+    /// those two stay without history, and the Activity screen says so.
+    ///
+    /// The second column is 3xpl's own name for the chain; the explorer is the one a send made here is
+    /// linked to, so the two are one row.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Network, string Chain, string Asset, string Explorer)> EvmSideEvents =
+    [
+        ("Base", "base", "ETH", "https://basescan.org/tx/"),
+        ("Arbitrum", "arbitrum-one", "ETH", "https://arbiscan.io/tx/"),
+        ("Linea", "linea", "ETH", "https://lineascan.build/tx/"),
+        ("BSC", "bnb", "BNB", "https://bscscan.com/tx/"),
+        ("Polygon", "polygon", "MATIC", "https://polygonscan.com/tx/"),
+    ];
+
+    /// <summary>True when a network read at the Ethereum address has a history source of either kind.</summary>
+    public static bool HasEvmSideHistory(string network) =>
+        EvmSideHistory.Any(s => s.Network.Equals(network, StringComparison.OrdinalIgnoreCase)) ||
+        EvmSideEvents.Any(s => s.Network.Equals(network, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// How many events one 3xpl read asks for. It answers 1, 10, 100 or 1000 for the same single
+    /// request; a send is three events (the amount, the fee, the burn), so a thousand is some hundreds
+    /// of transfers — a wallet's whole history on a rollup, in one call.
+    /// </summary>
+    public const int EvmEventsPage = 1000;
+
+    /// <summary>Native transfers on one of <see cref="EvmSideEvents"/>'s networks.</summary>
+    public async Task<IReadOnlyList<ChainTx>> GetEvmEventsAsync(
+        string address, string chain, string asset, string explorer, CancellationToken ct = default)
+    {
+        try
+        {
+            var url = $"{ThreeXpl.Root}/{chain}/address/{Uri.EscapeDataString(address)}" +
+                      $"?data=events&limit={EvmEventsPage}";
+            var json = await ThreeXpl.GetAsync(Http, url, ct);   // one at a time: it refuses a burst
+            return json is null ? [] : ParseEvmEvents(json, chain + "-main", asset, explorer);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// 3xpl's events for an address on an EVM chain: every change to the address's balance, signed, in
+    /// wei. A transfer in is one event; a transfer out is the amount and, apart from it, what the
+    /// network took (marked <c>f</c> for the fee, <c>b</c> for the part burnt). Rows show what MOVED, as
+    /// every other chain's do, so the marked events are left out; what is left is added up per
+    /// transaction, and a transaction that moved nothing (a contract call, somebody's zero-value
+    /// "dusting" of the address) is no row at all.
+    ///
+    /// The events name the transaction, not who was on the other side of it — the row's counterparty is
+    /// left empty rather than guessed.
+    /// </summary>
+    public static List<ChainTx> ParseEvmEvents(string json, string module, string asset, string explorerTxBase)
+    {
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object ||
+            !doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object ||
+            !data.TryGetProperty("events", out var events) || events.ValueKind != JsonValueKind.Object ||
+            !events.TryGetProperty(module, out var main) || main.ValueKind != JsonValueKind.Array)
+            return [];
+
+        var byTx = new Dictionary<string, (System.Numerics.BigInteger Moved, long UnixMs)>(StringComparer.OrdinalIgnoreCase);
+        var order = new List<string>();
+        foreach (var e in main.EnumerateArray())
+        {
+            if (e.TryGetProperty("failed", out var failed) && failed.ValueKind == JsonValueKind.True) continue;
+            if (e.TryGetProperty("extra", out var extra) && extra.ValueKind != JsonValueKind.Null) continue;   // fee, burn, reward
+            var hash = Str(e, "transaction");
+            if (hash.Length == 0 ||
+                !System.Numerics.BigInteger.TryParse(Str(e, "effect"), NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture, out var effect)) continue;
+            var at = DateTimeOffset.TryParse(Str(e, "time"), CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal, out var t) ? t.ToUnixTimeMilliseconds() : 0;
+            if (!byTx.TryGetValue(hash, out var current)) { order.Add(hash); current = (System.Numerics.BigInteger.Zero, at); }
+            byTx[hash] = (current.Moved + effect, Math.Max(current.UnixMs, at));
+        }
+
+        return order
+            .Where(h => !byTx[h].Moved.IsZero)
+            .Select(h => new ChainTx(
+                byTx[h].Moved.Sign > 0 ? "Received" : "Sent", asset,
+                ScaleDown(System.Numerics.BigInteger.Abs(byTx[h].Moved).ToString(CultureInfo.InvariantCulture), 18),
+                "", byTx[h].UnixMs, explorerTxBase + h, h))
+            .ToList();
+    }
+
     /// <summary>Native TON transfers for a user-friendly (UQ/EQ) address, via toncenter's keyless API.</summary>
-    public async Task<IReadOnlyList<ChainTx>> GetTonAsync(string address, int limit = 30, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ChainTx>> GetTonAsync(string address, int limit = HistoryPage.Ton, CancellationToken ct = default)
     {
         try
         {

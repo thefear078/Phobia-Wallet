@@ -103,7 +103,11 @@ public class ZcashSendTests
     [InlineData(3_146_400u, 0x4DEC4DF0u)] // NU6.1
     [InlineData(3_364_599u, 0x4DEC4DF0u)] // one block before NU6.2
     [InlineData(3_364_600u, 0x5437F330u)] // NU6.2
-    [InlineData(9_000_000u, 0x5437F330u)] // beyond the table: the last known upgrade still applies
+    // NU6.3 — read off mainnet: block 3,428,142's coinbase is signed for NU6.2, block 3,428,143's for NU6.3.
+    [InlineData(3_428_142u, 0x5437F330u)]
+    [InlineData(3_428_143u, 0x37A5165Bu)]
+    [InlineData(3_517_266u, 0x37A5165Bu)] // a block of 14 October 2026 whose transactions carry 0x37a5165b
+    [InlineData(9_000_000u, 0x37A5165Bu)] // beyond the table: the last known upgrade still applies
     public void BranchIdIsTheUpgradeInForceAtThatHeight(uint height, uint expected)
         => Assert.Equal(expected, ZcashTransactions.ConsensusBranchId(height));
 
@@ -114,6 +118,9 @@ public class ZcashSendTests
     [InlineData(3_364_580u, 3_364_599u)]
     // The activation block itself is already under the new rules, so the window is whole again.
     [InlineData(3_364_600u, 3_364_640u)]
+    // NU6.3 the same way.
+    [InlineData(3_428_120u, 3_428_142u)]
+    [InlineData(3_428_143u, 3_428_183u)]
     public void ExpiryNeverCrossesTheNextUpgrade(uint nextHeight, uint expected)
         => Assert.Equal(expected, ZcashTransactions.ExpiryHeight(nextHeight));
 

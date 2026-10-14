@@ -146,11 +146,12 @@ most common way people lose money.
 | Polkadot (DOT) | ✅ | ✅ | ✅ | ✅ | — | same account as Polkadot.js / Nova; no route trades native DOT |
 | Nano (XNO) | ✅ | ✅ | ✅ | ✅ | ✅ | no fee — proof of work computed on your device |
 | Decred (DCR) | ✅ | ✅ | ✅ | ✅ | ✅ | the BIP44 account of Trust Wallet / Ledger / Exodus |
-| Linea (ETH) | ✅ | ✅ | ✅ | — | — | no keyless history source; your own sends still show |
+| Linea (ETH) | ✅ | ✅ | ✅ | ✅ | — | history while you hold ETH there |
 | zkSync Era (ETH) | ✅ | ✅ | ✅ | ✅ | — | history while you hold ETH there |
 
 Plus the native coin of the major EVM networks at your `0x` address (BNB, MATIC, AVAX, FTM, CRO, and ETH on
-Arbitrum, Optimism and Base), and NFTs listed by name with **no image fetch**. 🟡 = a swap route exists but did
+Arbitrum, Optimism and Base) — with history for each while you hold it, except Fantom and Cronos, which no
+source serves without an API key — and NFTs listed by name with **no image fetch**. 🟡 = a swap route exists but did
 not quote that coin when last checked. Per-chain detail: **[docs/12-coins-and-chains.md](docs/12-coins-and-chains.md)**.
 
 ## Download

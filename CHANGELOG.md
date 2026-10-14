@@ -4,7 +4,7 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
-## [4.10.0-beta.6] — Beta of 10 October 2026 (a GitHub pre-release) — sending you can read, history that is kept, notes and names
+## [4.10.0-beta.6] — Beta of 10 October 2026 (a GitHub pre-release) — sending you can read, swaps followed to their end, history that is kept, notes and names
 
 ### Sending
 
@@ -37,7 +37,82 @@ how a transaction is built or signed; all of it changes what is on screen while 
   "change sent to a fresh address": there is no change there. It says what is true — one address, every
   transfer from it visible together.
 
+### Zcash: sends signed for the upgrade in force
+
+- **Every Zcash send has been refused by the network since late July 2026.** Zcash activated NU6.3
+  ("Ironwood") at block 3,428,143. The wallet's table of network upgrades stopped at NU6.2, so it signed
+  for the previous consensus branch — and a node refuses such a signature. Nothing was spent: a refused
+  transaction moves nothing. But no ZEC could be sent. The table now has NU6.3 (branch id `0x37A5165B`),
+  read off mainnet itself: the coinbase of block 3,428,142 is signed for NU6.2, that of block 3,428,143
+  for NU6.3. Version 4 transactions, which the wallet builds, remain valid under NU6.3 (only NU7, which
+  is not scheduled, drops them).
+- **The check that was meant to catch this now can.** It compared the table with zcashd's source —
+  deprecated, and never given NU6.3 — so it kept passing. It reads Zebra, the node Zcash runs on, and
+  also asks Zebra's own consensus rule whether version 4 is accepted under the newest mainnet upgrade.
+
+### Swaps
+
+A live test on 10 October 2026 swapped a whole balance and got nothing back: the coins left, the row said
+"confirmed", and that was all. The route had quoted one amount and been paid a smaller one — "Max" on the
+Swap screen had left nothing for the payment's own network fee, so the Send screen's "Max" lowered the
+amount to fit. A route holds a short payment until the quote's deadline and only then refunds it.
+
+- **A swap is paid exactly as it was quoted, or not at all.** The amount on the payment screen is fixed;
+  Max, the presets and the unit switch leave it alone, and a different amount is refused with the reason.
+  Another destination makes it an ordinary send again.
+- **"Max" on the Swap screen leaves what the payment's fee needs**, and a quote for more than can be paid
+  is refused before any route is asked — with the largest amount that *can* be swapped.
+- **A paid swap is followed to its end.** It is kept on the device and looked at every few seconds at
+  first, then every half minute — after a restart and after a lock too. Its row in Activity stays
+  *pending* until the other coin has been delivered and only then says *confirmed* — or *refunded*, or
+  *failed*; it used to say "confirmed" the moment the payment left. The swap's own status line says
+  what stage it is at, and a short payment is announced wherever you are in the wallet: how much
+  arrived, how much was quoted, and when the refund starts.
+- Preparing a Solana send reads the balance, the rent rule and the destination at the same time instead
+  of one after another.
+
+### Balances that keep up
+
+- **A send is taken off the balance at once** — the amount, and the fee when it is paid in the same coin.
+  It used to change nothing on screen until every chain had been read again. The figure is the last
+  amount *read* less what the wallet itself has just sent; when an explorer's own reading shows the send,
+  that reading stands. Money arriving meanwhile is not swallowed, and nothing below zero is shown.
+- After a send only the row it came from is read again — after 5, 12, 25, 50 and 90 seconds — instead of
+  the whole wallet.
+- **Bitcoin and Litecoin no longer wait on a server that hangs.** Before a scan, every one of their
+  servers is asked the height of the newest block — a question that names no address — and one that
+  has not answered a little after the others goes to the back for a few minutes. Measured through Tor:
+  the first Bitcoin server hung on two circuits in three while two others answered within two seconds,
+  so the first Bitcoin balance after unlock waited fifteen seconds for nothing. A server you chose
+  yourself is the only one asked, and is not probed.
+- **Money arriving is seen while the Receive screen is open**: the address on it is read every fifteen
+  seconds (one request, to the server its balance already comes from), with a notice and the new row in
+  Activity. It used to wait for the next two-minute refresh.
+
+### Staking
+
+- **The yearly yield is computed, not typed in.** "~3–5%", "~6–7%" and "~15–20%" were written into the
+  wallet and right on the day they were written. TRON's is now the vote reward paid per block shared among
+  the votes cast; Solana's the inflation paid to stakers over the share of SOL that is staked; Cosmos
+  Hub's the inflation less the community tax over what is bonded — each from the network's own figures,
+  before a validator's commission, which is shown beside each validator. When the figures cannot be read
+  the line shows a dash, not an old number.
+- Staking TRX, SOL and ATOM was real before this and still is: positions read from the chain, validators
+  listed, every action signed on the device. The other networks on that screen are information only.
+
 ### History and the balance chart
+
+- **History for Base, Arbitrum, Linea, BNB Chain and Polygon.** No Etherscan-shaped explorer serves them
+  without an API key; 3xpl does. One request a network, a thousand balance changes back, only while the
+  wallet holds something there. Rows carry the amount and the direction — this source does not name the
+  other side, so it is left empty rather than guessed. 3xpl refuses requests that arrive in a burst, so
+  every request to it is queued a second apart and asked once more when refused. Fantom and Cronos still
+  have no source that answers without a key, and the Activity screen names them.
+- **Ethereum history has a second source.** When Blockscout does not answer with a list at all — down, a
+  challenge page, "rate limit reached" — 3xpl is asked. An answered, empty list is still an answer.
+- **Longer history everywhere.** Each source is asked for what it hands out in one request: TRON 200,
+  Stellar 200, the Ethereum-family explorers, TON, XRP and Polkadot 100, Cosmos and BlockCypher 50. They
+  were 25–30. No extra requests, and no more addresses told to anybody.
 
 - **History is kept, and grows.** Each wallet's on-chain history is saved on the device and added to at
   every read. An explorer that answers nothing today no longer makes last month disappear, and sources

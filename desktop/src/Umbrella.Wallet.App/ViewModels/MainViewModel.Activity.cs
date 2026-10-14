@@ -188,12 +188,12 @@ public partial class MainViewModel
             .Where(a => a.SupportStatus is "Ready" or "Receive only" && IsRealAddress(a.Address))
             .Select(a => a.Symbol);
 
-        // EVM networks read at the Ethereum address that have no keyless indexer (Base, Arbitrum, BNB …)
-        // are named too, once the wallet holds something there: their rows carry "ETH" or "BNB", which
-        // the catalog alone would not flag.
+        // EVM networks read at the Ethereum address that nothing serves a history for without a key
+        // (Fantom, Cronos) are named too, once the wallet holds something there: their rows carry the
+        // coin's name, which the catalog alone would not flag.
         var evmGaps = accounts
             .Where(a => a.Derivation == EvmSideDerivation && a.Amount > 0 &&
-                        !OnChainHistoryClient.EvmSideHistory.Any(s => s.Network.Equals(a.Chain, StringComparison.OrdinalIgnoreCase)))
+                        !OnChainHistoryClient.HasEvmSideHistory(a.Chain))
             .Select(a => $"{a.Symbol} ({a.Chain})")
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
@@ -455,6 +455,10 @@ public partial class MainViewModel
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 foreach (var (network, api, asset, explorer) in OnChainHistoryClient.EvmSideHistory)
                     if (held.Contains(network)) reads.Add(_history.GetEvmAsync(eth, api, asset, explorer));
+                // Base, Arbitrum, Linea, BNB Chain, Polygon: no Etherscan-shaped indexer answers without
+                // a key, 3xpl does — under the same rule, only where something is held.
+                foreach (var (network, chain, asset, explorer) in OnChainHistoryClient.EvmSideEvents)
+                    if (held.Contains(network)) reads.Add(_history.GetEvmEventsAsync(eth, chain, asset, explorer));
             }
             if (AddressOf(ChainId.Ton) is { Length: > 0 } ton) reads.Add(_history.GetTonAsync(ton));
             if (AddressOf(ChainId.Ada) is { Length: > 0 } ada) reads.Add(_history.GetCardanoAsync(ada));
