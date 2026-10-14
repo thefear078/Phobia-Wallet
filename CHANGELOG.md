@@ -184,7 +184,9 @@ amount to fit. A route holds a short payment until the quote's deadline and only
   languages, with the server, figure or transaction id they carry. The rare, technical rest read a
   sentence in your language saying what kind of trouble it is ("The network did not answer as expected",
   "The transfer could not be made — nothing was sent"), with the original line under it. A test reads
-  the senders, so a new message nothing can place fails the build.
+  the senders, so a new message nothing can place fails the build. When no swap route gives a quote,
+  a line in your language says so above what each route answered, and a swap's deposit that cannot be
+  built says why the same way a send does.
 - The connection chip above the lock button says **NETWORK BLOCKED**, not "BLOCKED" — beside a padlock
   it read as "the wallet is locked".
 - Staking: the note no longer calls the rates "typical, approximate" — they are computed from each

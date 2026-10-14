@@ -395,7 +395,9 @@ public partial class MainViewModel
                 }
                 if (!string.IsNullOrWhiteSpace(reason)) reasons.Add($"{SwapProviderName(route)}: {reason}");
             }
-            SwapError = reasons.Count > 0 ? string.Join("\n", reasons) : Loc.Instance["swap.err.noQuote"];
+            SwapError = reasons.Count > 0
+                ? Loc.Instance["swap.err.noRoute"] + "\n" + string.Join("\n", reasons)
+                : Loc.Instance["swap.err.noQuote"];
         }
         finally
         {
@@ -595,7 +597,7 @@ public partial class MainViewModel
                     : new System.Numerics.BigInteger(DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds());
                 var (eq, eErr) = await _ethSender.PrepareSwapAsync(
                     fromAddr, fresh.Router!, fresh.InboundAddress, plan.AmountIn, fresh.Memo, expiry);
-                if (eq is null) { SwapError = eErr ?? Loc.Instance["swap.err.ethBuild"]; return; }
+                if (eq is null) { SwapError = eErr is null ? Loc.Instance["swap.err.ethBuild"] : SendErrorText.Localize(eErr); return; }
 
                 var priv = _deriver.DeriveEthereumPrivateKey(_unlockedMnemonic!);
                 try
@@ -631,7 +633,7 @@ public partial class MainViewModel
 
                 var (quote, btcPlan, request, prepErr) = await _btcSender.PrepareHdAsync(
                     from, scan.Utxos, fromAddr, inbound, plan.AmountIn, memo: fresh.Memo);
-                if (quote is null || btcPlan is null || request is null) { SwapError = prepErr ?? Loc.Instance["swap.err.deposit"]; return; }
+                if (quote is null || btcPlan is null || request is null) { SwapError = prepErr is null ? Loc.Instance["swap.err.deposit"] : SendErrorText.Localize(prepErr); return; }
 
                 bool depositUnclear;
                 (ok, txid, sendErr, depositUnclear) = await _btcSender.SignAndBroadcastHdAsync(
