@@ -8,6 +8,23 @@
              x:DataType="vm:MainViewModel"
              x:CompileBindings="True"
              IsVisible="{Binding IsSendSheetOpen}">
+  <UserControl.Styles>
+    <!-- Confirm and Cancel side by side, unless the card is a phone's width: there the confirm button
+         was left too little room and read "Підтвердити й надіс.". -->
+    <Style Selector="Button.reviewCancel">
+      <Setter Property="Grid.Column" Value="1"/>
+      <Setter Property="Margin" Value="10,0,0,0"/>
+    </Style>
+    <ContainerQuery Name="reviewFace" Query="max-width:380">
+      <Style Selector="Button.reviewCancel">
+        <Setter Property="Grid.Column" Value="0"/>
+        <Setter Property="Grid.Row" Value="1"/>
+        <Setter Property="Margin" Value="0,8,0,0"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      </Style>
+    </ContainerQuery>
+  </UserControl.Styles>
   <!-- The send sheet: over the whole window from the moment there is something to confirm until the
        receipt is closed. One card, three faces - review, in flight, receipt - so a send is read in one
        place instead of down a page that had to be scrolled to find out how it ended. The backdrop does
@@ -21,7 +38,8 @@
         <Panel>
 
           <!-- ============================== REVIEW ============================== -->
-          <StackPanel IsVisible="{Binding IsSendReviewShown}" Spacing="14" Margin="22,20,22,20">
+          <StackPanel IsVisible="{Binding IsSendReviewShown}" Spacing="14" Margin="22,20,22,20"
+                      Container.Name="reviewFace" Container.Sizing="Width">
             <StackPanel.KeyBindings>
               <KeyBinding Gesture="Escape" Command="{Binding CancelSendQuoteCommand}"/>
             </StackPanel.KeyBindings>
@@ -174,11 +192,11 @@
               </TextBox.KeyBindings>
             </TextBox>
 
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
               <Button Grid.Column="0" Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                       Content="{Binding [send.confirm], Source={x:Static app:Loc.Instance}}" IsEnabled="{Binding !IsBusy}"
                       Command="{Binding ConfirmSendCommand}"/>
-              <Button Grid.Column="1" Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
+              <Button Classes="ghost reviewCancel" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
                       Command="{Binding CancelSendQuoteCommand}"/>
             </Grid>
             <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" TextAlignment="Center"
