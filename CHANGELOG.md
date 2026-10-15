@@ -172,7 +172,10 @@ amount to fit. A route holds a short payment until the quote's deadline and only
   five columns left the title none and pushed the time off the screen; on a phone the status, note button
   and time now take a second line under the title, and long titles wrap. In Settings → Wallets the
   second and third wallets showed no name and a cut Remove button: the buttons now go under the name. The
-  note editor's labels and an unclear receipt's status line wrap instead of running off the card. On the review sheet the confirm button read "Підтвердити й
+  note editor's labels and an unclear receipt's status line wrap instead of running off the card.
+- **Every Settings tab can be reached on a phone.** The tab row ran past the screen with no way to scroll
+  it: Backup and keys, Guide and Danger zone were out of reach on Android. The tabs wrap now, and so do an
+  asset's actions and a staking position's four buttons. On the review sheet the confirm button read "Підтвердити й
   надіс." beside Cancel; on a phone the two now stand one under the other.
 - **Buy crypto and P2P & DEX in your language.** The 25 providers' kind, badge and description were in
   English whatever the language; they follow it now, a language switch included. On a phone the three

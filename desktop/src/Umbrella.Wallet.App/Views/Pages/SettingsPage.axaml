@@ -53,8 +53,13 @@
       </Border>
     </StackPanel>
 
-    <Border Classes="hairline" Padding="4" HorizontalAlignment="Left">
-      <StackPanel Orientation="Horizontal" Spacing="2">
+    <!-- The tabs wrap: on a phone a single row ran past the screen with no way to scroll it, and
+         Backup, Guide and Danger zone could not be reached at all. -->
+    <Border Classes="hairline" Padding="4,4,2,2" HorizontalAlignment="Left">
+      <WrapPanel>
+        <WrapPanel.Styles>
+          <Style Selector="WrapPanel > Button.chip"><Setter Property="Margin" Value="0,0,2,2"/></Style>
+        </WrapPanel.Styles>
         <!-- Appearance first: theme and language are what people look for. -->
         <Button Classes="chip" Content="{Binding [settings.appearance], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Appearance"
                 Classes.active="{Binding IsTabAppearance}"/>
@@ -70,7 +75,7 @@
                 Classes.active="{Binding IsTabGuide}"/>
         <Button Classes="chip" Content="{Binding [settings.danger], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Danger"
                 Classes.active="{Binding IsTabDanger}"/>
-      </StackPanel>
+      </WrapPanel>
     </Border>
 
     <!-- Wallets: Binance-style multiple independent wallets. Each is its own encrypted seed. -->

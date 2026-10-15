@@ -152,7 +152,11 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
 
-              <StackPanel Orientation="Horizontal" Spacing="8">
+              <!-- Wraps: with a position open, four buttons were wider than a phone. -->
+                <WrapPanel>
+                  <WrapPanel.Styles>
+                    <Style Selector="WrapPanel > Button"><Setter Property="Margin" Value="0,0,8,8"/></Style>
+                  </WrapPanel.Styles>
                 <Button Classes="primary" Padding="22,9" MinHeight="0" FontSize="13.5" Content="{Binding [stake.btnStake], Source={x:Static app:Loc.Instance}}"
                         Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).OpenStakeActionCommand}" CommandParameter="{Binding StakeParameter}"/>
                 <Button Classes="ghost" Padding="16,9" MinHeight="0" IsVisible="{Binding CanClaim}" Content="{Binding [stake.btnClaim], Source={x:Static app:Loc.Instance}}"
@@ -161,7 +165,7 @@
                         Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).OpenStakeActionCommand}" CommandParameter="{Binding UnstakeParameter}"/>
                 <Button Classes="ghost" Padding="16,9" MinHeight="0" IsVisible="{Binding ChainWithdraw}" Content="{Binding [stake.btnWithdraw], Source={x:Static app:Loc.Instance}}"
                         Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).OpenStakeActionCommand}" CommandParameter="{Binding WithdrawParameter}"/>
-              </StackPanel>
+              </WrapPanel>
             </StackPanel>
           </Border>
         </DataTemplate>
