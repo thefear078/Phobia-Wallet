@@ -255,12 +255,15 @@
                   <Border HorizontalAlignment="Center" CornerRadius="999" Padding="11,4" BorderThickness="1"
                           Background="{Binding SendReceipt.StatusColor, Converter={StaticResource ThemeBrush}, ConverterParameter=wash}"
                           BorderBrush="{Binding SendReceipt.StatusColor, Converter={StaticResource ThemeBrush}, ConverterParameter=ring}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
+                    <!-- A grid, not a horizontal stack: "no clear answer — check before sending again" is wider
+                         than a phone's card and has to wrap. -->
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
                       <Ellipse Width="7" Height="7" VerticalAlignment="Center"
                                Fill="{Binding SendReceipt.StatusColor, Converter={StaticResource ThemeBrush}}"/>
-                      <TextBlock FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Text="{Binding SendReceipt.StatusText}"
+                      <TextBlock Grid.Column="1" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"
+                                 Text="{Binding SendReceipt.StatusText}"
                                  Foreground="{Binding SendReceipt.StatusColor, Converter={StaticResource ThemeBrush}}"/>
-                    </StackPanel>
+                    </Grid>
                   </Border>
                 </StackPanel>
 

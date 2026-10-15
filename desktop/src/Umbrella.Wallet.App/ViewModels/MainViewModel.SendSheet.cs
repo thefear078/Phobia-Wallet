@@ -39,7 +39,7 @@ public sealed record SendReceiptVm(
     public bool IsConfirmed => State == SendReceiptState.Confirmed;
 
     /// <summary>The detail as the user reads it, in the wallet's language.</summary>
-    public string DetailShown => SendErrorText.Localize(Detail);
+    public string DetailShown => SendErrorText.LocalizeWhole(Detail);
     public bool IsUnclear => State == SendReceiptState.Unclear;
 
     public string Title => Loc.Instance[State switch

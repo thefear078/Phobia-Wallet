@@ -170,7 +170,9 @@ amount to fit. A route holds a short payment until the quote's deadline and only
   the screen, the second one cut at its edge and the score squeezed out; they now wrap under the score.
   Send's address label ran off the right edge. Activity showed a transfer as an arrow, an amount and a pill —
   five columns left the title none and pushed the time off the screen; on a phone the status, note button
-  and time now take a second line under the title, and long titles wrap. On the review sheet the confirm button read "Підтвердити й
+  and time now take a second line under the title, and long titles wrap. In Settings → Wallets the
+  second and third wallets showed no name and a cut Remove button: the buttons now go under the name. The
+  note editor's labels and an unclear receipt's status line wrap instead of running off the card. On the review sheet the confirm button read "Підтвердити й
   надіс." beside Cancel; on a phone the two now stand one under the other.
 - **Buy crypto and P2P & DEX in your language.** The 25 providers' kind, badge and description were in
   English whatever the language; they follow it now, a language switch included. On a phone the three
@@ -186,7 +188,9 @@ amount to fit. A route holds a short payment until the quote's deadline and only
   languages, with the server, figure or transaction id they carry. The rare, technical rest read a
   sentence in your language saying what kind of trouble it is ("The network did not answer as expected",
   "The transaction could not be made — nothing was sent"), with the original line under it. A test reads
-  the senders, so a new message nothing can place fails the build. When no swap route gives a quote,
+  the senders, so a new message nothing can place fails the build. The sixteen messages that say a send
+  may have landed and must be checked before sending again — the ones that prevent paying twice — are
+  translated whole, with the block, ledger or transaction id they name. When no swap route gives a quote,
   a line in your language says so above what each route answered, and a swap's deposit that cannot be
   built says why the same way a send does; so does a staking action that fails.
 - **News reads in your language.** Forty of its forty-four notes were English in every language and

@@ -233,14 +233,14 @@
                   Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmAccent}" BorderThickness="1">
             <StackPanel Spacing="9">
               <StackPanel Spacing="4" IsVisible="{Binding CanHaveNote}">
-                <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                <TextBlock Classes="eyebrow" TextWrapping="Wrap" Foreground="{DynamicResource UmTextMuted}"
                            Text="{Binding [notes.title], Source={x:Static app:Loc.Instance}}"/>
                 <TextBox AcceptsReturn="True" MaxLength="280" MinHeight="50" TextWrapping="Wrap"
                          Text="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NoteDraft, Mode=TwoWay}"
                          Watermark="{Binding [notes.placeholder], Source={x:Static app:Loc.Instance}}"/>
               </StackPanel>
               <StackPanel Spacing="4" IsVisible="{Binding CanLabel}">
-                <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
+                <TextBlock Classes="eyebrow" TextWrapping="Wrap" Foreground="{DynamicResource UmTextMuted}"
                            Text="{Binding [notes.labelTitle], Source={x:Static app:Loc.Instance}}"/>
                 <TextBox MaxLength="60"
                          Text="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NoteLabelDraft, Mode=TwoWay}"

@@ -85,12 +85,26 @@
                    Text="{Binding AllWalletsTotalLabel}" IsVisible="{Binding ShowAllWalletTotals}"/>
 
         <!-- The wallet list. -->
-        <ItemsControl ItemsSource="{Binding Wallets}">
+        <ItemsControl ItemsSource="{Binding Wallets}" Container.Name="walletList" Container.Sizing="Width">
+          <ItemsControl.Styles>
+            <!-- Name, total, Switch and Remove on one line; on a phone the buttons go under the name —
+                 side by side they left the name no room and Remove was cut at the edge. -->
+            <Style Selector="StackPanel.walletActions"><Setter Property="Grid.Column" Value="3"/></Style>
+            <ContainerQuery Name="walletList" Query="max-width:520">
+              <Style Selector="StackPanel.walletActions">
+                <Setter Property="Grid.Column" Value="1"/>
+                <Setter Property="Grid.ColumnSpan" Value="3"/>
+                <Setter Property="Grid.Row" Value="1"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="Margin" Value="0,8,0,0"/>
+              </Style>
+            </ContainerQuery>
+          </ItemsControl.Styles>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:WalletListItemViewModel">
               <Border Background="{DynamicResource UmCardAlt}" CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
-                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
-                  <Border Width="38" Height="38" CornerRadius="10" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Center"
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12">
+                  <Border Grid.RowSpan="2" Width="38" Height="38" CornerRadius="10" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Center"
                           BorderThickness="2" BorderBrush="{Binding ColorBrush}">
                     <TextBlock Text="{Binding Badge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UmAccentBright}"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -102,14 +116,16 @@
                   </StackPanel>
                   <TextBlock Grid.Column="2" Classes="mono" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                              Text="{Binding TotalLabel}" IsVisible="{Binding HasTotal}"/>
-                  <Button Grid.Column="3" Classes="chip" Content="{Binding [settings.walletSwitch], Source={x:Static app:Loc.Instance}}"
-                          IsVisible="{Binding !IsActive}" VerticalAlignment="Center"
-                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SwitchWalletCommand}"
-                          CommandParameter="{Binding Id}"/>
-                  <Button Grid.Column="4" Classes="ghost" Classes.danger="{Binding RemoveArmed}" Content="{Binding RemoveLabel}"
-                          IsVisible="{Binding CanRemove}" VerticalAlignment="Center"
-                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RemoveWalletCommand}"
-                          CommandParameter="{Binding Id}"/>
+                  <StackPanel Classes="walletActions" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="chip" Content="{Binding [settings.walletSwitch], Source={x:Static app:Loc.Instance}}"
+                            IsVisible="{Binding !IsActive}" VerticalAlignment="Center"
+                            Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SwitchWalletCommand}"
+                            CommandParameter="{Binding Id}"/>
+                    <Button Classes="ghost" Classes.danger="{Binding RemoveArmed}" Content="{Binding RemoveLabel}"
+                            IsVisible="{Binding CanRemove}" VerticalAlignment="Center"
+                            Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RemoveWalletCommand}"
+                            CommandParameter="{Binding Id}"/>
+                  </StackPanel>
                 </Grid>
               </Border>
             </DataTemplate>

@@ -110,7 +110,23 @@ public static class SendErrorText
         "senderr.readCoinSource",
         "senderr.readDecred",
         "senderr.hostAccountData",
-        "senderr.hostDestination"
+        "senderr.hostDestination",
+        "senderr.btcUnclear",
+        "senderr.adaUnclear",
+        "senderr.atomUnclear",
+        "senderr.dcrUnclear",
+        "senderr.ethDifferent",
+        "senderr.ethUnclear",
+        "senderr.xmrUnclear",
+        "senderr.nearUnclear",
+        "senderr.dotUnclear",
+        "senderr.solUnclear",
+        "senderr.xlmDifferent",
+        "senderr.xlmUnclear",
+        "senderr.tonUnclear",
+        "senderr.trxUnclear",
+        "senderr.xrpUnclear",
+        "senderr.zecUnclear"
     ];
 
     /// <summary>What kind of trouble a message is, for the ones not translated whole; first match wins.</summary>
@@ -138,7 +154,7 @@ public static class SendErrorText
         var english = Loc.Instance.InEnglish(k);
         var parts = Regex.Split(english, @"(\{\d\})");
         var body = string.Concat(parts.Select(part =>
-            Regex.IsMatch(part, @"^\{\d\}$") ? $"(?<p{part[1]}>.+?)" : Regex.Escape(part)));
+            Regex.IsMatch(part, @"^\{\d\}$") ? $"(?<p{part[1]}>.*?)" : Regex.Escape(part)));
         return new Regex("^" + body + "$", RegexOptions.Singleline | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250));
     });
 
@@ -155,6 +171,26 @@ public static class SendErrorText
     {
         var text = english.Trim();
         return ExactKeys.FirstOrDefault(k => PatternFor(k).IsMatch(text));
+    }
+
+    /// <summary>
+    /// A message translated whole when it can be, and otherwise as the sender wrote it — for a place that
+    /// already says, in the wallet's language, what kind of trouble it is (the receipt of an unclear send).
+    /// </summary>
+    public static string LocalizeWhole(string? english)
+    {
+        if (string.IsNullOrWhiteSpace(english) || Loc.Instance.CurrentCode == "en") return english ?? string.Empty;
+        var text = english.Trim();
+        foreach (var key in ExactKeys)
+        {
+            var match = PatternFor(key).Match(text);
+            if (!match.Success) continue;
+            var values = Enumerable.Range(0, 3)
+                .Select(i => (object)(match.Groups["p" + i].Success ? match.Groups["p" + i].Value : string.Empty)).ToArray();
+            return string.Format(CultureInfo.InvariantCulture, Loc.Instance[key], values);
+        }
+
+        return english;
     }
 
     /// <summary>What to show for a sender's error in the wallet's current language.</summary>
