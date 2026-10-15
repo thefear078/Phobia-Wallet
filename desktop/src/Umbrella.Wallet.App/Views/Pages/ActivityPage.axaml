@@ -128,7 +128,29 @@
       </StackPanel>
     </Border>
 
-    <ItemsControl ItemsSource="{Binding FilteredActivity}" IsVisible="{Binding HasFilteredActivity}">
+    <ItemsControl ItemsSource="{Binding FilteredActivity}" IsVisible="{Binding HasFilteredActivity}"
+                  Container.Name="activityList" Container.Sizing="Width">
+      <ItemsControl.Styles>
+        <!-- One line on a desktop: icon, what happened, amount, status, note and time. On a phone the
+             status, the note button and the time go to a second line: five columns in 358 pixels left the
+             title none — a transfer showed as an arrow, a number and a pill, its time cut off the edge. -->
+        <Style Selector="StackPanel.actStatus"><Setter Property="Grid.Column" Value="3"/></Style>
+        <Style Selector="StackPanel.actTail"><Setter Property="Grid.Column" Value="4"/></Style>
+        <ContainerQuery Name="activityList" Query="max-width:560">
+          <Style Selector="StackPanel.actStatus">
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+          </Style>
+          <Style Selector="StackPanel.actTail">
+            <Setter Property="Grid.Column" Value="2"/>
+            <Setter Property="Grid.ColumnSpan" Value="3"/>
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+          </Style>
+        </ContainerQuery>
+      </ItemsControl.Styles>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:ActivityRowViewModel">
           <!-- Each event is its own rounded card. The card itself copies the explorer link
@@ -144,8 +166,8 @@
             <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
                     BorderThickness="1" CornerRadius="14" MinHeight="62" Padding="14,10">
               <StackPanel Spacing="5">
-              <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" VerticalAlignment="Center">
-                <Border Width="40" Height="40" CornerRadius="20" VerticalAlignment="Center" Margin="0,0,14,0" BorderThickness="1"
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                <Border Grid.RowSpan="2" Width="40" Height="40" CornerRadius="20" VerticalAlignment="Center" Margin="0,0,14,0" BorderThickness="1"
                         Background="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=wash}"
                         BorderBrush="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=ring}">
                   <!-- Drawn in a fixed 24×24 box so every glyph sits dead centre. -->
@@ -157,7 +179,7 @@
                   </Viewbox>
                 </Border>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" ClipToBounds="True">
-                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
                   <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}"
                              Text="{Binding Detail}" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
@@ -169,7 +191,7 @@
                              Text="{Binding FiatLabel}" IsVisible="{Binding HasFiat}"/>
                 </StackPanel>
                 <!-- Confirmation-status pill (money movements only) + Retry on a failed send. -->
-                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,8,0" VerticalAlignment="Center">
+                <StackPanel Classes="actStatus" Orientation="Horizontal" Spacing="6" Margin="0,0,8,0" VerticalAlignment="Center">
                   <Border IsVisible="{Binding ShowStatus}" Background="Transparent" BorderBrush="{Binding StatusColor}"
                           BorderThickness="1" CornerRadius="7" Padding="8,2" VerticalAlignment="Center">
                     <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding StatusColor}"
@@ -181,7 +203,7 @@
                           Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RetrySendCommand}"
                           CommandParameter="{Binding}"/>
                 </StackPanel>
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <StackPanel Classes="actTail" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
                   <!-- A private note on this transaction, and a name for the address on its other side.
                        The editor opens under this row. -->
                   <Button Classes="ghost" Padding="7,3" MinHeight="0" VerticalAlignment="Center"

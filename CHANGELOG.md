@@ -168,7 +168,9 @@ amount to fit. A route holds a short payment until the quote's deadline and only
   chart window moves under the title instead of over its status line. Swap's "From (you pay)" and "To
   (you receive)" were cut off and ran into the wallet's name. Security's two buttons were wider than
   the screen, the second one cut at its edge and the score squeezed out; they now wrap under the score.
-  Send's address label ran off the right edge. On the review sheet the confirm button read "Підтвердити й
+  Send's address label ran off the right edge. Activity showed a transfer as an arrow, an amount and a pill —
+  five columns left the title none and pushed the time off the screen; on a phone the status, note button
+  and time now take a second line under the title, and long titles wrap. On the review sheet the confirm button read "Підтвердити й
   надіс." beside Cancel; on a phone the two now stand one under the other.
 - **Buy crypto and P2P & DEX in your language.** The 25 providers' kind, badge and description were in
   English whatever the language; they follow it now, a language switch included. On a phone the three
