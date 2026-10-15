@@ -31,7 +31,7 @@ public sealed class AccountHistoryClient
     // --- XRP -----------------------------------------------------------------------------------------
 
     /// <summary>Recent XRP payments to and from an account, newest first.</summary>
-    public async Task<IReadOnlyList<ChainTx>> GetXrpAsync(string address, int limit = 25, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ChainTx>> GetXrpAsync(string address, int limit = HistoryPage.Xrp, CancellationToken ct = default)
     {
         try
         {
@@ -121,7 +121,7 @@ public sealed class AccountHistoryClient
     // --- Stellar -------------------------------------------------------------------------------------
 
     /// <summary>Recent native XLM payments (and the account's creation) for a G… address, newest first.</summary>
-    public async Task<IReadOnlyList<ChainTx>> GetStellarAsync(string address, int limit = 25, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ChainTx>> GetStellarAsync(string address, int limit = HistoryPage.Stellar, CancellationToken ct = default)
     {
         try
         {
@@ -288,7 +288,7 @@ public sealed class AccountHistoryClient
     /// server the user chose for Cosmos if there is one (their choice of who learns the address), else
     /// the archive node.
     /// </summary>
-    public async Task<IReadOnlyList<ChainTx>> GetCosmosAsync(string address, int limit = 25, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ChainTx>> GetCosmosAsync(string address, int limit = HistoryPage.Cosmos, CancellationToken ct = default)
     {
         try
         {
@@ -445,7 +445,7 @@ public sealed class AccountHistoryClient
     /// and on the relay chain before that. Subscan, which most wallets use, now refuses requests without
     /// an API key; a node keeps no per-account index.
     /// </summary>
-    public async Task<IReadOnlyList<ChainTx>> GetPolkadotAsync(string address, int limit = 25, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ChainTx>> GetPolkadotAsync(string address, int limit = HistoryPage.Polkadot, CancellationToken ct = default)
     {
         var rows = new List<ChainTx>();
         var who = Uri.EscapeDataString(address);

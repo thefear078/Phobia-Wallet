@@ -4,6 +4,248 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [4.10.0-beta.6] — Beta of 14 October 2026 (a GitHub pre-release) — sending you can read, swaps followed to their end, history that is kept, notes and names
+
+### Sending
+
+A live test on 10 October 2026 sent a few millionths of a SOL, twice, where a few thousandths were meant.
+Both transfers were real and confirmed — the amounts had been typed into the upper of **two** amount
+boxes, the one that took the display currency and said so only in a grey watermark. Nothing here changes
+how a transaction is built or signed; all of it changes what is on screen while that happens.
+
+- **One amount box, with its unit written on it.** A switch beside it changes the unit (coin ⇄ your
+  currency); the line under it always says the same amount the other way round, and changing the unit
+  never changes the amount. Max, 25% and 50% write the coin.
+- **A fee as large as the amount is its own warning**, in amber at the top of the review — it is what
+  an amount in the wrong unit looks like.
+- **The review opens over the page**: the amount, any warnings first, the whole address, what leaves
+  and what is left, the password (Enter confirms). The fee detail, Privacy Radar and PSBT export are
+  one fold away under *Details*. Coin control, the fee level, saving the address and private send are
+  under *More options* on the form.
+- **A receipt** replaces the line of green text that ran off the window: how it ended — *confirmed by the
+  network*, *waiting for a block* or *no clear answer* — the amount, the whole address, the transaction
+  id, the fee and the time; a button to copy each, the whole receipt as text, and the card **as a
+  picture**. An unclear ending gets a receipt too, with the id to check before sending again.
+- The receipt appears at once; balances are read again behind it instead of holding the screen for the
+  better part of a minute.
+- **Solana no longer gives up at one quiet server.** "Could not fetch a recent blockhash" ended a send
+  while two other servers were answering. The blockhash is now asked of the listed servers in turn, the
+  status is read from whichever answers, and a transaction seen nowhere after a few seconds is handed to
+  the other servers as the *same signed bytes* — one signature can land once, however many carry it.
+- **"Password before every send" takes the password to switch off.** Switching it on is free.
+- After a send on Solana, Ethereum and the other one-address networks, the report no longer credits
+  "change sent to a fresh address": there is no change there. It says what is true — one address, every
+  transfer from it visible together.
+
+### Zcash: sends signed for the upgrade in force
+
+- **Every Zcash send has been refused by the network since late July 2026.** Zcash activated NU6.3
+  ("Ironwood") at block 3,428,143. The wallet's table of network upgrades stopped at NU6.2, so it signed
+  for the previous consensus branch — and a node refuses such a signature. Nothing was spent: a refused
+  transaction moves nothing. But no ZEC could be sent. The table now has NU6.3 (branch id `0x37A5165B`),
+  read off mainnet itself: the coinbase of block 3,428,142 is signed for NU6.2, that of block 3,428,143
+  for NU6.3. Version 4 transactions, which the wallet builds, remain valid under NU6.3 (only NU7, which
+  is not scheduled, drops them).
+- **The check that was meant to catch this now can.** It compared the table with zcashd's source —
+  deprecated, and never given NU6.3 — so it kept passing. It reads Zebra, the node Zcash runs on, and
+  also asks Zebra's own consensus rule whether version 4 is accepted under the newest mainnet upgrade.
+
+### Swaps
+
+A live test on 10 October 2026 swapped a whole balance and got nothing back: the coins left, the row said
+"confirmed", and that was all. The route had quoted one amount and been paid a smaller one — "Max" on the
+Swap screen had left nothing for the payment's own network fee, so the Send screen's "Max" lowered the
+amount to fit. A route holds a short payment until the quote's deadline and only then refunds it.
+
+- **A swap is paid exactly as it was quoted, or not at all.** The amount on the payment screen is fixed;
+  Max, the presets and the unit switch leave it alone, and a different amount is refused with the reason.
+  Another destination makes it an ordinary send again.
+- **"Max" on the Swap screen leaves what the payment's fee needs**, and a quote for more than can be paid
+  is refused before any route is asked — with the largest amount that *can* be swapped.
+- **A paid swap is followed to its end.** It is kept on the device and looked at every few seconds at
+  first, then every half minute — after a restart and after a lock too. Its row in Activity stays
+  *pending* until the other coin has been delivered and only then says *confirmed* — or *refunded*, or
+  *failed*; it used to say "confirmed" the moment the payment left. The swap's own status line says
+  what stage it is at, and a short payment is announced wherever you are in the wallet: how much
+  arrived, how much was quoted, and when the refund starts.
+- Preparing a Solana send reads the balance, the rent rule and the destination at the same time instead
+  of one after another.
+
+### Balances that keep up
+
+- **A send is taken off the balance at once** — the amount, and the fee when it is paid in the same coin.
+  It used to change nothing on screen until every chain had been read again. The figure is the last
+  amount *read* less what the wallet itself has just sent; when an explorer's own reading shows the send,
+  that reading stands. Money arriving meanwhile is not swallowed, and nothing below zero is shown.
+- After a send only the row it came from is read again — after 5, 12, 25, 50 and 90 seconds — instead of
+  the whole wallet.
+- **Bitcoin and Litecoin no longer wait on a server that hangs.** Before a scan, every one of their
+  servers is asked the height of the newest block — a question that names no address — and one that
+  has not answered a little after the others goes to the back for a few minutes. Measured through Tor:
+  the first Bitcoin server hung on two circuits in three while two others answered within two seconds,
+  so the first Bitcoin balance after unlock waited fifteen seconds for nothing. A server you chose
+  yourself is the only one asked, and is not probed.
+- **Money arriving is seen while the Receive screen is open**: the address on it is read every fifteen
+  seconds (one request, to the server its balance already comes from), with a notice and the new row in
+  Activity. It used to wait for the next two-minute refresh.
+
+### Staking
+
+- **The yearly yield is computed, not typed in.** "~3–5%", "~6–7%" and "~15–20%" were written into the
+  wallet and right on the day they were written. TRON's is now the vote reward paid per block shared among
+  the votes cast; Solana's the inflation paid to stakers over the share of SOL that is staked; Cosmos
+  Hub's the inflation less the community tax over what is bonded — each from the network's own figures,
+  before a validator's commission, which is shown beside each validator. When the figures cannot be read
+  the line shows a dash, not an old number.
+- Staking TRX, SOL and ATOM was real before this and still is: positions read from the chain, validators
+  listed, every action signed on the device. The other networks on that screen are information only.
+
+### History and the balance chart
+
+- **History for Base, Arbitrum, Linea, BNB Chain and Polygon.** No Etherscan-shaped explorer serves them
+  without an API key; 3xpl does. One request a network, a thousand balance changes back, only while the
+  wallet holds something there. Rows carry the amount and the direction — this source does not name the
+  other side, so it is left empty rather than guessed. 3xpl refuses requests that arrive in a burst, so
+  every request to it is queued a second apart and asked once more when refused. Fantom and Cronos still
+  have no source that answers without a key, and the Activity screen names them.
+- **Ethereum history has a second source.** When Blockscout does not answer with a list at all — down, a
+  challenge page, "rate limit reached" — 3xpl is asked. An answered, empty list is still an answer.
+- **Longer history everywhere.** Each source is asked for what it hands out in one request: TRON 200,
+  Stellar 200, the Ethereum-family explorers, TON, XRP and Polkadot 100, Cosmos and BlockCypher 50. They
+  were 25–30. No extra requests, and no more addresses told to anybody.
+
+- **History is kept, and grows.** Each wallet's on-chain history is saved on the device and added to at
+  every read. An explorer that answers nothing today no longer makes last month disappear, and sources
+  that list a page at a time reach further back with every read. Clearing the history (Settings) and
+  "Delete everything" remove it.
+- **Solana history** was the twelve newest transactions from a single server, with nobody named on the
+  other side. It now tries the listed servers in turn, goes two hundred signatures back, fetches only
+  what it has not read before, and names the sender or the recipient.
+- **A transfer belongs to the wallet that made it.** With several wallets, a send from one was listed in
+  all the others — including the one that received it. A "pending" row is marked confirmed once an
+  explorer lists its transaction, and rows keep their place in time after a restart.
+- **The balance chart is drawn through your transfers.** It was "today's holdings at past prices": a
+  wallet funded an hour ago showed a day of balance it never had. Each coin's amount is now worked back
+  through the transfers the wallet has read, so a deposit is a step up at the moment it arrived. Where
+  no transfer falls in the window the line is what it was, and the note under the chart says which kind
+  it is. The cliff at the right-hand edge — the last point taken from another price source than the
+  rest — is gone.
+- The Activity list draws a page at a time ("show more" for the rest; the CSV export has all of it): a
+  long history rebuilt on every recorded event is what made the wallet stall after a failed send.
+
+### Notes, names and the addresses you know
+
+- **"First send to this address" was said about addresses paid the day before — every time.** The wallet
+  kept the other side of a transfer only as `abcd…wxyz`, which equals no address and resembles none: it
+  could not recognise an address it had paid, and — worse — it could not notice a **look-alike** of one
+  from history (only the address book and your own addresses were compared). Transfers now keep the whole
+  address. An address you have paid reads "you have sent to this address before"; a twin of it is flagged
+  in red; an address that only ever paid *you* is still a first payment — that is exactly how a poisoner
+  gets into a history. The notice also waits until this wallet's history has been read.
+- **A note for yourself on any transfer** — on the Send form, on the receipt, or later in Activity — kept
+  encrypted on the device against the transaction and never sent. A transfer the wallet has just made can
+  be written on at once; it used to need an explorer to list it first.
+- **Names for addresses.** The editor under a transfer has a second line: a name for the address on its
+  other side, kept in your encrypted address book. Every transfer to or from that address then shows the
+  name, and the Send screen knows it.
+- The editor opens **under the row** it belongs to. It used to open at the top of the page, out of sight
+  of the transaction it was for.
+- Swap: the flip button has a row of its own between the two panels — it lay on top of the balance and
+  its "Max" button.
+
+### Balances
+
+- A balance nobody answered for is asked again by itself after 4, 10 and 25 seconds, instead of standing
+  as "could not be read" until the next full refresh two minutes later.
+
+### Looks
+
+- Swap and Send: coin logos in the pickers, both Swap pickers on one line and one width, a card that
+  keeps its width when the introductory note is closed. The Tor rows of Activity carry an onion.
+- **On a phone** (every screen rendered at 390 px and checked): the Market list showed a logo and a dash
+  per coin — its price, change, sparkline and "this wallet" columns took 506 pixels of every row, the
+  coin's name none; on a narrow screen the sparkline and "this wallet" go and the name is back, and the
+  chart window moves under the title instead of over its status line. Swap's "From (you pay)" and "To
+  (you receive)" were cut off and ran into the wallet's name. Security's two buttons were wider than
+  the screen, the second one cut at its edge and the score squeezed out; they now wrap under the score.
+  Send's address label ran off the right edge. Activity showed a transfer as an arrow, an amount and a pill —
+  five columns left the title none and pushed the time off the screen; on a phone the status, note button
+  and time now take a second line under the title, and long titles wrap. In Settings → Wallets the
+  second and third wallets showed no name and a cut Remove button: the buttons now go under the name. The
+  note editor's labels and an unclear receipt's status line wrap instead of running off the card.
+- **Every Settings tab can be reached on a phone.** The tab row ran past the screen with no way to scroll
+  it: Backup and keys, Guide and Danger zone were out of reach on Android. The tabs wrap now, and so do an
+  asset's actions and a staking position's four buttons. On the review sheet the confirm button read "Підтвердити й
+  надіс." beside Cancel; on a phone the two now stand one under the other.
+- **Buy crypto and P2P & DEX in your language.** The 25 providers' kind, badge and description were in
+  English whatever the language; they follow it now, a language switch included. On a phone the three
+  "How it works" steps stand one under another instead of three cut columns, the two buttons wrap, and
+  a provider's name, kind and badge wrap instead of running off the screen; the in-wallet swap's button
+  goes under its text.
+- Prose with a maximum width was centred on a wide window rather than starting at the left edge — a
+  provider's description sat off to the right of its name. Ten such blocks (Buy, P2P, Activity, NFT,
+  Settings) start at the left now. The Buy and P2P tiles of Explore wrap instead of being cut.
+- **A send that fails says why in your language.** The senders' messages were English whatever the
+  language. The ones people meet — a wrong or own address, the amount, too little money, a network that
+  did not answer, an account not yet activated, a minimum transfer — are translated whole in all six
+  languages, with the server, figure or transaction id they carry. The rare, technical rest read a
+  sentence in your language saying what kind of trouble it is ("The network did not answer as expected",
+  "The transaction could not be made — nothing was sent"), with the original line under it. A test reads
+  the senders, so a new message nothing can place fails the build. The sixteen messages that say a send
+  may have landed and must be checked before sending again — the ones that prevent paying twice — are
+  translated whole, with the block, ledger or transaction id they name. When no swap route gives a quote,
+  a line in your language says so above what each route answered, and a swap's deposit that cannot be
+  built says why the same way a send does; so does a staking action that fails.
+- **News reads in your language.** Forty of its forty-four notes were English in every language and
+  described a wallet that no longer exists (Umbrella 2.x, the paused web version). The page keeps the
+  current notes — all translated, the rename to Phobia included — and links the full history in the
+  CHANGELOG. A language switch redraws them.
+- The connection chip above the lock button says **NETWORK BLOCKED**, not "BLOCKED" — beside a padlock
+  it read as "the wallet is locked".
+- Staking: the note no longer calls the rates "typical, approximate" — they are computed from each
+  network's own figures — and a yield not read yet shows a dash, not an empty space.
+
+### Bundled Tor and libraries
+
+- **Tor 15.0.25** (Tor 0.4.9.14) on Windows, Linux and Android. 15.0.24 was pruned from the Tor
+  Project's mirror, which stopped the supply-chain check. Every hash is the one in Tor's signed sums
+  file for 15.0.25, its signature checked against the pinned Tor Browser Developers key.
+- NBitcoin 10.0.16 and NBitcoin.Altcoins 6.0.10 — patch releases of the library behind Bitcoin-family
+  signing; every signing test vector still passes. The test runner moves to xunit.runner.visualstudio 4.
+
+### Repository, security checks and documentation
+
+Nothing in this part changes what the wallet does with your coins; it changes what can be checked about it.
+
+#### Security
+
+- **Linux: the data folder and every file in it are now readable by you alone.** A self-review found
+  them created with the system default (folder `0755`, files `0644`), so another account on the same
+  machine could read the plain-text ones — address book, watched addresses, activity log. The vault was
+  encrypted all along. The folder is now `0700` and every file the wallet writes `0600` from the moment
+  it exists, not tightened afterwards; tests pin both. Android's app storage was already private, and so
+  is Windows' `%APPDATA%` — a portable copy on another drive inherits that drive's permissions.
+- The self-review itself — secrets in logs, wiping keys from memory, files at rest, local services — is
+  in [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md), with what is still open.
+
+#### Checks
+
+- **Semgrep** (C#, secrets, GitHub Actions rules) runs beside CodeQL on every pull request; CodeQL now
+  also reads the workflows themselves.
+- **Every NuGet package is pinned by hash** (`packages.lock.json`) and CI restores in locked mode: a
+  package that changes on the feed fails the build instead of shipping.
+- Workflows hold write access only in the jobs that publish; the release page gets each release's
+  signed **provenance** file, so an attestation can be checked offline.
+- **Coverage** of the offline suite is published weekly and on every push to `main`.
+
+#### Repository
+
+- A shorter README — what it is in five seconds, then the features, screenshots, architecture and a
+  Results table of what was measured — with the full tour moved to [docs/FEATURES.md](docs/FEATURES.md).
+- [docs/testing.md](docs/testing.md) describes every test layer and what a failure in it would mean;
+  [docs/architecture.md](docs/architecture.md) gains the send path as a diagram and the repository layout.
+- CONTRIBUTING rewritten around `good first issue` / `help wanted` and area labels.
+
 ## [4.10.0-beta.5] — Beta of 9 October 2026 (a GitHub pre-release) — Decred sends, ATOM and DOT history, live checks that mean something
 
 ### Decred sends

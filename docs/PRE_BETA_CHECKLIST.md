@@ -1,6 +1,6 @@
 # Pre-beta checklist
 
-**Last verified:** 2026-10-09 · Wallet [4.10.0-beta.5](../VERSION) (Beta)  
+**Last verified:** 2026-10-10 · Wallet [4.10.0-beta.6](../VERSION) (Beta)  
 **Repo:** [thefear078/Phobia-Wallet](https://github.com/thefear078/Phobia-Wallet)
 
 This replaces stale audits that still claim “missing LICENSE / CODEOWNERS / CoC / Dependabot”.

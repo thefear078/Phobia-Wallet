@@ -44,8 +44,14 @@ public static class ZcashTransactions
 
     /// <summary>
     /// Every mainnet network upgrade, newest last: the height it activated at and the consensus branch
-    /// id that signs transactions under it. Copied from Zcash's own <c>upgrades.cpp</c> and
-    /// <c>chainparams.cpp</c> — these are consensus constants, not settings.
+    /// id that signs transactions under it — consensus constants, not settings. Taken from Zebra, the
+    /// node Zcash runs on (<c>zebra-chain/src/parameters/network_upgrade.rs</c> and
+    /// <c>constants.rs</c>); zcashd, which this table was first copied from, is deprecated and does not
+    /// list NU6.3. Each boundary is checked against mainnet itself: the coinbase of the block before
+    /// carries the old branch id, the coinbase of the activation block the new one.
+    ///
+    /// NU6.3 was missing until 2026-10-14 — every Zcash send signed after block 3,428,143 (late July
+    /// 2026) was refused by the network, and nothing was spent.
     /// </summary>
     private static readonly (uint Height, uint BranchId)[] Upgrades =
     [
@@ -59,6 +65,7 @@ public static class ZcashTransactions
         (2_726_400, 0xC8E7_1055),   // NU6
         (3_146_400, 0x4DEC_4DF0),   // NU6.1
         (3_364_600, 0x5437_F330),   // NU6.2
+        (3_428_143, 0x37A5_165B),   // NU6.3 (Ironwood) — v4 still valid; NU7, not scheduled, drops it
     ];
 
     /// <summary>

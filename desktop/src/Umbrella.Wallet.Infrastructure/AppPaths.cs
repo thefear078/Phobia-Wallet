@@ -16,7 +16,7 @@ namespace Umbrella.Wallet.Infrastructure;
 /// </summary>
 public static class AppPaths
 {
-    private static readonly Lazy<string> Root = new(Resolve);
+    private static readonly Lazy<string> Root = new(() => RestrictToOwner(Resolve()));
 
     /// <summary>Absolute path to the directory holding all Umbrella data.</summary>
     public static string DataRoot => Root.Value;
@@ -71,6 +71,28 @@ public static class AppPaths
         var fallback = LegacyRoamingRoot;
         Directory.CreateDirectory(fallback);
         return fallback;
+    }
+
+    /// <summary>
+    /// On Linux and macOS, makes <paramref name="directory"/> readable by its owner only (0700). The
+    /// default umask leaves a new folder 0755 — every other account on the computer could list it and read
+    /// the address book, the watched addresses, the activity log and the settings, which are plain text
+    /// (the vault and the notes are encrypted). Applied at every start, so a folder an older build made is
+    /// tightened too. Windows keeps a profile folder private by its ACLs; Android, by its app sandbox.
+    /// </summary>
+    public static string RestrictToOwner(string directory)
+    {
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsAndroid()) return directory;
+        try
+        {
+            File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+        catch
+        {
+            // A folder the user does not own, or a file system without modes: nothing more to do here.
+        }
+
+        return directory;
     }
 
     private static bool IsWritable(string directory)

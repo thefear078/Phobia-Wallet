@@ -1,0 +1,52 @@
+name: Semgrep
+
+# A second static analyser beside CodeQL, with a different engine and different rules: Semgrep's C#
+# rules, its secret patterns, and its GitHub Actions rules (script injection, unsafe workflow commands).
+# Findings go to the Security tab beside CodeQL's. A run does not fail a pull request by itself: each
+# finding is read and either fixed or explained where it stands (`nosemgrep` with the reason), never
+# silenced in bulk. The image is pinned by digest, like every action here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 5 * * 1" # Mondays 05:41 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: semgrep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: write # upload results to the Security tab
+    container:
+      image: semgrep/semgrep:1.177.0@sha256:acaac22ffc7b7cc5926de0751b223bce0b2491c33d18422fa72f632c78d81198
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # What is left out, and why, is in .semgrepignore.
+      - name: Scan
+        run: >
+          semgrep scan --metrics=off
+          --config p/csharp --config p/secrets --config p/github-actions
+          --sarif --output semgrep.sarif .
+
+      - name: Upload to the Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep

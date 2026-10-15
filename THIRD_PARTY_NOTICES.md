@@ -19,11 +19,11 @@ project’s own signed hashes file — never a random mirror.
 | | |
 |---|---|
 | Component | `tor.exe` + GeoIP databases (Windows x86_64 expert bundle) |
-| Version | 15.0.24 |
-| Archive | `tor-expert-bundle-windows-x86_64-15.0.24.tar.gz` |
-| Source URL | https://dist.torproject.org/torbrowser/15.0.24/tor-expert-bundle-windows-x86_64-15.0.24.tar.gz |
-| SHA-256 | `e9dc6ccc93cd6afa507193f4de284d6424233ff5102155cd2c94b259e8a22b65` |
-| Hash source | https://dist.torproject.org/torbrowser/15.0.24/sha256sums-unsigned-build.txt (+ `.asc`) |
+| Version | 15.0.25 |
+| Archive | `tor-expert-bundle-windows-x86_64-15.0.25.tar.gz` |
+| Source URL | https://dist.torproject.org/torbrowser/15.0.25/tor-expert-bundle-windows-x86_64-15.0.25.tar.gz |
+| SHA-256 | `c1988c701de2f24f7d098d1d6d7f507b58f27740d097f29c246e0524d639b252` |
+| Hash source | https://dist.torproject.org/torbrowser/15.0.25/sha256sums-unsigned-build.txt (+ `.asc`) |
 | Signing key | `EF6E286DDA85EA2A4BA7DE684E2C6E8793298290` — Tor Browser Developers |
 | License | BSD 3-Clause (Tor Project upstream `LICENSE`) |
 
@@ -49,19 +49,19 @@ APK's native-library folder (the one place Android runs a program from). Staged 
 
 | Archive | In the APK as | SHA-256 |
 |---|---|---|
-| `tor-expert-bundle-android-aarch64-15.0.24.tar.gz` | `lib/arm64-v8a/libTor.so` | `2a7a02484149b05f64b582a4a1e8eb8aabb9f6cd32daca4e03c58e09839bb7a8` |
-| `tor-expert-bundle-android-armv7-15.0.24.tar.gz` | `lib/armeabi-v7a/libTor.so` | `9416f72b9cd31eda0f7f5a1fa3e2eec789b88b8160e20f5d690bc4ba8c29811e` |
-| `tor-expert-bundle-android-x86_64-15.0.24.tar.gz` | emulator check build only | `500d51006f1938dfd5ecd0653b0d2a156feff8a4dc5e2b61b81793d47854fc90` |
+| `tor-expert-bundle-android-aarch64-15.0.25.tar.gz` | `lib/arm64-v8a/libTor.so` | `a1a67ec77ce0a7c4fca446fd9f915fbb0302c3107c2d56ab213196187cfd894a` |
+| `tor-expert-bundle-android-armv7-15.0.25.tar.gz` | `lib/armeabi-v7a/libTor.so` | `4fcdb5540f7ea2f529b9063115d66dd7dfa61e5602bfaab96a78e8046bb4b8d5` |
+| `tor-expert-bundle-android-x86_64-15.0.25.tar.gz` | emulator check build only | `11dbac44e2ee29df2cd6e3a5f38164d2630b2c85342f6a041b9cb57d7012d071` |
 | `monero-android-armv8-v0.18.5.3.tar.bz2` | `lib/arm64-v8a/libmonero-wallet-rpc.so` | `2621293d288d5ce23d251d1f4106d7e1bdd5bf3a37423e8a8c6851e4edba1768` |
 | `monero-android-armv7-v0.18.5.3.tar.bz2` | `lib/armeabi-v7a/libmonero-wallet-rpc.so` | `542cc0322a7d0d3c9cd47c7cc8d195bb74861a7eec79235b58a5877a90b04e6a` |
 
-Tor's archives are listed in the Tor Project's signed sums for 15.0.24 (key `EF6E286D…3298290`), Monero's in
+Tor's archives are listed in the Tor Project's signed sums for 15.0.25 (key `EF6E286D…3298290`), Monero's in
 `hashes.txt` signed by binaryFate (`81AC591F…0BDF92`). Same versions and licences as the desktop builds.
 
 ### Verifying binaries by hand
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.24.tar.gz
+Get-FileHash -Algorithm SHA256 .\tor-expert-bundle-windows-x86_64-15.0.25.tar.gz
 Get-FileHash -Algorithm SHA256 .\monero-win-x64-v0.18.5.3.zip
 ```
 

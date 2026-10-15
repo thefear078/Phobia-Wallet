@@ -118,7 +118,7 @@ CA-issued one replaces it, so Windows still shows an unknown publisher; the thum
 
 | | |
 |---|---|
-| Static analysis | CodeQL on every push |
+| Static analysis | **CodeQL** (C#, extended security queries, and the GitHub workflows themselves) and **Semgrep** (C#, secrets, GitHub Actions rules) on every push and pull request, results in the Security tab |
 | Secret scanning | enabled, with push protection; gitleaks over the whole history every week |
 | Dependency alerts | Dependabot, with security updates |
 | Vulnerable packages | build fails on a known-vulnerable dependency |
@@ -126,7 +126,8 @@ CA-issued one replaces it, so Windows still shows an unknown publisher; the thum
 | Bundled Tor / Monero | pinned versions, checked against the projects' signed sums on every PR (`supply-chain` job) |
 | Branch protection | `main` requires all checks green; no force-push, no deletion |
 | Release tags | immutable: a ruleset forbids moving or deleting `v*` tags; a published release is never rebuilt |
-| Tests | about 1,860 offline tests plus rendered-screen tests, required before merge; the Monero service's login is tested against the real `monero-wallet-rpc` in CI |
+| Tests | about 1,890 offline tests plus rendered-screen tests, required before merge; the Monero service's login is tested against the real `monero-wallet-rpc` in CI; coverage published weekly ([docs/testing.md](docs/testing.md)) |
+| Self-review from an attacker's side | secrets in logs, memory wiping, files at rest, local services — findings and fixes in **[docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)** |
 
 No external audit has been performed. Status and future links live in
 **[AUDIT_STATUS.md](AUDIT_STATUS.md)**. When an audit exists, it will be linked there and here with the

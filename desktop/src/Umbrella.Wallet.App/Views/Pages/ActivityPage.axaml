@@ -34,7 +34,7 @@
     <Border IsVisible="{Binding HasHistoryGaps}" Background="#33E7CA83" BorderBrush="#7A6230"
             BorderThickness="1" CornerRadius="10" Padding="12,9">
       <TextBlock Text="{Binding HistoryGapNote}" Foreground="#E7CA83" FontSize="11.5"
-                 LineHeight="17" TextWrapping="Wrap" MaxWidth="720"/>
+                 LineHeight="17" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="720"/>
     </Border>
 
     <!-- Last sync + on-demand refresh: the history is fetched from public explorers, so tell
@@ -128,26 +128,29 @@
       </StackPanel>
     </Border>
 
-    <!-- Private note editor (encrypted at rest). Opens when 📝 is tapped on a transaction. -->
-    <Border IsVisible="{Binding IsEditingNote}" Background="{DynamicResource UmCard}"
-            BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="10"
-            Padding="12" Margin="0,0,0,10">
-      <StackPanel Spacing="8">
-        <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextMuted}"
-                   Text="{Binding [notes.title], Source={x:Static app:Loc.Instance}}"/>
-        <TextBox Text="{Binding NoteDraft}" AcceptsReturn="True" MaxLength="280" MinHeight="54"
-                 TextWrapping="Wrap"
-                 Watermark="{Binding [notes.placeholder], Source={x:Static app:Loc.Instance}}"/>
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Content="{Binding [notes.save], Source={x:Static app:Loc.Instance}}"
-                  Command="{Binding SaveNoteCommand}"/>
-          <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
-                  Command="{Binding CancelEditNoteCommand}"/>
-        </StackPanel>
-      </StackPanel>
-    </Border>
-
-    <ItemsControl ItemsSource="{Binding FilteredActivity}" IsVisible="{Binding HasFilteredActivity}">
+    <ItemsControl ItemsSource="{Binding FilteredActivity}" IsVisible="{Binding HasFilteredActivity}"
+                  Container.Name="activityList" Container.Sizing="Width">
+      <ItemsControl.Styles>
+        <!-- One line on a desktop: icon, what happened, amount, status, note and time. On a phone the
+             status, the note button and the time go to a second line: five columns in 358 pixels left the
+             title none — a transfer showed as an arrow, a number and a pill, its time cut off the edge. -->
+        <Style Selector="StackPanel.actStatus"><Setter Property="Grid.Column" Value="3"/></Style>
+        <Style Selector="StackPanel.actTail"><Setter Property="Grid.Column" Value="4"/></Style>
+        <ContainerQuery Name="activityList" Query="max-width:560">
+          <Style Selector="StackPanel.actStatus">
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+          </Style>
+          <Style Selector="StackPanel.actTail">
+            <Setter Property="Grid.Column" Value="2"/>
+            <Setter Property="Grid.ColumnSpan" Value="3"/>
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+          </Style>
+        </ContainerQuery>
+      </ItemsControl.Styles>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:ActivityRowViewModel">
           <!-- Each event is its own rounded card. The card itself copies the explorer link
@@ -163,8 +166,8 @@
             <Border Background="{DynamicResource UmCard}" BorderBrush="{DynamicResource UmBorder}"
                     BorderThickness="1" CornerRadius="14" MinHeight="62" Padding="14,10">
               <StackPanel Spacing="5">
-              <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" VerticalAlignment="Center">
-                <Border Width="40" Height="40" CornerRadius="20" VerticalAlignment="Center" Margin="0,0,14,0" BorderThickness="1"
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                <Border Grid.RowSpan="2" Width="40" Height="40" CornerRadius="20" VerticalAlignment="Center" Margin="0,0,14,0" BorderThickness="1"
                         Background="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=wash}"
                         BorderBrush="{Binding IconColor, Converter={StaticResource ThemeBrush}, ConverterParameter=ring}">
                   <!-- Drawn in a fixed 24×24 box so every glyph sits dead centre. -->
@@ -176,7 +179,7 @@
                   </Viewbox>
                 </Border>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" ClipToBounds="True">
-                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
                   <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextDim}"
                              Text="{Binding Detail}" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
@@ -188,7 +191,7 @@
                              Text="{Binding FiatLabel}" IsVisible="{Binding HasFiat}"/>
                 </StackPanel>
                 <!-- Confirmation-status pill (money movements only) + Retry on a failed send. -->
-                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,8,0" VerticalAlignment="Center">
+                <StackPanel Classes="actStatus" Orientation="Horizontal" Spacing="6" Margin="0,0,8,0" VerticalAlignment="Center">
                   <Border IsVisible="{Binding ShowStatus}" Background="Transparent" BorderBrush="{Binding StatusColor}"
                           BorderThickness="1" CornerRadius="7" Padding="8,2" VerticalAlignment="Center">
                     <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding StatusColor}"
@@ -200,26 +203,67 @@
                           Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RetrySendCommand}"
                           CommandParameter="{Binding}"/>
                 </StackPanel>
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
-                  <!-- Add / edit a private (encrypted) note on this transaction. -->
-                  <Button Classes="ghost" Padding="6,2" MinHeight="0" VerticalAlignment="Center"
-                          IsVisible="{Binding CanHaveNote}" Content="📝"
-                          ToolTip.Tip="{Binding [notes.add], Source={x:Static app:Loc.Instance}}"
+                <StackPanel Classes="actTail" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <!-- A private note on this transaction, and a name for the address on its other side.
+                       The editor opens under this row. -->
+                  <Button Classes="ghost" Padding="7,3" MinHeight="0" VerticalAlignment="Center"
+                          IsVisible="{Binding CanAnnotate}"
+                          ToolTip.Tip="{Binding [notes.edit], Source={x:Static app:Loc.Instance}}"
+                          AutomationProperties.Name="{Binding [notes.edit], Source={x:Static app:Loc.Instance}}"
                           Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).BeginEditNoteCommand}"
-                          CommandParameter="{Binding}"/>
+                          CommandParameter="{Binding}">
+                    <Path Data="M4 20 H8 L18.5 9.5 L14.5 5.5 L4 16 Z M13 7 L17 11" Width="14" Height="14" Stretch="Uniform"
+                          Stroke="{DynamicResource UmTextDim}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round"/>
+                  </Button>
                   <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="11" Text="{Binding When, Converter={StaticResource ActivityLabel}}" VerticalAlignment="Center"/>
                   <TextBlock Foreground="{DynamicResource UmAccent}" FontSize="11" Text="↗" IsVisible="{Binding HasLink}" VerticalAlignment="Center"/>
                 </StackPanel>
               </Grid>
               <!-- The saved private note, shown under the row when present. -->
-              <TextBlock IsVisible="{Binding HasNote}" Text="{Binding Note}" Margin="54,0,0,0"
-                         FontSize="11.5" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap"/>
+              <Border IsVisible="{Binding HasNote}" Margin="54,2,0,0" HorizontalAlignment="Left" CornerRadius="8" Padding="9,5"
+                      Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1">
+                <TextBlock Text="{Binding Note}" FontSize="11.5" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap"/>
+              </Border>
               </StackPanel>
             </Border>
           </Button>
+          <!-- The editor, under the row it belongs to. Outside the row's own button, so typing in it
+               and pressing its buttons is not a click on the row. -->
+          <Border IsVisible="{Binding IsEditingNote}" Margin="14,-2,14,10" Padding="14,12" CornerRadius="12"
+                  Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmAccent}" BorderThickness="1">
+            <StackPanel Spacing="9">
+              <StackPanel Spacing="4" IsVisible="{Binding CanHaveNote}">
+                <TextBlock Classes="eyebrow" TextWrapping="Wrap" Foreground="{DynamicResource UmTextMuted}"
+                           Text="{Binding [notes.title], Source={x:Static app:Loc.Instance}}"/>
+                <TextBox AcceptsReturn="True" MaxLength="280" MinHeight="50" TextWrapping="Wrap"
+                         Text="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NoteDraft, Mode=TwoWay}"
+                         Watermark="{Binding [notes.placeholder], Source={x:Static app:Loc.Instance}}"/>
+              </StackPanel>
+              <StackPanel Spacing="4" IsVisible="{Binding CanLabel}">
+                <TextBlock Classes="eyebrow" TextWrapping="Wrap" Foreground="{DynamicResource UmTextMuted}"
+                           Text="{Binding [notes.labelTitle], Source={x:Static app:Loc.Instance}}"/>
+                <TextBox MaxLength="60"
+                         Text="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).NoteLabelDraft, Mode=TwoWay}"
+                         Watermark="{Binding [notes.labelPh], Source={x:Static app:Loc.Instance}}"/>
+                <SelectableTextBlock Classes="mono" FontSize="10.5" TextWrapping="Wrap"
+                                     Foreground="{DynamicResource UmTextMuted}" Text="{Binding CounterpartyFull}"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="primary" MinHeight="0" Padding="16,7"
+                        Content="{Binding [common.save], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SaveNoteCommand}"/>
+                <Button Classes="ghost" MinHeight="0" Padding="14,7"
+                        Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
+                        Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).CancelEditNoteCommand}"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
           </StackPanel>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+    <!-- The list is drawn a page at a time; the rest of the history is one press away. -->
+    <Button Classes="ghost" HorizontalAlignment="Center" IsVisible="{Binding HasMoreActivity}"
+            Content="{Binding MoreActivityLabel}" Command="{Binding ShowMoreActivityCommand}"/>
   </StackPanel>
 </UserControl>

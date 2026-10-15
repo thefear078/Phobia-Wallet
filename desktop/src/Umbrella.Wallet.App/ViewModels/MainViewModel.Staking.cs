@@ -24,7 +24,7 @@ public sealed partial class StakeChainViewModel : ObservableObject
     [ObservableProperty] private string _staked = "—";
     [ObservableProperty] private string _rewards = "—";
     [ObservableProperty] private string _pending = string.Empty;
-    [ObservableProperty] private string _apr = string.Empty;
+    [ObservableProperty] private string _apr = "—";   // until the network's own figures are read
     [ObservableProperty] private string _note = string.Empty;
     [ObservableProperty] private bool _loading = true;
     [ObservableProperty] private bool _canClaim;
@@ -112,6 +112,10 @@ public partial class MainViewModel
     [ObservableProperty] private StakeValidatorOption? _selectedStakeValidator;
     [ObservableProperty] private string _stakeReview = string.Empty;
     [ObservableProperty] private string _stakeError = string.Empty;
+
+    /// <summary>A staking action's error as the user reads it — the network clients write English
+    /// (<see cref="SendErrorText"/>).</summary>
+    public string StakeErrorShown => SendErrorText.Localize(StakeError);
     [ObservableProperty] private string _stakeResult = string.Empty;
     [ObservableProperty] private string _stakePassword = string.Empty;
     [ObservableProperty] private bool _isStakeWorking;
@@ -123,7 +127,11 @@ public partial class MainViewModel
     public bool HasStakeResult => !string.IsNullOrEmpty(StakeResult);
 
     partial void OnStakeReviewChanged(string value) => OnPropertyChanged(nameof(HasStakeReview));
-    partial void OnStakeErrorChanged(string value) => OnPropertyChanged(nameof(HasStakeError));
+    partial void OnStakeErrorChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasStakeError));
+        OnPropertyChanged(nameof(StakeErrorShown));
+    }
     partial void OnStakeResultChanged(string value) => OnPropertyChanged(nameof(HasStakeResult));
     partial void OnStakeAmountChanged(string value) => StakeReview = string.Empty;
     partial void OnSelectedStakeValidatorChanged(StakeValidatorOption? value) => StakeReview = string.Empty;
@@ -208,7 +216,7 @@ public partial class MainViewModel
         var frozen = position.FrozenSun / (decimal)TronStaking.SunPerTrx;
         chain.Staked = WithValue(frozen, "TRX");
         chain.Rewards = WithValue(position.RewardSun / (decimal)TronStaking.SunPerTrx, "TRX");
-        chain.Apr = "~3–5%";
+        _ = ShowStakeYieldAsync(chain);   // its own read: the position does not wait for it
         chain.CanClaim = position.RewardSun > 0;
         chain.CanUnstake = position.FrozenSun > 0;
         chain.CanWithdraw = position.WithdrawableSun > 0;
@@ -239,7 +247,7 @@ public partial class MainViewModel
         chain.Note = string.Empty;
         chain.Staked = WithValue(SolanaRpc.ToSol(position.Staked), "SOL");
         chain.Rewards = Loc.Instance["stake.solCompounds"];
-        chain.Apr = "~6–7%";
+        _ = ShowStakeYieldAsync(chain);   // its own read: the position does not wait for it
         chain.CanClaim = false;
         chain.CanUnstake = position.Accounts.Any(a => a.CanDeactivate);
         chain.CanWithdraw = position.Accounts.Any(a => a.CanWithdraw);
@@ -266,7 +274,7 @@ public partial class MainViewModel
         chain.Note = string.Empty;
         chain.Staked = WithValue(position.Staked, "ATOM");
         chain.Rewards = WithValue(decimal.Round(position.Rewards, 6), "ATOM");
-        chain.Apr = "~15–20%";
+        _ = ShowStakeYieldAsync(chain);   // its own read: the position does not wait for it
         chain.CanClaim = position.Rewards >= 0.000001m;
         chain.CanUnstake = position.Delegations.Count > 0;
         chain.CanWithdraw = false;   // undelegated ATOM comes back by itself after 21 days
@@ -280,6 +288,39 @@ public partial class MainViewModel
             string.Format(Loc.Instance["stake.atomReward"], Coin(decimal.Round(d.RewardAtom, 6), "ATOM")),
             Coin(d.StakedAtom, "ATOM"), true, false)));
     }
+
+    private readonly Dictionary<string, decimal> _stakeYield = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// "≈ 15.5%" from the network's own figures (see <see cref="StakingYield"/>), read once a session; a
+    /// dash when the network did not give them — never a number typed into the wallet in its place.
+    /// </summary>
+    private async Task<string> StakeYieldLabelAsync(string symbol)
+    {
+        if (!_stakeYield.TryGetValue(symbol, out var percent))
+        {
+            decimal? read;
+            try
+            {
+                read = symbol switch
+                {
+                    "TRX" => await _tronStaking.VoteYieldAsync(),
+                    "SOL" => await _solStaking.YieldAsync(await _solStaking.ValidatorsAsync()),
+                    _ => await _atomStaking.YieldAsync(),
+                };
+            }
+            catch
+            {
+                read = null;
+            }
+            if (read is not { } known || known <= 0 || known > 100) return "—";
+            _stakeYield[symbol] = percent = known;
+        }
+        return StakingYield.Format(percent, Fx.Culture);
+    }
+
+    private async Task ShowStakeYieldAsync(StakeChainViewModel chain) =>
+        chain.Apr = await StakeYieldLabelAsync(chain.Symbol);
 
     /// <summary>Who a stake can go to, read once a session per network.</summary>
     private async Task<IReadOnlyList<StakeValidatorOption>> StakeValidatorsAsync(string symbol)

@@ -8,6 +8,7 @@ using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Umbrella.Wallet.Core.Amounts;
 
 namespace Umbrella.Wallet.App.ViewModels;
 
@@ -230,12 +231,21 @@ public partial class MainViewModel
             .OrderBy(s => s, StringComparer.Ordinal).ToList();
 
     /// <summary>
-    /// Today's holdings valued at each moment's price across the window. This is not a record of past
-    /// balances — the wallet keeps none — and the note under the chart says so.
+    /// What the wallet held at each moment of the window, valued at that moment's price.
+    ///
+    /// It used to be today's holdings at past prices — the wallet kept no history to do better — so a
+    /// wallet funded an hour ago drew a day of balance it never had. With the transfers it has read
+    /// (<see cref="PortfolioMoves"/>), each coin's amount is worked back through them. A coin whose
+    /// transfers are not known is still drawn at today's amount, and the note under the chart says which
+    /// kind of line it is.
     /// </summary>
     private async Task RefreshPortfolioChartAsync()
     {
         var version = Interlocked.Increment(ref _portfolioChartVersion);
+
+        var end = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+        var start = end - (long)PortfolioSpan(PortfolioRange).TotalMilliseconds;
+        var moves = PortfolioMoves();
 
         var holdings = Accounts
             .Where(a => a.SupportStatus is "Ready" or "Watch" or "Exchange" or "Receive only"
@@ -243,6 +253,16 @@ public partial class MainViewModel
             .GroupBy(a => a.Symbol.ToUpperInvariant())
             .Select(g => (Symbol: g.Key, Amount: g.Sum(a => a.Amount), Price: g.Max(a => a.Price)))
             .ToList();
+
+        // Coins that are gone now but were here inside the window: sent away an hour ago, they were
+        // still part of the balance this morning.
+        foreach (var (symbol, list) in moves)
+        {
+            if (holdings.Any(h => h.Symbol == symbol) || !BalanceHistory.AnyWithin(list, start, end)) continue;
+            var price = Accounts.Where(a => string.Equals(a.Symbol, symbol, StringComparison.OrdinalIgnoreCase))
+                .Select(a => a.Price).DefaultIfEmpty(0).Max();
+            holdings.Add((symbol, 0, price));
+        }
 
         if (holdings.Count == 0)
         {
@@ -260,7 +280,7 @@ public partial class MainViewModel
         var marketRange = MarketRangeFor(PortfolioRange);
         var symbols = holdings.Select(h => h.Symbol).ToList();
         var known = PeekSeries(marketRange, symbols);
-        if (known.Count == symbols.Count) DrawPortfolio(holdings, known);
+        if (known.Count == symbols.Count) DrawPortfolio(holdings, known, moves, start, end);
 
         // The whole market list is asked for (see MarketSeriesAsync); the chart is drawn the moment the
         // coins held are all in, not when the last coin of the list arrives.
@@ -271,11 +291,39 @@ public partial class MainViewModel
             drawnEarly = true;
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                if (version == _portfolioChartVersion) DrawPortfolio(holdings, soFar);
+                if (version == _portfolioChartVersion) DrawPortfolio(holdings, soFar, moves, start, end);
             });
         });
         if (version != _portfolioChartVersion) return;   // a newer request superseded this one
-        DrawPortfolio(holdings, series);
+        DrawPortfolio(holdings, series, moves, start, end);
+    }
+
+    /// <summary>How far back each window reaches.</summary>
+    private static TimeSpan PortfolioSpan(string range) => range switch
+    {
+        "1W" => TimeSpan.FromDays(7),
+        "1M" => TimeSpan.FromDays(30),
+        "1Y" => TimeSpan.FromDays(365),
+        _ => TimeSpan.FromHours(24),
+    };
+
+    /// <summary>
+    /// Every transfer this wallet knows of, per coin: the chain's own history as read so far together
+    /// with what the wallet itself sent. Failed sends moved nothing and are left out.
+    /// </summary>
+    private Dictionary<string, List<BalanceMove>> PortfolioMoves()
+    {
+        var moves = new Dictionary<string, List<BalanceMove>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in MergedActivity())
+        {
+            if (row.Kind is not ("Sent" or "Received") || row.UnixMs <= 0 || row.Status == "Failed") continue;
+            if (!double.TryParse(row.Amount.TrimStart('+', '-'), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var amount) || amount <= 0) continue;
+            var symbol = row.Asset.ToUpperInvariant();
+            if (!moves.TryGetValue(symbol, out var list)) moves[symbol] = list = [];
+            list.Add(new BalanceMove(row.UnixMs, row.Kind == "Sent" ? -amount : amount));
+        }
+        return moves;
     }
 
     /// <summary>Price history already on this device for each coin: fetched this session, or the candles
@@ -295,14 +343,20 @@ public partial class MainViewModel
         return found;
     }
 
-    /// <summary>Today's holdings valued at each moment's price. The last point is the live price, the
-    /// same one the balance above the chart is counted at, so "now" on the chart is the balance.</summary>
+    /// <summary>How far a coin's price history may end from its live price and still be the same market
+    /// seen a moment apart: within this, the history is lined up with the live price.</summary>
+    private const double PriceAnchorTolerance = 0.03;
+
+    /// <summary>What was held at each moment, valued at that moment's price. The last point is the live
+    /// price, the same one the balance above the chart is counted at, so "now" on the chart is the balance.</summary>
     private void DrawPortfolio(
-        List<(string Symbol, double Amount, double Price)> holdings, IReadOnlyDictionary<string, IReadOnlyList<double>> series)
+        List<(string Symbol, double Amount, double Price)> holdings, IReadOnlyDictionary<string, IReadOnlyList<double>> series,
+        IReadOnlyDictionary<string, List<BalanceMove>> moves, long start, long end)
     {
         var total = new double[PortfolioPoints];
         var live = 0.0;
         var liveKnown = true;
+        var byTransfers = false;
         var leftOut = new List<string>();
         foreach (var (symbol, amount, price) in holdings)
         {
@@ -312,7 +366,20 @@ public partial class MainViewModel
                 continue;
             }
 
-            for (var i = 0; i < PortfolioPoints; i++) total[i] += amount * Resample(prices, i, PortfolioPoints);
+            var transfers = moves.TryGetValue(symbol, out var known) ? known : [];
+            var amounts = BalanceHistory.AmountsOver(amount, transfers, start, end, PortfolioPoints);
+            byTransfers |= BalanceHistory.AnyWithin(transfers, start, end);
+
+            // The history and the live price come from two sources a moment apart. Setting only the last
+            // point to the live figure drew a cliff at the right-hand edge whenever they differed by a
+            // percent — on a quiet day, the largest thing on the chart. Within a few percent the whole
+            // history is lined up with the live price instead; further apart they are not the same
+            // market at all (a stale history), and the step is left to say so.
+            var last = prices[^1];
+            var anchor = price > 0 && last > 0 && Math.Abs((price / last) - 1) <= PriceAnchorTolerance ? price / last : 1.0;
+
+            for (var i = 0; i < PortfolioPoints; i++) total[i] += amounts[i] * Resample(prices, i, PortfolioPoints) * anchor;
+            if (amount <= 0) continue;
             if (price > 0) live += amount * price;
             else liveKnown = false;
         }
@@ -333,12 +400,14 @@ public partial class MainViewModel
 
         PortfolioSeries = total;
         PortfolioChartStatus = string.Empty;
-        PortfolioChartNote = leftOut.Count == 0
-            ? Loc.Instance["chart.note"]
-            : string.Format(Loc.Instance["chart.noteLeftOut"], string.Join(", ", leftOut));
-        PortfolioChartNoteShort = leftOut.Count == 0
-            ? Loc.Instance["chart.noteShort"]
-            : string.Format(Loc.Instance["chart.noteShortLeftOut"], string.Join(", ", leftOut));
+        // Which kind of line this is: worked back through the wallet's transfers, or (none of them in
+        // this window) simply today's holdings at past prices.
+        PortfolioChartNote = leftOut.Count > 0
+            ? string.Format(Loc.Instance["chart.noteLeftOut"], string.Join(", ", leftOut))
+            : Loc.Instance[byTransfers ? "chart.noteHistory" : "chart.note"];
+        PortfolioChartNoteShort = leftOut.Count > 0
+            ? string.Format(Loc.Instance["chart.noteShortLeftOut"], string.Join(", ", leftOut))
+            : Loc.Instance[byTransfers ? "chart.noteHistoryShort" : "chart.noteShort"];
     }
 
     /// <summary>The value at point <paramref name="i"/> of <paramref name="count"/>, read linearly off a
@@ -356,12 +425,21 @@ public partial class MainViewModel
     /// <summary>Holdings changed: redraw, reusing the price history already fetched.</summary>
     private string _portfolioChartSignature = string.Empty;
 
+    /// <summary>Goes up whenever the transfers the wallet knows of change, so the chart follows them.</summary>
+    private int _portfolioMovesVersion;
+
+    private void PortfolioMovesChanged()
+    {
+        _portfolioMovesVersion++;
+        SchedulePortfolioChart();
+    }
+
     private void SchedulePortfolioChart()
     {
         var signature = string.Join(";", Accounts
             .Where(a => a.Amount > 0 && a.Balance != BalanceRead.Unknown)
             .Select(a => $"{a.Symbol}:{a.Amount:R}")
-            .OrderBy(s => s, StringComparer.Ordinal)) + "|" + PortfolioRange;
+            .OrderBy(s => s, StringComparer.Ordinal)) + "|" + PortfolioRange + "|" + _portfolioMovesVersion;
         if (signature == _portfolioChartSignature) return;
         _portfolioChartSignature = signature;
         _ = RefreshPortfolioChartAsync();

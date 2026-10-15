@@ -14,7 +14,7 @@ where the wallet's privacy stops.
 - Your private transaction notes
 - Your address book (encrypted at rest since 4.7)
 - Your settings, themes, profile images
-- Your activity log
+- Your activity log, and the transaction history each wallet has read
 
 There is no telemetry, no crash reporting, no analytics SDK and no account. **This is enforced by the
 build**, not promised: the test suite fails if any of nineteen analytics or crash-reporting packages is
@@ -118,7 +118,7 @@ market cache are written atomically — a crash mid-save leaves the previous cop
 |---|---|
 | The seed vault (Argon2id → AES-256-GCM) | Settings: theme, language, currency |
 | Exchange API keys | Watch-only addresses you added |
-| Private transaction notes | The activity log |
+| Private transaction notes | The activity log, and each wallet's transaction history as read so far |
 | The address book | Cached balances, prices and currency rates |
 
 The items in the right-hand column are there because they are useful before the wallet is unlocked, or

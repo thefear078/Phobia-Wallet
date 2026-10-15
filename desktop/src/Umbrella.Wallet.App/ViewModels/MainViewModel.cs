@@ -343,6 +343,10 @@ public partial class MainViewModel : ViewModelBase
             RefreshHoldings();     // re-render money labels (Fx.Money/Price) in the new locale
             RecalcBalance();
             BuildGuide(); // the guide reads in the wallet's language
+            RelocalizeVenues();   // the Buy and P2P lists' lines
+            OnPropertyChanged(nameof(SendErrorShown));   // a send error on screen, in the new language
+            OnPropertyChanged(nameof(StakeErrorShown));
+            if (SendReceipt is { } receipt) SendReceipt = receipt with { };
             RefreshPrivateSendPlan();  // its steps and limits are prose, not codes
             RefreshMoneroNodeStatus(); // its wording is prose, not a code
             BuildCounterparties();     // the disclosure list is prose too
@@ -888,6 +892,7 @@ public partial class MainViewModel : ViewModelBase
             _uiSettings.RequirePasswordForSend = value;
             _uiSettings.Save();
             OnPropertyChanged();
+            OnPropertyChanged(nameof(RequirePasswordForSendSwitch));
             if (IsUnlocked) PushActivity("Security", "Send password", value ? "on" : "off", "changed", "now");
             RefreshSecurityChecks();
         }
@@ -1015,6 +1020,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsMobileNav));
             OnPropertyChanged(nameof(IsDesktopHorizontalNav));
             OnPropertyChanged(nameof(ContentMaxWidth));
+            OnPropertyChanged(nameof(FormPageMinWidth));
             OnPropertyChanged(nameof(QuickActionColumns));
             OnPropertyChanged(nameof(ShowSideRail));
             if (!value) IsMoreSheetOpen = false;
@@ -1025,6 +1031,13 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Width cap for the main dashboard column — a phone-like column in mobile mode, the
     /// roomy desktop width otherwise.</summary>
     public double ContentMaxWidth => MobileMode ? 460 : 1120;
+
+    /// <summary>
+    /// How wide the Send and Swap forms stay in the desktop window. The content column is centred on its
+    /// widest child, so a form used to be as wide as whatever it happened to show: Swap shrank to a narrow
+    /// strip the moment its introductory note was closed. The phone layout takes the width it is given.
+    /// </summary>
+    public double FormPageMinWidth => MobileMode ? 0 : 580;
 
     /// <summary>The quick-action tiles wrap to two columns on the narrow phone layout so their
     /// labels don't clip; four across on the desktop.</summary>
@@ -1165,6 +1178,8 @@ public partial class MainViewModel : ViewModelBase
         SendSimulationWarnings.Clear();
 
         var sim = SendSimulation.Build(balance, amount, networkFee, changeReturned, dustThreshold);
+        _reviewFeeText = networkFee > 0 ? $"{Fmt(networkFee)} {symbol}" : string.Empty;
+        (_reviewFee, _reviewFeeSymbol) = (networkFee, symbol);
 
         foreach (var e in sim.Effects)
         {
@@ -1191,6 +1206,8 @@ public partial class MainViewModel : ViewModelBase
                     string.Format(Loc.Instance["sim.warnEmpties"], symbol),
                 SendWarningKind.FeeIsLargeShareOfAmount =>
                     string.Format(Loc.Instance["sim.warnFee"], $"{w.Value:P0}"),
+                SendWarningKind.FeeExceedsAmount =>
+                    string.Format(Loc.Instance["sim.warnFeeOver"], $"{Fmt(networkFee)} {symbol}", $"{Fmt(amount)} {symbol}"),
                 SendWarningKind.ChangeIsDust =>
                     Loc.Instance["sim.warnDust"],
                 _ =>
@@ -1199,6 +1216,7 @@ public partial class MainViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(HasSendSimulation));
+        OnPropertyChanged(nameof(HasSendReviewWarnings));
     }
 
     private void ClearSendSimulation()
@@ -1206,6 +1224,7 @@ public partial class MainViewModel : ViewModelBase
         SendSimulationRows.Clear();
         SendSimulationWarnings.Clear();
         OnPropertyChanged(nameof(HasSendSimulation));
+        OnPropertyChanged(nameof(HasSendReviewWarnings));
     }
     [ObservableProperty] private string _sendSuccess = string.Empty;
     private EthSendQuote? _sendQuote;
@@ -1764,7 +1783,9 @@ public partial class MainViewModel : ViewModelBase
             .ToArray();
 
     /// <summary>Product news, shown in the News section. Curated, offline; no network needed.
-    /// Click an item to read the full note. Newest first.</summary>
+    /// Click an item to read the full note. Newest first. Only notes that read in every language of the
+    /// wallet are kept here — the forty older, English-only ones (Umbrella 2.x, the paused web version …)
+    /// are in the CHANGELOG, which the page links to.</summary>
     /// <summary>Official Telegram channel — news, releases and contact.</summary>
     public string ChannelUrl => "https://t.me/PhobiaStat";
 
@@ -1772,14 +1793,14 @@ public partial class MainViewModel : ViewModelBase
     [
         new("BETA", "Phobia beta — the wallet works again, end to end",
             "Coins read again on Tor and off it, and every screen got the attention it was missing.\n\nCONNECTION\n• “Tor only” now starts Tor by itself. Before, it was remembered but Tor was not, and every balance read “unknown” after a restart.\n• A Tor left behind by an earlier run no longer stops Tor from starting, and a second copy of the wallet takes the next free port.\n• Servers that stopped answering were replaced: Ethereum, Polygon, Fantom and the other EVM networks, Bitcoin, Dogecoin, Zcash, prices, TRON tokens.\n\nYOUR MONEY FIRST\n• Your assets list shows what you hold, biggest first; coins at zero fold behind one button.\n• An imported phrase is searched at the paths MetaMask, Ledger Live, Phantom, Solflare, TronLink and older Bitcoin wallets use. What is found stays out of your assets unless you switch it on (Settings → Wallets).\n• Optional: every wallet\u2019s balance and the total in the wallet switcher.\n\nMARKET\n• A real exchange chart: candles, a volume band, the price axis on the right with the last price tagged, a crosshair on both axes and the hovered candle\u2019s open, high, low and close. Candle mode drew no candles before.\n• Charts and 24-hour stats fall back to KuCoin and Bybit when Binance refuses.\n\nACTIVITY\n• Every event has its own icon, the list is in time order with Today / Yesterday headers, and transfers show what they are worth.\n\nSECURITY\n• The password is asked again before every send (on by default).\n• One button in the Security Center turns on every recommended protection.\n\nStellar, Cosmos, NEAR, Nano and Decred have their own logos now.\n\nSWAP ANY COIN\n• Every coin you hold can be swapped for every coin you can receive, on its own network — Monero, Nano and Decred included. The route is chosen by trust and named before you pay: THORChain, then NEAR Intents, then the Exolix exchange (which holds the coins during the swap).\n• Nano can be sent now, with no fee: a few seconds of proof of work on your computer.\n• Charts open drawn, the balance chart reads only what you hold, a theme switches in a blink, and the balance is read again when you come back to the window.\n\nWALLETS, MARKET AND HISTORY\n• Switching wallets keeps working: the Switch buttons no longer stay grey after the first switch.\n• Every wallet’s balance (Settings → Wallets) shows each wallet and the total, read in the background; a wallet not read yet shows “—”.\n• Market lists blockchains and tokens apart — Uniswap and USDT are tokens on a network, not blockchains.\n• History for Dogecoin, Zcash, Nano and Decred, and every coin’s history now loads at once.",
-            "2026-10-01", "v410beta"),
+            "2026-10-14", "v410beta"),
         new("4.10", "Umbrella is now Phobia",
             "Same wallet, new name and a new look.\n\n" +
             "• Nothing about your money changes. Your recovery phrase, your addresses and your encrypted vault are exactly where they were, and every setting carries over.\n" +
             "• A new crystal logo and a bold, quiet midnight-violet theme are the new default. If you liked the gold, it is still in Settings → Appearance as Honey gold, and every other theme shares the same design in its own colours. Crystals float behind the page, glints twinkle and light sweeps the balance card — each can be switched off in Settings → Appearance. Stickers are off by default and can be turned back on there too.\n" +
             "• Monero seeds in all 12 of Monero's languages — Chinese included — now import as a Monero-only wallet.\n\n" +
-            "The official channel and the GitHub releases are where they were. Downloads are named PhobiaWallet- now, and a beta by its number: PhobiaWallet-Setup-Beta-1.exe.",
-            "2026-09-30"),
+            "The official channel and the GitHub releases are where they were. Downloads are named PhobiaWallet- now: PhobiaWallet-Setup-Beta.exe.",
+            "2026-09-30", "v410rename"),
         new("4.7", "Version 4.7 — you choose which server sees your addresses",
             "Your keys never leave your device. That is true, and every wallet says it.\n\n" +
             "What almost none of them say is that a wallet still has to ASK somebody what is on the chain — and on a public chain, asking means handing over the address. Whoever answers can tie together every address you ask about in one session. Tor hides your IP. It does not un-send an address.\n\n" +
@@ -1837,242 +1858,6 @@ public partial class MainViewModel : ViewModelBase
             "• Important fix — a comma decimal like \"0,5\" could be read as ten times the amount; all amount fields now go through one safe parser.\n\n" +
             "332 offline tests pass.",
             "2026-09-03", "v45"),
-        new("4.0", "Version 4.0 — on-chain history, richer token pages, more",
-            "A big update:\n\n" +
-            "• On-chain transaction history. The Transactions tab now pulls your real history straight from the chain for your own addresses — including transactions from before you first opened the wallet. Covers TRX (native + USDT/TRC-20), Bitcoin, Ethereum and Litecoin, keyless and through Tor/your proxy.\n" +
-            "• Richer token pages. Open any coin for 24h High / Low / Volume. Turn on the optional CoinGecko connector (Settings → Privacy — off by default) to also see Market Cap, FDV and Volume.\n" +
-            "• Colour-tag your wallets (Settings → Wallets) — a coloured ring so you can tell them apart at a glance.\n" +
-            "• Your new stickers everywhere — greeting by the logo, GhostPepe, encryption, NFT, Receive, the send animation, and up/down on the market chart. All toggle with the other animations.\n" +
-            "• More privacy: lock on minimize, hide balances by default, custom SOCKS5 proxy, IPv4/IPv6, clipboard auto-clear.\n" +
-            "• Lots of fixes: Top/Bottom nav, green-chart line colour, centred unlock, tidier tiles and Activity cards, toasts across the app, new Telegram news logo.\n\n" +
-            "Still coming, done deliberately with your testing: in-page swap + swap between all pairs, Telegram NFTs, SOL/DOGE history, single-coin wallets, and per-coin logos. 146/146 tests pass.",
-            "2026-08-15"),
-        new("NEW", "Token pages now show 24h high, low and volume",
-            "Version 3.5.1:\n\n" +
-            "• Open any coin in Market and you'll see a stats row under the chart — 24h High, 24h Low and 24h Volume — in your chosen currency. It comes from the same price feed, so there's no new tracking and it still goes through Tor/your proxy.\n\n" +
-            "Coming next as an optional, off-by-default connector (so nothing calls a third party unless you switch it on): richer token data (market cap, FDV, TVL, 52-week range) and an in-page swap widget, plus real on-chain transaction history.",
-            "2026-08-15"),
-        new("NEW", "A Uniswap-style mobile UI + a batch of interface fixes",
-            "Version 3.5.0 — mobile polish and fixes from your screenshots:\n\n" +
-            "• Uniswap-style phone nav. The mobile layout now has a floating pill bottom bar with five fixed tabs (Portfolio · Receive · Send · Market · More) — no more sideways scrolling. The rest of the sections open in a tidy 'More' sheet.\n" +
-            "• Cleaner phone screen. The wide side panel is hidden on mobile, so it's one clean column instead of a cramped split.\n" +
-            "• the fear logo now sits beside the umbrella on the welcome screen.\n" +
-            "• Quick-action tiles no longer cut off their labels, and the Activity list now shows each event as its own rounded card with spacing.\n" +
-            "• Toasts are quicker and stay top-centre.\n" +
-            "• New: Hide balances by default (Settings → Security) — every unlock starts with amounts hidden.\n" +
-            "• More non-custodial P2P/DEX venues: SushiSwap and Raydium.\n\n" +
-            "Still ahead: real on-chain transaction history (including before you connected), Telegram-gift NFTs, one-coin wallets, and wider swap coverage. 139/139 tests pass.",
-            "2026-08-15"),
-        new("NEW", "A real phone layout, clearer backup, lock-on-minimize",
-            "Version 3.4.2 — polish from your feedback:\n\n" +
-            "• Mobile layout now feels like a phone. It has a proper bottom icon tab bar (scroll it for every section) instead of a squished desktop menu, and the dashboard actions wrap to 2×2. There's also a soft glow behind the the-fear logo on the welcome screen.\n" +
-            "• Backup made clear. The recovery phrase and the optional Monero keys are now one card that explains, in plain words, that your 24 words are the real backup and the Monero keys are an advanced extra most people never touch.\n" +
-            "• Activity feed cleaned up. It no longer logs a 'Sync · OK' line every minute — that was just noise.\n" +
-            "• Lock on minimize. Settings → Privacy: lock the wallet the instant the window is minimized.\n" +
-            "• More P2P/DEX venues, all non-custodial: CoW Swap, Matcha, Curve, Osmosis, plus Haveno (Monero), Vexl and LocalCoinSwap.\n" +
-            "• More of the app follows your language (welcome screen and section headers).\n\n" +
-            "139/139 tests pass.",
-            "2026-08-15"),
-        new("NEW", "Use Umbrella like a phone app on your PC",
-            "Version 3.4:\n\n" +
-            "• Mobile layout. Settings → Appearance → Mobile layout turns the whole wallet into a phone-style app on your desktop — a narrow centred column, a bottom tab bar, and a phone-sized window. Flip it off and you're back to the full wide desktop layout instantly.\n" +
-            "• It remembers your setup. Mobile mode docks the menu to the bottom for that phone feel, but your saved menu position comes back untouched when you switch off.\n" +
-            "• Tidier on a narrow screen. The dashboard's quick actions now wrap to a 2×2 grid instead of squashing four across, and 'Prices & charts' is translated in every language.\n\n" +
-            "This is the first step toward a real phone build — the same layout that a future native Android app will use. 139/139 tests pass.",
-            "2026-08-14"),
-        new("SECURITY", "Security review, a custom proxy, and IP controls",
-            "Version 3.3 — a hardening + privacy release:\n\n" +
-            "• Security review. A full pass over the wallet's crypto and storage. The vault now rejects out-of-range key-derivation parameters, so a tampered or foreign vault file can no longer stall or exhaust the app when you try to unlock it. The screenshot/screen-share blackout, the on-device Argon2id + AES-256-GCM vault and the sign-then-wipe key handling were all re-verified.\n" +
-            "• Custom proxy. Settings → Privacy now lets you route every request through your own SOCKS5 proxy — a VPN, an SSH tunnel or another Tor instance — instead of the bundled Tor. Enter host:port and apply; Tor and your proxy are mutually exclusive.\n" +
-            "• IP version control. Force outgoing connections onto IPv4 or IPv6, or leave it automatic — handy on networks where one family is broken or leaks.\n" +
-            "• Clipboard auto-clear. A copied address is now wiped from the clipboard after a delay you choose (off / 30s / 45s / 1m / 2m), so it doesn't linger for other apps to read.\n" +
-            "• More of the app is translated. The onboarding screens (create / import / unlock / restore / back-up), the section titles and the holdings columns now follow your language in all six locales instead of showing English.\n" +
-            "• Trustworthier installer. The Windows setup now shows the licence, carries proper publisher details, and on uninstall tells you exactly where your encrypted wallet data is kept and how to erase it yourself.",
-            "2026-08-14"),
-        new("NEW", "Custom lock screen + instant market",
-            "Version 3.2:\n\n" +
-            "• Lock-screen background is yours: Settings → Appearance → Lock screen — pick your own image, use the default, or turn it off for a flat lock screen.\n" +
-            "• The Market now opens instantly with your last-seen prices instead of filling in dash-by-dash; live data updates in the background.\n\n" +
-            "Still coming (in order of value): developer-fee routing on TRON/ETH/TON, more security options (custom proxy, IPv4/IPv6), a native Android build, Telegram-gift NFTs, deeper Swap/Staking, and full translations.",
-            "2026-08-09"),
-        new("NEW", "Your language by default + 13 more currencies",
-            "Version 3.1:\n\n" +
-            "• Fresh installs now follow your system language automatically — after a reinstall you're no longer dropped into English.\n" +
-            "• 13 more display currencies (CAD, AUD, CHF, BRL, KRW, AED, KZT and more) — 23 in total.\n" +
-            "• The the-fear logo is back with its blue background.\n\n" +
-            "Still on the roadmap and coming next: a native Android build, lock-screen background customization, Telegram-gift NFTs, deeper Swap/Staking, more security options (custom proxy, IPv4/IPv6), and developer-fee routing on TRON/ETH/TON.",
-            "2026-08-09"),
-        new("NEW", "Faster balances, instant totals, cleaner alerts",
-            "Speed and polish:\n\n" +
-            "• Balances load much faster — they're fetched all at once instead of one by one, and the total appears right after the quick native pass.\n" +
-            "• No more $0 flash: your last totals are cached on this device and shown instantly when you unlock or switch wallets, then refreshed in the background.\n" +
-            "• Errors and notices now appear as a toast at the top-center of the window, so you actually see them.\n" +
-            "• The the-fear mark and the Telegram-channel icon now use the real logo artwork (background removed).",
-            "2026-08-09"),
-        new("NEW", "Settings fully translated + easier wallet switching",
-            "Polish across the app:\n\n" +
-            "• Settings are fully translated now — the Wallets tab and the Danger zone were still English whatever language you picked; that's fixed.\n" +
-            "• Clearer wording: \"Delete vault\" is now \"Erase from this PC\", and the danger zone explains that you can't actually delete a wallet — it lives on your recovery phrase. This only wipes this device's copy, which your phrase brings back.\n" +
-            "• Switch wallets from anywhere: when the menu is at the top or bottom, there's now a wallet chip in the bar (shows the active wallet, one tap to switch) — no need to open Settings.\n" +
-            "• Every theme has a distinct name now (27 total), and there's a new opt-in \"Aurora glow\" ambient animation alongside the rain and stickers.",
-            "2026-08-09"),
-        new("NOTICE", "Web version paused — desktop is the focus",
-            "Heads-up on where Umbrella is going:\n\n" +
-            "• The web version is paused and closed for an indefinite period. We're concentrating everything on the desktop apps — Windows and Linux now, Android planned — where your keys stay fully on your own device with no server in the middle.\n" +
-            "• Nothing changes for your wallet: it was always self-custody and local-first. If you used the web preview, your funds live on-chain under your recovery phrase, not on any server.\n" +
-            "• Follow the official Telegram channel for news, releases and contact: t.me/PhobiaStat — that's the one official channel; ignore anything else claiming to be us.",
-            "2026-08-09"),
-        new("3.0", "Version 3.0 — Telegram/TON import, full translation, more themes",
-            "A big one:\n\n" +
-            "• Import your Telegram / TON wallet. Umbrella now speaks the TON-native recovery standard (Telegram Wallet, Tonkeeper, TON Space). Paste that 24-word phrase and it imports as a Toncoin wallet showing the very same TON address those wallets do — receive and send included. The derivation is pinned byte-for-byte against the official @ton libraries.\n" +
-            "• Fully translated menu. Buy, Swap, P2P & DEX, NFTs, Staking and Transactions are now translated too — no more English mixed into the Ukrainian sidebar.\n" +
-            "• Turn animations on/off individually — the ambient rain and the stickers each have their own switch in Settings → Appearance.\n" +
-            "• Six new themes: Solana, Ethereum, Monero, Kraken, Nord and Dracula — 27 in total.\n\n" +
-            "138/138 tests pass, including a TON reference vector and every chain's derivation, signing and fees.",
-            "2026-08-09"),
-        new("NEW", "Fixed: create/import was stuck — plus password tools",
-            "A blocking bug and two much-requested features:\n\n" +
-            "• Fixed the stuck onboarding. Adding a wallet could leave the create/import screen demanding a password it had hidden, which blocked creating OR importing any wallet. Your app password is now kept through the add step and reused directly, so it can't be wiped out from under you.\n" +
-            "• Self-healing. If an add-wallet was interrupted, the app now falls back to a wallet that actually exists instead of stranding you on the welcome screen.\n" +
-            "• Change password. Settings → Wallets lets you set a new app password; every wallet on your current password is re-encrypted, so one password still unlocks them all.\n" +
-            "• Forgot your password? The unlock screen now has \"Forgot your password?\" — enter your recovery phrase and a new password to restore access. Same phrase, same funds.\n\n" +
-            "On going fully password-less: we don't offer that, because it would leave your seed effectively unencrypted on this PC. Pick a simple password and write it down — and now, if you forget it, your phrase gets you back in.",
-            "2026-08-08"),
-        new("NEW", "Importing wallets just got much easier",
-            "Bringing another wallet in should just work now:\n\n" +
-            "• Paste-proof import. A recovery phrase from any BIP39 wallet — Kraken Wallet, MetaMask, Trust, Ledger, Exodus, Coinbase Wallet and most others — imports even if you paste it with numbers (\"1. word 2. word\"), commas or line breaks. The words are pulled out cleanly.\n" +
-            "• It tells you what's wrong. If one word is mistyped, the error names that exact word instead of a vague \"invalid phrase\".\n" +
-            "• Telegram / TON. If a phrase looks right but is rejected, it's almost certainly from Telegram Wallet / Tonkeeper — those use a non-BIP39 standard and can't be imported here. Your coins are safe in that wallet; native TON import is planned.\n\n" +
-            "Tip: after importing, your BTC/ETH/SOL and other main-chain addresses match the source wallet. If a balance looks empty, it may be on a network Umbrella doesn't sync yet.",
-            "2026-08-08"),
-        new("NEW", "One password for all wallets, plus fixes",
-            "Follow-ups from your feedback:\n\n" +
-            "• One login password. Adding a wallet now reuses your app password instead of asking for a new one, and switching between wallets unlocks instantly. The password lives only in memory while you're unlocked and is wiped on lock.\n" +
-            "• Telegram / TON wallets. If you paste a recovery phrase from Telegram Wallet or Tonkeeper and it says \"invalid\", that's expected — TON wallets use the same words but a different (non-BIP39) standard, so they can't be imported here. Your coins are safe in that wallet. The message now explains this, and full TON import is planned.\n" +
-            "• Rain, fixed. The ambient streaks fell in stiff synchronised rows; now they drift at varied speeds like real rain, and stay subtle.\n" +
-            "• Settings search. A search box up top finds any setting and jumps to it.",
-            "2026-08-08"),
-        new("NEW", "Multiple wallets, like Binance accounts",
-            "You can now keep several independent wallets on this device and switch between them:\n\n" +
-            "• Open Settings → Wallets (or tap ⇄ Wallets in the sidebar) to add a new wallet, switch, rename or remove one.\n" +
-            "• Each wallet is completely independent — its own 24-word phrase and its own password. Switching locks the current wallet and asks for the other's password, so nothing is ever mixed up.\n" +
-            "• Your existing wallet is automatically kept as “Main” and can never be deleted by accident; even a corrupt index falls back to it, so you can't be locked out.\n\n" +
-            "This is Stage 1 — separate wallets. Next up: sub-accounts inside a single seed (one phrase, Account 1/2/3 like MetaMask).",
-            "2026-08-08"),
-        new("NEW", "Buy crypto with a card, plus a sidebar fix",
-            "A quick follow-up:\n\n" +
-            "• New Buy section. Top up with a card or bank transfer through regulated on-ramps that send crypto straight to your own address — Onramper (compares them all), MoonPay, Ramp, Transak, Banxa, Mercuryo and Guardarian. There's a 3-step guide and one-tap copy of your receive address. Umbrella holds nothing and takes no fee.\n" +
-            "• Fixed a sidebar glitch. On shorter windows the menu could run into the footer (Settings overlapping the Lock button). The menu now scrolls on its own and the footer stays put at any window height.\n" +
-            "• NFTs now explain where they come from — read-only from the Ethereum chain against your own address, with more chains planned.\n\n" +
-            "On-ramps are independent third parties listed for convenience, not endorsements, and will ask for ID. No on-ramp ever needs your recovery phrase.",
-            "2026-08-08"),
-        new("NEW", "Pro charts, a P2P & DEX hub, and Market search",
-            "This release is all about trading and looking at prices like a pro:\n\n" +
-            "• Charts got serious. Hover any coin's chart for a crosshair with a live price + time readout, flip between Line and Candles, and enjoy a soft gradient fill and a change-over-window badge (first→last). It feels like a real trading terminal now.\n" +
-            "• New P2P & DEX section. A curated hub of non-custodial ways to trade: the in-wallet THORChain swap first, then on-chain DEXes (Uniswap, THORSwap, Jupiter, 1inch, PancakeSwap) and peer-to-peer escrow (Bisq, Hodl Hodl, RoboSats, Peach). Every one keeps custody with you; each shows its model and opens in your browser.\n" +
-            "• Market search. Filter the coin list by name or ticker instantly, with one-tap refresh — the prices keep updating live while you type.\n\n" +
-            "We list third-party venues for convenience, not as endorsements — Umbrella takes no fee and holds nothing. No trade ever needs your recovery phrase.",
-            "2026-08-08"),
-        new("NEW", "History that stays, smart wallet linking, and 8 brand themes",
-            "A round of fixes and polish:\n\n" +
-            "• History persists — your activity and transactions no longer vanish when you close the wallet. They're kept on this device only (never a server), with real timestamps, and you can wipe them any time in Settings → Danger zone.\n" +
-            "• Linking a wallet now auto-detects the network from the address you paste — a T… address is tracked as TRON, bc1… as Bitcoin, 0x… as EVM. (Linking watches an external address read-only; it never changes your own receive addresses.)\n" +
-            "• Danger zone does more than delete: Clear history and Disconnect all (removes linked addresses/exchanges), both keeping your vault and funds.\n" +
-            "• Eight brand themes with the real colours — Uniswap (exact pink), Binance, Bybit, OKX, Telegram, TON · Gram, TRON, WhiteBit and Bitcoin — 21 themes in all.\n\n" +
-            "Umbrella is free, independent, self-custody software by the fear — not affiliated with any exchange or brand; those theme names just identify a colour style.",
-            "2026-08-01"),
-        new("NEW", "Your currency, a Transactions view, and a fixed Market",
-            "Three things people asked for:\n\n" +
-            "• Display currency — Settings → Appearance now lets you show everything in USD, EUR, UAH (₴), RUB, GBP, CNY, JPY and more. The total, holdings, breakdown and market all convert; your coins don't change, only how their value reads. The rate is fetched anonymously (through Tor when it's on).\n" +
-            "• Transactions — a dedicated section lists your money movements (sends, receives, swaps) with a one-click copy of each explorer link, and the Activity feed now has a filter (All / Transactions / Connections / Settings / System).\n" +
-            "• Market — prices now come from Binance first (CoinGecko's free tier was rate-limiting and blanking rows), so every coin prices and charts again; the market-only coins (XRP/DOT/BCH) now say so honestly.\n\n" +
-            "Also: two new themes — Uniswap (magenta-pink) and Ocean (teal).",
-            "2026-08-01"),
-        new("NEW", "Send on every EVM chain — BNB, Polygon, Avalanche and more",
-            "You can now send native BNB (BSC), MATIC (Polygon), AVAX (Avalanche), FTM (Fantom) and CRO (Cronos) — not just Ethereum. They all share your 0x address, so a wallet imported from MetaMask can now spend across six EVM networks from one place.\n\n" +
-            "The signing is the exact same EIP-155 code that's pinned byte-for-byte to the official Ethereum test vector — only the chain id, RPC and explorer change, so a wrong byte can never move funds. Nonce, gas and the balance check come from each chain's public RPCs (with fallbacks), and every request goes through the built-in Tor when it's on, so sending stays anonymous.",
-            "2026-08-01"),
-        new("NEW", "Many more coins, every token, NFTs, staking",
-            "The wallet now surfaces essentially everything you hold.\n\n" +
-            "• Coins — on top of BTC, ETH, LTC, DOGE, SOL, TON, TRON, ADA and XMR, every major EVM network at the same address now shows: BNB (BSC), MATIC (Polygon), AVAX, FTM (Fantom), CRO (Cronos), and ETH on the Arbitrum, Optimism and Base L2s.\n" +
-            "• Tokens — every ERC-20 (Ethereum) and TRC-20 (TRON) token appears automatically: USDC, USDT, LINK, UNI, DAI, SHIB, PEPE and the rest. This is what most 'my balance is missing' reports were.\n" +
-            "• NFTs — the ERC-721/1155 collections on your Ethereum address are listed (names and counts; no images are fetched, so it never leaks your IP).\n" +
-            "• Staking — the coins you can stake with your keys, with each network's typical reward and how to do it.\n" +
-            "• Portfolio overview — the ring now shows a real breakdown of what your balance is made of, with a live 24h change; hiding the balance now blanks every figure everywhere, not just the top total.\n" +
-            "• Activity — sends, swaps, connecting a wallet or exchange, theme/language/settings changes and Tor toggles are all logged now.",
-            "2026-08-01"),
-        new("NEW", "Cardano (ADA) sending is live",
-            "You can now send ADA, not just receive it. The Cardano transaction is built, signed and broadcast entirely on this device.\n\n" +
-            "Cardano uses its own extended-key signature scheme (BIP32-Ed25519), so it was implemented from the elliptic-curve operations and then checked byte-for-byte against Emurgo's cardano-serialization-lib — the transaction body, its hash, the signature and the final signed transaction all match the reference exactly, so the network runs precisely the transfer the reference would build. UTXOs, the validity window and submission go through Koios, and change returns to you. ADA is now a full coin (receive, balance and send); Monero stays receive-only.",
-            "2026-08-01"),
-        new("NEW", "In-wallet swaps + a security hardening pass",
-            "You can now swap coins inside the wallet — cross-chain, over THORChain. It's decentralised and non-custodial: no account, no API key, no KYC. Your coin is sent to a THORChain vault with a signed memo, and the network delivers the swapped coin straight to your own address here. Nobody ever holds your funds. Pay from BTC or LTC; receive BTC, ETH, LTC or DOGE — with a live quote (rate, fee, ETA) you review before anything is sent, and a fresh re-quote at the moment you confirm.\n\n" +
-            "Under the hood, a security pass fixed two fund-safety bugs: TON recipient addresses now have their checksum verified (a mistyped address is rejected instead of silently sending to the wrong account), and the TON cell parser was hardened against malformed data. Added a fuzz harness over the address/parser code, CodeQL + secret-scanning in CI, and fixed a web dependency advisory.",
-            "2026-07-31"),
-        new("UPDATE", "Real candlesticks, backdrops, and a floating dock",
-            "The Market chart is now real OHLC candlesticks (green up, red down) drawn from live Binance data — not a flat single-colour line. Prices and the 24h change were always live (CoinGecko); nothing is faked.\n\n" +
-            "The sidebar and the lock screen now have artwork behind them instead of flat black, and you can set your own via Settings → Appearance → Profile. The bottom bar became a floating dock, cards lift and glow on hover, and the hero drifts gently with the cursor.",
-            "2026-07-31"),
-        new("UPDATE", "NFTs and Staking sections, brighter hero",
-            "The navigation now includes NFTs and Staking to match the full design — both with honest 'coming soon' pages for now (the features aren't built yet, so nothing is faked). The Portfolio hero backdrop is brighter, with the glowing portal to the right by the brand mark.",
-            "2026-07-30"),
-        new("UPDATE", "Dashboard rail, price ticker, and a monochrome primary",
-            "The Portfolio now has a right-hand rail — a portfolio-overview ring, recent activity, and a live market overview — and a price ticker runs along the bottom, matching the reference dashboard.\n\n" +
-            "The primary theme is now monochrome noir (near-black with cool-white accents, so the main buttons read white on black); the red editorial look lives on as the Ember theme. This is a structural pass — spacing and the overview ring will be refined next.",
-            "2026-07-30"),
-        new("UPDATE", "A cinematic new Portfolio hero",
-            "The balance now sits on a cinematic backdrop — a dark horizon with a glowing portal — with the brand mark beside it, and the quick actions became wide cards (icon, title and a short subtitle: Get crypto, Send crypto, Link wallets, Prices & charts).\n\n" +
-            "This is the first step of a bigger dashboard refresh toward the reference design; the right-hand rail (portfolio breakdown, market overview, recent activity) and the live price ticker are next.",
-            "2026-07-30"),
-        new("UPDATE", "Themes now restyle the buttons too — and Linux is here",
-            "Themes no longer change only the colours: the primary buttons now take on each theme's accent (orange on The fear, cyan on Blue, mint on Green, violet on Gradient, teal on Slate), with the label colour picked automatically for contrast, and the quick-action tiles glow in the accent on hover.\n\n" +
-            "The wallet also ships for Linux now, built from the same code as Windows — identical features, themes and bundled Tor/Monero. The mobile experience is the web app (it's responsive and runs as a Telegram mini-app); there is no separate Android build.",
-            "2026-07-30"),
-        new("UPDATE", "A cleaner window and a full theme refresh",
-            "The window chrome is gone — no top strip, no bottom status bar — so the wallet is all content, edge to edge. Status and errors now surface where they belong (the unlock form and the review step), not in a bar.\n\n" +
-            "Every theme except the primary was re-skinned to match the app's mood: neon-cyan glass (Blue), mint/emerald (Green), vivid violet (Gradient) and teal cyber (Slate), plus the red editorial primary (The fear · noir) and Ember. Coin badges now show each coin's own symbol mark.",
-            "2026-07-30"),
-        new("UPDATE", "Umbrella 2.1 — TON sending is live",
-            "You can now send TON, not just receive it. The wallet builds and signs the v4R2 transfer on this device and broadcasts only the signed bytes.\n\n" +
-            "The transaction is checked byte-for-byte against the reference @ton library — the order and signing-message hashes and the signatures all match — so the network runs exactly the transfer the reference would produce. The very first send from a fresh wallet also deploys it in the same transaction, automatically.\n\n" +
-            "Cardano (ADA) sending is the next chain to get the same treatment.",
-            "2026-07-30"),
-        new("UPDATE", "A moodier look — glass, rounder edges and ambient rain",
-            "The interface leans into the theme: buttons and tiles get a glassy top-edge sheen and larger radii, cards round further, and a faint 'rain' drifts over the window.\n\n" +
-            "All of it respects the motion toggle in Settings → Appearance — turn animations off and the rain settles with everything else. There's a new Ember (red) theme to match, and the top bar is cleaner.",
-            "2026-07-30"),
-        new("GUIDE", "Make it yours — name your wallet and set auto-lock",
-            "Settings now lets you name this wallet (the name shows in the top bar) and choose exactly when it auto-locks after you step away — 1, 5, 15, 30 or 60 minutes, or off entirely if you prefer.\n\n" +
-            "Auto-lock wipes the decrypted seed from memory on idle; unlocking again needs your vault password.",
-            "2026-07-30"),
-        new("UPDATE", "Umbrella 2.0 — TON and Cardano join the wallet",
-            "TON and Cardano (ADA) now derive real receive addresses from your existing seed phrase — no separate wallet needed.\n\n" +
-            "TON uses the standard wallet v4R2 contract; Cardano uses Icarus / CIP-1852. Both were checked byte-for-byte against the reference libraries (tonweb and Cardano's own serialization library), so the addresses match what a compatible wallet produces — your funds are never sent to an address you can't control.\n\n" +
-            "For now TON and ADA are receive-only (you can see the address and its live balance). Sending for both is the next step. Because the keys come from your seed, the funds are always recoverable in any compatible wallet (Trust Wallet for TON, Eternl for ADA).",
-            "2026-07-28"),
-        new("SECURITY", "Fully anonymous — no Google, nothing phones home",
-            "The web wallet no longer loads anything from Google. Fonts are self-hosted, so simply opening the wallet contacts no third party at all.\n\n" +
-            "There is no account, no email, no OAuth, no analytics and no telemetry anywhere. Combined with the built-in Tor switch, opening and using the wallet leaks nothing about you.",
-            "2026-07-28"),
-        new("UPDATE", "A cleaner desktop — new icon and tidy full-screen layout",
-            "A new black low-poly umbrella icon replaces the old one. The content now sits in a centred column with a sensible maximum width, so a maximised or full-screen window looks tidy instead of stretching everything edge-to-edge. Buttons are a touch bolder.",
-            "2026-07-28"),
-        new("GUIDE", "How your keys are protected",
-            "Your 24-word seed is generated on this computer and encrypted with Argon2id (a memory-hard password hash) plus AES-256-GCM before it ever touches the disk. The vault password never leaves this device, and neither does the seed.\n\n" +
-            "Balances are read straight from public block explorers — no API keys, no middle-man — and hidden behind Tor when it's on. The seed is a standard BIP39 phrase, so you can restore it in any compatible wallet if you ever need to.",
-            "2026-07-27"),
-        new("SECURITY", "Tor is built into the wallet",
-            "One switch in Settings → Privacy routes all wallet traffic through the Tor network — no separate install. It runs on its own port so your Tor Browser is untouched. Your IP stays out of your finances.",
-            "2026-07-20"),
-        new("UPDATE", "Full Monero wallet, powered by Monero's own engine",
-            "XMR is a first-class coin here: real private balance and sending, with the Monero daemon running locally. Your keys never leave this device. Because amounts are hidden on-chain, Settings can export your address and spend/view keys for 'Restore from keys' in Feather or the Monero CLI.",
-            "2026-07-18"),
-        new("GUIDE", "Why a USDT (TRC-20) transfer can cost several dollars",
-            "That fee is TRON's energy cost, not ours. A fresh, unstaked TRON account burns TRX for every USDT transfer, which can be $3–8. To avoid it: stake TRX to get free energy, or use USDT on a cheaper network (ERC-20 gas, or USDC on Solana for cents).",
-            "2026-07-15"),
-        new("UPDATE", "Ten themes, six languages, movable navigation",
-            "Make the wallet yours: pick from ten colour themes, six interface languages (EN/UK/RU/ZH/ES/DE), and park the navigation panel on any edge — all in Settings.",
-            "2026-07-12"),
     ];
 
     // Clicking a news item opens it as a full-article overlay.
@@ -2257,6 +2042,7 @@ public partial class MainViewModel : ViewModelBase
         {
             SelectFirstReceive();
         }
+        WatchReceiveAddress(value == "Receive");
 
         // The Security Center reads live state, so it is rebuilt every time it is opened rather than
         // cached — a stale "protected" row would be worse than no row at all.
@@ -2309,6 +2095,8 @@ public partial class MainViewModel : ViewModelBase
             HasSendQuote = false;
         }
         SendFiatAmount = string.Empty; // a fresh asset starts the fiat quick-entry empty
+        SendAmountInFiat = false;      // ...and the amount box in the coin's own unit
+        NotifySendAmountUnit();
         OnPropertyChanged(nameof(SelectedSendBalance));
         OnPropertyChanged(nameof(SelectedSendBalanceLabel));
         OnPropertyChanged(nameof(SendAmountFiat));
@@ -2558,7 +2346,11 @@ public partial class MainViewModel : ViewModelBase
         if (symbol is "USDT" or "USDC") usdEach = 1m;
         else if (_priceUsd.TryGetValue(symbol, out var p) && p.Usd > 0) usdEach = p.Usd;
         else return string.Empty;
-        return "≈ " + Fx.Money((double)(amount * usdEach));
+        // Less than a hundredth of the display currency is said as that: "≈ 0.00" beside an amount about
+        // to be sent reads as "worth nothing", when the point is that it is worth almost nothing.
+        var usd = amount * usdEach;
+        if (amount > 0 && usd * Fx.Rate < 0.005m) return "< " + Fx.Money((double)(0.01m / Fx.Rate));
+        return "≈ " + Fx.Money((double)usd);
     }
 
     // --- Fiat quick-entry (§6.3 convenience): type a USD amount and the coin amount fills in below.
@@ -2600,8 +2392,9 @@ public partial class MainViewModel : ViewModelBase
         // Fiat only fills the coin field; an empty/invalid fiat value leaves the coin amount untouched, so
         // it can never silently wipe a coin amount the user typed directly.
         var coin = FiatConvert.FiatToCoinAmount(value, PriceForSelected() * Fx.Rate);
-        if (coin.Length > 0) SendAmount = coin;
+        if (coin.Length > 0 && !_fillingFiatFromCoin) SendAmount = coin;
         OnPropertyChanged(nameof(SendFiatCoinEquiv));
+        OnPropertyChanged(nameof(SendWillSendCoin));
     }
 
     // --- Network-check-on-paste (§4): a non-blocking sanity check that the destination matches the
@@ -2652,13 +2445,23 @@ public partial class MainViewModel : ViewModelBase
 
         // Snapshots: a refresh finishing in the background can rewrite these lists while they are read.
         var own = Accounts.ToArray().Where(a => IsRealAddress(a.Address)).Select(a => a.Address).ToList();
+        // Whole addresses, from the rows that kept them: everyone this wallet has paid (trusted), and
+        // everyone who has paid it (seen, not trusted). The rows used to hold only "abcd…wxyz", which
+        // equals no address and resembles none — an address paid twice was a "first send" each time,
+        // and a look-alike of one went unnoticed.
+        var history = Activity.ToArray().Concat(_onChainRows.ToArray())
+            .Where(t => !string.IsNullOrWhiteSpace(t.CounterpartyFull) && !t.IsFailed)
+            .ToList();
         var known = _addressBookAll.ToArray().Select(e => e.Address)
-            .Concat(Transactions.ToArray().Where(t => !string.IsNullOrWhiteSpace(t.Counterparty)).Select(t => t.Counterparty!))
+            .Concat(history.Where(t => t.Kind == "Sent").Select(t => t.CounterpartyFull!))
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var seen = history.Where(t => t.Kind == "Received").Select(t => t.CounterpartyFull!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        var result = Umbrella.Wallet.Core.Safety.AddressSafetyInspector.Inspect(dest, own, known);
+        var result = Umbrella.Wallet.Core.Safety.AddressSafetyInspector.Inspect(dest, own, known, seen);
         switch (result.Level)
         {
             case Umbrella.Wallet.Core.Safety.AddressSafetyLevel.Lookalike:
@@ -2678,7 +2481,9 @@ public partial class MainViewModel : ViewModelBase
                 // actually well-formed for the chosen chain AND you have some history to be "new"
                 // against. On a fresh wallet with no contacts, everyone is new — that would be noise.
                 var sym = SelectedSendAsset?.Symbol;
-                if (known.Count > 0 &&
+                // ...and only once this wallet's history has been read: until then "never paid before"
+                // is a guess, and it was being said about addresses paid the day before.
+                if (known.Count > 0 && (HistorySynced || _isTonWallet || _isMoneroWallet) &&
                     DestinationAddressCheck.Check(sym, dest) == AddressShape.Matches)
                 {
                     SendSafetyTitle = Loc.Instance["send.firstTitle"];
@@ -2894,9 +2699,11 @@ public partial class MainViewModel : ViewModelBase
     private void SetMaxAmount()
     {
         if (SelectedSendAsset is null) return;
+        if (SwapPaymentIsFixed()) return;
         if (SelectedSendBalanceUnknown) { SendError = Loc.Instance["balance.unavailable"]; return; }
         var bal = SelectedSendBalance;
         if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
+        SendAmountInFiat = false;
         SendAmount = Fmt(Math.Max(0m, bal - SendMaxReserve(SelectedSendAsset.Symbol)));
         SendError = string.Empty;
     }
@@ -2908,12 +2715,14 @@ public partial class MainViewModel : ViewModelBase
     private void SetAmountPercent(string? percent)
     {
         if (SelectedSendAsset is null) return;
+        if (SwapPaymentIsFixed()) return;
         if (!int.TryParse(percent, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pct)) return;
         if (SelectedSendBalanceUnknown) { SendError = Loc.Instance["balance.unavailable"]; return; }
         var bal = SelectedSendBalance;
         if (bal <= 0) { SendError = Loc.Instance["send.nothingToSend"]; return; }
         var amount = AmountPresets.Of(bal, pct);
         if (amount.Length == 0) return;
+        SendAmountInFiat = false;
         SendAmount = amount;
         SendError = string.Empty;
     }
@@ -3608,7 +3417,10 @@ public partial class MainViewModel : ViewModelBase
         Activity.Clear();
         RecentActivity.Clear();
         _onChainRows.Clear();       // fetched chain history too — it re-pulls on the next Refresh
+        _otherWalletsActivity.Clear();
         _activityStore.Clear();
+        _swapStore.Clear();
+        _historyStore.Clear();      // and what every wallet had read and kept
         LastHistorySync = "—";
         RebuildActivityAssets();
         RebuildFilteredActivity();
@@ -4368,6 +4180,19 @@ public partial class MainViewModel : ViewModelBase
             "https://localcoinswap.com", "LCS", "#16A34A"),
     ];
 
+    /// <summary>
+    /// Redraws the Buy and P2P lists after a language switch: each row's text is computed when the row
+    /// is drawn, so a row is replaced by an equal copy to have it drawn again.
+    /// </summary>
+    private void RelocalizeVenues()
+    {
+        foreach (var list in new[] { P2pVenues, OnRampVenues })
+            for (var i = 0; i < list.Count; i++)
+                list[i] = list[i] with { };
+        for (var i = 0; i < News.Count; i++)
+            News[i] = News[i] with { };
+    }
+
     /// <summary>Card/bank fiat on-ramps for the Buy page. Every one delivers the crypto straight to a
     /// self-custody address you paste at checkout — Umbrella never holds funds or takes a cut. KYC and
     /// availability depend on the provider and your region; the aggregator is listed first for best rates.</summary>
@@ -4893,6 +4718,10 @@ public partial class MainViewModel : ViewModelBase
         return row.Price == usd && row.Change24h == change ? row : row with { Price = usd, Change24h = change };
     }
 
+    /// <summary>How long to wait before each extra ask for the balances nobody answered for.</summary>
+    private static readonly TimeSpan[] UnreadRetryDelays =
+        [TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(25)];
+
     [RelayCommand]
     private async Task RefreshLiveDataAsync()
     {
@@ -4943,6 +4772,7 @@ public partial class MainViewModel : ViewModelBase
                 // when nobody answered. Keeping the old number and marking the row is the difference
                 // between "we could not ask" and "there is nothing there" (MANIFESTO §4 / P0.6).
                 var (amount, state) = BalanceReadout.Apply(read?.NativeAmount, current.Amount, current.Balance);
+                if (read is not null) amount = WithPendingDebit(current, amount);
                 Accounts[idx] = WithPrice(current with { Amount = amount, Balance = state }, freshPrices);
                 RefreshHoldings();
                 RecalcBalance();
@@ -5110,6 +4940,31 @@ public partial class MainViewModel : ViewModelBase
             // logging it flooded the Activity feed with identical "Sync · OK" rows. The live status
             // line below already shows the last-updated time; the Activity feed is for real events.
             StatusMessage = string.Format(Loc.Instance["status.live"], Holdings.Count, DateTime.Now.ToString("HH:mm:ss"));
+
+            // Whatever nobody answered for is asked again by itself a few seconds on — and twice more —
+            // instead of standing as "could not be read" until the next full refresh two minutes later.
+            // Quietly: the refresh is over as far as the screen is concerned. Not when nothing can leave
+            // the device at all (the kill-switch with no Tor yet): every ask would be refused on the spot,
+            // and Tor coming up starts a refresh of its own.
+            if (ReferenceEquals(_refreshCts, mine)) IsRefreshing = false;
+            var canAsk = !(PublicHttp.RequireProxy && string.IsNullOrEmpty(PublicHttp.ActiveProxy));
+            foreach (var wait in canAsk ? UnreadRetryDelays : [])
+            {
+                var unread = balanceTargets
+                    .Where(t => IndexOfAccount(t) is var at and >= 0 && Accounts[at].Balance != BalanceRead.Live)
+                    .ToList();
+                var unreadUtxo = Accounts.Any(a =>
+                    UtxoScanChains.Contains(a.Symbol, StringComparer.OrdinalIgnoreCase) &&
+                    a.SupportStatus == "Ready" && a.Balance != BalanceRead.Live);
+                if (unread.Count == 0 && !unreadUtxo) break;
+
+                await Task.Delay(wait, ct);
+                var again = unread.Select(ShowBalanceWhenRead).ToList();
+                if (unreadUtxo) again.Add(RefreshUtxoWalletsAsync(prices, ct));
+                await Task.WhenAll(again.Select(ShowWhenDone));
+                ct.ThrowIfCancellationRequested();
+                SaveBalanceCache();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -5812,6 +5667,7 @@ public partial class MainViewModel : ViewModelBase
     private void NotifyFiatEntry()
     {
         OnPropertyChanged(nameof(SendFiatPlaceholder));
+        NotifySendAmountUnit();
         OnPropertyChanged(nameof(ReceiveFiatPlaceholder));
         OnPropertyChanged(nameof(SendAmountFiat));
         OnPropertyChanged(nameof(SendFiatCoinEquiv));
@@ -6143,10 +5999,12 @@ public partial class MainViewModel : ViewModelBase
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
         LoadAddressBook(); // saved Send destinations for this device
+        ResumeSwapTracking(); // a swap paid before the wallet was closed is followed to its end
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
         _onChainRows.Clear();
         HistorySynced = false; // this wallet's history hasn't been pulled yet → show "loading", not "empty"
         if (!_isTonWallet && !_isMoneroWallet) _ = LoadOnChainHistoryAsync(); // real on-chain history across the user's addresses
+        else _ = LoadTxNotesAsync();   // no history read to bring them in: this wallet's notes, for its own rows
     }
 
     private void SelectFirstReceive()
@@ -6822,6 +6680,29 @@ public partial class MainViewModel : ViewModelBase
     {
         RefreshHoldings();
         RecalcBalance();
+    }
+
+    /// <summary>Puts a swap's payment on the Send form as the swap screen would, without a route to ask.
+    /// Test hook for the rule that such a payment is exactly its quote.</summary>
+    public void SetSwapPaymentForTest(string fromKey, string toKey, decimal amountIn, string depositAddress)
+    {
+        var from = Umbrella.Wallet.Infrastructure.Network.SwapCatalog.Find(fromKey)!;
+        var to = Umbrella.Wallet.Infrastructure.Network.SwapCatalog.Find(toKey)!;
+        _pendingSwap = new PendingSwap(Umbrella.Wallet.Infrastructure.Network.SwapProvider.NearIntents, from, to, amountIn, 0m,
+            depositAddress, null, null);
+        SendAmountInFiat = false;
+        SendTo = depositAddress;
+        SendAmount = amountIn.ToString("0.##################", CultureInfo.InvariantCulture);
+        OnPropertyChanged(nameof(HasSwapPayment));
+    }
+
+    /// <summary>Gives the Send screen prices without a network. Test hook for the amount box.</summary>
+    public void SetPricesForTest(IReadOnlyDictionary<string, (decimal Usd, decimal Change24h)> prices)
+    {
+        _priceUsd = prices;
+        OnPropertyChanged(nameof(SendAmountFiat));
+        OnPropertyChanged(nameof(FiatInputAvailable));
+        OnPropertyChanged(nameof(SendFiatCoinEquiv));
     }
 
     private static string SymbolFor(ChainId chain) => chain switch

@@ -63,5 +63,10 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+    <!-- The notes before 4.5 were English only and described a wallet that no longer exists; the whole
+         history is the CHANGELOG. -->
+    <Button Classes="ghost" HorizontalAlignment="Left" Command="{Binding OpenUrlCommand}"
+            CommandParameter="https://github.com/thefear078/Phobia-Wallet/blob/main/CHANGELOG.md"
+            Content="{Binding [news.history], Source={x:Static app:Loc.Instance}}"/>
   </StackPanel>
 </UserControl>

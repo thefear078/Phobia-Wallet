@@ -43,7 +43,7 @@
         </Border>
         <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
           <TextBlock Text="{Binding [nav.buy], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
-          <TextBlock Text="{Binding [discover.buy], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+          <TextBlock Text="{Binding [discover.buy], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"/>
         </StackPanel>
         <TextBlock Grid.Column="2" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
       </Grid>
@@ -60,7 +60,7 @@
         </Border>
         <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="2">
           <TextBlock Text="{Binding [nav.p2p], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="15"/>
-          <TextBlock Text="{Binding [discover.p2p], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12"/>
+          <TextBlock Text="{Binding [discover.p2p], Source={x:Static app:Loc.Instance}}" Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"/>
         </StackPanel>
         <TextBlock Grid.Column="2" Text="↗" FontSize="18" VerticalAlignment="Center" Foreground="{DynamicResource UmTextMuted}"/>
       </Grid>

@@ -147,6 +147,21 @@ public sealed class BoolToWeightConverter : IValueConverter
 }
 
 /// <summary>
+/// A coin's logo from its ticker, for a picker row — or nothing, when the wallet ships no logo for it
+/// (the row then shows the ticker alone rather than a made-up mark).
+/// </summary>
+public sealed class CoinLogoConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is string symbol && Umbrella.Wallet.App.ViewModels.CoinBadge.HasLogo(symbol)
+            ? Umbrella.Wallet.App.ViewModels.CoinBadge.Logo(symbol)
+            : null;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
 /// A brush from a theme resource key ("UmAccentBright") or a literal colour ("#E58A8A"); with the
 /// parameter "wash", the same colour faint, for an icon's disc. Lets data pick a THEMED colour.
 /// </summary>

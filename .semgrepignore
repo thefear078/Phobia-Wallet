@@ -1,0 +1,9 @@
+# What Semgrep does not scan (gitignore syntax; a leading slash anchors to the repository root).
+# A pattern without one matches a folder of that name anywhere — "src" alone would skip desktop/src,
+# which is all the C#.
+:include .gitignore
+
+# The retired web stack's paperwork, kept for history.
+/docs/archive/
+# Telegram sticker animations, not code.
+/src/

@@ -18,7 +18,11 @@ public readonly record struct SendLeakSignals(
     /// <summary>Change returned to a fresh internal address rather than back to a used one.</summary>
     bool FreshChangeUsed,
     /// <summary>The user picked the coins to spend, rather than letting the planner choose.</summary>
-    bool CoinControlUsed);
+    bool CoinControlUsed,
+    /// <summary>An account chain (Ethereum, Solana, TRON…): one address pays for everything, and there
+    /// is no change output. "Change went to a fresh address" would be a compliment for something that
+    /// never happened, so such a send gets one plain line about its single address instead.</summary>
+    bool IsAccountChain = false);
 
 /// <summary>
 /// One line of the report: what happened, and whether it protected the user or exposed them.
@@ -61,7 +65,11 @@ public static class SendLeakReport
             : new SendLeakFinding("ledgerPublic", false));
 
         // 3. Linkage — the leak people do not expect, and the one that lasts.
-        if (!s.ChainHidesAmounts)
+        if (!s.ChainHidesAmounts && s.IsAccountChain)
+        {
+            findings.Add(new SendLeakFinding("accountAddress", false));
+        }
+        else if (!s.ChainHidesAmounts)
         {
             findings.Add(s.InputAddressCount >= 2
                 ? new SendLeakFinding("inputsLinked", false, s.InputAddressCount)

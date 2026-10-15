@@ -99,4 +99,47 @@ public sealed class AddressSafetyTests
         var r = AddressSafetyInspector.Inspect("   ", ownAddresses: [Real], knownAddresses: [Real]);
         Assert.False(r.IsWarning);
     }
+
+    // ---- Addresses that paid the wallet: seen, not trusted ------------------------------------------
+
+    /// <summary>
+    /// Somebody who once sent this wallet coins is in its history, but has never been paid. Paying them
+    /// is a first payment — the poisoner's dust transfer gets an address into the history exactly this
+    /// way, and it must not come out the other side as "an address you know".
+    /// </summary>
+    [Fact]
+    public void An_address_that_only_ever_paid_you_is_still_a_first_payment()
+    {
+        var r = AddressSafetyInspector.Inspect(Real, ownAddresses: [], knownAddresses: [], seenAddresses: [Real]);
+
+        Assert.Equal(AddressSafetyLevel.NewRecipient, r.Level);
+    }
+
+    /// <summary>The attack itself: the twin sends dust (so it is "seen"), and later it is pasted as the
+    /// destination. It is in the history, and it is still the look-alike of somebody really paid.</summary>
+    [Fact]
+    public void A_twin_that_seeded_itself_into_the_history_is_still_flagged()
+    {
+        var r = AddressSafetyInspector.Inspect(Poison, ownAddresses: [], knownAddresses: [Real], seenAddresses: [Poison]);
+
+        Assert.Equal(AddressSafetyLevel.Lookalike, r.Level);
+        Assert.Equal(Real, r.SimilarTo);
+    }
+
+    [Fact]
+    public void A_lookalike_of_somebody_who_paid_you_is_flagged_too()
+    {
+        // Aimed at a refund: the twin of an address the wallet has received from.
+        var r = AddressSafetyInspector.Inspect(Poison, ownAddresses: [], knownAddresses: [], seenAddresses: [Real]);
+
+        Assert.Equal(AddressSafetyLevel.Lookalike, r.Level);
+    }
+
+    [Fact]
+    public void An_address_both_paid_and_seen_is_known()
+    {
+        var r = AddressSafetyInspector.Inspect(Real, ownAddresses: [], knownAddresses: [Real], seenAddresses: [Real]);
+
+        Assert.Equal(AddressSafetyLevel.Known, r.Level);
+    }
 }

@@ -297,7 +297,7 @@ diff rather than an accident.
 
 **What the wallet does.** The wipe removes the encrypted seed, every additional wallet, settings and
 profile images, watch addresses, exchange keys, the address book, private transaction notes, the
-activity log, cached balances and prices, and the Monero wallet. A test scans the source for every
+activity log, each wallet's kept transaction history, cached balances and prices, and the Monero wallet. A test scans the source for every
 path written under the data directory and fails the build if the wiper does not handle it.
 
 The address book is now encrypted at rest under a seed-derived key, and an existing plaintext book is

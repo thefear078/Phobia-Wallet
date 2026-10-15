@@ -53,8 +53,13 @@
       </Border>
     </StackPanel>
 
-    <Border Classes="hairline" Padding="4" HorizontalAlignment="Left">
-      <StackPanel Orientation="Horizontal" Spacing="2">
+    <!-- The tabs wrap: on a phone a single row ran past the screen with no way to scroll it, and
+         Backup, Guide and Danger zone could not be reached at all. -->
+    <Border Classes="hairline" Padding="4,4,2,2" HorizontalAlignment="Left">
+      <WrapPanel>
+        <WrapPanel.Styles>
+          <Style Selector="WrapPanel > Button.chip"><Setter Property="Margin" Value="0,0,2,2"/></Style>
+        </WrapPanel.Styles>
         <!-- Appearance first: theme and language are what people look for. -->
         <Button Classes="chip" Content="{Binding [settings.appearance], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Appearance"
                 Classes.active="{Binding IsTabAppearance}"/>
@@ -70,14 +75,14 @@
                 Classes.active="{Binding IsTabGuide}"/>
         <Button Classes="chip" Content="{Binding [settings.danger], Source={x:Static app:Loc.Instance}}" Command="{Binding SelectSettingsTabCommand}" CommandParameter="Danger"
                 Classes.active="{Binding IsTabDanger}"/>
-      </StackPanel>
+      </WrapPanel>
     </Border>
 
     <!-- Wallets: Binance-style multiple independent wallets. Each is its own encrypted seed. -->
     <Border Classes="card" IsVisible="{Binding IsTabWallets}" BorderBrush="{DynamicResource UmAccent}">
       <StackPanel Spacing="12">
         <TextBlock Classes="eyebrow" Text="{Binding [settings.walletsTitle], Source={x:Static app:Loc.Instance}}"/>
-        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap" MaxWidth="640"
+        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="640"
                    Text="{Binding [settings.walletsHint], Source={x:Static app:Loc.Instance}}"/>
 
         <!-- Every wallet together, when that option is on. -->
@@ -85,12 +90,26 @@
                    Text="{Binding AllWalletsTotalLabel}" IsVisible="{Binding ShowAllWalletTotals}"/>
 
         <!-- The wallet list. -->
-        <ItemsControl ItemsSource="{Binding Wallets}">
+        <ItemsControl ItemsSource="{Binding Wallets}" Container.Name="walletList" Container.Sizing="Width">
+          <ItemsControl.Styles>
+            <!-- Name, total, Switch and Remove on one line; on a phone the buttons go under the name —
+                 side by side they left the name no room and Remove was cut at the edge. -->
+            <Style Selector="StackPanel.walletActions"><Setter Property="Grid.Column" Value="3"/></Style>
+            <ContainerQuery Name="walletList" Query="max-width:520">
+              <Style Selector="StackPanel.walletActions">
+                <Setter Property="Grid.Column" Value="1"/>
+                <Setter Property="Grid.ColumnSpan" Value="3"/>
+                <Setter Property="Grid.Row" Value="1"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="Margin" Value="0,8,0,0"/>
+              </Style>
+            </ContainerQuery>
+          </ItemsControl.Styles>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:WalletListItemViewModel">
               <Border Background="{DynamicResource UmCardAlt}" CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
-                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="12">
-                  <Border Width="38" Height="38" CornerRadius="10" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Center"
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12">
+                  <Border Grid.RowSpan="2" Width="38" Height="38" CornerRadius="10" Background="{DynamicResource UmAccentWash}" VerticalAlignment="Center"
                           BorderThickness="2" BorderBrush="{Binding ColorBrush}">
                     <TextBlock Text="{Binding Badge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource UmAccentBright}"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -102,14 +121,16 @@
                   </StackPanel>
                   <TextBlock Grid.Column="2" Classes="mono" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                              Text="{Binding TotalLabel}" IsVisible="{Binding HasTotal}"/>
-                  <Button Grid.Column="3" Classes="chip" Content="{Binding [settings.walletSwitch], Source={x:Static app:Loc.Instance}}"
-                          IsVisible="{Binding !IsActive}" VerticalAlignment="Center"
-                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SwitchWalletCommand}"
-                          CommandParameter="{Binding Id}"/>
-                  <Button Grid.Column="4" Classes="ghost" Classes.danger="{Binding RemoveArmed}" Content="{Binding RemoveLabel}"
-                          IsVisible="{Binding CanRemove}" VerticalAlignment="Center"
-                          Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RemoveWalletCommand}"
-                          CommandParameter="{Binding Id}"/>
+                  <StackPanel Classes="walletActions" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="chip" Content="{Binding [settings.walletSwitch], Source={x:Static app:Loc.Instance}}"
+                            IsVisible="{Binding !IsActive}" VerticalAlignment="Center"
+                            Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).SwitchWalletCommand}"
+                            CommandParameter="{Binding Id}"/>
+                    <Button Classes="ghost" Classes.danger="{Binding RemoveArmed}" Content="{Binding RemoveLabel}"
+                            IsVisible="{Binding CanRemove}" VerticalAlignment="Center"
+                            Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).RemoveWalletCommand}"
+                            CommandParameter="{Binding Id}"/>
+                  </StackPanel>
                 </Grid>
               </Border>
             </DataTemplate>
@@ -220,7 +241,7 @@
         <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
           <StackPanel Spacing="8">
             <TextBlock Text="{Binding [settings.walletAddTitle], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
-            <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
+            <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="640"
                        Text="{Binding [settings.walletAddHint], Source={x:Static app:Loc.Instance}}"/>
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
               <TextBox Text="{Binding NewWalletLabel, Mode=TwoWay}" Watermark="{Binding [settings.walletAddWatermark], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
@@ -233,7 +254,7 @@
         <Border BorderBrush="{DynamicResource UmBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
           <StackPanel Spacing="8">
             <TextBlock Text="{Binding [settings.changePwTitle], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
-            <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640"
+            <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="640"
                        Text="{Binding [settings.changePwHint], Source={x:Static app:Loc.Instance}}"/>
             <TextBox Text="{Binding ChangePwCurrent, Mode=TwoWay}" PasswordChar="●" Watermark="{Binding [settings.changePwCurrent], Source={x:Static app:Loc.Instance}}"/>
             <TextBox Text="{Binding ChangePwNew, Mode=TwoWay}" PasswordChar="●" Watermark="{Binding [settings.changePwNew], Source={x:Static app:Loc.Instance}}"/>
@@ -768,7 +789,7 @@
         </StackPanel>
         <StackPanel Orientation="Horizontal" Spacing="8">
           <Ellipse Width="7" Height="7" Fill="#E7CA83" VerticalAlignment="Center"/>
-          <TextBlock FontSize="12" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap" MaxWidth="600"
+          <TextBlock FontSize="12" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="600"
                      Text="{Binding [settings.priv3], Source={x:Static app:Loc.Instance}}"/>
         </StackPanel>
         <TextBlock Classes="eyebrow" Text="{Binding [settings.endpoints], Source={x:Static app:Loc.Instance}}" Margin="0,4,0,0"/>
@@ -1067,9 +1088,34 @@
         <TextBlock Classes="eyebrow" Text="{Binding [sec.sendPw], Source={x:Static app:Loc.Instance}}"/>
         <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                    Text="{Binding [sec.sendPwOnBody], Source={x:Static app:Loc.Instance}}"/>
-        <ToggleSwitch IsChecked="{Binding RequirePasswordForSend, Mode=TwoWay}"
+        <!-- On at once; off only through the password: whoever sits down at an unlocked wallet is
+             exactly who this setting is there to stop. -->
+        <ToggleSwitch IsChecked="{Binding RequirePasswordForSendSwitch, Mode=TwoWay}"
                       OnContent="{Binding [sec.on], Source={x:Static app:Loc.Instance}}"
                       OffContent="{Binding [sec.off], Source={x:Static app:Loc.Instance}}"/>
+        <Border IsVisible="{Binding SendPasswordOffAsked}" Background="{DynamicResource UmCardAlt}"
+                BorderBrush="{DynamicResource UmBorder2}" BorderThickness="1" CornerRadius="10" Padding="12,10">
+          <StackPanel Spacing="8">
+            <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource UmTextSoft}"
+                       Text="{Binding [sec.sendPwOffAsk], Source={x:Static app:Loc.Instance}}"/>
+            <TextBox PasswordChar="•" MaxWidth="360" HorizontalAlignment="Left"
+                     Text="{Binding SendPasswordOffInput, Mode=TwoWay}"
+                     Watermark="{Binding [send.passwordWatermark], Source={x:Static app:Loc.Instance}}">
+              <TextBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding ConfirmSendPasswordOffCommand}"/>
+                <KeyBinding Gesture="Escape" Command="{Binding CancelSendPasswordOffCommand}"/>
+              </TextBox.KeyBindings>
+            </TextBox>
+            <TextBlock IsVisible="{Binding HasSendPasswordOffError}" Text="{Binding SendPasswordOffError}"
+                       Foreground="#E09A9A" FontSize="12" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="danger" Content="{Binding [sec.sendPwOffConfirm], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding ConfirmSendPasswordOffCommand}"/>
+              <Button Classes="ghost" Content="{Binding [common.cancel], Source={x:Static app:Loc.Instance}}"
+                      Command="{Binding CancelSendPasswordOffCommand}"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
 
         <Border Background="#22FFFFFF" Height="1" Margin="0,10,0,4"/>
 

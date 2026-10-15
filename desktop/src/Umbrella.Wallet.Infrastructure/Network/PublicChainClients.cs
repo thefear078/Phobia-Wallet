@@ -777,10 +777,10 @@ public sealed class PublicChainBalanceClient
     {
         try
         {
-            using var res = await Http.GetAsync(
-                $"https://sandbox-api.3xpl.com/zcash/address/{Uri.EscapeDataString(address)}?data=address,balances", ct);
-            if (!res.IsSuccessStatusCode) return null;
-            using var doc = await JsonDocument.ParseAsync(await res.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            var json = await ThreeXpl.GetAsync(
+                Http, $"{ThreeXpl.Root}/zcash/address/{Uri.EscapeDataString(address)}?data=address,balances", ct);
+            if (json is null) return null;
+            using var doc = JsonDocument.Parse(json);
             return Parse3xplZec(doc.RootElement, address);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }

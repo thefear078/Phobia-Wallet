@@ -32,6 +32,14 @@ public sealed record IntentsQuote(
 /// <para>No account and no key. Without a partner key the service adds a 0.25% platform fee, which the
 /// quote already includes — the wallet shows it rather than hiding it in the rate.</para>
 /// </summary>
+/// <summary>
+/// What the route says about one swap. <paramref name="Deposited"/> against <paramref name="Quoted"/> is
+/// what tells a short deposit from a missing one; <paramref name="Deadline"/> is when a short or late
+/// deposit starts being refunded.
+/// </summary>
+public sealed record IntentsStatus(
+    string Status, string? Deposited, string? Quoted, DateTimeOffset? Deadline, string? Refunded, string? Delivered);
+
 public sealed class NearIntentsSwapClient
 {
     private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Swaps);
@@ -186,20 +194,46 @@ public sealed class NearIntentsSwapClient
 
     /// <summary>The swap's state: PENDING_DEPOSIT, KNOWN_DEPOSIT_TX, PROCESSING, SUCCESS, REFUNDED,
     /// INCOMPLETE_DEPOSIT or FAILED; null when the service did not answer.</summary>
-    public async Task<string?> StatusAsync(string depositAddress, string? memo, CancellationToken ct = default)
+    public async Task<string?> StatusAsync(string depositAddress, string? memo, CancellationToken ct = default) =>
+        (await StatusDetailAsync(depositAddress, memo, ct))?.Status;
+
+    /// <summary>The swap's state together with what was quoted, what arrived, and until when — the
+    /// figures without which "incomplete deposit" is only a word.</summary>
+    public async Task<IntentsStatus?> StatusDetailAsync(string depositAddress, string? memo, CancellationToken ct = default)
     {
         try
         {
             var url = $"{Root}/v0/status?depositAddress={Uri.EscapeDataString(depositAddress)}";
             if (!string.IsNullOrEmpty(memo)) url += $"&depositMemo={Uri.EscapeDataString(memo)}";
-            var json = await Http.GetStringAsync(url, ct);
-            using var doc = JsonDocument.Parse(json);
-            return Str(doc.RootElement, "status") is { Length: > 0 } s ? s : null;
+            return ParseStatus(await Http.GetStringAsync(url, ct));
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>Reads a <c>/v0/status</c> answer; null when it carries no state at all.</summary>
+    public static IntentsStatus? ParseStatus(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        if (root.ValueKind != JsonValueKind.Object || Str(root, "status") is not { Length: > 0 } status) return null;
+
+        static JsonElement? Child(JsonElement e, string name) =>
+            e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var c) && c.ValueKind == JsonValueKind.Object ? c : null;
+        static string? Text(JsonElement? e, string name) =>
+            e is { } o && Str(o, name) is { Length: > 0 } t ? t : null;
+
+        var details = Child(root, "swapDetails");
+        var response = Child(root, "quoteResponse");
+        var quote = response is { } r1 ? Child(r1, "quote") : null;
+        var request = response is { } r2 ? Child(r2, "quoteRequest") : null;
+        DateTimeOffset? deadline = DateTimeOffset.TryParse(Text(request, "deadline"), CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var d) ? d : null;
+
+        return new IntentsStatus(status, Text(details, "depositedAmountFormatted"), Text(quote, "amountInFormatted"),
+            deadline, Text(details, "refundedAmountFormatted"), Text(details, "amountOutFormatted"));
     }
 
     public static BigInteger ToSmallest(decimal amount, int decimals)

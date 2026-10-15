@@ -9,16 +9,29 @@
              x:Class="Umbrella.Wallet.App.Views.Pages.P2pPage"
              x:DataType="vm:MainViewModel"
              x:CompileBindings="True">
-  <StackPanel Classes="page" Spacing="14">
+  <UserControl.Styles>
+    <!-- On a phone the in-wallet swap's button goes under its text instead of taking half the card. -->
+    <Style Selector="Button.p2pHeroOpen"><Setter Property="Grid.Column" Value="1"/></Style>
+    <ContainerQuery Name="p2pPage" Query="max-width:620">
+      <Style Selector="Button.p2pHeroOpen">
+        <Setter Property="Grid.Column" Value="0"/>
+        <Setter Property="Grid.Row" Value="1"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Margin" Value="0,12,0,0"/>
+      </Style>
+    </ContainerQuery>
+  </UserControl.Styles>
+
+  <StackPanel Classes="page" Spacing="14" Container.Name="p2pPage" Container.Sizing="Width">
     <StackPanel Spacing="4">
       <TextBlock Classes="serif" FontSize="26" Text="{Binding [p2p.title], Source={x:Static app:Loc.Instance}}"/>
-      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12"
+      <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
                  Text="{Binding [p2p.desc], Source={x:Static app:Loc.Instance}}"/>
     </StackPanel>
 
     <!-- Hero: the in-wallet swap comes first (nothing leaves the app). -->
     <Border Classes="card">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="16">
         <StackPanel Spacing="6" VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <Border Background="{DynamicResource UmAccent}" CornerRadius="6" Padding="7,3" VerticalAlignment="Center" MinHeight="20">
@@ -27,10 +40,10 @@
             </Border>
             <TextBlock Text="{Binding [sec.swapHere], Source={x:Static app:Loc.Instance}}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
           </StackPanel>
-          <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" MaxWidth="560"
+          <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12.5" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="560"
                      Text="{Binding [p2p.swapCard], Source={x:Static app:Loc.Instance}}"/>
         </StackPanel>
-        <Button Grid.Column="1" Classes="primary" Content="{Binding [p2p.openSwap], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
+        <Button Classes="primary p2pHeroOpen" Content="{Binding [p2p.openSwap], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
                 Command="{Binding SelectSectionCommand}" CommandParameter="Swap"/>
       </Grid>
     </Border>
@@ -48,16 +61,17 @@
                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="{Binding Name}" FontSize="14.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding Kind, Converter={StaticResource ActivityLabel}}" FontSize="11" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center"/>
+                  <!-- Wraps: name, kind and badge on one line were wider than a phone. -->
+                  <WrapPanel>
+                    <TextBlock Text="{Binding Name}" FontSize="14.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,2"/>
+                    <TextBlock Text="{Binding KindLabel}" FontSize="11" Foreground="{DynamicResource UmTextMuted}" VerticalAlignment="Center" Margin="0,0,8,2"/>
                     <Border Background="{DynamicResource UmCardAlt}" BorderBrush="{DynamicResource UmPos}" BorderThickness="1"
                             CornerRadius="5" Padding="6,1" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Custody}" FontSize="9.5" Foreground="{DynamicResource UmPos}"/>
+                      <TextBlock Text="{Binding CustodyLabel}" FontSize="9.5" Foreground="{DynamicResource UmPos}"/>
                     </Border>
-                  </StackPanel>
-                  <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource UmTextDim}"
-                             TextWrapping="Wrap" MaxWidth="620"/>
+                  </WrapPanel>
+                  <TextBlock Text="{Binding DescriptionLabel}" FontSize="12" Foreground="{DynamicResource UmTextDim}"
+                             TextWrapping="Wrap" MaxWidth="620" HorizontalAlignment="Left"/>
                 </StackPanel>
                 <Button Grid.Column="2" Classes="ghost" Content="{Binding [common.open], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"
                         Command="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).OpenUrlCommand}"
@@ -72,7 +86,7 @@
     <Border Classes="card" Background="{DynamicResource UmCardAlt}">
       <StackPanel Spacing="6">
         <TextBlock Text="{Binding [sec.safety], Source={x:Static app:Loc.Instance}}" FontWeight="SemiBold" FontSize="13"/>
-        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="720"
+        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11.5" TextWrapping="Wrap" HorizontalAlignment="Left" MaxWidth="720"
                    Text="{Binding [p2p.disclaimer], Source={x:Static app:Loc.Instance}}"/>
       </StackPanel>
     </Border>

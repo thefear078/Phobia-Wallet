@@ -22,6 +22,10 @@ public enum SendWarningKind
     EmptiesBalance,
     /// <summary>The fee is a large share of what is being sent.</summary>
     FeeIsLargeShareOfAmount,
+    /// <summary>The fee is as much as the amount itself, or more: the send costs more than it delivers.
+    /// In a live test on 2026-10-10 that is what an amount typed in the wrong unit looked like — a
+    /// fraction of its own fee — and "the fee is N% of the amount" among ten other lines did not stop it.</summary>
+    FeeExceedsAmount,
     /// <summary>Change is small enough that spending it later may cost more than it is worth.</summary>
     ChangeIsDust,
     /// <summary>Amount plus fee is more than the balance — the send cannot succeed as quoted.</summary>
@@ -100,7 +104,9 @@ public static class SendSimulation
         else if (balanceAfter == 0 && balance > 0)
             warnings.Add(new SendWarning(SendWarningKind.EmptiesBalance, balance));
 
-        if (amount > 0 && networkFee > 0 && networkFee >= amount * LargeFeeShare)
+        if (amount > 0 && networkFee > 0 && networkFee >= amount)
+            warnings.Add(new SendWarning(SendWarningKind.FeeExceedsAmount, networkFee / amount));
+        else if (amount > 0 && networkFee > 0 && networkFee >= amount * LargeFeeShare)
             warnings.Add(new SendWarning(SendWarningKind.FeeIsLargeShareOfAmount, networkFee / amount));
 
         if (changeReturned > 0 && dustThreshold > 0 && changeReturned < dustThreshold)

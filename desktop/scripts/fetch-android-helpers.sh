@@ -9,7 +9,7 @@
 # Every archive is checked against a SHA-256 pinned here, never taken from the server that serves it.
 # Each pin was read from the project's signed sums file, its signature checked against the key the
 # Windows scripts pin (and the supply-chain CI job re-checks the pins against those signed files):
-#   Tor:    sha256sums-signed-build.txt for 15.0.24 - Tor Browser Developers EF6E286DDA85EA2A4BA7DE684E2C6E8793298290
+#   Tor:    sha256sums-signed-build.txt for 15.0.25 - Tor Browser Developers EF6E286DDA85EA2A4BA7DE684E2C6E8793298290
 #   Monero: getmonero.org/downloads/hashes.txt      - binaryFate 81AC591FE9C4B65C5806AFC3F0AF4D462A0BDF92
 #
 #   ./scripts/fetch-android-helpers.sh                       # arm64-v8a and armeabi-v7a (the release APK)
@@ -27,7 +27,7 @@ REQUIRE_HELPERS="${REQUIRE_HELPERS:-0}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 
-TOR_VERSION="15.0.24"
+TOR_VERSION="15.0.25"
 MONERO_VERSION="v0.18.5.3"
 
 missing() {
@@ -46,13 +46,13 @@ fetch() {
 for abi in ${ABIS}; do
     case "${abi}" in
         arm64-v8a)
-            tor_arch="aarch64"; tor_sha="2a7a02484149b05f64b582a4a1e8eb8aabb9f6cd32daca4e03c58e09839bb7a8"
+            tor_arch="aarch64"; tor_sha="a1a67ec77ce0a7c4fca446fd9f915fbb0302c3107c2d56ab213196187cfd894a"
             monero_arch="armv8"; monero_sha="2621293d288d5ce23d251d1f4106d7e1bdd5bf3a37423e8a8c6851e4edba1768" ;;
         armeabi-v7a)
-            tor_arch="armv7"; tor_sha="9416f72b9cd31eda0f7f5a1fa3e2eec789b88b8160e20f5d690bc4ba8c29811e"
+            tor_arch="armv7"; tor_sha="4fcdb5540f7ea2f529b9063115d66dd7dfa61e5602bfaab96a78e8046bb4b8d5"
             monero_arch="armv7"; monero_sha="542cc0322a7d0d3c9cd47c7cc8d195bb74861a7eec79235b58a5877a90b04e6a" ;;
         x86_64)
-            tor_arch="x86_64"; tor_sha="500d51006f1938dfd5ecd0653b0d2a156feff8a4dc5e2b61b81793d47854fc90"
+            tor_arch="x86_64"; tor_sha="11dbac44e2ee29df2cd6e3a5f38164d2630b2c85342f6a041b9cb57d7012d071"
             monero_arch=""; monero_sha="" ;;
         *) echo "error: unknown ABI ${abi}" >&2; exit 1 ;;
     esac

@@ -7,6 +7,7 @@
         xmlns:infra="using:Umbrella.Wallet.Infrastructure"
         xmlns:controls="using:Umbrella.Wallet.App.Controls"
         xmlns:pages="using:Umbrella.Wallet.App.Views.Pages"
+        xmlns:views="using:Umbrella.Wallet.App.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -749,10 +750,10 @@
               <controls:LazyPage Page="{x:Type pages:ReceivePage}" IsVisible="{Binding IsReceive}"/>
 
               <!-- Send -->
-              <controls:LazyPage Page="{x:Type pages:SendPage}" IsVisible="{Binding IsSend}"/>
+              <controls:LazyPage Page="{x:Type pages:SendPage}" IsVisible="{Binding IsSend}" MinWidth="{Binding FormPageMinWidth}"/>
 
               <!-- Swap (THORChain · non-custodial cross-chain) -->
-              <controls:LazyPage Page="{x:Type pages:SwapPage}" IsVisible="{Binding IsSwap}"/>
+              <controls:LazyPage Page="{x:Type pages:SwapPage}" IsVisible="{Binding IsSwap}" MinWidth="{Binding FormPageMinWidth}"/>
 
               <!-- Connect watch-only -->
               <!-- Connect: other wallets' addresses watched read-only, and exchanges read through read-only API
@@ -1090,6 +1091,10 @@
       <Ellipse Classes="auroraB" Width="720" Height="720" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-160,-180"/>
     </Panel>
 
+
+    <!-- ============================ SEND SHEET ============================
+         Review, the send in flight and its receipt, over the whole window (see SendSheet). -->
+    <views:SendSheet Grid.Row="0" Grid.RowSpan="2"/>
 
     <!-- ============================ COMMAND PALETTE (Ctrl+K) ============================
          A pro-desktop quick launcher: jump to any screen or a coin's chart. Overlay only —
