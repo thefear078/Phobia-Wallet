@@ -187,6 +187,10 @@ amount to fit. A route holds a short payment until the quote's deadline and only
   the senders, so a new message nothing can place fails the build. When no swap route gives a quote,
   a line in your language says so above what each route answered, and a swap's deposit that cannot be
   built says why the same way a send does; so does a staking action that fails.
+- **News reads in your language.** Forty of its forty-four notes were English in every language and
+  described a wallet that no longer exists (Umbrella 2.x, the paused web version). The page keeps the
+  current notes — all translated, the rename to Phobia included — and links the full history in the
+  CHANGELOG. A language switch redraws them.
 - The connection chip above the lock button says **NETWORK BLOCKED**, not "BLOCKED" — beside a padlock
   it read as "the wallet is locked".
 - Staking: the note no longer calls the rates "typical, approximate" — they are computed from each
