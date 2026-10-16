@@ -169,13 +169,21 @@
           </StackPanel>
         </Border>
 
-        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="6">
           <TextBlock Grid.Row="0" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.rate], Source={x:Static app:Loc.Instance}}"/>
           <TextBlock Grid.Row="0" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapRateText}"/>
           <TextBlock Grid.Row="1" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.fee], Source={x:Static app:Loc.Instance}}"/>
           <TextBlock Grid.Row="1" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapFeeText}"/>
           <TextBlock Grid.Row="2" Grid.Column="0" Classes="eyebrow" Text="{Binding [swap.eta], Source={x:Static app:Loc.Instance}}"/>
           <TextBlock Grid.Row="2" Grid.Column="1" Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapEtaText}"/>
+          <!-- The route's price limit: below it the swap is refunded rather than filled. -->
+          <TextBlock Grid.Row="3" Grid.Column="0" Classes="eyebrow" IsVisible="{Binding HasSwapMinOut}"
+                     Text="{Binding [swap.minOut], Source={x:Static app:Loc.Instance}}"/>
+          <StackPanel Grid.Row="3" Grid.Column="1" Spacing="2" IsVisible="{Binding HasSwapMinOut}">
+            <TextBlock Classes="mono" FontSize="12" Foreground="{DynamicResource UmTextDim}" Text="{Binding SwapMinOutText}"/>
+            <TextBlock FontSize="11" Foreground="{DynamicResource UmTextMuted}" TextWrapping="Wrap"
+                       Text="{Binding [swap.minOutHint], Source={x:Static app:Loc.Instance}}"/>
+          </StackPanel>
         </Grid>
 
         <!-- Delivered-to address boxed and full, so you can verify where THORChain sends the output. -->

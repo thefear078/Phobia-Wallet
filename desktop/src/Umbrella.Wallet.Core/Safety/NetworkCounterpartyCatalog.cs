@@ -196,12 +196,10 @@ public static class NetworkCounterpartyCatalog
             CounterpartyLearns.YourIpAddress | CounterpartyLearns.WhenYouAreOnline),
 
         // --- Swaps. Only when you ask for a quote. ---------------------------------------------------
-        new("thornode.ninerealms.com", "Nine Realms (THORChain)", CounterpartyPurpose.Swaps,
+        new("gateway.liquify.com", "Liquify (THORChain)", CounterpartyPurpose.Swaps,
             CounterpartyContact.OnDemand, Chain | CounterpartyLearns.WhichCoinsYouHold),
-        new("thornode.thorchain.liquify.com", "Liquify (THORChain)", CounterpartyPurpose.Swaps,
+        new("thorchain-thornode-lb-1.thorwallet.org", "THORWallet (THORChain)", CounterpartyPurpose.Swaps,
             CounterpartyContact.OnDemand, Chain | CounterpartyLearns.WhichCoinsYouHold),
-        new("track.ninerealms.com", "Nine Realms (THORChain)", CounterpartyPurpose.Swaps,
-            CounterpartyContact.OnDemand, Chain),
         new("rest.cosmos.directory", "cosmos.directory", CounterpartyPurpose.Swaps,
             CounterpartyContact.OnDemand, Chain),
         // NEAR Intents and Exolix are given both addresses of a swap: the one paying (as the refund
@@ -296,6 +294,8 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "BNB"),
         new("polygonscan.com", "PolygonScan", CounterpartyPurpose.ExplorerLink,
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "MATIC"),
+        new("thorchain.net", "THORChain Network Explorer", CounterpartyPurpose.ExplorerLink,
+            CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "THORChain swaps"),
         new("nanolooker.com", "NanoLooker", CounterpartyPurpose.ExplorerLink,
             CounterpartyContact.LinkOnly, CounterpartyLearns.Nothing, "XNO"),
     ];
