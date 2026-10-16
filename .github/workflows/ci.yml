@@ -17,8 +17,8 @@ jobs:
     name: desktop
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "8.0.x"
       - run: dotnet restore desktop/Umbrella.Wallet.sln --locked-mode   # every package as packages.lock.json pins it, by hash
@@ -31,8 +31,8 @@ jobs:
     name: network-isolation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "8.0.x"
       - run: dotnet restore desktop/Umbrella.Wallet.sln --locked-mode   # every package as packages.lock.json pins it, by hash
@@ -48,10 +48,10 @@ jobs:
     steps:
       # fetch-depth: 0 because the check clones the repo at this commit into a second directory, and a
       # shallow checkout cannot be cloned from.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "8.0.x"
       # Builds this commit twice, from two different absolute paths, and compares the assemblies that
@@ -63,7 +63,7 @@ jobs:
     name: supply-chain
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The release job's first step, on every change and on the kind of machine that builds the
       # release: the Tor and Monero it bundles must verify against their projects' own signatures.
       # This only ever ran at release time, so 4.8.0 and 4.8.1 found out there - and shipped Linux-only.
@@ -79,7 +79,7 @@ jobs:
       # The verified daemon is here anyway, so prove against the real thing what the offline suite can
       # only prove against a copy of its protocol: it writes the random login the wallet reads, the
       # wallet gets in with it, and a caller without it (a web page, another account) gets a 401.
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "8.0.x"
       - name: The Monero service's login, against the real daemon
@@ -93,10 +93,10 @@ jobs:
     name: android
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The android workload installs into the SDK's own folder, so the SDK goes somewhere this user
       # can write to rather than the runner's root-owned /usr/share/dotnet.
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
         with:
@@ -124,7 +124,7 @@ jobs:
     name: version-consistency
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Release gate (roadmap §2): VERSION must match the csproj, installer, README and CHANGELOG.
       - run: bash scripts/check-version-consistency.sh
       # Roadmap P0.2: the fetch scripts and THIRD_PARTY_NOTICES.md must describe the SAME pinned
