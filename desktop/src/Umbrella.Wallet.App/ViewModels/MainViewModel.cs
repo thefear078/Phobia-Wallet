@@ -1089,6 +1089,7 @@ public partial class MainViewModel : ViewModelBase
         {
             SettingsRevealedPhrase = string.Empty;
             IsSettingsPhraseVisible = false;
+            ClearPhraseCheck();
             HideMoneroKeys();
         }
     }
@@ -3528,6 +3529,7 @@ public partial class MainViewModel : ViewModelBase
         IsRecoveryPhraseVisible = false;
         SettingsRevealedPhrase = string.Empty;
         IsSettingsPhraseVisible = false;
+        ClearPhraseCheck();
         SettingsPassword = string.Empty;
         ReceiveQr = null;
         SelectedReceiveAddress = string.Empty;
@@ -4064,6 +4066,7 @@ public partial class MainViewModel : ViewModelBase
         {
             SettingsRevealedPhrase = string.Empty;
             IsSettingsPhraseVisible = false;
+            ClearPhraseCheck();
             SettingsPassword = string.Empty;
             HideMoneroKeys();
         }

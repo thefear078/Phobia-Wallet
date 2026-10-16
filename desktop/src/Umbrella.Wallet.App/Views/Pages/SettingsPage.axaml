@@ -1278,6 +1278,21 @@
                   Command="{Binding HideSettingsPhraseCommand}"/>
         </StackPanel>
 
+        <!-- Roadmap P1.8: is the paper right? Checked against the vault with the password above; the
+             phrase is never put on screen. -->
+        <Border Background="#22FFFFFF" Height="1" Margin="0,12,0,4"/>
+        <TextBlock Classes="eyebrow" TextWrapping="Wrap" Text="{Binding [backup.check.title], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                   Text="{Binding [backup.check.hint], Source={x:Static app:Loc.Instance}}"/>
+        <TextBox Text="{Binding PhraseCheckInput}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72"
+                 Watermark="{Binding [backup.check.placeholder], Source={x:Static app:Loc.Instance}}"/>
+        <Button Classes="ghost" HorizontalAlignment="Left" IsEnabled="{Binding !IsBusy}"
+                Content="{Binding [backup.check.button], Source={x:Static app:Loc.Instance}}"
+                Command="{Binding CheckWrittenPhraseCommand}"/>
+        <TextBlock IsVisible="{Binding HasPhraseCheckResult}" Text="{Binding PhraseCheckResult}" FontSize="12.5"
+                   FontWeight="SemiBold" TextWrapping="Wrap"
+                   Foreground="{Binding PhraseCheckColor, Converter={StaticResource ThemeBrush}}"/>
+
         <!-- Secondary, clearly-optional: Monero keys, folded into the same card. -->
         <Border Background="#22FFFFFF" Height="1" Margin="0,12,0,4"/>
         <TextBlock Classes="eyebrow" Foreground="{DynamicResource UmTextDim}"
