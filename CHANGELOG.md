@@ -33,6 +33,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
   next change to any setting wrote them back to disk. Passwords typed into the duress and panic forms
   but never submitted are cleared when the wallet locks.
 
+### History
+
+- **Token transfers on the EVM networks.** USDT, USDC and the other tokens Holdings shows now have their
+  history on Ethereum, Optimism, Avalanche, Arbitrum One, Base and Polygon — read only for the tokens'
+  own contracts, so an airdropped look-alike "USDT" never appears as a transfer. BNB Chain has no source
+  that answers without a key; the Activity screen names those tokens as not read instead of looking
+  empty.
+- Optimism's history is asked of explorer.optimism.io directly (its old Blockscout address now only
+  redirects there).
+
 ### Maintenance
 
 - QRCoder 1.8.1, Microsoft.NET.Test.Sdk 18.11.0, and current pins of the GitHub Actions the build uses.
