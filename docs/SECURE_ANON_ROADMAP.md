@@ -50,7 +50,7 @@ Legend: ✅ done · 🟡 partial · ⏳ next · ❌ missing. Status as of 2026-0
 | 4.2 | Clipboard auto-wipe after copy | ✅ |
 | 4.3 | Password strength meter + vault re-encrypt on change | ✅ |
 | 4.4 | **Plausible-deniability hidden wallet** (BIP39 passphrase) | 🟡 code exists, unlock UI removed |
-| 4.5 | **Panic / duress wipe** of the local vault | 🟡 DataWiper exists, no duress trigger |
+| 4.5 | **Panic / duress wipe** of the local vault | ✅ 2026-10-16: a panic password typed at unlock wipes the device (ROADMAP P1.3) |
 | 4.6 | Explicit two-step Review → Confirm on every send | ✅ |
 
 ## Pillar 5 — Trust & verifiability (don't trust, verify)
@@ -79,7 +79,7 @@ Legend: ✅ done · 🟡 partial · ⏳ next · ❌ missing. Status as of 2026-0
 4. **3.4 Coin control** — ✅ optional manual UTXO selection on the send screen (BTC/LTC/DOGE). Off by
    default (send path unchanged); on, only the ticked coins fund the spend and it fails closed if they
    can't cover it. Offline guarantee proven; rides the already-verified HD send/broadcast path.
-5. **4.4 / 4.5 Deniability & panic** — decide with the user: re-expose hidden-wallet unlock and add a duress wipe.
+5. **4.4 / 4.5 Deniability & panic** — decide with the user: re-expose hidden-wallet unlock and add a duress wipe. Both done: the hidden-wallet field on the unlock screen (ROADMAP P1.2) and the panic password (P1.3, 2026-10-16).
 6. **1.7 / 5.2 Recovery + hashes** — verify encrypted export; keep SHA-256 sums current per release.
 7. **5.3 Reproducible build** — ✅ documented in `BUILD_VERIFY.md`: verify a release hash, build from
    the `v4.5.0` tag, and compare the deterministic managed DLLs (the installer itself isn't bit-identical,

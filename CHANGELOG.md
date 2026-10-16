@@ -4,6 +4,49 @@ All notable releases of **Phobia Wallet** (called Umbrella Wallet until 4.10.0).
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follows [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Swaps
+
+- **THORChain swaps work again.** Every node the wallet asked for a quote had gone — Nine Realms' host
+  no longer resolves, Liquify's old host fails its TLS handshake, the cosmos.directory proxy answers 503 —
+  so no THORChain quote could be had. It now asks Liquify's gateway (the node THORChain's own docs name),
+  then THORWallet's public node, then cosmos.directory. A live test asks every one of them for a quote,
+  so the next node to disappear is found by a test rather than by somebody trying to swap.
+- **A price limit on every THORChain swap.** Quotes were taken without one, so the swap filled at
+  whatever the pool gave when the deposit was seen, however far the price had moved. They are now asked
+  with a 3% tolerance: a fill below it is refunded instead. The quote shows the least you will receive
+  (**At least …**), for THORChain and for NEAR Intents.
+- "Track this swap" pointed at Nine Realms' tracker, which is gone; it opens the swap on thorchain.net.
+
+### Security
+
+- **Panic password** (Settings → Security). Typed on the unlock screen instead of your password, it
+  silently erases every wallet, note, contact and setting this app keeps on the device, and the app
+  opens as if freshly installed; your recovery phrase restores everything. Like the duress password, the
+  wallet never says whether one is set. It is refused if it opens any wallet on the device, and no
+  password chosen later can be the panic password — so it can never erase a wallet by its own unlock.
+- **Check the phrase you wrote down** (Settings → Backup). Type the words from your paper: the wallet
+  says whether they restore this wallet, or which word positions are wrong. The phrase is never shown,
+  and what you typed is cleared once it is compared.
+- Delete everything now also forgets the wallet's name, watchlist and pictures in memory; before, the
+  next change to any setting wrote them back to disk. Passwords typed into the duress and panic forms
+  but never submitted are cleared when the wallet locks.
+
+### History
+
+- **Token transfers on the EVM networks.** USDT, USDC and the other tokens Holdings shows now have their
+  history on Ethereum, Optimism, Avalanche, Arbitrum One, Base and Polygon — read only for the tokens'
+  own contracts, so an airdropped look-alike "USDT" never appears as a transfer. BNB Chain has no source
+  that answers without a key; the Activity screen names those tokens as not read instead of looking
+  empty.
+- Optimism's history is asked of explorer.optimism.io directly (its old Blockscout address now only
+  redirects there).
+
+### Maintenance
+
+- QRCoder 1.8.1, Microsoft.NET.Test.Sdk 18.11.0, and current pins of the GitHub Actions the build uses.
+
 ## [4.10.0-beta.6] — Beta of 14 October 2026 (a GitHub pre-release) — sending you can read, swaps followed to their end, history that is kept, notes and names
 
 ### Sending
