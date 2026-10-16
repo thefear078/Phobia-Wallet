@@ -74,6 +74,7 @@ public static class DataWiper
         DeleteFile(Path.Combine(root, "market.json"));          // cached prices
         DeleteFile(Path.Combine(root, "fx-rates.json"));        // cached currency rates
         DeleteDir(Path.Combine(root, "updates"));               // a downloaded release waiting to be installed
+        DeleteFile(Path.Combine(root, "unlock-guard.bin"));     // the panic password's check (rewritten as noise)
 
         // Private transaction notes are one encrypted file PER WALLET (tx-notes-<id>.bin), so they
         // cannot be named individually here.

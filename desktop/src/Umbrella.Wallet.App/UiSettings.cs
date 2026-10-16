@@ -151,6 +151,27 @@ public sealed class UiSettings
 
     private static string Path => System.IO.Path.Combine(AppPaths.DataRoot, "ui-settings.json");
 
+    /// <summary>
+    /// After every wallet on the device was erased: forgets what named or described them — the wallet's
+    /// name, the watchlist, the profile and lock-screen pictures, the notices dismissed, the run of failed
+    /// unlocks. Until now they stayed in memory and the next save wrote them straight back into the file
+    /// the wipe had just deleted. Language, look and the network settings stay: they describe the device
+    /// rather than a wallet, and a restore made straight afterwards must not quietly drop Tor.
+    /// </summary>
+    public void ForgetWallet()
+    {
+        WalletName = "";
+        Watchlist = "";
+        AvatarPath = "";
+        BannerPath = "";
+        SidebarBackgroundPath = "";
+        LockBackgroundPath = "";
+        DismissedNotices = [];
+        ActivitySeenAtMs = 0;
+        FailedUnlocks = 0;
+        LastFailedUnlockUtc = DateTimeOffset.MinValue;
+    }
+
     public static UiSettings Load()
     {
         try
