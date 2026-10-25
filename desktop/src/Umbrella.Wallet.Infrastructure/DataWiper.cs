@@ -50,6 +50,7 @@ public static class DataWiper
         }
 
         DeleteFile(Path.Combine(root, "vault.json"));           // the encrypted seed (Main wallet)
+        DeleteFile(Path.Combine(root, "vault.json.watch"));     // a watch-only Main wallet's sealed description
         DeleteFile(Path.Combine(root, "wallets.json"));         // multi-wallet index
         DeleteDir(Path.Combine(root, "wallets"));               // every additional wallet's encrypted vault
         DeleteFile(Path.Combine(root, "watch-addresses.json")); // watch-only addresses
@@ -97,6 +98,8 @@ public static class DataWiper
             if (Directory.Exists(root))
             {
                 foreach (var backup in Directory.EnumerateFiles(root, "vault.json.replaced-*"))
+                    DeleteFile(backup);
+                foreach (var backup in Directory.EnumerateFiles(root, "vault.json.watch.replaced-*"))
                     DeleteFile(backup);
             }
         }

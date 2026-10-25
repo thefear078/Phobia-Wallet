@@ -552,6 +552,11 @@ public sealed class BitcoinTransactionSender
     /// the standard rate for that chain, so no level can drop below the relay floor (which would strand
     /// the tx) or overpay past the cap. Standard is exactly the rate the wallet used before this selector.
     /// </summary>
+    /// <summary>The sat/vB a payment on <paramref name="symbol"/> would pay at <paramref name="level"/> —
+    /// the rate a send uses, for a payment made elsewhere (a watch-only wallet's PSBT, roadmap H.5).</summary>
+    public static Task<double> FeeRateAsync(string symbol, FeeLevel level, CancellationToken ct) =>
+        FetchFeeRateAsync(symbol.ToUpperInvariant(), ExplorerFor(symbol), level, ct);
+
     private static async Task<double> FetchFeeRateAsync(string symbol, string explorer, FeeLevel level, CancellationToken ct)
     {
         // Bitcoin Cash blocks are rarely full, so a low fixed rate confirms reliably and cheaply — no fee

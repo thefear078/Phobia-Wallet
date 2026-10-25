@@ -114,6 +114,21 @@ public partial class MainViewModel
         return await Task.Run(() =>
         {
             var list = new List<BalanceStore.Entry>();
+            // A watch-only wallet: the addresses it watches (its accounts need a scan, left to its own view).
+            if (WatchWalletFile.IsWatchSecret(mnemonic))
+            {
+                try
+                {
+                    foreach (var a in WatchWalletFile.Load(vault.VaultPath, mnemonic).Addresses)
+                        list.Add(new BalanceStore.Entry(a.Symbol, a.Address, 0, 0, 0, a.Symbol));
+                }
+                catch
+                {
+                    // its description does not open: no figure, never a guess
+                }
+                return list;
+            }
+
             if (!_mnemonics.Validate(mnemonic).IsValid)
             {
                 if (TonMnemonic.IsTonMnemonic(mnemonic))

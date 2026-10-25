@@ -2801,6 +2801,7 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsWelcomeStage));
         OnPropertyChanged(nameof(IsCreateStage));
         OnPropertyChanged(nameof(IsImportStage));
+        OnPropertyChanged(nameof(IsWatchStage));
         OnPropertyChanged(nameof(IsUnlockStage));
         OnPropertyChanged(nameof(ShowDefaultLockBg));
         OnPropertyChanged(nameof(ShowCustomLockBg));
@@ -3065,6 +3066,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task RevealPhraseAsync()
     {
+        if (RefuseWatchOnly()) return;
         if (!HasVault)
         {
             Fail("No vault on this PC yet.");
@@ -3097,6 +3099,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task RevealMoneroKeysAsync()
     {
+        if (RefuseWatchOnly()) return;
         if (!HasVault)
         {
             Fail("No vault on this PC yet.");
@@ -3558,6 +3561,13 @@ public partial class MainViewModel : ViewModelBase
         // next one may be a decoy opened in front of somebody.
         ClearDuressFields();
         ClearPanicFields();
+        _watchSpec = null;
+        _watchSources.Clear();
+        _watchScans.Clear();
+        WatchPsbtAccounts.Clear();
+        ClearWatchPsbt();
+        OnPropertyChanged(nameof(IsWatchWallet));
+        OnPropertyChanged(nameof(CanMakeWatchPsbt));
         DuressRevealedPhrase = string.Empty;
         SettingsPassword = string.Empty;
         ReceiveQr = null;
@@ -4858,6 +4868,7 @@ public partial class MainViewModel : ViewModelBase
                 // aggregate — the balance shown is exactly the set the wallet can find and spend.
                 RefreshUtxoWalletsAsync(prices, ct),
             };
+            if (IsWatchWallet) steps.Add(RefreshWatchAccountsAsync(prices, ct));
 
             // Every TRC-20 token on our OWN derived TRON account — not just USDT.
             var tronAccount = Accounts.FirstOrDefault(a => a.Symbol == "TRX" && a.SupportStatus == "Ready");
@@ -4904,7 +4915,7 @@ public partial class MainViewModel : ViewModelBase
             // Only the network phase is parallel; the rows are still applied one at a time on the UI
             // thread, so Accounts is never mutated from two places at once.
             // The phrase's accounts at other wallets' paths ride along as watch rows (see Discovery).
-            var watchTargets = WatchAddresses.ToList().Concat(FoundWatchTargets())
+            var watchTargets = WatchAddresses.ToList().Concat(FoundWatchTargets()).Concat(WatchSpecTargets())
                 .Select(w => (Watch: w, Chain: ParseChain(w.Chain)))
                 .Where(x => x.Chain is not null)
                 .ToList();
@@ -5561,7 +5572,7 @@ public partial class MainViewModel : ViewModelBase
         // That is why this reads the scan list rather than naming chains: the two cannot drift apart.
         _receiveChain = ParseChain(account.Symbol);
         CanRotateReceive = UtxoScanChains.Contains(account.Symbol, StringComparer.OrdinalIgnoreCase)
-                           && _receiveChain is not null && _unlockedMnemonic is not null;
+                           && _receiveChain is not null && _unlockedMnemonic is not null && !IsWatchWallet;
         ReceivePathLabel = CanRotateReceive ? $"{account.Symbol} receive address #0" : string.Empty;
         RebuildReceiveHistory(account.Symbol);
         _receiveIndex = 0;
@@ -6013,6 +6024,7 @@ public partial class MainViewModel : ViewModelBase
     private void SetUnlocked(string mnemonic, string passphrase = "")
     {
         _unlockedMnemonic = mnemonic;
+        LoadWatchSpec(mnemonic);   // a watch-only wallet's secret is a key to its description (H.5)
         // Push the BIP39 passphrase onto the shared deriver BEFORE any derivation, so accounts,
         // balance scans and signing all target the same (possibly hidden) wallet.
         _unlockedPassphrase = passphrase ?? "";
@@ -6027,7 +6039,7 @@ public partial class MainViewModel : ViewModelBase
         _ = LoadExchangesAsync(mnemonic);
         DeriveAccounts(mnemonic);
         _accountsWalletKey = ActiveWalletCacheKey;   // these rows are this wallet's from here on
-        LoadFoundAccounts(); // money this phrase holds at other wallets' paths, from its last scan
+        if (!IsWatchWallet) LoadFoundAccounts(); // money this phrase holds at other wallets' paths, from its last scan
         OnPropertyChanged(nameof(SignMsgAddress)); // the Ethereum address the sign-message tool uses
         SignMsgSignature = string.Empty;
         SignMsgInput = string.Empty;
@@ -6048,7 +6060,7 @@ public partial class MainViewModel : ViewModelBase
         // A Monero-only wallet's single account reads "Receive only" until its service has synced, and it
         // is still the address to receive on.
         var first = Accounts.FirstOrDefault(a => a.SupportStatus == "Ready" && IsRealAddress(a.Address))
-                    ?? (_isMoneroWallet ? Accounts.FirstOrDefault(a => IsRealAddress(a.Address)) : null);
+                    ?? (_isMoneroWallet || IsWatchWallet ? Accounts.FirstOrDefault(a => IsRealAddress(a.Address)) : null);
         if (first is not null) SetReceiveTarget(first);
     }
 
@@ -6056,6 +6068,12 @@ public partial class MainViewModel : ViewModelBase
     {
         Accounts.Clear();
         _evmSideReadOk.Clear();   // another wallet's reads say nothing about this one
+
+        if (IsWatchWallet)
+        {
+            DeriveWatchAccounts();
+            return;
+        }
 
         // A TON-native wallet (imported from Telegram Wallet / Tonkeeper) derives only its TON address.
         if (_isTonWallet)

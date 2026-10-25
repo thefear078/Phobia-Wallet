@@ -361,6 +361,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task GetSwapQuoteAsync()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         SwapError = string.Empty;
         SwapSuccess = string.Empty;
         SwapWarning = string.Empty;
@@ -538,6 +539,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task ConfirmSwapAsync()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         if (_unlockedMnemonic is null || _swapPlan is null) { SwapError = Loc.Instance["swap.err.quoteFirst"]; return; }
         var plan = _swapPlan;
         SwapError = string.Empty;

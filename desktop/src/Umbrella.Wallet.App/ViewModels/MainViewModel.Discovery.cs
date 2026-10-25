@@ -133,7 +133,7 @@ public partial class MainViewModel
     private void MaybeDiscoverAutomatically()
     {
         var walletId = ActiveWalletCacheKey;
-        if (!StartTorAutomatically || string.IsNullOrEmpty(_unlockedMnemonic) || IsDiscovering) return;
+        if (!StartTorAutomatically || string.IsNullOrEmpty(_unlockedMnemonic) || IsDiscovering || IsWatchWallet) return;
         if (!_discoveryStarted.Add(walletId)) return;
         if (ReadFound(walletId) is { Scanned: true }) return;
         _ = DiscoverAsync(userAsked: false);
@@ -144,7 +144,7 @@ public partial class MainViewModel
 
     private async Task DiscoverAsync(bool userAsked)
     {
-        if (IsDiscovering || string.IsNullOrEmpty(_unlockedMnemonic)) return;
+        if (IsDiscovering || string.IsNullOrEmpty(_unlockedMnemonic) || IsWatchWallet) return;
         var epoch = _lockEpoch;
         var walletId = ActiveWalletCacheKey;
         var mnemonic = _unlockedMnemonic!;

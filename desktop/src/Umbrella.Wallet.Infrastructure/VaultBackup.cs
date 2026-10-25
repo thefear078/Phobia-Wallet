@@ -55,6 +55,9 @@ public static class VaultBackup
     /// </summary>
     private const string VaultBytesKey = "vaultBase64";
 
+    /// <summary>A watch-only wallet's sealed description, base64.</summary>
+    private const string WatchSpecKey = "watchSpecBase64";
+
     /// <summary>The vault bytes a bundle carries, whichever way it stored them.</summary>
     private static byte[]? VaultBytesFrom(IReadOnlyDictionary<string, string?> bundle)
     {
@@ -87,6 +90,9 @@ public static class VaultBackup
                 [VaultBytesKey] = Convert.ToBase64String(
                     await File.ReadAllBytesAsync(AppPaths.VaultFile, ct)),
                 ["watchAddresses"] = await ReadIfPresentAsync(AppPaths.WatchAddressesFile, ct),
+                // A watch-only wallet's description (H.5), sealed by the key its vault holds: without it
+                // the restored vault would open a wallet that watches nothing.
+                [WatchSpecKey] = await ReadBytesAsBase64Async(WatchWalletFile.PathFor(AppPaths.VaultFile), ct),
                 // Encrypted with a key derived from the seed, so it stays sealed in the backup too.
                 ["exchanges"] = await ReadBytesAsBase64Async(
                     Path.Combine(AppPaths.DataRoot, "exchanges.bin"), ct),
@@ -154,6 +160,30 @@ public static class VaultBackup
             await File.WriteAllBytesAsync(tempPath, vaultBytes, ct);
             var mnemonic = await new EncryptedFileSeedVault(tempPath).UnlockAsync(password, ct);
 
+            // A watch-only wallet holds a key, not a phrase: verified when it opens its description.
+            if (WatchWalletFile.IsWatchSecret(mnemonic))
+            {
+                if (!bundle.TryGetValue(WatchSpecKey, out var spec) || string.IsNullOrWhiteSpace(spec))
+                    return new VaultBackupVerification(false,
+                        "The backup holds a watch-only wallet, but not what it watches — the backup is damaged.",
+                        exportedUtc, hasWatch, hasExchanges, VaultBackupReason.DamagedPhrase);
+                await File.WriteAllBytesAsync(WatchWalletFile.PathFor(tempPath), Convert.FromBase64String(spec), ct);
+                try
+                {
+                    WatchWalletFile.Load(tempPath, mnemonic);
+                }
+                catch
+                {
+                    return new VaultBackupVerification(false,
+                        "The backup holds a watch-only wallet whose description does not open — the backup is damaged.",
+                        exportedUtc, hasWatch, hasExchanges, VaultBackupReason.DamagedPhrase);
+                }
+
+                return new VaultBackupVerification(true,
+                    "Backup verified — it decrypts with this password and holds a watch-only wallet.",
+                    exportedUtc, hasWatch, hasExchanges, VaultBackupReason.Verified);
+            }
+
             var check = new Bip39MnemonicService().Validate(mnemonic);
             if (!check.IsValid)
                 return new VaultBackupVerification(false,
@@ -186,6 +216,7 @@ public static class VaultBackup
         finally
         {
             try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best effort */ }
+            try { if (File.Exists(WatchWalletFile.PathFor(tempPath))) File.Delete(WatchWalletFile.PathFor(tempPath)); } catch { /* best effort */ }
         }
     }
 
@@ -241,6 +272,13 @@ public static class VaultBackup
             }
 
             await AtomicFile.WriteAllBytesAsync(AppPaths.VaultFile, vaultBytes, ct);
+
+            // The description of a watch-only wallet goes back beside its vault; one left from the
+            // wallet just replaced is moved aside with it, never mixed with another wallet's key.
+            var specPath = WatchWalletFile.PathFor(AppPaths.VaultFile);
+            if (File.Exists(specPath)) File.Move(specPath, $"{specPath}.replaced-{DateTime.UtcNow:yyyyMMddHHmmss}");
+            if (bundle.TryGetValue(WatchSpecKey, out var spec) && !string.IsNullOrWhiteSpace(spec))
+                await AtomicFile.WriteAllBytesAsync(specPath, Convert.FromBase64String(spec), ct);
 
             if (bundle.TryGetValue("watchAddresses", out var watch) && !string.IsNullOrWhiteSpace(watch))
             {

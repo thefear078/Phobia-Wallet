@@ -15,6 +15,12 @@
       <TextBlock Classes="serif" FontSize="26" Text="{Binding [nav.staking], Source={x:Static app:Loc.Instance}}" VerticalAlignment="Center"/>
     </StackPanel>
 
+    <!-- Roadmap H.5: a watch-only wallet has no keys, so nothing on this page can sign for it. -->
+    <Border IsVisible="{Binding IsWatchWallet}" Background="{DynamicResource UmCardAlt}" BorderBrush="#4A5E86"
+            BorderThickness="1" CornerRadius="8" Padding="12,10">
+      <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12" TextWrapping="Wrap"
+                 Text="{Binding [watch.banner], Source={x:Static app:Loc.Instance}}"/>
+    </Border>
     <Border Classes="note" IsVisible="{Binding ShowStakingIntro}">
       <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
         <Border Classes="noteMark">
