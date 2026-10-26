@@ -85,6 +85,9 @@ public static class DataWiper
             {
                 foreach (var notes in Directory.EnumerateFiles(root, "tx-notes-*.bin"))
                     DeleteFile(notes);
+                // The user's own explorer keys, one per wallet (roadmap N.15).
+                foreach (var key in Directory.EnumerateFiles(root, "explorer-key-*.bin"))
+                    DeleteFile(key);
             }
         }
         catch

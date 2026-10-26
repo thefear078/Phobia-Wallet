@@ -1171,6 +1171,36 @@
       </StackPanel>
     </Border>
 
+    <!-- Roadmap N.15: the user's own explorer key, for the history nothing serves without one.
+         It identifies the user to Etherscan, which the card says before anything else. -->
+    <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">
+      <StackPanel Spacing="10">
+        <TextBlock Classes="eyebrow" Text="{Binding [explorerKey.title], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                   Text="{Binding [explorerKey.hint], Source={x:Static app:Loc.Instance}}"/>
+        <Border Background="{DynamicResource UmCardAlt}" CornerRadius="8" Padding="12,10">
+          <TextBlock Foreground="#E7CA83" FontSize="11.5" LineHeight="17" TextWrapping="Wrap"
+                     Text="{Binding [explorerKey.cost], Source={x:Static app:Loc.Instance}}"/>
+        </Border>
+        <TextBlock IsVisible="{Binding HasExplorerKey}" Foreground="{DynamicResource UmPos}" FontSize="12"
+                   Text="{Binding [explorerKey.inUse], Source={x:Static app:Loc.Instance}}"/>
+        <TextBox Classes="mono" Text="{Binding ExplorerKeyInput}" PasswordChar="●"
+                 Watermark="{Binding [explorerKey.placeholder], Source={x:Static app:Loc.Instance}}"/>
+        <WrapPanel>
+          <Button Classes="ghost" Margin="0,0,10,6" IsEnabled="{Binding !IsBusy}"
+                  Content="{Binding [explorerKey.save], Source={x:Static app:Loc.Instance}}" Command="{Binding SaveExplorerKeyCommand}"/>
+          <Button Classes="ghost" Margin="0,0,10,6" IsVisible="{Binding HasExplorerKey}"
+                  Content="{Binding [explorerKey.remove], Source={x:Static app:Loc.Instance}}" Command="{Binding RemoveExplorerKeyCommand}"/>
+        </WrapPanel>
+        <TextBlock IsVisible="{Binding ExplorerKeyStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Text="{Binding ExplorerKeyStatus}" Foreground="{DynamicResource UmPos}" FontSize="12" TextWrapping="Wrap"/>
+        <Border IsVisible="{Binding ExplorerKeyError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
+          <TextBlock Text="{Binding ExplorerKeyError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
+      </StackPanel>
+    </Border>
+
     <!-- Address checker: paste any address to see which network it is for and whether it is
          well-formed. Local and read-only — a "verify, don't trust" convenience. -->
     <Border Classes="card" IsVisible="{Binding IsTabPrivacy}">

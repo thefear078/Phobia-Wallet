@@ -193,14 +193,15 @@ public partial class MainViewModel
         // coin's name, which the catalog alone would not flag.
         var evmGaps = accounts
             .Where(a => a.Derivation == EvmSideDerivation && a.Amount > 0 &&
-                        !OnChainHistoryClient.HasEvmSideHistory(a.Chain))
+                        !OnChainHistoryClient.HasEvmSideHistory(a.Chain) && !_keyedOk.Contains(a.Chain))
             .Select(a => $"{a.Symbol} ({a.Chain})")
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
         // And tokens on a network whose token transfers nothing serves without a key (BNB Chain).
         var tokenGaps = accounts
             .Where(a => a.Derivation.StartsWith("ERC20 on ", StringComparison.Ordinal) && a.Amount > 0 &&
-                        !a.IsSuspectedSpam && !OnChainHistoryClient.HasEvmTokenHistory(a.Chain))
+                        !a.IsSuspectedSpam && !OnChainHistoryClient.HasEvmTokenHistory(a.Chain) &&
+                        !_keyedOk.Contains(a.Chain + ":tokens"))
             .Select(a => $"{a.Symbol} ({a.Chain})")
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
@@ -483,11 +484,15 @@ public partial class MainViewModel
                             .ToList();
                         reads.Add(_history.GetEvmTokenHistoryAsync(eth, network.Key, tokens));
                     }
+
+                    // Where nothing answers without a key, the user's own (N.15).
+                    reads.AddRange(KeyedHistoryReads(eth, held));
                 }
             }
 
             var fresh = new List<ChainTx>();
             foreach (var batch in await Task.WhenAll(reads.Select(QuietRead))) fresh.AddRange(batch);
+            RefreshHistoryCoverage();   // a keyed read that answered takes its network off the list
 
             if (epoch != _lockEpoch) return;
 

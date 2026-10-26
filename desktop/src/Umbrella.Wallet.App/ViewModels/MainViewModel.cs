@@ -3566,6 +3566,7 @@ public partial class MainViewModel : ViewModelBase
         _watchScans.Clear();
         WatchPsbtAccounts.Clear();
         ClearWatchPsbt();
+        ForgetExplorerKey();
         OnPropertyChanged(nameof(IsWatchWallet));
         OnPropertyChanged(nameof(CanMakeWatchPsbt));
         DuressRevealedPhrase = string.Empty;
@@ -6025,6 +6026,7 @@ public partial class MainViewModel : ViewModelBase
     {
         _unlockedMnemonic = mnemonic;
         LoadWatchSpec(mnemonic);   // a watch-only wallet's secret is a key to its description (H.5)
+        LoadExplorerKey(mnemonic); // the user's own explorer key, if this wallet saved one (N.15)
         // Push the BIP39 passphrase onto the shared deriver BEFORE any derivation, so accounts,
         // balance scans and signing all target the same (possibly hidden) wallet.
         _unlockedPassphrase = passphrase ?? "";
