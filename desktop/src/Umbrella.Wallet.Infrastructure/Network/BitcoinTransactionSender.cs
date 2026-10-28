@@ -375,6 +375,51 @@ public sealed class BitcoinTransactionSender
         string symbol, Transaction tx, CancellationToken ct)
     {
         var txid = tx.GetHash().ToString();
+
+        // Private broadcast first (roadmap P2.4): one random node of the network, over a circuit of its
+        // own — then the explorers are asked whether the network carried it. Only through Tor or a
+        // proxy: going direct, the node would learn the IP exactly as the explorer does.
+        if (PrivateRelay && RelayNetwork(symbol) is { } network &&
+            PublicHttp.ActiveProxy is { } proxy && Uri.TryCreate(proxy, UriKind.Absolute, out var proxyUri))
+        {
+            if (await PeerRelay.RelayThroughProxyAsync(network, tx, proxyUri, ct) &&
+                await SettleAsync(symbol, txid, string.Empty, ct) is { Ok: true } seen)
+            {
+                Routes[txid] = BroadcastRoute.Peer;
+                return seen;
+            }
+            // Not carried, or not seen yet: the explorer below gets the same signed bytes — one
+            // transaction id either way, so sending it twice can never pay twice.
+        }
+
+        var result = await BroadcastToExplorerAsync(symbol, tx, txid, ct);
+        if (result.Ok) Routes[txid] = BroadcastRoute.Explorer;
+        return result;
+    }
+
+    /// <summary>
+    /// Private broadcast (P2.4): on unless the user turned it off. It only ever runs with Tor or a proxy
+    /// active; without one this switch changes nothing.
+    /// </summary>
+    public static bool PrivateRelay { get; set; } = true;
+
+    /// <summary>How each transaction broadcast this session first left the device.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, BroadcastRoute> Routes = new();
+
+    public static BroadcastRoute? RouteOf(string txid) => Routes.TryGetValue(txid, out var r) ? r : null;
+
+    /// <summary>The networks a transaction can be relayed on: Bitcoin, Litecoin and Dogecoin.</summary>
+    private static NBitcoin.Network? RelayNetwork(string symbol) => symbol.ToUpperInvariant() switch
+    {
+        "BTC" => NBitcoin.Network.Main,
+        "LTC" => NBitcoin.Altcoins.Litecoin.Instance.Mainnet,
+        "DOGE" => NBitcoin.Altcoins.Dogecoin.Instance.Mainnet,
+        _ => null,
+    };
+
+    private async Task<(bool Ok, string? TxId, string? Error, bool Unclear)> BroadcastToExplorerAsync(
+        string symbol, Transaction tx, string txid, CancellationToken ct)
+    {
         var hex = tx.ToHex();
         bool httpOk;
         string body;
@@ -661,4 +706,14 @@ public sealed class BitcoinTransactionSender
 
         return FeeLevels.Adjust(standard, level, 1.0, 200.0);
     }
+}
+
+/// <summary>How a transaction first left the device (roadmap P2.4).</summary>
+public enum BroadcastRoute
+{
+    /// <summary>Handed to one random node of the network over a Tor circuit of its own.</summary>
+    Peer,
+
+    /// <summary>Posted to an explorer.</summary>
+    Explorer,
 }

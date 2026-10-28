@@ -1458,6 +1458,7 @@ public partial class MainViewModel : ViewModelBase
         // Mobile layout is retired on desktop (it was a phone-shaped desktop, not a real mobile
         // platform). Force it off so any previously-saved state can't strand a desktop user.
         if (_uiSettings.MobileMode) { _uiSettings.MobileMode = false; _uiSettings.Save(); }
+        Umbrella.Wallet.Infrastructure.Network.BitcoinTransactionSender.PrivateRelay = _uiSettings.PrivateRelay;
 
         _registry = registry;
         _vault = BuildActiveVault();

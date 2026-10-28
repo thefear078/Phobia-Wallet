@@ -1756,7 +1756,7 @@ public partial class MainViewModel
         {
             // Built BEFORE the quotes are cleared: the plan is what knows how many of the user's own
             // addresses funded this spend, and it is about to be thrown away (roadmap P1.12).
-            BuildSendLeakReport(symbol);
+            BuildSendLeakReport(symbol, reference);
             ShowSendReceipt(confirmed ? SendReceiptState.Confirmed : SendReceiptState.Broadcast,
                 symbol, amount, to, reference, explorer);
             var spentFrom = SelectedSendAsset?.Symbol;   // read before the form is cleared
