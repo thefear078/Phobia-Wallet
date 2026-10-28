@@ -95,6 +95,9 @@ public static class NetworkCounterpartyCatalog
             CounterpartyContact.Automatic, ChainAndBroadcast, "NEAR"),
         new("free.rpc.fastnear.com", "FastNEAR", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "NEAR"),
+        // Which staking pools an account has used: the RPC has no such question (roadmap N.16).
+        new("api.fastnear.com", "FastNEAR (staking index)", CounterpartyPurpose.Balances,
+            CounterpartyContact.OnDemand, Chain, "NEAR staking, when Staking is opened"),
         new("lcd-cosmoshub.keplr.app", "Keplr", CounterpartyPurpose.Balances,
             CounterpartyContact.Automatic, ChainAndBroadcast, "ATOM"),
         new("horizon.stellar.org", "Stellar Development Foundation", CounterpartyPurpose.Balances,

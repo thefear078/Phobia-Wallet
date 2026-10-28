@@ -20,20 +20,41 @@ public sealed record NearTransfer(
     BigInteger Yocto);
 
 /// <summary>
+/// One call to a NEAR staking pool, as it will be signed (roadmap N.16). Built only through
+/// <see cref="NearStaking"/>: the method is one of four, the arguments are written here, and the
+/// receiver is a pool account.
+/// </summary>
+public sealed record NearStakeCall(
+    string SignerId,
+    byte[] PublicKey,
+    ulong Nonce,
+    string PoolId,
+    byte[] BlockHash,
+    string Method,
+    string ArgsJson,
+    ulong Gas,
+    BigInteger DepositYocto);
+
+/// <summary>
 /// NEAR transactions (roadmap N.7, send): the Borsh encoding of a Transaction carrying one Transfer,
 /// the ed25519 signature over its SHA-256, and the SignedTransaction the RPC accepts — byte-for-byte
 /// what near-api-js builds, pinned to its own "serialize and sign transfer tx" test
 /// (<c>NearSendTests</c>).
 ///
-/// Only a Transfer can be expressed. No function call, no access-key change, no deploy: nothing a
-/// server answers can be turned into any of those.
+/// Only a Transfer — and, since N.16, one call to a staking pool, from a fixed list of four with
+/// arguments written here — can be expressed. No other function call, no access-key change, no deploy:
+/// nothing a server answers can be turned into any of those.
 /// </summary>
 public static class NearTransactions
 {
     public static readonly BigInteger YoctoPerNear = BigInteger.Pow(10, 24);
 
     private const byte KeyTypeEd25519 = 0;
+    private const byte ActionFunctionCall = 2;
     private const byte ActionTransfer = 3;
+
+    /// <summary>The most gas one transaction may attach (300 TGas).</summary>
+    public const ulong MaxGas = 300_000_000_000_000UL;
 
     /// <summary>The Borsh bytes of the Transaction — what is hashed and signed.</summary>
     public static byte[] TransactionBytes(NearTransfer t)
@@ -64,7 +85,50 @@ public static class NearTransactions
     /// Signs with the 32-byte ed25519 seed and returns the SignedTransaction, base64, and its hash.
     /// Refuses a seed whose public key is not the one in the transaction.
     /// </summary>
-    public static (string SignedBase64, string Hash, byte[] Signature) Sign(NearTransfer t, ReadOnlySpan<byte> seed)
+    public static (string SignedBase64, string Hash, byte[] Signature) Sign(NearTransfer t, ReadOnlySpan<byte> seed) =>
+        SignBytes(TransactionBytes(t), t.PublicKey, seed);
+
+    /// <summary>
+    /// The Borsh bytes of a staking-pool call: one FunctionCall action. Refused unless it is one of the
+    /// four pool methods, to a pool account, with the arguments <see cref="NearStaking"/> writes, and NEAR
+    /// attached only to <c>deposit_and_stake</c>.
+    /// </summary>
+    public static byte[] StakeTransactionBytes(NearStakeCall c)
+    {
+        if (c.PublicKey.Length != 32) throw new ArgumentException("An ed25519 public key is 32 bytes.");
+        if (c.BlockHash.Length != 32) throw new ArgumentException("A block hash is 32 bytes.");
+        if (!IsValidAccountId(c.SignerId)) throw new ArgumentException("Not a NEAR account id.", nameof(c));
+        if (!NearStaking.IsPoolId(c.PoolId)) throw new ArgumentException("Not a staking pool account.", nameof(c));
+        if (!NearStaking.IsWellFormed(c.Method, c.ArgsJson, c.DepositYocto))
+            throw new ArgumentException("Not a staking-pool call this wallet makes.", nameof(c));
+        if (c.Gas == 0 || c.Gas > MaxGas) throw new ArgumentException("Gas out of range.", nameof(c));
+
+        var args = Encoding.UTF8.GetBytes(c.ArgsJson);
+        using var ms = new MemoryStream();
+        WriteString(ms, c.SignerId);
+        ms.WriteByte(KeyTypeEd25519);
+        ms.Write(c.PublicKey);
+        WriteU64(ms, c.Nonce);
+        WriteString(ms, c.PoolId);
+        ms.Write(c.BlockHash);
+        WriteU32(ms, 1);                   // actions: exactly one
+        ms.WriteByte(ActionFunctionCall);
+        WriteString(ms, c.Method);
+        WriteU32(ms, (uint)args.Length);
+        ms.Write(args);
+        WriteU64(ms, c.Gas);
+        WriteU128(ms, c.DepositYocto);
+        return ms.ToArray();
+    }
+
+    /// <summary>The hash explorers show for a staking-pool call.</summary>
+    public static string Hash(NearStakeCall c) => Encoders.Base58.EncodeData(SHA256.HashData(StakeTransactionBytes(c)));
+
+    /// <summary>Signs a staking-pool call as <see cref="Sign(NearTransfer, ReadOnlySpan{byte})"/> signs a transfer.</summary>
+    public static (string SignedBase64, string Hash, byte[] Signature) Sign(NearStakeCall c, ReadOnlySpan<byte> seed) =>
+        SignBytes(StakeTransactionBytes(c), c.PublicKey, seed);
+
+    private static (string SignedBase64, string Hash, byte[] Signature) SignBytes(byte[] tx, byte[] publicKey, ReadOnlySpan<byte> seed)
     {
         if (seed.Length != Ed25519.SecretKeySize) throw new ArgumentException("An ed25519 seed is 32 bytes.");
 
@@ -73,10 +137,9 @@ public static class NearTransactions
         {
             var pub = new byte[Ed25519.PublicKeySize];
             Ed25519.GeneratePublicKey(sk, 0, pub, 0);
-            if (!pub.AsSpan().SequenceEqual(t.PublicKey))
+            if (!pub.AsSpan().SequenceEqual(publicKey))
                 throw new InvalidOperationException("The key does not belong to the sending account.");
 
-            var tx = TransactionBytes(t);
             var digest = SHA256.HashData(tx);
             var signature = new byte[Ed25519.SignatureSize];
             Ed25519.Sign(sk, 0, digest, 0, digest.Length, signature, 0);
@@ -140,6 +203,7 @@ public static class NearTransactions
 
     private static void WriteU128(Stream s, BigInteger v)
     {
+        if (v < 0 || v > MaxU128) throw new ArgumentOutOfRangeException(nameof(v));
         var bytes = new byte[16];
         var raw = v.ToByteArray(isUnsigned: true, isBigEndian: false);
         raw.CopyTo(bytes, 0);
@@ -152,6 +216,52 @@ public static class NearTransactions
         WriteU32(s, (uint)bytes.Length);
         s.Write(bytes);
     }
+}
+
+/// <summary>
+/// Staking on NEAR (roadmap N.16): delegation to a validator's staking-pool contract. The four calls a
+/// wallet needs, and nothing else: stake (deposit_and_stake, with the NEAR attached), unstake an amount
+/// or all of it, and withdraw what has finished unstaking (about four epochs, roughly two days, later).
+/// Rewards are added to the stake by the pool every epoch; there is nothing to claim.
+/// </summary>
+public static class NearStaking
+{
+    public const string DepositAndStake = "deposit_and_stake";
+    public const string Unstake = "unstake";
+    public const string UnstakeAll = "unstake_all";
+    public const string WithdrawAll = "withdraw_all";
+
+    /// <summary>Gas attached to a pool call. A pool call uses 30–50 TGas; what is not used is refunded.</summary>
+    public const ulong DefaultGas = 125_000_000_000_000UL;
+
+    /// <summary>The validator pools NEAR's own staking-pool factories create: <c>…​.poolv1.near</c>, <c>…​.pool.near</c>.</summary>
+    public static bool IsPoolId(string? id) =>
+        NearTransactions.IsValidAccountId(id) &&
+        (id!.EndsWith(".poolv1.near", StringComparison.Ordinal) || id.EndsWith(".pool.near", StringComparison.Ordinal)) &&
+        id.IndexOf('.') > 0;
+
+    private static readonly Regex UnstakeArgs = new("^\\{\"amount\":\"[1-9][0-9]{0,38}\"\\}$", RegexOptions.CultureInvariant);
+
+    /// <summary>True for exactly the calls <see cref="Call"/> writes.</summary>
+    public static bool IsWellFormed(string method, string args, BigInteger deposit) => method switch
+    {
+        DepositAndStake => args == "{}" && deposit > 0,
+        Unstake => UnstakeArgs.IsMatch(args) && deposit == 0,
+        UnstakeAll or WithdrawAll => args == "{}" && deposit == 0,
+        _ => false,
+    };
+
+    /// <summary>The call for one action — the only way the wallet makes one.</summary>
+    public static NearStakeCall Call(
+        string signer, byte[] publicKey, ulong nonce, byte[] blockHash, string pool, string method, BigInteger yocto,
+        ulong gas = DefaultGas) => method switch
+    {
+        DepositAndStake => new(signer, publicKey, nonce, pool, blockHash, method, "{}", gas, yocto),
+        Unstake => new(signer, publicKey, nonce, pool, blockHash, method,
+            "{\"amount\":\"" + yocto.ToString(CultureInfo.InvariantCulture) + "\"}", gas, BigInteger.Zero),
+        UnstakeAll or WithdrawAll => new(signer, publicKey, nonce, pool, blockHash, method, "{}", gas, BigInteger.Zero),
+        _ => throw new ArgumentException("Not a staking-pool method this wallet calls.", nameof(method)),
+    };
 }
 
 /// <summary>What the RPC says about the sending account, for a transfer.</summary>
@@ -197,6 +307,24 @@ public static class NearRpc
         {
             var hash = Encoders.Base58.DecodeData(h.GetString()!);
             return hash.Length == 32 ? (nonce, hash) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// <c>query call_function</c>: a contract view method's answer, which the RPC returns as an array of
+    /// byte values — here as the JSON text the method wrote. Null when not understood.
+    /// </summary>
+    public static string? ParseCallResult(JsonElement root)
+    {
+        if (!Result(root, out var r) || !r.TryGetProperty("result", out var bytes) || bytes.ValueKind != JsonValueKind.Array) return null;
+        try
+        {
+            var raw = bytes.EnumerateArray().Select(b => (byte)b.GetInt32()).ToArray();
+            return Encoding.UTF8.GetString(raw);
         }
         catch
         {

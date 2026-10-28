@@ -524,7 +524,7 @@ public sealed class PublicChainBalanceClient
     }
 
     /// <summary>The NEAR JSON-RPC root: the user's chosen server, or the NEAR Foundation's.</summary>
-    private static string NearRoot => ChainEndpoints.Resolve("NEAR", "https://rpc.mainnet.near.org");
+    private static string NearRoot => ChainEndpoints.Resolve("NEAR", "https://free.rpc.fastnear.com");
 
     /// <summary>NEAR balance of the implicit account at final finality (roadmap N.7).</summary>
     private static Task<ChainBalance?> GetNearAsync(string address, CancellationToken ct) =>
