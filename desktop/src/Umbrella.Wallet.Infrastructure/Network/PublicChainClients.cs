@@ -271,12 +271,24 @@ public static class PublicHttp
     /// </summary>
     public static HttpClient CreateProbeClient(string? proxy, bool requireProxy) => Build(proxy, requireProxy);
 
+    /// <summary>
+    /// The TLS versions an HTTPS connection may use: 1.2 or 1.3, never SSL or TLS 1.0/1.1, whatever the
+    /// operating system would still allow (Altumptic PSB §2.1). A phone older than Android 10 has no
+    /// TLS 1.3, so there it is 1.2 alone. Certificates are validated by the system as always: nothing in
+    /// this wallet turns that off.
+    /// </summary>
+    public static System.Security.Authentication.SslProtocols AllowedTls =>
+        OperatingSystem.IsAndroid() && !OperatingSystem.IsAndroidVersionAtLeast(29)
+            ? System.Security.Authentication.SslProtocols.Tls12
+            : System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13;
+
     private static HttpClient Build(string? socks5Uri, bool requireProxy, string label = "shared")
     {
         var handler = new SocketsHttpHandler
         {
             AutomaticDecompression = System.Net.DecompressionMethods.All,
             ConnectTimeout = TimeSpan.FromSeconds(15),
+            SslOptions = new System.Net.Security.SslClientAuthenticationOptions { EnabledSslProtocols = AllowedTls },
         };
         if (!string.IsNullOrWhiteSpace(socks5Uri))
         {
