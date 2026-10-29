@@ -106,6 +106,8 @@ and the four exceptions that remain, each with an end date: [docs/PSB.md](docs/P
 ### Maintenance
 
 - QRCoder 1.8.1, Microsoft.NET.Test.Sdk 18.11.0, and current pins of the GitHub Actions the build uses.
+- Monero 0.18.5.4 bundled: 0.18.5.3 left Monero's signed `hashes.txt` (the build refuses anything not in it).
+  The new sums were taken from that file after checking binaryFate's signature (81AC591F…0BDF92).
 - NEAR asks FastNEAR first: the NEAR Foundation's public endpoint now answers every request with 429
   "deprecated". Staking-pool calls for NEAR are in place, but not yet on the Staking screen.
 

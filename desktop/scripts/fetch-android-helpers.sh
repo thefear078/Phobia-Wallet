@@ -28,7 +28,7 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 
 TOR_VERSION="15.0.25"
-MONERO_VERSION="v0.18.5.3"
+MONERO_VERSION="v0.18.5.4"
 
 missing() {
     if [ "${REQUIRE_HELPERS}" = "1" ]; then
@@ -47,10 +47,10 @@ for abi in ${ABIS}; do
     case "${abi}" in
         arm64-v8a)
             tor_arch="aarch64"; tor_sha="a1a67ec77ce0a7c4fca446fd9f915fbb0302c3107c2d56ab213196187cfd894a"
-            monero_arch="armv8"; monero_sha="2621293d288d5ce23d251d1f4106d7e1bdd5bf3a37423e8a8c6851e4edba1768" ;;
+            monero_arch="armv8"; monero_sha="b1ba5efaf8d078fce26ae66a45252e4eb67a7de3068ea093c5ba6c8f7e7cb59c" ;;
         armeabi-v7a)
             tor_arch="armv7"; tor_sha="4fcdb5540f7ea2f529b9063115d66dd7dfa61e5602bfaab96a78e8046bb4b8d5"
-            monero_arch="armv7"; monero_sha="542cc0322a7d0d3c9cd47c7cc8d195bb74861a7eec79235b58a5877a90b04e6a" ;;
+            monero_arch="armv7"; monero_sha="58d39c1e241bde624a01d9d2402784314a769bf47f555708aa52ae52fbcfc7f8" ;;
         x86_64)
             tor_arch="x86_64"; tor_sha="11dbac44e2ee29df2cd6e3a5f38164d2630b2c85342f6a041b9cb57d7012d071"
             monero_arch=""; monero_sha="" ;;
