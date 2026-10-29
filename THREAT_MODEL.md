@@ -260,6 +260,10 @@ by Dependabot, and the source is analysed by CodeQL on every PR. Since 2026-10-0
 - **The build itself.** Every GitHub Action is pinned to a commit SHA, release tags are immutable (a
   ruleset forbids moving or deleting them), and a published release is never rebuilt. Bundled Tor and
   Monero are checked against their projects' signed sums on every PR.
+- **Updates (from the next Beta).** The checksum list is signed (`SHA256SUMS-<label>.txt.sig`), and the
+  wallet's own updater refuses a release whose list its pinned key does not verify, before downloading;
+  on Windows the program must also carry the pinned Authenticode certificate. A user who never checks
+  anything by hand is still protected when updating from inside the wallet (PHB-2026-10).
 
 **Where the defence ends.** The Windows certificate is **self-signed**: it proves a file is unchanged
 since the release workflow signed it, not who the publisher is, and Windows still warns. The installer,
@@ -268,8 +272,8 @@ secrets, so whoever controls the GitHub account controls the signatures — the 
 names the workflow and commit, and an immutable tag makes a quiet swap visible. A CA-issued certificate
 and an external audit are on the roadmap.
 
-**Residual risk: LOW–MEDIUM** for a user who checks the signature or the attestation; **MEDIUM** for one
-who checks nothing.
+**Residual risk: LOW–MEDIUM** for a user who checks the signature or the attestation, or who updates from
+inside the wallet; **MEDIUM** for a first download that nobody checks.
 
 ---
 

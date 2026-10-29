@@ -6,7 +6,7 @@ repository built. Each check below is independent; the more you run, the less yo
 | Check | Proves | Takes |
 |---|---|---|
 | [A. Checksum](#a-checksum) | the file is the one on the release page | 30 s |
-| [B. Signature](#b-signature) | the file was signed with the project's own key | 30 s |
+| [B. Signature](#b-signature) | the file, and the checksum list, were signed with the project's own key | 30 s |
 | [C. Attestation](#c-build-attestation) | the file came out of this repository's release workflow, at a named commit | 1 min |
 | [D. Build it yourself](#d-build-it-yourself) | the code that runs is the code you can read | 10 min |
 
@@ -39,8 +39,9 @@ That is what B and C are for.
 
 ## B. Signature
 
-The release workflow signs with two keys held only in the repository's encrypted secrets and offline by
-the author, **the fear (thefear078)**. Their public fingerprints:
+The release workflow signs with two keys, held only in the repository's encrypted secrets and on the
+author's own computer: **the fear (thefear078)**. Their public halves are in [keys/](../keys/README.md);
+their fingerprints:
 
 | Platform | Signer | Fingerprint |
 |---|---|---|
@@ -74,11 +75,27 @@ apksigner verify --print-certs PhobiaWallet-Beta-android.apk
 `Signer #1 certificate SHA-256 digest` must equal the fingerprint above. Android itself enforces it from
 then on: an update signed with any other key will not install over the app.
 
+**The checksum list** (from the next Beta on; the Beta of 15 October 2026 and older have none). The
+Windows key also signs `SHA256SUMS-<label>.txt`; the signature is `SHA256SUMS-<label>.txt.sig`. This is
+the check that covers every file at once, the Linux tarball included, and it is the one the wallet's
+updater makes before it downloads anything:
+
+```bash
+curl -LO https://raw.githubusercontent.com/thefear078/Phobia-Wallet/main/keys/phobia-release-signing.pem
+openssl dgst -sha256 -verify phobia-release-signing.pem -signature SHA256SUMS-Beta.txt.sig SHA256SUMS-Beta.txt
+sha256sum -c SHA256SUMS-Beta.txt --ignore-missing
+```
+
+`Verified OK`, then `OK` for each file you downloaded. The key file is the public key of the certificate
+above; you can also take it from the `keys/` folder of a clone you trust.
+
 ## C. Build attestation
 
 Every file and the sums file carry a keyless build attestation (GitHub OIDC → the public Sigstore
 transparency log). It states that those exact bytes came out of this repository's `release.yml` at a
-specific commit — checked against the log, not against anything this project says.
+specific commit — checked against the log, not against anything this project says. Because the sums
+file is one of its subjects, the attestation is also a Sigstore signature over the checksum list, and it
+covers releases from 4.8.0 on.
 
 ```bash
 gh attestation verify PhobiaWallet-Setup-Beta.exe --repo thefear078/Phobia-Wallet
