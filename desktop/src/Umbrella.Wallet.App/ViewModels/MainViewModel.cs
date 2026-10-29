@@ -4145,13 +4145,16 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void OpenUrl(string? url)
     {
-        if (string.IsNullOrWhiteSpace(url)) return;
-        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return;
+        // Only a well-formed absolute https:// address goes to the shell — parsed, not prefix-matched, and
+        // handed over in its normalised form, so nothing in the string can make the shell open a file or
+        // run a program (links come from explorers and swap services as well as from the app).
+        if (SafeHttpsUrl(url) is not { } safe) return;
+        url = safe.AbsoluteUri;
         try
         {
             // A phone has no shell to hand a URL to: its launcher opens the browser.
             if (OperatingSystem.IsAndroid() && CurrentTopLevel() is { Launcher: { } launcher })
-                _ = launcher.LaunchUriAsync(new Uri(url));
+                _ = launcher.LaunchUriAsync(safe);
             else
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
@@ -6784,6 +6787,17 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Dcr => "DCR",
         _ => chain.ToString().ToUpperInvariant(),
     };
+
+    /// <summary>
+    /// The URL when it is an absolute https:// address with a host and no user name or password in it;
+    /// null otherwise. The one gate every link passes before the system is asked to open it.
+    /// </summary>
+    public static Uri? SafeHttpsUrl(string? url) =>
+        !string.IsNullOrWhiteSpace(url) && Uri.TryCreate(url.Trim(), UriKind.Absolute, out var u) &&
+        u.Scheme == Uri.UriSchemeHttps && !string.IsNullOrEmpty(u.Host) && string.IsNullOrEmpty(u.UserInfo) &&
+        !url.Any(char.IsControl)
+            ? u
+            : null;
 
     private static string Shorten(string address)
     {

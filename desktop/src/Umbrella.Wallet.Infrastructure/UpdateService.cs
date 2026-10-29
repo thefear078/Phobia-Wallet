@@ -106,9 +106,12 @@ public sealed record VerifiedUpdate(ReleaseInfo Release, InstallKind Kind, strin
 /// <item>Nothing here touches the data folder or the vault: an update replaces the program, not the wallet.</item>
 /// </list>
 ///
-/// What a checksum cannot prove is WHO built the file — both lists come from the same release page.
-/// That is what the build attestations are for (<c>gh attestation verify</c>), and the wallet says so
-/// rather than presenting a matching hash as more than it is.
+/// What a checksum cannot prove is WHO built the file — both lists come from the same release page. On
+/// Windows that is settled before anything runs: the program must carry an intact Authenticode signature
+/// by the project's own certificate, pinned in the wallet (<see cref="WindowsSignature"/>). The Linux
+/// tarball has no such signature; its builder is proved by the release's build attestation
+/// (<c>gh attestation verify</c>), which the wallet cannot check itself, and the wallet says so rather
+/// than presenting a matching hash as more than it is. Android installs only over the same signing key.
 /// </summary>
 public static class UpdateService
 {
@@ -498,6 +501,12 @@ public static class UpdateService
                 }
 
                 file.Close();
+                if (SignatureProblem(kind, partial) is { } unsigned)
+                {
+                    TryDelete(partial);
+                    return (null, unsigned);
+                }
+
                 if (File.Exists(target)) File.Delete(target);
                 File.Move(partial, target);
                 progress?.Report(1.0);
@@ -533,6 +542,27 @@ public static class UpdateService
         }
     }
 
+    /// <summary>
+    /// On Windows, why a downloaded program may not run: not signed, changed after signing, or signed by
+    /// somebody other than the project. Null when it is the project's — and for the kinds a signature
+    /// does not apply to (the Linux tarball, the APK Android checks itself).
+    /// </summary>
+    public static string? SignatureProblem(InstallKind kind, string path)
+    {
+        if (!OperatingSystem.IsWindows() ||
+            kind is not (InstallKind.WindowsInstaller or InstallKind.WindowsFolder or InstallKind.WindowsPortable))
+            return null;
+
+        return WindowsSignature.Check(path) switch
+        {
+            WindowsSignature.Verdict.SignedByProject => null,
+            WindowsSignature.Verdict.NotSigned => "The downloaded program is not signed. It was deleted and not run.",
+            WindowsSignature.Verdict.Tampered => "The downloaded program's signature does not match its contents. It was deleted and not run.",
+            WindowsSignature.Verdict.SignedBySomeoneElse => "The downloaded program is signed, but not by this project. It was deleted and not run.",
+            _ => "The downloaded program's signature could not be checked. It was deleted and not run.",
+        };
+    }
+
     // --- installing ----------------------------------------------------------------------------------
 
     /// <summary>
@@ -545,6 +575,11 @@ public static class UpdateService
     {
         if (!StillMatches(update))
             return (false, "The downloaded file changed after it was checked. It was not run.");
+        if (SignatureProblem(update.Kind, update.FilePath) is { } unsigned)
+        {
+            TryDelete(update.FilePath);
+            return (false, unsigned);
+        }
 
         try
         {

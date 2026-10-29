@@ -97,7 +97,9 @@ public static class PeerRelay
     public static async Task<bool> RelayThroughProxyAsync(NBitcoin.Network network, Transaction tx, Uri socksProxy, CancellationToken ct)
     {
         var socks = new DnsEndPoint(socksProxy.Host, socksProxy.Port);
-        var seeds = SeedsFor(network).OrderBy(_ => Random.Shared.Next()).Take(2).ToList();
+        // Which node is told first is the privacy this buys, so it is chosen with the system's
+        // cryptographic generator rather than a predictable one.
+        var seeds = SeedsFor(network).OrderBy(_ => System.Security.Cryptography.RandomNumberGenerator.GetInt32(int.MaxValue)).Take(2).ToList();
         foreach (var seed in seeds)
         {
             if (await TryRelayAsync(network, tx, new DnsEndPoint(seed, network.DefaultPort), socks, ct)) return true;
