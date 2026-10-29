@@ -238,9 +238,7 @@ public sealed class WalletRegistry
     private void SaveRemoved(List<RemovedRow> rows)
     {
         Directory.CreateDirectory(RemovedDir);
-        var tmp = $"{RemovedIndexPath}.{Guid.NewGuid():N}.tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(rows, JsonOptions), Encoding.UTF8);
-        File.Move(tmp, RemovedIndexPath, overwrite: true);
+        AtomicFile.WriteAllText(RemovedIndexPath, JsonSerializer.Serialize(rows, JsonOptions));
     }
 
     private sealed record RemovedRow(
@@ -308,9 +306,7 @@ public sealed class WalletRegistry
             var dir = Path.GetDirectoryName(_indexPath);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-            var tmp = $"{_indexPath}.{Guid.NewGuid():N}.tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(index, JsonOptions), Encoding.UTF8);
-            File.Move(tmp, _indexPath, overwrite: true);
+            AtomicFile.WriteAllText(_indexPath, JsonSerializer.Serialize(index, JsonOptions));
         }
         catch
         {
