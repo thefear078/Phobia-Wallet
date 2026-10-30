@@ -46,6 +46,7 @@ Chosen by Phobia:
 |---|---|---|
 | Vault (recovery phrase) | **Argon2id** (64 MiB, 4 passes, 2 lanes) → **AES-256-GCM**; format version in the associated data | `EncryptedFileSeedVault` |
 | Notes, exchange API keys, address book, explorer key | **HKDF-SHA256** from the recovery phrase, a separate context per store → **AES-256-GCM**, store name as associated data. The older format still opens and is rewritten on first read. | `SealedFile`, `SealedFileTests` |
+| History, activity log, swaps, cached balances, watched addresses, found accounts | the same, keyed by the wallet's secret **and** passphrase, one file per wallet and secret, so the decoy behind the duress password and a hidden wallet each have their own | `WalletDataKey`, `WalletDataSealingTests`, `DuressRecordsTests` |
 | Watch-only wallet description | **HKDF-SHA256** from a random 256-bit key held in the vault → **AES-256-GCM** | `WatchWalletFile` |
 | Panic-password check | **Argon2id** (19 MiB, 2 passes), constant-time comparison | `PanicGuard`, `PanicPasswordTests` |
 | Randomness (keys, nonces, salts, peer choice) | the operating system's CSPRNG (`RandomNumberGenerator`) | everywhere |
@@ -90,7 +91,8 @@ Argon2id/HKDF), which quantum computers weaken but do not break the way they bre
 |---|---|
 | Recovery phrase (vault) | encrypted (Argon2id → AES-256-GCM) |
 | Notes, exchange API keys, address book, explorer key, watch-only description | encrypted (HKDF → AES-256-GCM) |
-| Activity log, kept history, swaps, cached balances, watched addresses, wallet index, settings | **plain text, owner-only**; see exception [E-1](#12-exceptions) |
+| History, activity log, swaps, cached balances, watched addresses, found accounts | encrypted per wallet and secret (HKDF → AES-256-GCM); files from older versions are taken over and removed |
+| Settings, the wallet list, address counters, cached prices and rates | **plain text, owner-only**; see exception [E-1](#12-exceptions) |
 
 Every store is written whole and owner-only: `0600` in a `0700` folder on Linux, the profile's ACL on
 Windows when the data is under `%APPDATA%` (a folder beside a portable copy takes its drive's
@@ -226,7 +228,7 @@ Each one has an end date and a compensating control. An exception past its date 
 
 | ID | Deviation | Why | Until | Compensating control |
 |---|---|---|---|---|
-| E-1 | Activity log, kept history, swaps, cached balances, watched addresses, the wallet index and settings are plain text (§2.3). | Sealing them needs a key from the vault everywhere they are read and written (start-up, the wallet switcher, the wipe, backups); that is a change of its own, scheduled rather than rushed. | 2027-01-31 (roadmap R.12) | Owner-only files and folder; no key, phrase or password in any of them; *Delete everything* and the panic password remove them; full-disk encryption recommended in [THREAT_MODEL.md](../THREAT_MODEL.md). |
+| E-1 | Settings, the wallet list and the address counters are plain text (§2.3). Narrowed on 2026-10-30: history, activity, swaps, balances, watched addresses and found accounts are now sealed. | Settings and the wallet list are needed before any wallet is open (language, theme, Tor and proxy before the first request; which wallets there are). The counters decide how far a wallet is scanned for its money, and moving them is a change of its own. | 2027-04-30 (review) | No keys, phrases, amounts, transactions or addresses in them; owner-only; *Delete everything* and the panic password remove them; full-disk encryption recommended in [THREAT_MODEL.md](../THREAT_MODEL.md). |
 | E-2 | No dedicated security email or PGP key (§8). | One maintainer; a mailbox nobody watches is worse than none. | 2026-12-31 | GitHub private advisories, enabled and watched; Telegram for a private channel; 72-hour acknowledgement. |
 | E-3 | `security.txt` is in this repository, not served from a website's `/.well-known/` (§8). | The project has had no website since v3.0.1. | 2026-12-31 | The file is published here with a stable URL, and the policy is in SECURITY.md. |
 | E-4 | `monero-wallet-rpc` authenticates its loopback login with HTTP Digest, which uses MD5 (§2.1). | Set by the Monero daemon; it offers no other login. | 2027-04-30 (review) | Loopback only; a fresh random password per start, readable only by this account; Digest never sends the password itself. |
@@ -241,3 +243,6 @@ Each one has an end date and a compensating control. An exception past its date 
   wallet direct (it says so).
 - **Transparent chains are public.** Tor hides your IP, not the ledger; Privacy Radar shows what a send reveals.
 - **Releases up to Beta 6** have no signed checksum list; the updater in the next Beta refuses releases without one.
+- **The duress password has limits on disk.** Each password's records are sealed separately, so someone who can
+  list the data folder can see that a wallet entry has more than one set. The address counters are kept per
+  wallet entry, so the decoy may offer a later receive address than a brand-new wallet would.

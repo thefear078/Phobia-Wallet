@@ -25,6 +25,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 Measured against the Altumptic Product Security Baseline (class A, custody); what holds, with its proof,
 and the four exceptions that remain, each with an end date: [docs/PSB.md](docs/PSB.md).
 
+- **The duress password's decoy no longer shows the real wallet's history** (PHB-2026-11, High). The
+  decoy, and a hidden wallet behind a passphrase, are the same wallet entry as the real wallet, and the
+  records kept on the device were stored per entry: unlocked under duress, the decoy listed the real
+  wallet's sends and transfers. History, the activity log, swaps, cached balances, watched addresses and
+  found accounts are now **encrypted** (AES-256-GCM, key from HKDF-SHA256), one file per wallet and
+  secret, so each wallet opens only its own. Files from before are taken over by the first wallet opened
+  after updating, encrypted, and removed.
+- **Watched addresses belong to a wallet now.** The list you had goes to the first wallet you open after
+  updating; another wallet starts with its own. Backups carry the encrypted list.
 - **Updates are accepted only when the project signed them** (PHB-2026-10, Medium). Until now a download
   was kept when it matched the release's checksum list and GitHub's digest, but both came from the same
   release page as the file, so whoever could replace all three could offer an "update". Every release

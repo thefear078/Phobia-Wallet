@@ -341,7 +341,7 @@ Each row says when it was measured. Re-run them yourself with the commands in
 
 | Check | Result |
 |---|---|
-| Offline test suite (29 Oct, the next Beta's code) | ✅ **2,171 / 2,171** passed · rendered screens **4 / 4** |
+| Offline test suite (30 Oct, the next Beta's code) | ✅ **2,211 / 2,211** passed · rendered screens **4 / 4** |
 | Live tests against real explorers, nodes and GitHub (29 Oct) | ✅ **69 / 69** after one fix: two Zcash checks found that NU7 (6 November) refuses the v4 transactions the wallet built, so sends now use v5; two more had timed out and passed when run again |
 | The published Beta re-checked as a stranger would (29 Oct) | ✅ every file against its checksum list, and the build attestation of all 11 files and both lists (`scripts/verify-published-release.sh`) |
 | Line coverage of the offline suite (9–14 Oct) | **Core 90.6 %** — the money logic: derivation, signing, fees, parsing · Infrastructure 41.9 % (network code; the live tests cover it instead) · App 54.1 % · **58.5 %** overall ([by assembly](docs/testing.md#coverage)) |
@@ -359,8 +359,8 @@ Each row says when it was measured. Re-run them yourself with the commands in
 | | |
 |---|---|
 | ✅ Shipped | 18 chains with send and history · Tor + kill-switch · Monero full wallet · swaps · staking · Security Center · Privacy Radar · PSBT and PayJoin · duress password · signed, attested releases with SBOM |
-| 🧪 In the next Beta | Seedless watch-only wallets · panic password · private broadcast · your own explorer key · updates the wallet refuses unless the project signed them · Zcash sends ready for NU7 |
-| 🔜 Next | Ledger / Trezor · NEAR staking on the Staking screen · the history files sealed like the vault (by January 2027) |
+| 🧪 In the next Beta | Seedless watch-only wallets · panic password · private broadcast · your own explorer key · updates the wallet refuses unless the project signed them · history and activity encrypted per wallet · Zcash sends ready for NU7 |
+| 🔜 Next | Ledger / Trezor · NEAR staking on the Staking screen |
 | 🧪 Beta | Android, with its own Tor and Monero service |
 | 🗓 Planned | Byte-for-byte reproducible installers · a CA-issued Windows certificate · an external security audit |
 | ❌ Never | Advertising · telemetry · custody of your funds · venture funding |
@@ -398,8 +398,9 @@ bug costs somebody their money.
 - Tor hides your IP from explorers; it does not make a transparent chain private. Privacy Radar exists to
   show you what yours reveals.
 - Zcash here is transparent addresses only, and is listed that way.
-- Your history, activity log and settings are stored on the device unencrypted, readable only by your
-  account; the phrase, notes, contacts and keys are encrypted. Sealing the rest is due by January 2027.
+- Settings and the list of wallets are stored unencrypted (readable only by your account), because they
+  are needed before anything is unlocked. The phrase, notes, contacts, keys, history, activity and
+  balances are encrypted, each wallet's with its own key.
 - Windows shows "unknown publisher": the certificate is the project's own, not one a company vouches for.
 - No external security audit yet. Tests, public CI and this repository are evidence, not a substitute.
 

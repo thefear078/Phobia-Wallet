@@ -117,7 +117,10 @@ the file cannot be used to argue that something else is in there. A wrong passwo
 fail identically, and removing a decoy leaves a file indistinguishable from one that never had one.
 
 **Where the defence ends.** It does not hide that OTHER wallets exist on the machine — a coercer who
-looks at the data directory sees the list. It does nothing about being watched while typing, or about
+looks at the data directory sees the list. Each password's history, activity and balances are sealed
+separately, so the same coercer can see that a wallet has records under more than one password, and the
+count of addresses issued is kept per wallet entry, so the decoy may offer a later receive address than a
+new wallet would. (Until the next Beta, the decoy was even shown the real wallet's history — PHB-2026-11.) It does nothing about being watched while typing, or about
 somebody who compares a copy of the file taken before and after (a slot that was noise and is now
 ciphertext proves a wallet was added). And changing the vault password rewrites the file, which
 removes the decoy; the app says so beside the feature.

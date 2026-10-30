@@ -143,8 +143,8 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 | R.8 | **Immutable releases** | ✅ 2026-10-07: the tags force-moved on 2026-10-03 are back on their original commits; a repository ruleset forbids moving or deleting `v*` tags; `release.yml` refuses to build into a release that already has files |
 | R.9 | **Build supply chain** | ✅ 2026-10-07: every GitHub Action pinned to a commit SHA (Dependabot updates them); OpenSSF Scorecard weekly; bundled Tor and Monero checked against their signed sums on every PR |
 | R.10 | **Updates the wallet can attribute** (Altumptic PSB §3.1, §5.2) | ✅ 2026-10-29, from the next Beta: the release workflow signs `SHA256SUMS-<label>.txt` (RSA-4096, the Windows key; public key in [`keys/`](../keys/README.md)) and the updater refuses a release whose list its pinned key does not verify, before downloading; on Windows the program must also carry the pinned Authenticode certificate. Closes PHB-2026-10 |
-| R.11 | **Altumptic Product Security Baseline, class A** | ✅ self-assessed 2026-10-29 — [PSB.md](PSB.md). Open exceptions, each with an end date: E-1 plain-text history files (2027-01-31), E-2 no security email (2026-12-31), E-3 `security.txt` not on a website (2026-12-31), E-4 MD5 in the Monero daemon's Digest login (review 2027-04-30) |
-| R.12 | **Seal the history files** (PSB exception E-1) — activity log, kept history, swaps, cached balances, watched addresses, wallet index: sealed under a key from the vault, read after unlock | 📅 **by 2027-01-31** |
+| R.11 | **Altumptic Product Security Baseline, class A** | ✅ self-assessed 2026-10-29 — [PSB.md](PSB.md). Open exceptions, each with an end date: E-1 settings, wallet list and address counters in plain text (review 2027-04-30), E-2 no security email (2026-12-31), E-3 `security.txt` not on a website (2026-12-31), E-4 MD5 in the Monero daemon's Digest login (review 2027-04-30) |
+| R.12 | **Seal the history files** (PSB exception E-1) — activity log, kept history, swaps, cached balances, watched addresses, found accounts | ✅ 2026-10-30, in the next Beta: one file per wallet and secret (`WalletDataKey`), so the duress decoy and a hidden wallet no longer read the real wallet's records (PHB-2026-11); older plain files taken over and removed; backups carry the sealed watched list. Left plain, as E-1: settings, the wallet list and the address counters |
 
 ### P2 / Legal — store compliance (see §9 + root legal files)
 
@@ -246,7 +246,7 @@ Rule: new network/token = derive + validate + balance + send + fee + history/sta
 15. **R.7 / L.5** — Microsoft Store / geo-blocklist as needed.  
 16. ✅ **H.5** seedless watch-only wallets (in the next Beta) → ⏳ **H.2** Ledger / Trezor on top of them.  
 17. 📅 **H.6** macOS (signed and notarised), then **H.7** iOS.  
-18. 📅 **P2.6** shielded Zcash; ✅ **N.15** token history on the side networks and an explorer key of your own; 🟡 **N.16** staking on more networks (NEAR network half done). **R.12** seal the history files by 2027-01-31.
+18. 📅 **P2.6** shielded Zcash; ✅ **N.15** token history on the side networks and an explorer key of your own; 🟡 **N.16** staking on more networks (NEAR network half done). ✅ **R.12** history files sealed.
 
 Detailed PR schedule — §12 in [`CLAUDE_IMPLEMENTATION_ROADMAP_UK.md`](CLAUDE_IMPLEMENTATION_ROADMAP_UK.md).
 

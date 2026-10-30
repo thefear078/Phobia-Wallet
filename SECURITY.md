@@ -159,7 +159,7 @@ otherwise would defeat the point.
 | Bundled Tor and Monero | pinned versions, checked against the projects' signed hashes on every pull request |
 | Branch protection | `main` requires every check green; no force-push, no deletion |
 | Release tags | immutable: a ruleset forbids moving or deleting `v*` tags; a published release is never rebuilt |
-| Tests | about 2,170 offline tests plus rendered-screen tests, required before merge, including fail-closed and tampering cases; coverage published weekly ([docs/testing.md](docs/testing.md)) |
+| Tests | about 2,210 offline tests plus rendered-screen tests, required before merge, including fail-closed and tampering cases; coverage published weekly ([docs/testing.md](docs/testing.md)) |
 | Self-review from an attacker's side | secrets in logs, memory, files at rest, local services: **[docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)** |
 
 No external audit has been performed ([AUDIT_STATUS.md](AUDIT_STATUS.md)). When one exists, it will be
@@ -180,6 +180,7 @@ Process: **[SECURITY/COORDINATED_DISCLOSURE.md](SECURITY/COORDINATED_DISCLOSURE.
 
 | Date | ID | Severity | Fixed in |
 |---|---|---|---|
+| 2026-10-30 | PHB-2026-11: the duress password's decoy listed the real wallet's history | **High** | the next Beta |
 | 2026-10-28 | PHB-2026-10: an update was trusted on hashes from the release page alone | Medium | the next Beta |
 | 2026-10-07 | PHB-2026-01: local Monero service had no login | **High** | 4.10.0-beta.3, 2026-10-07 (#143) |
 | 2026-10-07 | PHB-2026-02: Tor circuit isolation ineffective | Medium | 4.10.0-beta.3, 2026-10-07 (#143) |

@@ -56,7 +56,8 @@ holds.
 | transaction notes, exchange API keys, address book, explorer key | your notes and names; read-only keys | **encrypted** — HKDF-SHA256 from the phrase, one context per store → AES-256-GCM (`SealedFile`) |
 | watch-only wallet description | the extended public keys it watches | **encrypted** — HKDF-SHA256 from a random key in the vault → AES-256-GCM |
 | panic-password check | an Argon2id hash, or random bytes when none is set | not reversible |
-| watched addresses, activity log, kept transaction history, swaps, settings, cached balances, wallet index | addresses and labels; public transaction ids and amounts | plain text, owner-only — exception E-1 in [PSB.md](PSB.md#12-exceptions), until 2027-01-31 |
+| kept transaction history, activity log, swaps, cached balances, watched addresses, found accounts | addresses and labels; transaction ids and amounts | **encrypted** per wallet and secret — HKDF-SHA256 from the phrase and passphrase → AES-256-GCM (`WalletDataKey`); a decoy or hidden wallet has files of its own |
+| settings, wallet list, address counters | preferences, wallet names, how many addresses were issued | plain text, owner-only — exception E-1 in [PSB.md](PSB.md#12-exceptions) |
 
 **Found — and fixed in this review:** on **Linux** (and macOS) the data folder was created with the default
 umask: `0755` for the folder, `0644` for files. Any other account on the same computer could read the plain
@@ -126,6 +127,13 @@ transport settings, and which layer can reach the network.
   request uses.
 - **No test held the line that signing code never touches the network.** `SigningPathIsolationTests` now
   fails the build if Core ever references a networking library.
+- **The decoy was shown the real wallet's history (2026-10-30).** The duress password opens the vault's
+  other slot under the same wallet entry, and the history, activity log, swaps, balances, watched
+  addresses and found accounts were all kept per entry — in plain text. Unlocked under duress, the decoy
+  listed the real wallet's transfers and sends. They are now sealed with a key from the secret and the
+  passphrase, one file per wallet and secret; `DuressRecordsTests` unlocks the decoy through the view
+  model and fails if anything of the real wallet is listed. PHB-2026-11 in the
+  [vulnerability history](../SECURITY/VULNERABILITY_HISTORY.md).
 
 **Verdict:** fixed; the deviations that remain have end dates in [PSB.md §12](PSB.md#12-exceptions).
 
@@ -134,7 +142,7 @@ transport settings, and which layer can reach the network.
 | | |
 |---|---|
 | The phrase as a wipeable byte buffer end to end (see 2) | planned |
-| Seal the plain-text history files (see 3) | by 2027-01-31 — exception E-1 |
+| Settings, wallet list and address counters behind the unlock where possible (see 3) | review by 2027-04-30 — exception E-1 |
 | A Windows certificate a certificate authority vouches for | the maintainer's application — [CODE_SIGNING.md](CODE_SIGNING.md) |
 | An external audit | not funded yet — [AUDIT_STATUS.md](../AUDIT_STATUS.md) |
 

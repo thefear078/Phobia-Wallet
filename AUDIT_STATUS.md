@@ -19,7 +19,7 @@ Until then, do **not** describe Phobia as “audited” in README, store listing
 
 | Control | Where |
 |---|---|
-| Offline unit / integration tests (about 2,170) | CI `desktop` job |
+| Offline unit / integration tests (about 2,210) | CI `desktop` job |
 | Rendered-screen tests: every desktop and phone section drawn headless with the real styles | `desktop/tests/Umbrella.Wallet.UiTests` |
 | Monero service login checked against the real `monero-wallet-rpc` | CI `supply-chain` job |
 | Bundled Tor and Monero checked against the projects' signed sums | CI `supply-chain` job |
@@ -38,7 +38,7 @@ Until then, do **not** describe Phobia as “audited” in README, store listing
 | Date | Scope | Result |
 |---|---|---|
 | 2026-10-07 | Beta readiness: network privacy checked on the wire (SOCKS handshakes, DNS), the local Monero service, Android kill-switch, prices and currency, release pipeline | Seven issues, one High — all fixed, listed in [SECURITY/VULNERABILITY_HISTORY.md](SECURITY/VULNERABILITY_HISTORY.md) |
-| 2026-10-29 | Altumptic baseline: cryptography, the update path, links, transport, layer isolation | One Medium (PHB-2026-10, updates trusted on same-page hashes) and five hardening changes, fixed for the next Beta; four time-limited exceptions — [docs/PSB.md](docs/PSB.md), [docs/SECURITY_REVIEW.md §7](docs/SECURITY_REVIEW.md#7-against-the-altumptic-baseline-2026-10-29) |
+| 2026-10-29/30 | Altumptic baseline: cryptography, the update path, links, transport, layer isolation, records at rest | One High (PHB-2026-11, the duress decoy listed the real wallet's history) and one Medium (PHB-2026-10, updates trusted on same-page hashes), plus five hardening changes, fixed for the next Beta; four time-limited exceptions — [docs/PSB.md](docs/PSB.md), [docs/SECURITY_REVIEW.md §7](docs/SECURITY_REVIEW.md#7-against-the-altumptic-baseline-2026-10-29) |
 
 An internal review is the author checking their own work. It finds real bugs (the table above is the
 proof) but it is not independent, and it is not called an audit anywhere.
