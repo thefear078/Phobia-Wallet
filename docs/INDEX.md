@@ -19,6 +19,8 @@ Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Li
 | Know what is defended (and what is not) | [THREAT_MODEL.md](../THREAT_MODEL.md) |
 | See what data leaves the device | [PRIVACY.md](../PRIVACY.md) |
 | Report a vulnerability | [SECURITY.md](../SECURITY.md) |
+| See how the wallet meets the Altumptic security baseline | [PSB.md](PSB.md) |
+| Check that a download is genuine | [BUILD_VERIFY.md](BUILD_VERIFY.md) · [release keys](../keys/README.md) |
 | Build from source | [building.md](building.md) |
 | Add a new coin | [adding-a-chain.md](adding-a-chain.md) |
 | See what is left to build | [ROADMAP.md](ROADMAP.md) |
@@ -67,12 +69,16 @@ Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Li
 
 | Document | Description |
 |---|---|
+| [PSB.md](PSB.md) | Altumptic Product Security Baseline, class A: each requirement with its proof, and the dated exceptions |
 | [THREAT_MODEL.md](../THREAT_MODEL.md) | Attack vectors, residual risk |
 | [security-model.md](security-model.md) | Crypto choices and explicit non-goals |
 | [SECURITY_REVIEW.md](SECURITY_REVIEW.md) | Self-review: secrets in logs, memory wiping, file permissions, local services |
 | [SECURITY.md](../SECURITY.md) | Private reporting process |
 | [AUDIT_STATUS.md](../AUDIT_STATUS.md) | External audit: none yet |
-| [BUILD_VERIFY.md](BUILD_VERIFY.md) | Verify a release against source |
+| [BUILD_VERIFY.md](BUILD_VERIFY.md) | Verify a release: checksums, signatures, attestation, rebuilding |
+| [keys/](../keys/README.md) | The public release keys and certificate the wallet pins |
+| [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | What must hold before a release is announced, and the release-notes template |
+| [security.txt](../.well-known/security.txt) | Machine-readable security contact (RFC 9116) |
 | [CODE_SIGNING.md](CODE_SIGNING.md) | Windows code signing: the routes to a trusted certificate, and what the pipeline needs then |
 | [VERIFY_YOUR_WALLET.md](VERIFY_YOUR_WALLET.md) | Self-verify outline (P1.20) |
 | [TOR.md](TOR.md) | Bundled Tor, kill-switch, circuits |

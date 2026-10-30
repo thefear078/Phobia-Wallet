@@ -18,11 +18,11 @@ public partial class MainViewModel
     private static readonly TimeSpan OtherTotalsReuse = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Reads the balance of every wallet that is not open. A wallet opened on this device before is read
-    /// at the addresses it remembered — public data, no key needed. One never opened here has none: its
-    /// vault is opened with the password in use, its addresses derived and the phrase dropped again, the
-    /// same work a switch does. A wallet with a different password keeps no figure rather than a wrong
-    /// one. Nothing is read while the option is off.
+    /// Reads the balance of every wallet that is not open. The first read of a session opens each one's
+    /// vault with the password in use, derives its addresses and drops the phrase again — the same work a
+    /// switch does; later reads reuse those addresses. The figures stay in memory: on disk they would have
+    /// to be sealed with secrets this session does not hold, and they are gone at lock. A wallet with a
+    /// different password keeps no figure rather than a wrong one. Nothing is read while the option is off.
     /// </summary>
     private async Task RefreshOtherWalletTotalsAsync(bool force = false)
     {
@@ -43,14 +43,14 @@ public partial class MainViewModel
             if (ct.IsCancellationRequested || epoch != _lockEpoch) return;
             try
             {
-                var cached = _balanceStore.Load(wallet.Id).ToList();
+                var cached = _otherWalletBalances.TryGetValue(wallet.Id, out var known) ? known : [];
                 var fromCache = cached.Count > 0;
                 var entries = fromCache ? cached : await AddressesOfAsync(wallet, password, ct);
                 if (entries.Count == 0) continue;
 
                 var fresh = await ReadEntriesAsync(entries, fromCache, prices, ct);
                 if (ct.IsCancellationRequested || epoch != _lockEpoch) return;
-                _balanceStore.Save(wallet.Id, fresh);
+                _otherWalletBalances[wallet.Id] = fresh.ToList();
                 RefreshWalletList();
             }
             catch (OperationCanceledException)
@@ -114,6 +114,21 @@ public partial class MainViewModel
         return await Task.Run(() =>
         {
             var list = new List<BalanceStore.Entry>();
+            // A watch-only wallet: the addresses it watches (its accounts need a scan, left to its own view).
+            if (WatchWalletFile.IsWatchSecret(mnemonic))
+            {
+                try
+                {
+                    foreach (var a in WatchWalletFile.Load(vault.VaultPath, mnemonic).Addresses)
+                        list.Add(new BalanceStore.Entry(a.Symbol, a.Address, 0, 0, 0, a.Symbol));
+                }
+                catch
+                {
+                    // its description does not open: no figure, never a guess
+                }
+                return list;
+            }
+
             if (!_mnemonics.Validate(mnemonic).IsValid)
             {
                 if (TonMnemonic.IsTonMnemonic(mnemonic))

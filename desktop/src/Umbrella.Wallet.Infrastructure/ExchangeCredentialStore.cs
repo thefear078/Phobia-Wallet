@@ -13,9 +13,9 @@ public sealed record ExchangeCredential(
     string? Passphrase);
 
 /// <summary>
-/// Encrypted-at-rest storage for exchange API keys.
+/// Encrypted-at-rest storage for exchange API keys (<see cref="SealedFile"/>).
 ///
-/// The encryption key is derived from the wallet seed rather than the vault password, so the
+/// The encryption key is derived from the wallet's secret rather than the vault password, so the
 /// credentials are readable exactly while the wallet is unlocked and survive a password change,
 /// and no second secret has to be retained in memory.
 ///
@@ -25,8 +25,6 @@ public sealed record ExchangeCredential(
 public sealed class ExchangeCredentialStore
 {
     private const string DerivationDomain = "umbrella-exchange-keys-v1";
-    private const int NonceSize = 12;
-    private const int TagSize = 16;
 
     private readonly string _path;
 
@@ -40,76 +38,38 @@ public sealed class ExchangeCredentialStore
     public async Task<List<ExchangeCredential>> LoadAsync(
         string mnemonic, CancellationToken ct = default)
     {
-        if (!File.Exists(_path)) return [];
-
+        var plaintext = await SealedFile.ReadAsync(_path, mnemonic, DerivationDomain, ct);
+        if (plaintext is null) return [];   // a corrupt or foreign file must not brick the wallet
         try
         {
-            var blob = await File.ReadAllBytesAsync(_path, ct);
-            if (blob.Length < NonceSize + TagSize) return [];
-
-            var nonce = blob[..NonceSize];
-            var tag = blob[NonceSize..(NonceSize + TagSize)];
-            var ciphertext = blob[(NonceSize + TagSize)..];
-            var plaintext = new byte[ciphertext.Length];
-
-            var key = DeriveKey(mnemonic);
-            try
-            {
-                using var aes = new AesGcm(key, TagSize);
-                aes.Decrypt(nonce, ciphertext, tag, plaintext);
-                var json = Encoding.UTF8.GetString(plaintext);
-                return JsonSerializer.Deserialize<List<ExchangeCredential>>(json) ?? [];
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(key);
-                CryptographicOperations.ZeroMemory(plaintext);
-            }
+            return JsonSerializer.Deserialize<List<ExchangeCredential>>(Encoding.UTF8.GetString(plaintext)) ?? [];
         }
-        catch
+        catch (JsonException)
         {
-            // A corrupt or foreign file must not brick the wallet — treat as "no connections".
             return [];
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plaintext);
         }
     }
 
     public async Task SaveAsync(
         IEnumerable<ExchangeCredential> credentials, string mnemonic, CancellationToken ct = default)
     {
-        var json = JsonSerializer.Serialize(credentials.ToList());
-        var plaintext = Encoding.UTF8.GetBytes(json);
-        var nonce = RandomNumberGenerator.GetBytes(NonceSize);
-        var ciphertext = new byte[plaintext.Length];
-        var tag = new byte[TagSize];
-
-        var key = DeriveKey(mnemonic);
+        var plaintext = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(credentials.ToList()));
         try
         {
-            using var aes = new AesGcm(key, TagSize);
-            aes.Encrypt(nonce, plaintext, ciphertext, tag);
+            await SealedFile.WriteAsync(_path, plaintext, mnemonic, DerivationDomain, ct);
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(key);
             CryptographicOperations.ZeroMemory(plaintext);
         }
-
-        var blob = new byte[nonce.Length + tag.Length + ciphertext.Length];
-        Buffer.BlockCopy(nonce, 0, blob, 0, nonce.Length);
-        Buffer.BlockCopy(tag, 0, blob, nonce.Length, tag.Length);
-        Buffer.BlockCopy(ciphertext, 0, blob, nonce.Length + tag.Length, ciphertext.Length);
-
-        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        var temp = $"{_path}.{Guid.NewGuid():N}.tmp";
-        await File.WriteAllBytesAsync(temp, blob, ct);
-        File.Move(temp, _path, overwrite: true);
     }
 
     public void Delete()
     {
         if (File.Exists(_path)) File.Delete(_path);
     }
-
-    private static byte[] DeriveKey(string mnemonic) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(DerivationDomain + ":" + mnemonic));
 }

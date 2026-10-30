@@ -126,6 +126,37 @@ public sealed class VaultBackupVerifyTests
     }
 
     [Fact]
+    public async Task A_backup_carrying_the_sealed_watched_list_says_so()
+    {
+        var bundle = new Dictionary<string, string?>
+        {
+            ["magic"] = "umbrella-backup-v1",
+            ["exportedUtc"] = DateTime.UtcNow.ToString("O"),
+            ["vaultBase64"] = Convert.ToBase64String(await MakeVaultBytesAsync()),
+            ["watchedSealed"] = JsonSerializer.Serialize(new Dictionary<string, string> { ["main-0123456789abcdef.bin"] = "AAAA" }),
+        };
+        var backup = Temp() + ".json";
+        File.WriteAllText(backup, JsonSerializer.Serialize(bundle));
+        try
+        {
+            var result = await VaultBackup.VerifyAsync(backup, Password);
+            Assert.True(result.Ok, result.Message);
+            Assert.True(result.HasWatchAddresses);
+        }
+        finally { Cleanup(backup); }
+    }
+
+    [Theory]
+    [InlineData("main-0123456789abcdef.bin", true)]
+    [InlineData("main-0123456789ABCDEF.bin", false)]
+    [InlineData("other-0123456789abcdef.bin", false)]
+    [InlineData("../main-0123456789abcdef.bin", false)]
+    [InlineData("main-0123456789abcdef.bin/../../x", false)]
+    [InlineData("main-0123456789abcdef.bin\n", false)]
+    public void A_restore_writes_only_the_main_wallets_sealed_list(string name, bool written) =>
+        Assert.Equal(written, VaultBackup.IsMainWatchedFile(name));
+
+    [Fact]
     public async Task A_wrong_password_fails_verification()
     {
         var backup = WriteBackup(await MakeVaultBytesAsync());

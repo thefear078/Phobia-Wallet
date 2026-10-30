@@ -81,6 +81,10 @@ public sealed class UiSettings
     /// (fail-closed), so a dropped or disabled Tor can never silently de-anonymise you.</summary>
     public bool TorOnlyMode { get; set; } = false;
 
+    /// <summary>Private broadcast (roadmap P2.4): with Tor or a proxy on, a payment is first handed to one
+    /// random node of its network rather than to the explorer that read its addresses.</summary>
+    public bool PrivateRelay { get; set; } = true;
+
     /// <summary>Whether the user switched the bundled Tor on. Remembered, so the wallet starts it again on
     /// the next launch — before, Tor was off after every restart while the Tor-only kill-switch stayed on,
     /// and every request was refused until somebody found the switch.</summary>

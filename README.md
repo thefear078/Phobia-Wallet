@@ -15,6 +15,8 @@ No account · no email · no KYC · no tracking · no fee on your transfers.
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/thefear078/Phobia-Wallet/badge)](https://scorecard.dev/viewer/?uri=github.com/thefear078/Phobia-Wallet)
 [![Release](https://img.shields.io/github/v/release/thefear078/Phobia-Wallet?include_prereleases&label=release&color=6E5FB8)](https://github.com/thefear078/Phobia-Wallet/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4B3F86)](LICENSE)
+[![Altumptic PSB: class A](https://img.shields.io/badge/Altumptic%20PSB-class%20A-4B3F86)](docs/PSB.md)
+[![Audit: none yet](https://img.shields.io/badge/external%20audit-none%20yet-8A8A8A)](AUDIT_STATUS.md)
 ![Version](https://img.shields.io/badge/version-Beta-2F6BEF)
 ![Tests](https://img.shields.io/badge/tests-2%2C000%2B%20offline-7DCF8F)
 
@@ -29,6 +31,7 @@ No account · no email · no KYC · no tracking · no fee on your transfers.
 [Build from source](#build-from-source) ·
 [Feature tour](docs/FEATURES.md) ·
 [Security](SECURITY.md) ·
+[Security baseline](docs/PSB.md) ·
 [Docs](docs/INDEX.md) ·
 [Telegram](https://t.me/PhobiaStat)
 
@@ -85,7 +88,8 @@ can receive, send, show its balance and read its history.
 - Warnings for **address poisoning**, wrong-network addresses and look-alikes of your own; a **duress password**, and a **panic password** that erases this device’s wallets when typed at unlock.
 - One amount box with its unit on it, a review that puts warnings first, and a receipt for every send;
   an unclear broadcast is settled against the chain — never offered as a retry that would pay twice.
-- Signed, attested releases with an SBOM; the code that derives keys and signs **rebuilds byte for byte**.
+- Signed, attested releases with an SBOM; the code that derives keys and signs **rebuilds byte for byte**;
+  an update is refused unless the project signed it.
 
 **Money**
 - **Monero** through the real `monero-wallet-rpc` on your machine; Bitcoin with coin control, Taproot, PSBT and PayJoin.
@@ -96,7 +100,8 @@ can receive, send, show its balance and read its history.
 **Every day**
 - A balance chart drawn through your own transfers, an exchange-style market chart, Activity with fiat values
   and the whole history the wallet has read, CSV export, encrypted notes on transfers and names for addresses.
-- 15 themes, 6 languages, desktop and phone layouts, updates that check their own checksums.
+- **Watch-only wallets** from descriptors or `zpub` keys, with no phrase on the machine; payments go out as PSBTs to sign elsewhere.
+- 15 themes, 6 languages, desktop and phone layouts.
 
 See all of it, screen by screen, in the **[feature tour](docs/FEATURES.md)**.
 
@@ -158,7 +163,7 @@ not quote that coin when last checked. Per-chain detail: **[docs/12-coins-and-ch
 
 <img src="docs/assets/logo-phobia.png" width="56" align="right" alt="Phobia icon"/>
 
-The current build is the **Beta** of 14 October 2026, a GitHub pre-release; older builds are on the
+The current build is the **Beta** of 15 October 2026, a GitHub pre-release; older builds are on the
 [releases page](https://github.com/thefear078/Phobia-Wallet/releases). The icon on the right is what you
 will see once it is installed.
 
@@ -177,6 +182,9 @@ sha256sum -c SHA256SUMS-Beta.txt --ignore-missing                      # the fil
 gh attestation verify PhobiaWallet-Setup-Beta.exe --repo thefear078/Phobia-Wallet   # and it was built here
 ```
 
+From the next Beta the checksum list is signed as well (`SHA256SUMS-Beta.txt.sig`, key in [keys/](keys/README.md)),
+and the wallet's own updater refuses a release whose list does not verify.
+
 Every file goes through the same chain before it reaches you, and every link of it can be checked
 without trusting this page:
 
@@ -185,7 +193,7 @@ flowchart LR
     A["Tagged commit<br/>on main"] --> B["CI gates<br/>tests · CodeQL · Semgrep<br/>device checks"]
     B --> C["Built on GitHub runners<br/>Windows · Linux · Android"]
     C --> D["Signed<br/>Authenticode · APK key"]
-    D --> E["SHA256SUMS<br/>self-checked"]
+    D --> E["SHA256SUMS<br/>self-checked · signed"]
     E --> F["Attested<br/>Sigstore provenance · SBOM"]
     F --> G["Release page"]
     G --> H(["You verify:<br/>checksum · signature<br/>attestation · rebuild"])
@@ -303,8 +311,16 @@ The step by step, with what each one prevents: [docs/architecture.md](docs/archi
 - **[PRIVACY.md](PRIVACY.md)** — every server the wallet contacts and what it learns.
 - **[docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)** — the code read from an attacker's side: secrets in logs, memory, files at rest, local services.
 
-No external audit has been done yet ([AUDIT_STATUS.md](AUDIT_STATUS.md)). Please don't open a public issue
-for anything that could put funds at risk.
+### Security baseline
+
+Phobia is held to the **Altumptic Product Security Baseline** as a class A (custody) product. Every
+point is checked against the code with its proof, and what falls short is listed with an end date:
+**[docs/PSB.md](docs/PSB.md)**.
+
+`PSB-A` · `SIGNED` · `ATTESTED` · `SBOM` · `NO-TELEMETRY` · `TOR-CAPABLE` · `FAIL-CLOSED` · `LOCAL-FIRST` · `AUDIT:NONE` · `DISCLOSURE:OK`
+
+No external audit has been done yet ([AUDIT_STATUS.md](AUDIT_STATUS.md)); the baseline is the
+maintainer's own assessment. Please don't open a public issue for anything that could put funds at risk.
 
 ## Quality
 
@@ -320,30 +336,31 @@ for anything that could put funds at risk.
 
 ### Results
 
-Measured on **9–14 October 2026** against `main` and the current Beta — re-run them yourself with the commands
-in [docs/testing.md](docs/testing.md) and [docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md).
+Each row says when it was measured. Re-run them yourself with the commands in
+[docs/testing.md](docs/testing.md) and [docs/BUILD_VERIFY.md](docs/BUILD_VERIFY.md).
 
 | Check | Result |
 |---|---|
-| Offline test suite | ✅ **2,009 / 2,009** passed · rendered screens **4 / 4** |
-| Line coverage of the offline suite | **Core 90.6 %** — the money logic: derivation, signing, fees, parsing · Infrastructure 41.9 % (network code; the live tests cover it instead) · App 54.1 % · **58.5 %** overall ([by assembly](docs/testing.md#coverage)) |
-| Static analysis | ✅ CodeQL: **0** open alerts · ✅ Semgrep: **0** findings — 76 rules over 427 C# files, the workflows and secrets |
-| Live tests against real explorers and nodes | ✅ **54 / 55** — the one left: both Decred explorers rate-limiting this machine (429) during the Decred send check |
-| Android emulator: app starts, bundled Tor bootstraps | ✅ passed |
-| Linux desktop: the build reaches check.torproject.org through its own Tor | ✅ passed |
-| Release files against their checksum lists | ✅ **11 / 11** byte for byte |
-| Build attestations (Sigstore) · Windows signatures | ✅ all verified · ✅ thumbprint `89C2…C553`, timestamped |
-| Decred send: a wrong-key payment from a real coin | ✅ refused by mainnet **only** at the signature |
-| Dependabot · secret scanning alerts | ✅ **0** open · ✅ **0** open |
-| OpenSSF Scorecard | **6.2 / 10** before this round of fixes (workflow permissions, pinned packages, provenance on releases); most of the rest needs a second reviewer, fuzzing and the OpenSSF best-practices badge ([live score](https://scorecard.dev/viewer/?uri=github.com/thefear078/Phobia-Wallet)) |
+| Offline test suite (30 Oct, the next Beta's code) | ✅ **2,211 / 2,211** passed · rendered screens **4 / 4** |
+| Live tests against real explorers, nodes and GitHub (29 Oct) | ✅ **69 / 69** after one fix: two Zcash checks found that NU7 (6 November) refuses the v4 transactions the wallet built, so sends now use v5; two more had timed out and passed when run again |
+| The published Beta re-checked as a stranger would (29 Oct) | ✅ every file against its checksum list, and the build attestation of all 11 files and both lists (`scripts/verify-published-release.sh`) |
+| Line coverage of the offline suite (9–14 Oct) | **Core 90.6 %** — the money logic: derivation, signing, fees, parsing · Infrastructure 41.9 % (network code; the live tests cover it instead) · App 54.1 % · **58.5 %** overall ([by assembly](docs/testing.md#coverage)) |
+| Static analysis (29 Oct) | ✅ CodeQL: **0** open alerts · ✅ Semgrep: **0** open findings, over the C# code, the workflows and secrets |
+| Android emulator: app starts, bundled Tor bootstraps (every pull request) | ✅ passed |
+| Linux desktop: the build reaches check.torproject.org through its own Tor (every pull request) | ✅ passed |
+| Windows signatures of the published Beta (29 Oct) | ✅ thumbprint `89C2…C553`, timestamped, and accepted by the wallet's own update check |
+| Decred send: a wrong-key payment from a real coin (9–14 Oct) | ✅ refused by mainnet **only** at the signature |
+| Dependabot · secret scanning alerts (29 Oct) | ✅ **0** open · ✅ **0** open |
+| OpenSSF Scorecard (26 Oct) | **7.2 / 10**. Its four open findings need a second reviewer, fuzzing, the OpenSSF best-practices badge and required approvals on `main`: things a one-maintainer project does not have yet ([live score](https://scorecard.dev/viewer/?uri=github.com/thefear078/Phobia-Wallet)) |
 | External security audit | ❌ none yet — [AUDIT_STATUS.md](AUDIT_STATUS.md) |
 
 ## Roadmap
 
 | | |
 |---|---|
-| ✅ Shipped | 18 chains with send and history · Tor + kill-switch · Monero full wallet · swaps · staking · Security Center · Privacy Radar · PSBT and PayJoin · duress and panic passwords · signed, attested releases with SBOM |
-| 🔜 Next | Seedless watch-only mode · Ledger / Trezor |
+| ✅ Shipped | 18 chains with send and history · Tor + kill-switch · Monero full wallet · swaps · staking · Security Center · Privacy Radar · PSBT and PayJoin · duress password · signed, attested releases with SBOM |
+| 🧪 In the next Beta | Seedless watch-only wallets · panic password · private broadcast · your own explorer key · updates the wallet refuses unless the project signed them · history and activity encrypted per wallet · Zcash sends ready for NU7 |
+| 🔜 Next | Ledger / Trezor · NEAR staking on the Staking screen |
 | 🧪 Beta | Android, with its own Tor and Monero service |
 | 🗓 Planned | Byte-for-byte reproducible installers · a CA-issued Windows certificate · an external security audit |
 | ❌ Never | Advertising · telemetry · custody of your funds · venture funding |
@@ -371,6 +388,7 @@ bug costs somebody their money.
 | [Android](docs/guides/android.md) | [Privacy](PRIVACY.md) | [Testing and QA](docs/testing.md) |
 | [Feature tour](docs/FEATURES.md) | [Verify a release](docs/BUILD_VERIFY.md) | [Adding a chain](docs/adding-a-chain.md) |
 | [Coins and chains](docs/12-coins-and-chains.md) | [Security self-review](docs/SECURITY_REVIEW.md) | [Roadmap](docs/ROADMAP.md) |
+| | [Security baseline (PSB)](docs/PSB.md) · [Release keys](keys/README.md) | [Release checklist](docs/RELEASE_CHECKLIST.md) |
 | [Troubleshooting](docs/troubleshooting.md) | [The rules (MANIFESTO)](MANIFESTO.md) | [All documentation](docs/INDEX.md) |
 
 ## The honest part
@@ -380,6 +398,10 @@ bug costs somebody their money.
 - Tor hides your IP from explorers; it does not make a transparent chain private. Privacy Radar exists to
   show you what yours reveals.
 - Zcash here is transparent addresses only, and is listed that way.
+- Settings and the list of wallets are stored unencrypted (readable only by your account), because they
+  are needed before anything is unlocked. The phrase, notes, contacts, keys, history, activity and
+  balances are encrypted, each wallet's with its own key.
+- Windows shows "unknown publisher": the certificate is the project's own, not one a company vouches for.
 - No external security audit yet. Tests, public CI and this repository are evidence, not a substitute.
 
 ## License

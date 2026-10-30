@@ -63,22 +63,22 @@ public class ZcashConsensusLiveTests
     }
 
     [Fact]
-    public async Task Version_4_is_still_accepted_under_the_newest_mainnet_upgrade()
+    public async Task Version_5_is_still_accepted_under_the_newest_mainnet_upgrade()
     {
-        // The wallet builds v4. Wallets have moved to v5 and v6, so counting versions in recent blocks
-        // says nothing (on 2026-10-14 every one sampled was v6). The node's own rule is asked instead:
-        // the upgrades its v4 check lets through, against the newest one scheduled on mainnet.
+        // The wallet builds v5 (since 2026-10-29: NU7 refuses the v4 it built before — this test, asking
+        // the same question about v4, is what caught it eight days before activation). The node's own
+        // rule is asked: the upgrades its v5 check lets through, against the newest one scheduled on mainnet.
         var heights = await MainnetHeightsAsync();
         var newest = heights.Where(h => h.Key.StartsWith("NU", StringComparison.Ordinal))
-            .OrderByDescending(h => h.Value).First().Key;   // "NU6_3"
-        var variant = "NetworkUpgrade::Nu" + newest[2..];   // "NetworkUpgrade::Nu6_3"
+            .OrderByDescending(h => h.Value).First().Key;   // "NU7"
+        var variant = "NetworkUpgrade::Nu" + newest[2..];   // "NetworkUpgrade::Nu7"
 
         var verifier = await Http.GetStringAsync(Zebra + "zebra-consensus/src/transaction.rs");
-        var start = verifier.IndexOf("fn verify_v4_transaction_network_upgrade", StringComparison.Ordinal);
-        Assert.True(start >= 0, "the v4 rule is no longer where it was — the source layout changed.");
+        var start = verifier.IndexOf("fn verify_v5_transaction_network_upgrade", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the v5 rule is no longer where it was — the source layout changed.");
         var accepted = verifier[start..verifier.IndexOf("=> Ok(())", start, StringComparison.Ordinal)];
 
-        Assert.Matches(Regex.Escape(variant) + @"(?!\w)", accepted);   // Nu6_3 itself, not Nu6 or Nu6_1
+        Assert.Matches(Regex.Escape(variant) + @"(?!\w)", accepted);   // Nu7 itself, not Nu7_1
     }
 
     [Fact]

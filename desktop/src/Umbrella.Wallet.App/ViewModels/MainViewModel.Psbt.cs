@@ -54,6 +54,7 @@ public partial class MainViewModel
     [RelayCommand]
     private void ExportSendPsbt()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         if (!CanExportSendPsbt || _unlockedMnemonic is null) return;
 
         var walletId = _registry.Active?.Id ?? "default";
@@ -171,6 +172,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task ReviewPsbtAsync()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         var input = PsbtInput;
         ResetPsbtReview();
         PsbtError = string.Empty;
@@ -249,6 +251,7 @@ public partial class MainViewModel
     [RelayCommand]
     private void SignPsbt()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         if (_psbtParsed is null || _psbtReview is not { CanSign: true } || _psbtScan is null || _unlockedMnemonic is null)
             return;
 

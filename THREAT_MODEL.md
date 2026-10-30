@@ -117,7 +117,10 @@ the file cannot be used to argue that something else is in there. A wrong passwo
 fail identically, and removing a decoy leaves a file indistinguishable from one that never had one.
 
 **Where the defence ends.** It does not hide that OTHER wallets exist on the machine — a coercer who
-looks at the data directory sees the list. It does nothing about being watched while typing, or about
+looks at the data directory sees the list. Each password's history, activity and balances are sealed
+separately, so the same coercer can see that a wallet has records under more than one password, and the
+count of addresses issued is kept per wallet entry, so the decoy may offer a later receive address than a
+new wallet would. (Until the next Beta, the decoy was even shown the real wallet's history — PHB-2026-11.) It does nothing about being watched while typing, or about
 somebody who compares a copy of the file taken before and after (a slot that was noise and is now
 ciphertext proves a wallet was added). And changing the vault password rewrites the file, which
 removes the decoy; the app says so beside the feature.
@@ -260,6 +263,10 @@ by Dependabot, and the source is analysed by CodeQL on every PR. Since 2026-10-0
 - **The build itself.** Every GitHub Action is pinned to a commit SHA, release tags are immutable (a
   ruleset forbids moving or deleting them), and a published release is never rebuilt. Bundled Tor and
   Monero are checked against their projects' signed sums on every PR.
+- **Updates (from the next Beta).** The checksum list is signed (`SHA256SUMS-<label>.txt.sig`), and the
+  wallet's own updater refuses a release whose list its pinned key does not verify, before downloading;
+  on Windows the program must also carry the pinned Authenticode certificate. A user who never checks
+  anything by hand is still protected when updating from inside the wallet (PHB-2026-10).
 
 **Where the defence ends.** The Windows certificate is **self-signed**: it proves a file is unchanged
 since the release workflow signed it, not who the publisher is, and Windows still warns. The installer,
@@ -268,8 +275,8 @@ secrets, so whoever controls the GitHub account controls the signatures — the 
 names the workflow and commit, and an immutable tag makes a quiet swap visible. A CA-issued certificate
 and an external audit are on the roadmap.
 
-**Residual risk: LOW–MEDIUM** for a user who checks the signature or the attestation; **MEDIUM** for one
-who checks nothing.
+**Residual risk: LOW–MEDIUM** for a user who checks the signature or the attestation, or who updates from
+inside the wallet; **MEDIUM** for a first download that nobody checks.
 
 ---
 

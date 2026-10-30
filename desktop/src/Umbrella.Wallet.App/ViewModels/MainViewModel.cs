@@ -1323,6 +1323,13 @@ public partial class MainViewModel : ViewModelBase
     // only for this session (never persisted — that IS the hidden-wallet deniability) and pushed onto
     // the shared deriver so every derivation uses it. Wiped on lock.
     private string _unlockedPassphrase = "";
+    // What this wallet's own records on the device are sealed with (history, activity, swaps, balances,
+    // watched addresses, found accounts): its secret and passphrase, so the wallet behind the duress
+    // password or a passphrase never opens the real one's. Null while locked.
+    private WalletDataKey? _dataKey;
+    // The other wallets' balances for the switcher, read this session. Kept in memory only: on disk they
+    // would have to be sealed with secrets this session does not hold.
+    private readonly Dictionary<string, List<BalanceStore.Entry>> _otherWalletBalances = new(StringComparer.Ordinal);
     // One common login password for the whole app: captured on unlock/create so additional wallets
     // reuse it and switching between wallets doesn't re-prompt. Wiped on lock alongside the seed.
     private string? _sessionPassword;
@@ -1458,6 +1465,7 @@ public partial class MainViewModel : ViewModelBase
         // Mobile layout is retired on desktop (it was a phone-shaped desktop, not a real mobile
         // platform). Force it off so any previously-saved state can't strand a desktop user.
         if (_uiSettings.MobileMode) { _uiSettings.MobileMode = false; _uiSettings.Save(); }
+        Umbrella.Wallet.Infrastructure.Network.BitcoinTransactionSender.PrivateRelay = _uiSettings.PrivateRelay;
 
         _registry = registry;
         _vault = BuildActiveVault();
@@ -1538,7 +1546,6 @@ public partial class MainViewModel : ViewModelBase
         // The chosen currency from the rates saved last time — symbol and rate together, never one without
         // the other; dollars (and "USD" in the caption) until a rate for it has been read once.
         Fx.Use(_uiSettings.Currency, _fxCache.RateFor(_uiSettings.Currency));
-        _ = LoadWatchAddressesAsync();
         if (FetchCurrencyOnStart) _ = RefreshMarketAsync(); // live prices, and fresh currency rates with them
         RefreshHoldings();
         RecalcBalance();
@@ -2801,6 +2808,7 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsWelcomeStage));
         OnPropertyChanged(nameof(IsCreateStage));
         OnPropertyChanged(nameof(IsImportStage));
+        OnPropertyChanged(nameof(IsWatchStage));
         OnPropertyChanged(nameof(IsUnlockStage));
         OnPropertyChanged(nameof(ShowDefaultLockBg));
         OnPropertyChanged(nameof(ShowCustomLockBg));
@@ -3065,6 +3073,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task RevealPhraseAsync()
     {
+        if (RefuseWatchOnly()) return;
         if (!HasVault)
         {
             Fail("No vault on this PC yet.");
@@ -3097,6 +3106,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task RevealMoneroKeysAsync()
     {
+        if (RefuseWatchOnly()) return;
         if (!HasVault)
         {
             Fail("No vault on this PC yet.");
@@ -3428,7 +3438,6 @@ public partial class MainViewModel : ViewModelBase
         Activity.Clear();
         RecentActivity.Clear();
         _onChainRows.Clear();       // fetched chain history too — it re-pulls on the next Refresh
-        _otherWalletsActivity.Clear();
         _activityStore.Clear();
         _swapStore.Clear();
         _historyStore.Clear();      // and what every wallet had read and kept
@@ -3446,7 +3455,7 @@ public partial class MainViewModel : ViewModelBase
     {
         var count = WatchAddresses.Count + Exchanges.Count;
         WatchAddresses.Clear();
-        await _watchStore.SaveAsync(WatchAddresses);
+        await SaveWatchAddressesAsync();
         Exchanges.Clear();
         if (_unlockedMnemonic is not null) await _exchangeStore.SaveAsync(Exchanges, _unlockedMnemonic);
         StatusMessage = string.Format(Loc.Instance["status.disconnected"], count);
@@ -3528,6 +3537,9 @@ public partial class MainViewModel : ViewModelBase
         }
         _unlockedPassphrase = "";        // forget the hidden-wallet passphrase
         _deriver.ActivePassphrase = "";  // and reset derivation back to the base wallet
+        _dataKey = null;                 // this wallet's records close with it
+        WatchAddresses.Clear();
+        _otherWalletBalances.Clear();
         SetSessionPassword(null);
         IsResettingPassword = false;
 
@@ -3558,6 +3570,14 @@ public partial class MainViewModel : ViewModelBase
         // next one may be a decoy opened in front of somebody.
         ClearDuressFields();
         ClearPanicFields();
+        _watchSpec = null;
+        _watchSources.Clear();
+        _watchScans.Clear();
+        WatchPsbtAccounts.Clear();
+        ClearWatchPsbt();
+        ForgetExplorerKey();
+        OnPropertyChanged(nameof(IsWatchWallet));
+        OnPropertyChanged(nameof(CanMakeWatchPsbt));
         DuressRevealedPhrase = string.Empty;
         SettingsPassword = string.Empty;
         ReceiveQr = null;
@@ -4133,13 +4153,16 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void OpenUrl(string? url)
     {
-        if (string.IsNullOrWhiteSpace(url)) return;
-        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return;
+        // Only a well-formed absolute https:// address goes to the shell — parsed, not prefix-matched, and
+        // handed over in its normalised form, so nothing in the string can make the shell open a file or
+        // run a program (links come from explorers and swap services as well as from the app).
+        if (SafeHttpsUrl(url) is not { } safe) return;
+        url = safe.AbsoluteUri;
         try
         {
             // A phone has no shell to hand a URL to: its launcher opens the browser.
             if (OperatingSystem.IsAndroid() && CurrentTopLevel() is { Launcher: { } launcher })
-                _ = launcher.LaunchUriAsync(new Uri(url));
+                _ = launcher.LaunchUriAsync(safe);
             else
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
@@ -4645,7 +4668,8 @@ public partial class MainViewModel : ViewModelBase
     /// accounts by symbol + address; the refresh overwrites with authoritative data moments later.</summary>
     private void RestoreCachedBalances()
     {
-        var cached = _balanceStore.Load(ActiveWalletCacheKey);
+        if (_dataKey is not { } key) return;
+        var cached = _balanceStore.Load(key);
         if (cached.Count == 0) return;
 
         // Grouped, not ToDictionary: this reads a file, and a file can hold two rows with the same key.
@@ -4701,8 +4725,7 @@ public partial class MainViewModel : ViewModelBase
         // The rows on screen count only when they are this wallet's: in the middle of a switch they are
         // still the previous wallet's (or the locked placeholders), and the new wallet showed that figure.
         if (active && IsUnlocked && _accountsWalletKey == walletId) return WalletValueRows().Sum(v => v.Value);
-        var entries = _balanceStore.Load(walletId);
-        if (entries.Count == 0) return null;
+        if (!_otherWalletBalances.TryGetValue(walletId, out var entries) || entries.Count == 0) return null;
         var prices = MarketPriceBook();
         return entries.Sum(e => e.Amount * (prices.TryGetValue(e.Symbol, out var p) ? p : e.Price));
     }
@@ -4715,10 +4738,11 @@ public partial class MainViewModel : ViewModelBase
     private void SaveBalanceCache()
     {
         if (_accountsWalletKey is null || _accountsWalletKey != ActiveWalletCacheKey) return;
+        if (_dataKey is not { } key || key.WalletId != _accountsWalletKey) return;
         var entries = Accounts
             .Where(a => a.Amount > 0 || a.Price > 0)
             .Select(a => new BalanceStore.Entry(a.Symbol, a.Address, a.Amount, a.Price, a.Change24h, a.Chain));
-        _balanceStore.Save(_accountsWalletKey, entries);
+        _balanceStore.Save(key, entries);
         if (ShowAllWalletTotals) RefreshWalletList();   // the open wallet's figure in the switcher
     }
 
@@ -4858,6 +4882,7 @@ public partial class MainViewModel : ViewModelBase
                 // aggregate — the balance shown is exactly the set the wallet can find and spend.
                 RefreshUtxoWalletsAsync(prices, ct),
             };
+            if (IsWatchWallet) steps.Add(RefreshWatchAccountsAsync(prices, ct));
 
             // Every TRC-20 token on our OWN derived TRON account — not just USDT.
             var tronAccount = Accounts.FirstOrDefault(a => a.Symbol == "TRX" && a.SupportStatus == "Ready");
@@ -4904,7 +4929,7 @@ public partial class MainViewModel : ViewModelBase
             // Only the network phase is parallel; the rows are still applied one at a time on the UI
             // thread, so Accounts is never mutated from two places at once.
             // The phrase's accounts at other wallets' paths ride along as watch rows (see Discovery).
-            var watchTargets = WatchAddresses.ToList().Concat(FoundWatchTargets())
+            var watchTargets = WatchAddresses.ToList().Concat(FoundWatchTargets()).Concat(WatchSpecTargets())
                 .Select(w => (Watch: w, Chain: ParseChain(w.Chain)))
                 .Where(x => x.Chain is not null)
                 .ToList();
@@ -5561,7 +5586,7 @@ public partial class MainViewModel : ViewModelBase
         // That is why this reads the scan list rather than naming chains: the two cannot drift apart.
         _receiveChain = ParseChain(account.Symbol);
         CanRotateReceive = UtxoScanChains.Contains(account.Symbol, StringComparer.OrdinalIgnoreCase)
-                           && _receiveChain is not null && _unlockedMnemonic is not null;
+                           && _receiveChain is not null && _unlockedMnemonic is not null && !IsWatchWallet;
         ReceivePathLabel = CanRotateReceive ? $"{account.Symbol} receive address #0" : string.Empty;
         RebuildReceiveHistory(account.Symbol);
         _receiveIndex = 0;
@@ -5946,9 +5971,16 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        // The list belongs to the open wallet and is sealed with its key: there is none while locked.
+        if (_dataKey is null)
+        {
+            StatusMessage = Loc.Instance["send.errUnlock"];
+            return;
+        }
+
         var label = string.IsNullOrWhiteSpace(WatchLabel) ? Shorten(address) : WatchLabel.Trim();
         WatchAddresses.Add(new WatchAddress(chain, address, WatchLabel.Trim()));
-        await _watchStore.SaveAsync(WatchAddresses);
+        await SaveWatchAddressesAsync();
         WatchAddress = string.Empty;
         WatchLabel = string.Empty;
         StatusMessage = string.Format(Loc.Instance["status.linkedWatch"], chain);
@@ -5961,7 +5993,7 @@ public partial class MainViewModel : ViewModelBase
     {
         if (row is null) return;
         WatchAddresses.Remove(row);
-        await _watchStore.SaveAsync(WatchAddresses);
+        await SaveWatchAddressesAsync();
         var match = Accounts.FirstOrDefault(a => a.Address.Equals(row.Address, StringComparison.OrdinalIgnoreCase));
         if (match is not null) Accounts.Remove(match);
         RefreshHoldings();
@@ -6013,10 +6045,14 @@ public partial class MainViewModel : ViewModelBase
     private void SetUnlocked(string mnemonic, string passphrase = "")
     {
         _unlockedMnemonic = mnemonic;
+        LoadWatchSpec(mnemonic);   // a watch-only wallet's secret is a key to its description (H.5)
+        LoadExplorerKey(mnemonic); // the user's own explorer key, if this wallet saved one (N.15)
         // Push the BIP39 passphrase onto the shared deriver BEFORE any derivation, so accounts,
         // balance scans and signing all target the same (possibly hidden) wallet.
         _unlockedPassphrase = passphrase ?? "";
         _deriver.ActivePassphrase = _unlockedPassphrase;
+        _dataKey = WalletDataKey.For(ActiveWalletCacheKey, mnemonic, _unlockedPassphrase);
+        _otherWalletBalances.Clear();
         var isBip39 = _mnemonics.Validate(mnemonic).IsValid;
         _isTonWallet = !isBip39 && TonMnemonic.IsTonMnemonic(mnemonic);
         _isMoneroWallet = !isBip39 && !_isTonWallet && MoneroMnemonic.IsMoneroMnemonic(mnemonic);
@@ -6027,7 +6063,7 @@ public partial class MainViewModel : ViewModelBase
         _ = LoadExchangesAsync(mnemonic);
         DeriveAccounts(mnemonic);
         _accountsWalletKey = ActiveWalletCacheKey;   // these rows are this wallet's from here on
-        LoadFoundAccounts(); // money this phrase holds at other wallets' paths, from its last scan
+        if (!IsWatchWallet) LoadFoundAccounts(); // money this phrase holds at other wallets' paths, from its last scan
         OnPropertyChanged(nameof(SignMsgAddress)); // the Ethereum address the sign-message tool uses
         SignMsgSignature = string.Empty;
         SignMsgInput = string.Empty;
@@ -6035,6 +6071,7 @@ public partial class MainViewModel : ViewModelBase
         SelectFirstReceive();
         LoadActivity(); // restore the saved history before logging this unlock on top
         LoadAddressBook(); // saved Send destinations for this device
+        _ = LoadWatchAddressesAsync(); // the addresses this wallet watches
         ResumeSwapTracking(); // a swap paid before the wallet was closed is followed to its end
         PushActivity("Security", "Vault", "unlocked", "this device", "now");
         _onChainRows.Clear();
@@ -6048,7 +6085,7 @@ public partial class MainViewModel : ViewModelBase
         // A Monero-only wallet's single account reads "Receive only" until its service has synced, and it
         // is still the address to receive on.
         var first = Accounts.FirstOrDefault(a => a.SupportStatus == "Ready" && IsRealAddress(a.Address))
-                    ?? (_isMoneroWallet ? Accounts.FirstOrDefault(a => IsRealAddress(a.Address)) : null);
+                    ?? (_isMoneroWallet || IsWatchWallet ? Accounts.FirstOrDefault(a => IsRealAddress(a.Address)) : null);
         if (first is not null) SetReceiveTarget(first);
     }
 
@@ -6056,6 +6093,12 @@ public partial class MainViewModel : ViewModelBase
     {
         Accounts.Clear();
         _evmSideReadOk.Clear();   // another wallet's reads say nothing about this one
+
+        if (IsWatchWallet)
+        {
+            DeriveWatchAccounts();
+            return;
+        }
 
         // A TON-native wallet (imported from Telegram Wallet / Tonkeeper) derives only its TON address.
         if (_isTonWallet)
@@ -6540,11 +6583,16 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>The open wallet's watched addresses, opened with its key (at unlock and on every switch).</summary>
     private async Task LoadWatchAddressesAsync()
     {
+        WatchAddresses.Clear();
+        if (_dataKey is not { } key) return;
+        var epoch = _lockEpoch;
         try
         {
-            var rows = await _watchStore.LoadAsync();
+            var rows = await _watchStore.LoadAsync(key);
+            if (epoch != _lockEpoch) return;   // locked or switched meanwhile: another wallet's list
             WatchAddresses.Clear();
             foreach (var row in rows) WatchAddresses.Add(row);
         }
@@ -6552,6 +6600,13 @@ public partial class MainViewModel : ViewModelBase
         {
             /* ignore */
         }
+    }
+
+    private async Task SaveWatchAddressesAsync()
+    {
+        if (_dataKey is not { } key) return;
+        try { await _watchStore.SaveAsync(key, WatchAddresses); }
+        catch { /* non-fatal: the list stays as it is on screen until the next change */ }
     }
 
     /// <summary>
@@ -6763,6 +6818,17 @@ public partial class MainViewModel : ViewModelBase
         ChainId.Dcr => "DCR",
         _ => chain.ToString().ToUpperInvariant(),
     };
+
+    /// <summary>
+    /// The URL when it is an absolute https:// address with a host and no user name or password in it;
+    /// null otherwise. The one gate every link passes before the system is asked to open it.
+    /// </summary>
+    public static Uri? SafeHttpsUrl(string? url) =>
+        !string.IsNullOrWhiteSpace(url) && Uri.TryCreate(url.Trim(), UriKind.Absolute, out var u) &&
+        u.Scheme == Uri.UriSchemeHttps && !string.IsNullOrEmpty(u.Host) && string.IsNullOrEmpty(u.UserInfo) &&
+        !url.Any(char.IsControl)
+            ? u
+            : null;
 
     private static string Shorten(string address)
     {

@@ -14,6 +14,12 @@
       <TextBlock Classes="serif" FontSize="26" VerticalAlignment="Center" Text="{Binding [nav.swap], Source={x:Static app:Loc.Instance}}"/>
       <lottie:Lottie Path="avares://Umbrella.Wallet.App/Assets/stickers/fear-08.json" Width="42" Height="42" RepeatCount="{Binding $parent[UserControl].((vm:MainViewModel)DataContext).LottieRepeat}" VerticalAlignment="Center"/>
     </StackPanel>
+    <!-- Roadmap H.5: a watch-only wallet has no keys, so nothing on this page can sign for it. -->
+    <Border IsVisible="{Binding IsWatchWallet}" Background="{DynamicResource UmCardAlt}" BorderBrush="#4A5E86"
+            BorderThickness="1" CornerRadius="8" Padding="12,10">
+      <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12" TextWrapping="Wrap"
+                 Text="{Binding [watch.banner], Source={x:Static app:Loc.Instance}}"/>
+    </Border>
     <!-- How routes are chosen: a note that closes for good (Settings → Appearance → Interface
          brings closed notes back). The list of coins is gone: the pickers below are that list. -->
     <Border Classes="note" IsVisible="{Binding ShowSwapIntro}">

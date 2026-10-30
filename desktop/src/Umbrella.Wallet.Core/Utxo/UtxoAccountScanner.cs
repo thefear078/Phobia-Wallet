@@ -68,15 +68,26 @@ public sealed class UtxoAccountScanner
         _gapLimit = gapLimit > 0 ? gapLimit : DefaultGapLimit;
     }
 
-    public async Task<UtxoScanResult> ScanAsync(
+    public Task<UtxoScanResult> ScanAsync(
         string mnemonic,
         ChainId chain,
         IUtxoExplorer explorer,
         UtxoScanFloors floors,
         IProgress<UtxoScanProgress>? progress = null,
         CancellationToken ct = default,
+        int? gapLimit = null) =>
+        ScanAsync(new SeedAddressSource(_deriver, mnemonic, chain), explorer, floors, progress, ct, gapLimit);
+
+    /// <summary>The same walk over any source of addresses — a watched account's xpub among them (H.5).</summary>
+    public async Task<UtxoScanResult> ScanAsync(
+        IUtxoAddressSource source,
+        IUtxoExplorer explorer,
+        UtxoScanFloors floors,
+        IProgress<UtxoScanProgress>? progress = null,
+        CancellationToken ct = default,
         int? gapLimit = null)
     {
+        var chain = source.Chain;
         var gap = gapLimit is > 0 ? gapLimit.Value : _gapLimit;
         var scanned = 0;
         using var gate = new SemaphoreSlim(MaxInFlightPerChain);
@@ -91,7 +102,7 @@ public sealed class UtxoAccountScanner
             async Task<Branch> WalkAsync()
             {
                 var (high, part) = await ScanChainAsync(
-                    mnemonic, chain, change, kind, explorer, forcedThrough, branch.Addresses, branch.Utxos,
+                    source, chain, change, kind, explorer, forcedThrough, branch.Addresses, branch.Utxos,
                     (c, p) => { branch.Confirmed += c; branch.Pending += p; },
                     progressCount: () => Volatile.Read(ref scanned), onScan: () => Interlocked.Increment(ref scanned),
                     progress, gap, gate, ct);
@@ -118,7 +129,7 @@ public sealed class UtxoAccountScanner
         // The cost is real and is not hidden: this doubles the addresses BTC reveals to the explorer
         // per scan. It is spent because a balance that silently omits a branch is worse than a scan
         // that is twice as wide, and it is spent only on Bitcoin, the only chain with a Taproot branch.
-        var taproot = ScansTaproot(chain);
+        var taproot = source.ScansTaproot;
         if (taproot)
         {
             walks.Add(Walk(0, UtxoScriptKind.Taproot,
@@ -175,8 +186,8 @@ public sealed class UtxoAccountScanner
         return forced;
     }
 
-    private async Task<(uint? HighestUsed, bool Partial)> ScanChainAsync(
-        string mnemonic,
+    private static async Task<(uint? HighestUsed, bool Partial)> ScanChainAsync(
+        IUtxoAddressSource source,
         ChainId chain,
         uint change,
         UtxoScriptKind kind,
@@ -238,15 +249,15 @@ public sealed class UtxoAccountScanner
             if (forcedThrough >= index) stillNeeded = Math.Max(stillNeeded, forcedThrough - index + 1);
             var window = (int)Math.Min(stillNeeded, MaxParallelProbes);
 
-            var batch = new List<DerivedUtxoAccount>(window);
+            var batch = new List<(UtxoDerivationPath Path, string Address)>(window);
             for (var k = 0; k < window; k++)
-                batch.Add(_deriver.DeriveBitcoinLikeAt(mnemonic, chain, change, index + (uint)k, kind: kind));
+                batch.Add(source.At(change, index + (uint)k, kind));
 
             var activities = await Task.WhenAll(batch.Select(a => ProbeAsync(a.Address)));
 
             // Walk the batch in index order so the gap rule, progress reporting and the collected
             // address list stay byte-for-byte what the sequential walk produced.
-            var usedInBatch = new List<(int Offset, DerivedUtxoAccount Account)>();
+            var usedInBatch = new List<(int Offset, (UtxoDerivationPath Path, string Address) Account)>();
             var stop = false;
             var stopPartial = false;
             var consumed = 0;

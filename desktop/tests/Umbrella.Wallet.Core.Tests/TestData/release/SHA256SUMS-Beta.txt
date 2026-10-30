@@ -1,0 +1,5 @@
+4c8d8d3cfcac7abf26e392c32c77154e92589f47a5f8e015213120e79cd45c74  PhobiaWallet-Beta-android.apk
+f22aafa1463ea08f273a9cb0af8c1b50ad90134a583470a8da8ee7ef8d4d669d  PhobiaWallet-Beta-linux-x64.tar.gz
+a00ae18e6e090dc4d73155cf8cda7966af774a2eaf6ee00a8834414c874747c1  PhobiaWallet-Beta-sbom.spdx.json
+9e15465e42d79f0f94b7a735383a1efd3a7a9798d7d39dc4f9b3024381c1bc6e  PhobiaWallet-Beta-win-x64-portable.exe
+1e879974f10917f10f7c79859a125d8f15eb4bd4613aaaa62bfee3bdbd7e33c0  PhobiaWallet-Setup-Beta.exe

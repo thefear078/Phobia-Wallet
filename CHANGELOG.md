@@ -6,6 +6,75 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ## [Unreleased]
 
+### Zcash: ready for NU7
+
+- **Zcash sends are now v5 transactions.** Zcash's next upgrade, NU7, is scheduled for block 3,543,405
+  (about 6 November 2026) and from then on refuses the v4 transactions this wallet built. Without this
+  change every ZEC send would have been refused from that block on, as after NU6.3 in July (nothing is
+  ever spent by a refused send, but nothing arrives either). Sends are now v5 (ZIP-225) signed with the
+  ZIP-244 digest, which every node has accepted since NU5 in 2022, and NU7's branch id is in the
+  wallet. Checked against all ten of Zcash's ZIP-244 vectors, against a v5 transaction mainnet accepted
+  (rebuilt byte for byte, all six signatures verified), and by a mainnet node decoding a v5 transaction
+  built exactly as a send is.
+- In the last few blocks before the upgrade the wallet asks you to wait rather than sign a payment
+  that could not be mined under the rules it was signed for. **Install this release before NU7**:
+  older copies cannot send ZEC after it.
+
+### Security
+
+Measured against the Altumptic Product Security Baseline (class A, custody); what holds, with its proof,
+and the four exceptions that remain, each with an end date: [docs/PSB.md](docs/PSB.md).
+
+- **The duress password's decoy no longer shows the real wallet's history** (PHB-2026-11, High). The
+  decoy, and a hidden wallet behind a passphrase, are the same wallet entry as the real wallet, and the
+  records kept on the device were stored per entry: unlocked under duress, the decoy listed the real
+  wallet's sends and transfers. History, the activity log, swaps, cached balances, watched addresses and
+  found accounts are now **encrypted** (AES-256-GCM, key from HKDF-SHA256), one file per wallet and
+  secret, so each wallet opens only its own. Files from before are taken over by the first wallet opened
+  after updating, encrypted, and removed.
+- **Watched addresses belong to a wallet now.** The list you had goes to the first wallet you open after
+  updating; another wallet starts with its own. Backups carry the encrypted list.
+- **Updates are accepted only when the project signed them** (PHB-2026-10, Medium). Until now a download
+  was kept when it matched the release's checksum list and GitHub's digest, but both came from the same
+  release page as the file, so whoever could replace all three could offer an "update". Every release
+  now carries `SHA256SUMS-<label>.txt.sig`, and the wallet refuses a release whose list its built-in key
+  does not verify, before downloading anything, on Windows, Linux and Android. On Windows the program
+  must also carry the project's Authenticode certificate; an unsigned, changed or foreign-signed file is
+  deleted. Releases up to Beta 6 carry no such signature, so this version will not "update" to them.
+- **Check the list yourself:** `openssl dgst -sha256 -verify phobia-release-signing.pem -signature
+  SHA256SUMS-Beta.txt.sig SHA256SUMS-Beta.txt`, with the key from [keys/](keys/README.md).
+- **TLS 1.2 or 1.3 only** on every connection, whatever the operating system still allows.
+- **Notes, exchange keys, the address book and the explorer key** are sealed with a key from HKDF-SHA256
+  and bound to their store, instead of one SHA-256. Files from before open as always and are rewritten
+  the first time they are read.
+- **Links are parsed before the system opens them**: only an absolute `https://` address with a host,
+  and no user name, password or control characters, reaches the browser.
+- **The vault, the wallet index and the address index** are written like every other file: flushed to
+  disk before they replace the old one, and owner-only (`0600`) on Linux from the moment they exist.
+- [docs/PSB.md](docs/PSB.md), [`.well-known/security.txt`](.well-known/security.txt), a safe-harbour
+  statement for researchers in [SECURITY.md](SECURITY.md), and the release keys in [keys/](keys/README.md).
+
+### Watch-only wallets
+
+- **A wallet with no phrase on the machine.** Paste descriptors, `zpub` / `ypub` / `Ltub` keys or
+  addresses (one a line): balances, history and fresh receive addresses, found with the same gap scan a
+  phrase gets. Payments are made as unsigned PSBTs, to sign in the wallet that holds the keys, a hardware
+  wallet through Sparrow or Electrum included. Every command that would sign refuses it. A bare `xpub` is
+  refused rather than guessed, because watching the wrong address type shows an empty wallet that is not
+  empty.
+- What it watches is sealed beside its vault, under the same password; duress and panic passwords work
+  as for any wallet.
+
+### Privacy
+
+- **Private broadcast** (Settings → Privacy, on by default). With Tor or a proxy on, a Bitcoin, Litecoin
+  or Dogecoin payment is first handed to one random node of its network over a Tor circuit of its own;
+  the explorers are asked afterwards only whether the network has it. The first machine to see the
+  payment is no longer the server that was just asked about your addresses. Without Tor nothing changes.
+- **An explorer key of your own** (Settings → Privacy): a free Etherscan key fills the history no keyless
+  source serves (Fantom, Cronos, BNB Chain tokens). It ties those requests to your Etherscan account, and
+  the card says so first; it is sealed per wallet and used nowhere else.
+
 ### Swaps
 
 - **THORChain swaps work again.** Every node the wallet asked for a quote had gone — Nine Realms' host
@@ -19,10 +88,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
   (**At least …**), for THORChain and for NEAR Intents.
 - "Track this swap" pointed at Nine Realms' tracker, which is gone; it opens the swap on thorchain.net.
 
-### Security
+### Panic password and the written-down phrase
 
 - **Panic password** (Settings → Security). Typed on the unlock screen instead of your password, it
-  silently erases every wallet, note, contact and setting this app keeps on the device, and the app
+  silently erases every wallet, note, contact and setting this app keeps on the device (only an Argon2id hash of it is stored), and the app
   opens as if freshly installed; your recovery phrase restores everything. Like the duress password, the
   wallet never says whether one is set. It is refused if it opens any wallet on the device, and no
   password chosen later can be the panic password — so it can never erase a wallet by its own unlock.
@@ -46,8 +115,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 ### Maintenance
 
 - QRCoder 1.8.1, Microsoft.NET.Test.Sdk 18.11.0, and current pins of the GitHub Actions the build uses.
+- Monero 0.18.5.4 bundled: 0.18.5.3 left Monero's signed `hashes.txt` (the build refuses anything not in it).
+  The new sums were taken from that file after checking binaryFate's signature (81AC591F…0BDF92).
+- NEAR asks FastNEAR first: the NEAR Foundation's public endpoint now answers every request with 429
+  "deprecated". Staking-pool calls for NEAR are in place, but not yet on the Staking screen.
 
-## [4.10.0-beta.6] — Beta of 14 October 2026 (a GitHub pre-release) — sending you can read, swaps followed to their end, history that is kept, notes and names
+## [4.10.0-beta.6] — Beta of 15 October 2026 (a GitHub pre-release) — sending you can read, swaps followed to their end, history that is kept, notes and names
 
 ### Sending
 
@@ -2801,7 +2874,7 @@ A large desktop pass over 2.1.x, consolidated.
   now read from the assembly.
 
 ### Web
-- **Self-hosted fonts** — no Google origins at all (fully anonymous).
+- **Self-hosted fonts** — no request to Google or any other font host.
 - Removed the `/admin` route; fee percentage is baked.
 
 ### Contracts

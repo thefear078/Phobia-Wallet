@@ -33,6 +33,7 @@ public partial class MainViewModel
     [RelayCommand]
     private void SignMessage()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         SignMsgSignature = string.Empty;
         if (string.IsNullOrEmpty(_unlockedMnemonic) || string.IsNullOrWhiteSpace(SignMsgInput)) return;
         byte[]? key = null;

@@ -12,19 +12,25 @@ namespace Umbrella.Wallet.App;
 /// became of the swap: completed, refunded, or sitting short of its quote. Kept here, an unfinished swap
 /// is picked up again at the next unlock, and its row says what the route itself says.
 ///
-/// One plain-text file, like the activity log beside it: the route, the pair, the amounts and the
-/// one-time deposit address — nothing that is not already in the user's own transaction on a public
-/// chain. Cleared with the history and by "Delete everything".
+/// One sealed file per wallet and secret (<see cref="WalletDataKey"/>): the route, the pair, the amounts
+/// and the one-time deposit address. The old shared plain-text file (<c>swaps.json</c>) is taken apart the
+/// same way as the activity log. Cleared with the history and by "Delete everything".
 /// </summary>
 public sealed class SwapStore
 {
     /// <summary>Finished swaps older than this are dropped; unfinished ones stop being asked about.</summary>
     public static readonly TimeSpan Keep = TimeSpan.FromDays(7);
 
-    private readonly string _path;
+    private const string Domain = "phobia-swaps-v1";
 
-    public SwapStore(string? path = null) =>
-        _path = path ?? Path.Combine(AppPaths.DataRoot, "swaps.json");
+    private readonly string _folder;
+    private readonly string _legacyPath;
+
+    public SwapStore(string? folder = null, string? legacyPath = null)
+    {
+        _folder = folder ?? Path.Combine(AppPaths.DataRoot, "swaps");
+        _legacyPath = legacyPath ?? Path.Combine(AppPaths.DataRoot, "swaps.json");
+    }
 
     /// <param name="Status">The route's own last word (PENDING_DEPOSIT, PROCESSING, SUCCESS, REFUNDED…).</param>
     /// <param name="Ended">True once the route has said something final.</param>
@@ -33,12 +39,14 @@ public sealed class SwapStore
         string DepositAddress, string? Memo, string? OrderId, string? TxId, long StartedMs,
         string Status = "", bool Ended = false);
 
-    public IReadOnlyList<Entry> Load()
+    /// <summary>This wallet's swaps.</summary>
+    public IReadOnlyList<Entry> Load(WalletDataKey key, IReadOnlyCollection<string>? walletsOnDevice = null)
     {
         try
         {
-            if (File.Exists(_path))
-                return JsonSerializer.Deserialize<List<Entry>>(File.ReadAllText(_path)) ?? [];
+            var path = Path.Combine(_folder, key.FileName);
+            if (File.Exists(path)) return key.Read<List<Entry>>(path, Domain) ?? [];
+            return TakeOverLegacy(key, walletsOnDevice);
         }
         catch
         {
@@ -49,34 +57,52 @@ public sealed class SwapStore
     }
 
     /// <summary>Adds the swap, or replaces the one paid to the same deposit address.</summary>
-    public void Upsert(Entry entry)
+    public void Upsert(WalletDataKey key, Entry entry)
     {
         var oldest = DateTimeOffset.UtcNow.Subtract(Keep).ToUnixTimeMilliseconds();
-        var all = Load()
+        var all = Load(key)
             .Where(e => e.StartedMs >= oldest && !Same(e, entry))
             .Append(entry)
             .OrderByDescending(e => e.StartedMs)
             .ToList();
-        Save(all);
+        Save(key, all);
     }
 
     public void Clear()
     {
-        try { if (File.Exists(_path)) File.Delete(_path); }
+        try { if (Directory.Exists(_folder)) Directory.Delete(_folder, recursive: true); }
+        catch { /* non-fatal */ }
+        try { if (File.Exists(_legacyPath)) File.Delete(_legacyPath); }
         catch { /* non-fatal */ }
     }
 
-    private void Save(List<Entry> entries)
+    private void Save(WalletDataKey key, List<Entry> entries)
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            AtomicFile.WriteAllText(_path, JsonSerializer.Serialize(entries));
+            Directory.CreateDirectory(_folder);
+            key.Write(Path.Combine(_folder, key.FileName), entries, Domain);
         }
         catch
         {
             // non-fatal: this swap is followed until the wallet closes, as before
         }
+    }
+
+    private IReadOnlyList<Entry> TakeOverLegacy(WalletDataKey key, IReadOnlyCollection<string>? walletsOnDevice)
+    {
+        if (!File.Exists(_legacyPath)) return [];
+        var all = JsonSerializer.Deserialize<List<Entry>>(File.ReadAllText(_legacyPath)) ?? [];
+
+        var mine = all.Where(e => e.WalletId == key.WalletId).ToList();
+        Save(key, mine);
+        if (!File.Exists(Path.Combine(_folder, key.FileName))) return mine;
+
+        var rest = all.Where(e => e.WalletId != key.WalletId &&
+                                  (walletsOnDevice is null || walletsOnDevice.Contains(e.WalletId))).ToList();
+        if (rest.Count == 0) File.Delete(_legacyPath);
+        else AtomicFile.WriteAllText(_legacyPath, JsonSerializer.Serialize(rest));
+        return mine;
     }
 
     private static bool Same(Entry a, Entry b) =>

@@ -37,25 +37,43 @@ public partial class MainViewModel
         "USDT", "USDC", "DAI", "USDD", "TUSD", "BUSD", "FDUSD", "PYUSD", "WETH", "WBTC", "LINK", "UNI",
     };
 
-    private static string FoundFile(string walletId) =>
-        Path.Combine(AppPaths.DataRoot, "found", $"{walletId}.json");
+    private const string FoundDomain = "phobia-found-accounts-v1";
+
+    private static string FoundFolder => Path.Combine(AppPaths.DataRoot, "found");
+
+    /// <summary>A plain-text file an earlier version wrote: taken over, sealed, by the wallet opened first.</summary>
+    private static string LegacyFoundFile(string walletId) =>
+        Path.Combine(FoundFolder, $"{WalletDataKey.SafeId(walletId)}.json");
 
     /// <summary>Loads the active wallet's found accounts (on unlock and on every switch).</summary>
     private void LoadFoundAccounts()
     {
-        _foundAccounts = ReadFound(ActiveWalletCacheKey)?.Accounts ?? [];
+        _foundAccounts = (_dataKey is { } key ? ReadFound(key) : null)?.Accounts ?? [];
         OnPropertyChanged(nameof(HasFoundAccounts));
         DiscoveryStatus = _foundAccounts.Count > 0
             ? string.Format(Loc.Instance["found.some"], _foundAccounts.Count)
             : string.Empty;
     }
 
-    private static FoundAccountsFile? ReadFound(string walletId)
+    /// <summary>
+    /// What a scan of other wallets' paths found for this phrase — sealed per wallet and secret
+    /// (<see cref="WalletDataKey"/>): it lists addresses that hold money, which is exactly what must not
+    /// be read off the disk, nor shown in a decoy opened by the duress password.
+    /// </summary>
+    private static FoundAccountsFile? ReadFound(WalletDataKey key)
     {
         try
         {
-            var file = FoundFile(walletId);
-            return File.Exists(file) ? JsonSerializer.Deserialize<FoundAccountsFile>(File.ReadAllText(file)) : null;
+            var file = Path.Combine(FoundFolder, key.FileName);
+            if (File.Exists(file)) return key.Read<FoundAccountsFile>(file, FoundDomain);
+
+            var legacy = LegacyFoundFile(key.WalletId);
+            if (!File.Exists(legacy)) return null;
+            var found = JsonSerializer.Deserialize<FoundAccountsFile>(File.ReadAllText(legacy));
+            if (found is null) return null;
+            WriteFound(key, found);
+            if (File.Exists(file)) File.Delete(legacy);   // only once the sealed copy is on disk
+            return found;
         }
         catch
         {
@@ -63,13 +81,12 @@ public partial class MainViewModel
         }
     }
 
-    private static void WriteFound(string walletId, FoundAccountsFile found)
+    private static void WriteFound(WalletDataKey key, FoundAccountsFile found)
     {
         try
         {
-            var file = FoundFile(walletId);
-            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-            AtomicFile.WriteAllText(file, JsonSerializer.Serialize(found, new JsonSerializerOptions { WriteIndented = true }));
+            Directory.CreateDirectory(FoundFolder);
+            key.Write(Path.Combine(FoundFolder, key.FileName), found, FoundDomain);
         }
         catch
         {
@@ -132,10 +149,10 @@ public partial class MainViewModel
     /// <summary>Starts the one automatic scan a wallet gets, after its balances first load.</summary>
     private void MaybeDiscoverAutomatically()
     {
-        var walletId = ActiveWalletCacheKey;
-        if (!StartTorAutomatically || string.IsNullOrEmpty(_unlockedMnemonic) || IsDiscovering) return;
-        if (!_discoveryStarted.Add(walletId)) return;
-        if (ReadFound(walletId) is { Scanned: true }) return;
+        if (!StartTorAutomatically || string.IsNullOrEmpty(_unlockedMnemonic) || IsDiscovering || IsWatchWallet) return;
+        if (_dataKey is not { } key) return;
+        if (!_discoveryStarted.Add(key.ToString())) return;
+        if (ReadFound(key) is { Scanned: true }) return;
         _ = DiscoverAsync(userAsked: false);
     }
 
@@ -144,7 +161,8 @@ public partial class MainViewModel
 
     private async Task DiscoverAsync(bool userAsked)
     {
-        if (IsDiscovering || string.IsNullOrEmpty(_unlockedMnemonic)) return;
+        if (IsDiscovering || string.IsNullOrEmpty(_unlockedMnemonic) || IsWatchWallet) return;
+        if (_dataKey is not { } dataKey) return;
         var epoch = _lockEpoch;
         var walletId = ActiveWalletCacheKey;
         var mnemonic = _unlockedMnemonic!;
@@ -207,7 +225,7 @@ public partial class MainViewModel
                 .ToList();
             // Most servers silent: not a real "nothing here" — the next unlock tries again.
             var complete = unanswered <= candidates.Count / 4;
-            WriteFound(walletId, new FoundAccountsFile(complete, found));
+            WriteFound(dataKey, new FoundAccountsFile(complete, found));
             _foundAccounts = found;
             OnPropertyChanged(nameof(HasFoundAccounts));
 
