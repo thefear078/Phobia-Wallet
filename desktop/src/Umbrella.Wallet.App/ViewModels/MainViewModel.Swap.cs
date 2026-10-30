@@ -814,9 +814,13 @@ public partial class MainViewModel
 
     private CancellationTokenSource? _swapTrackCts;
 
+    /// <summary>The key of the wallet that paid for the followed swap: its updates go to that wallet's file.</summary>
+    private Umbrella.Wallet.Infrastructure.WalletDataKey? _trackedSwapKey;
+
     private void TrackSwap(PendingSwap swap, bool resumed = false)
     {
-        if (!resumed) _swapStore.Upsert(ToEntry(swap, string.Empty, ended: false));
+        _trackedSwapKey = _dataKey;
+        if (!resumed) UpsertSwap(ToEntry(swap, string.Empty, ended: false));
         _trackedSwap = swap;
         SwapTrackTitle = $"{swap.From.Display} → {swap.To.Display} · ≈ {Fmt(swap.ExpectedOut)} {swap.To.Symbol} · {SwapProviderName(swap.Provider)}";
         SwapTrackStatus = Loc.Instance["swap.st.sent"];
@@ -854,6 +858,11 @@ public partial class MainViewModel
         _ => 30,
     });
 
+    private void UpsertSwap(SwapStore.Entry entry)
+    {
+        if (_trackedSwapKey is { } key) _swapStore.Upsert(key, entry);
+    }
+
     private SwapStore.Entry ToEntry(PendingSwap swap, string status, bool ended) => new(
         _registry.Active?.Id ?? "default", swap.Provider.ToString(), swap.From.Key, swap.To.Key, swap.AmountIn,
         swap.ExpectedOut, swap.DepositAddress, swap.Memo, swap.OrderId, swap.TxId, swap.StartedMs, status, ended);
@@ -864,11 +873,10 @@ public partial class MainViewModel
     /// </summary>
     private void ResumeSwapTracking()
     {
-        if (_trackedSwap is not null) return;
-        var wallet = _registry.Active?.Id ?? "default";
+        if (_trackedSwap is not null || _dataKey is not { } key) return;
         var oldest = DateTimeOffset.UtcNow.Subtract(SwapStore.Keep).ToUnixTimeMilliseconds();
-        var entry = _swapStore.Load()
-            .Where(e => e.WalletId == wallet && !e.Ended && e.StartedMs >= oldest)
+        var entry = _swapStore.Load(key, _registry.Wallets.Select(w => w.Id).ToList())
+            .Where(e => e.WalletId == key.WalletId && !e.Ended && e.StartedMs >= oldest)
             .OrderByDescending(e => e.StartedMs)
             .FirstOrDefault();
         if (entry is null || !Enum.TryParse<SwapProvider>(entry.Provider, out var provider)) return;
@@ -922,7 +930,7 @@ public partial class MainViewModel
         {
             // THORChain is followed on its own tracker page, not here: its entry is closed so that it
             // is not picked up again at every unlock.
-            if (swap.Provider == SwapProvider.Thorchain) _swapStore.Upsert(ToEntry(swap, "SENT", ended: true));
+            if (swap.Provider == SwapProvider.Thorchain) UpsertSwap(ToEntry(swap, "SENT", ended: true));
             return swap.Provider == SwapProvider.Thorchain;
         }
 
@@ -930,7 +938,7 @@ public partial class MainViewModel
         var text = SwapStatusText(key, swap, detail);
         var changed = text != SwapTrackStatus;
         SwapTrackStatus = text;
-        _swapStore.Upsert(ToEntry(swap, raw, ended));
+        UpsertSwap(ToEntry(swap, raw, ended));
         SetSwapRowStatus(swap, key switch
         {
             "swap.st.done" => "Confirmed",
@@ -995,6 +1003,7 @@ public partial class MainViewModel
         _swapTrackCts?.Cancel();
         _pendingSwap = null;
         _trackedSwap = null;
+        _trackedSwapKey = null;
         HasSwapTrack = false;
         InvalidateSwap();
     }

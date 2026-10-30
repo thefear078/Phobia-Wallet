@@ -2498,27 +2498,53 @@ public sealed class PublicMarketRatesClient
     }
 }
 
-/// <summary>Local watch-only addresses linked from external wallets / explorers.</summary>
+/// <summary>
+/// Addresses the user watches (linked from other wallets or explorers) — often their own cold storage,
+/// which makes the list worth as much to a thief as a balance.
+///
+/// Sealed per wallet and secret (<see cref="WalletDataKey"/>), so it belongs to the wallet it was made in:
+/// the decoy behind the duress password used to show the real wallet's list. The single plain-text list
+/// an earlier version kept (<c>watch-addresses.json</c>) goes to the first wallet opened after updating,
+/// sealed, and is then removed.
+/// </summary>
 public sealed class WatchAddressStore
 {
-    private readonly string _path;
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private const string Domain = "phobia-watched-addresses-v1";
 
-    public WatchAddressStore(string? path = null)
+    private readonly string _folder;
+    private readonly string _legacyPath;
+
+    public WatchAddressStore(string? folder = null, string? legacyPath = null)
     {
-        _path = path ?? AppPaths.WatchAddressesFile;
+        _folder = folder ?? WatchedFolder;
+        _legacyPath = legacyPath ?? AppPaths.WatchAddressesFile;
     }
 
-    public async Task<IReadOnlyList<WatchAddress>> LoadAsync(CancellationToken ct = default)
+    /// <summary>Where each wallet's sealed list lives.</summary>
+    public static string WatchedFolder => Path.Combine(AppPaths.DataRoot, "watched");
+
+    public Task<IReadOnlyList<WatchAddress>> LoadAsync(WalletDataKey key, CancellationToken ct = default)
     {
-        if (!File.Exists(_path)) return Array.Empty<WatchAddress>();
-        await using var stream = File.OpenRead(_path);
-        var rows = await JsonSerializer.DeserializeAsync<List<WatchAddress>>(stream, JsonOptions, ct);
-        return rows ?? [];
+        ct.ThrowIfCancellationRequested();
+        var path = Path.Combine(_folder, key.FileName);
+        if (File.Exists(path))
+            return Task.FromResult<IReadOnlyList<WatchAddress>>(key.Read<List<WatchAddress>>(path, Domain) ?? []);
+        if (!File.Exists(_legacyPath)) return Task.FromResult<IReadOnlyList<WatchAddress>>([]);
+
+        var rows = JsonSerializer.Deserialize<List<WatchAddress>>(File.ReadAllText(_legacyPath)) ?? [];
+        Directory.CreateDirectory(_folder);
+        key.Write(path, rows, Domain);
+        if (File.Exists(path)) File.Delete(_legacyPath);   // only once the sealed copy is on disk
+        return Task.FromResult<IReadOnlyList<WatchAddress>>(rows);
     }
 
-    public Task SaveAsync(IEnumerable<WatchAddress> rows, CancellationToken ct = default) =>
-        AtomicFile.WriteAllTextAsync(_path, JsonSerializer.Serialize(rows.ToList(), JsonOptions), ct);
+    public Task SaveAsync(WalletDataKey key, IEnumerable<WatchAddress> rows, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        Directory.CreateDirectory(_folder);
+        key.Write(Path.Combine(_folder, key.FileName), rows.ToList(), Domain);
+        return Task.CompletedTask;
+    }
 }
 
 public sealed record WatchAddress(string Chain, string Address, string Label);

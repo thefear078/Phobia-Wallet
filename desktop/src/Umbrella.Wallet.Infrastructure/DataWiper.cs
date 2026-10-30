@@ -53,12 +53,18 @@ public static class DataWiper
         DeleteFile(Path.Combine(root, "vault.json.watch"));     // a watch-only Main wallet's sealed description
         DeleteFile(Path.Combine(root, "wallets.json"));         // multi-wallet index
         DeleteDir(Path.Combine(root, "wallets"));               // every additional wallet's encrypted vault
-        DeleteFile(Path.Combine(root, "watch-addresses.json")); // watch-only addresses
+        // Each wallet's own records, sealed per wallet and secret (WalletDataKey), and the plain-text files
+        // earlier versions kept them in, in case one was never taken over.
+        DeleteDir(Path.Combine(root, "watched"));               // the addresses each wallet watches
+        DeleteFile(Path.Combine(root, "watch-addresses.json")); // ... as one plain list, before
         DeleteDir(Path.Combine(root, "found"));                 // addresses each wallet holds at other apps' paths
-        DeleteFile(Path.Combine(root, "activity.json"));        // local activity / transaction log
+        DeleteDir(Path.Combine(root, "activity"));              // each wallet's activity / transaction log
+        DeleteFile(Path.Combine(root, "activity.json"));        // ... as one plain file, before
         DeleteDir(Path.Combine(root, "history"));               // each wallet's on-chain history as read so far
-        DeleteFile(Path.Combine(root, "swaps.json"));           // the swaps paid for from this device, and how they ended
-        DeleteFile(Path.Combine(root, "balances.json"));        // cached balances (device-only display cache)
+        DeleteDir(Path.Combine(root, "swaps"));                 // the swaps paid for from this device, and how they ended
+        DeleteFile(Path.Combine(root, "swaps.json"));           // ... as one plain file, before
+        DeleteDir(Path.Combine(root, "balances"));              // cached balances (device-only display cache)
+        DeleteFile(Path.Combine(root, "balances.json"));        // ... as one plain file, before
         DeleteFile(Path.Combine(root, "exchanges.bin"));        // encrypted exchange API keys
         DeleteFile(Path.Combine(root, "ui-settings.json"));     // theme, language, profile paths
         DeleteDir(Path.Combine(root, "profile"));               // avatar / banner / background images

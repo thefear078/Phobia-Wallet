@@ -15,34 +15,41 @@ namespace Umbrella.Wallet.App;
 /// day it was imported here. Kept, each read ADDS to what was read before: what an explorer gave once
 /// stays listed when it is rate-limited tomorrow, and older pages accumulate behind the newest.
 ///
-/// One plain-text file per wallet, beside the activity log and holding the same kind of thing — public
-/// transaction ids, amounts and counterparties, already on a blockchain for anyone to read. Clearing
-/// the history (Settings) and removing a wallet delete it.
+/// One sealed file per wallet and secret (<see cref="WalletDataKey"/>): the amounts and counterparties of
+/// someone's transfers say a great deal about them even though each is on a public chain, and a decoy or
+/// hidden wallet must never be shown the real one's. A plain-text file an earlier version wrote is taken
+/// over, sealed, by the first wallet opened under that entry, and then removed. Clearing the history
+/// (Settings) deletes them all.
 /// </summary>
 public sealed class HistoryStore
 {
     /// <summary>More than this many rows and the oldest are let go: the file stays small enough to read at once.</summary>
     public const int MaxRows = 3000;
 
+    private const string Domain = "phobia-history-v1";
+
     private readonly string _folder;
 
     public HistoryStore(string? folder = null) =>
         _folder = folder ?? Path.Combine(AppPaths.DataRoot, "history");
 
-    private string PathFor(string walletId)
-    {
-        // A wallet id is a short identifier the registry made; anything else in it must not become a path.
-        var safe = new string(walletId.Where(c => char.IsLetterOrDigit(c) || c is '-' or '_').ToArray());
-        return Path.Combine(_folder, (safe.Length == 0 ? "main" : safe) + ".json");
-    }
+    private string PathFor(WalletDataKey key) => Path.Combine(_folder, key.FileName);
 
-    public IReadOnlyList<ChainTx> Load(string walletId)
+    private string LegacyPathFor(string walletId) => Path.Combine(_folder, WalletDataKey.SafeId(walletId) + ".json");
+
+    public IReadOnlyList<ChainTx> Load(WalletDataKey key)
     {
         try
         {
-            var path = PathFor(walletId);
-            if (File.Exists(path))
-                return JsonSerializer.Deserialize<List<ChainTx>>(File.ReadAllText(path)) ?? [];
+            var path = PathFor(key);
+            if (File.Exists(path)) return key.Read<List<ChainTx>>(path, Domain) ?? [];
+
+            var legacy = LegacyPathFor(key.WalletId);
+            if (!File.Exists(legacy)) return [];
+            var rows = JsonSerializer.Deserialize<List<ChainTx>>(File.ReadAllText(legacy)) ?? [];
+            Save(key, rows);
+            if (File.Exists(path)) File.Delete(legacy);   // only once the sealed copy is on disk
+            return rows;
         }
         catch
         {
@@ -52,12 +59,12 @@ public sealed class HistoryStore
         return [];
     }
 
-    public void Save(string walletId, IEnumerable<ChainTx> rows)
+    public void Save(WalletDataKey key, IEnumerable<ChainTx> rows)
     {
         try
         {
             Directory.CreateDirectory(_folder);
-            AtomicFile.WriteAllText(PathFor(walletId), JsonSerializer.Serialize(rows.Take(MaxRows).ToList()));
+            key.Write(PathFor(key), rows.Take(MaxRows).ToList(), Domain);
         }
         catch
         {
@@ -65,9 +72,16 @@ public sealed class HistoryStore
         }
     }
 
+    /// <summary>Every record of one wallet entry, whichever secret sealed it, and its old plain-text file.</summary>
     public void Delete(string walletId)
     {
-        try { File.Delete(PathFor(walletId)); }
+        foreach (var file in WalletDataKey.FilesOf(_folder, walletId))
+        {
+            try { File.Delete(file); }
+            catch { /* non-fatal */ }
+        }
+
+        try { File.Delete(LegacyPathFor(walletId)); }
         catch { /* non-fatal */ }
     }
 

@@ -90,32 +90,29 @@ public partial class MainViewModel
     /// <summary>False until there is something to list in the home screen's recent transactions.</summary>
     public bool HasRecentActivity => RecentActivity.Count > 0;
 
-    private void PersistActivity() =>
-        _activityStore.Save(Activity.Select(a =>
-                new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status,
-                    a.UnixMs, a.WalletId, a.CounterpartyFull))
-            .Concat(_otherWalletsActivity));
-
-    /// <summary>Saved transfers of the wallets that are not open: kept for the file, never listed here.</summary>
-    private readonly List<ActivityStore.Entry> _otherWalletsActivity = [];
+    /// <summary>Seals the open wallet's feed into its own file; nothing is written while locked.</summary>
+    private void PersistActivity()
+    {
+        if (_dataKey is not { } key) return;
+        _activityStore.Save(key, Activity.Select(a =>
+            new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status,
+                a.UnixMs, a.WalletId, a.CounterpartyFull)));
+    }
 
     /// <summary>Loads the saved activity/transaction history from the data folder into the feeds.</summary>
     private void LoadActivity()
     {
         Activity.Clear();
-        _otherWalletsActivity.Clear();
         var droppedNoise = false;
-        var activeWallet = _registry.Active?.Id;
+        var key = _dataKey;
+        var activeWallet = key?.WalletId;
+        var saved = key is null ? [] : _activityStore.Load(key, _registry.Wallets.Select(w => w.Id).ToList());
         ActivityStore.Entry? prev = null;
-        foreach (var e in _activityStore.Load())
+        foreach (var e in saved)
         {
-            // Another wallet's transfer: not this wallet's history. (A row saved before rows carried a
-            // wallet has none, and stays listed everywhere, as it always was.)
+            // Each wallet's file holds its own rows; one that says otherwise is not listed here.
             if (e.WalletId is { Length: > 0 } owner && !string.Equals(owner, activeWallet, StringComparison.Ordinal))
-            {
-                if (_otherWalletsActivity.Count < 300) _otherWalletsActivity.Add(e);
                 continue;
-            }
             // Purge legacy UI-preference noise that older builds logged ("Theme Appearance changed",
             // "Settings … changed") so the feed reads as real wallet events, not a developer log.
             if (string.Equals(e.Kind, "Theme", StringComparison.OrdinalIgnoreCase) ||
@@ -392,10 +389,11 @@ public partial class MainViewModel
         {
             var walletId = _registry.Active?.Id ?? "default";
             var mnemonic = _unlockedMnemonic!;
+            var dataKey = _dataKey;
 
             // What this wallet has read before is on screen at once, and stays whatever the explorers
             // answer this time: a server that is rate-limiting today must not make last month vanish.
-            var kept = _historyStore.Load(ActiveWalletCacheKey);
+            var kept = dataKey is null ? [] : _historyStore.Load(dataKey);
             if (_onChainRows.Count == 0 && kept.Count > 0)
             {
                 ShowOnChainHistory(kept);
@@ -498,7 +496,7 @@ public partial class MainViewModel
 
             // This read together with every earlier one, each transaction once.
             var all = HistoryStore.Merge(fresh, kept);
-            _historyStore.Save(ActiveWalletCacheKey, all);
+            if (dataKey is not null) _historyStore.Save(dataKey, all);
             ShowOnChainHistory(all);
             LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", Fx.Culture);
         }
