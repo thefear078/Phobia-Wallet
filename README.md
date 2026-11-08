@@ -342,7 +342,7 @@ Each row says when it was measured. Re-run them yourself with the commands in
 | Check | Result |
 |---|---|
 | Offline test suite (30 Oct, the next Beta's code) | ✅ **2,211 / 2,211** passed · rendered screens **4 / 4** |
-| Live tests against real explorers, nodes and GitHub (29 Oct) | ✅ **69 / 69** after one fix: two Zcash checks found that NU7 (6 November) refuses the v4 transactions the wallet built, so sends now use v5; two more had timed out and passed when run again |
+| Live tests against real explorers, nodes and GitHub (29 Oct) | ✅ **69 / 69** after one fix: two Zcash checks found that NU7 (block 3,543,405) refuses the v4 transactions the wallet built, so sends now use v5; two more had timed out and passed when run again |
 | The published Beta re-checked as a stranger would (29 Oct) | ✅ every file against its checksum list, and the build attestation of all 11 files and both lists (`scripts/verify-published-release.sh`) |
 | Line coverage of the offline suite (9–14 Oct) | **Core 90.6 %** — the money logic: derivation, signing, fees, parsing · Infrastructure 41.9 % (network code; the live tests cover it instead) · App 54.1 % · **58.5 %** overall ([by assembly](docs/testing.md#coverage)) |
 | Static analysis (29 Oct) | ✅ CodeQL: **0** open alerts · ✅ Semgrep: **0** open findings, over the C# code, the workflows and secrets |

@@ -70,6 +70,7 @@ Phobia is a non-custodial crypto wallet (.NET 8 + Avalonia) for **Windows and Li
 | Document | Description |
 |---|---|
 | [PSB.md](PSB.md) | Altumptic Product Security Baseline, class A: each requirement with its proof, and the dated exceptions |
+| [STANDARDS.md](STANDARDS.md) | How every document is written, labelled, dated and kept current |
 | [THREAT_MODEL.md](../THREAT_MODEL.md) | Attack vectors, residual risk |
 | [security-model.md](security-model.md) | Crypto choices and explicit non-goals |
 | [SECURITY_REVIEW.md](SECURITY_REVIEW.md) | Self-review: secrets in logs, memory wiping, file permissions, local services |

@@ -237,7 +237,7 @@ Each one has an end date and a compensating control. An exception past its date 
 
 - **No external audit.**
 - **Windows certificate is self-signed**, so SmartScreen shows "unknown publisher". A CA-issued
-  certificate is on the roadmap (R.2).
+  certificate is on the roadmap (R.1).
 - **Malware on your device, or someone at your unlocked computer, is out of scope**, as for every software wallet.
 - **Tor is off until you switch it on**, and with Tor on and Tor-only off, a failed Tor start leaves the
   wallet direct (it says so).

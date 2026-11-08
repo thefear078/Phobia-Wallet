@@ -8,16 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Versioning follo
 
 ### Zcash: ready for NU7
 
-- **Zcash sends are now v5 transactions.** Zcash's next upgrade, NU7, is scheduled for block 3,543,405
-  (about 6 November 2026) and from then on refuses the v4 transactions this wallet built. Without this
-  change every ZEC send would have been refused from that block on, as after NU6.3 in July (nothing is
+- **Zcash sends are now v5 transactions.** Zcash's upgrade NU7 activates at block 3,543,405, and from that
+  block on the network refuses the v4 transactions this wallet built. The chain passed that height before
+  2026-11-08, so the public Beta 6 cannot send ZEC now; the fix needs the next Beta. Without this change every
+  ZEC send would have been refused from that block on, as after NU6.3 in July (nothing is
   ever spent by a refused send, but nothing arrives either). Sends are now v5 (ZIP-225) signed with the
   ZIP-244 digest, which every node has accepted since NU5 in 2022, and NU7's branch id is in the
   wallet. Checked against all ten of Zcash's ZIP-244 vectors, against a v5 transaction mainnet accepted
   (rebuilt byte for byte, all six signatures verified), and by a mainnet node decoding a v5 transaction
   built exactly as a send is.
-- In the last few blocks before the upgrade the wallet asks you to wait rather than sign a payment
-  that could not be mined under the rules it was signed for. **Install this release before NU7**:
+- In the last few blocks before an upgrade the wallet asks you to wait rather than sign a payment
+  that could not be mined under the rules it was signed for. **Install the next Beta.**
   older copies cannot send ZEC after it.
 
 ### Security
