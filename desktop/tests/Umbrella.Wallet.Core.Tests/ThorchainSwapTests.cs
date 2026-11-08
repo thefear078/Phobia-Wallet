@@ -300,4 +300,57 @@ public sealed class ThorchainSwapTests
         Assert.Equal(new System.Numerics.BigInteger(memoLen), Dec(Word(5)));  // tail: memo length
         Assert.Contains(Convert.ToHexString(Encoding.UTF8.GetBytes(memo)).ToLowerInvariant(), body.ToLowerInvariant());
     }
+
+    // ---- the price limit (roadmap N.9) -------------------------------------------------------------------
+
+    [Fact]
+    public void A_quote_is_asked_for_with_a_price_limit()
+    {
+        var query = ThorchainSwapClient.QuoteQuery("BTC.BTC", "ETH.ETH", 1_000_000, "0xabc");
+
+        Assert.Contains($"&liquidity_tolerance_bps={ThorchainSwapClient.ToleranceBps}", query, StringComparison.Ordinal);
+        Assert.InRange(ThorchainSwapClient.ToleranceBps, 50, 500);
+    }
+
+    [Theory]
+    [InlineData("=:ETH.ETH:0xabc:1234500000", 12.345)]
+    [InlineData("=:ETH.ETH:0xabc:1234500000/1/0", 12.345)]
+    [InlineData("=:e:0xabc:12345e5", 12.345)]
+    [InlineData("=:ETH.ETH:0xabc", 0)]
+    [InlineData("=:ETH.ETH:0xabc:", 0)]
+    [InlineData("=:ETH.ETH:0xabc:0/1/0", 0)]
+    [InlineData("garbage", 0)]
+    public void The_least_delivered_is_read_from_the_memos_limit(string memo, double expected) =>
+        Assert.Equal((decimal)expected, ThorchainSwapClient.MemoLimitOut(memo));
+
+    [Fact]
+    public void A_parsed_quote_carries_its_limit()
+    {
+        const string body = """
+            {"inbound_address":"bc1qvault","memo":"=:ETH.ETH:0xabc:5000000/1/0","expected_amount_out":"5200000",
+             "fees":{"total":"10000","slippage_bps":12,"total_bps":30},"expiry":4102444800}
+            """;
+
+        var (quote, error) = ThorchainSwapClient.ParseQuote(body, "BTC", "ETH", 0.01m);
+
+        Assert.Null(error);
+        Assert.Equal(0.05m, quote!.MinOut);
+        Assert.True(quote.MinOut < quote.ExpectedOut);
+    }
+
+    // ---- where a swap is followed ------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("02c2d6aa", "https://thorchain.net/tx/02C2D6AA")]
+    [InlineData("0x02c2d6aa", "https://thorchain.net/tx/02C2D6AA")]
+    [InlineData(" 02C2D6AA ", "https://thorchain.net/tx/02C2D6AA")]
+    public void Tracking_links_use_thorchains_own_form_of_the_id(string txId, string expected) =>
+        Assert.Equal(expected, ThorchainSwapClient.TrackUrl(txId));
+
+    [Fact]
+    public void Quotes_are_asked_of_https_nodes_only()
+    {
+        Assert.NotEmpty(ThorchainSwapClient.QuoteEndpoints);
+        Assert.All(ThorchainSwapClient.QuoteEndpoints, e => Assert.StartsWith("https://", e, StringComparison.Ordinal));
+    }
 }

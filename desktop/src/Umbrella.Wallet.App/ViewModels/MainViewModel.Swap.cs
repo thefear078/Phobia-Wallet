@@ -76,6 +76,14 @@ public partial class MainViewModel
     [ObservableProperty] private string _swapRateText = string.Empty;
     [ObservableProperty] private string _swapFeeText = string.Empty;
     [ObservableProperty] private string _swapEtaText = string.Empty;
+
+    /// <summary>The least the swap will deliver — the route's own limit, below which it refunds instead.
+    /// Empty when the route sets none (a fixed-rate exchange quotes one figure).</summary>
+    [ObservableProperty] private string _swapMinOutText = string.Empty;
+
+    public bool HasSwapMinOut => SwapMinOutText.Length > 0;
+
+    partial void OnSwapMinOutTextChanged(string value) => OnPropertyChanged(nameof(HasSwapMinOut));
     [ObservableProperty] private string _swapDestination = string.Empty;
     [ObservableProperty] private string _swapExpiryText = string.Empty;
     [ObservableProperty] private string _swapWarning = string.Empty;
@@ -322,6 +330,7 @@ public partial class MainViewModel
         // The last quote's figures go with it: a pair nothing can carry must not keep showing what the
         // previous pair would have paid.
         SwapExpectedOut = string.Empty;
+        SwapMinOutText = string.Empty;
     }
 
     private static ChainId? SwapChainId(string symbol) => symbol.ToUpperInvariant() switch
@@ -471,6 +480,7 @@ public partial class MainViewModel
                 var feeFiat = toPrice > 0 ? $" ≈ {Fx.Money((double)quote.TotalFee * toPrice)}" : string.Empty;
                 SwapFeeText = $"{Fmt(quote.TotalFee)} {to.Symbol}{feeFiat} · {quote.TotalBps / 100.0:0.##}%";
                 SwapEtaText = EtaText(quote.EtaSeconds);
+                SwapMinOutText = quote.MinOut > 0 ? $"{Fmt(quote.MinOut)} {to.Symbol}" : string.Empty;
                 var mins = Math.Max(0, (int)(quote.Expiry - DateTimeOffset.UtcNow).TotalMinutes);
                 SwapExpiryText = string.Format(Loc.Instance["swap.quoteValid"], mins, Loc.Instance["unit.min"]);
                 if (quote.BelowMinimum)
@@ -485,6 +495,7 @@ public partial class MainViewModel
                     ? string.Format(Loc.Instance["swap.fee.intents"], Fx.Money((double)c))
                     : Loc.Instance["swap.fee.inRate"];
                 SwapEtaText = EtaText(q.TimeEstimateSeconds);
+                SwapMinOutText = q.MinAmountOut > 0 ? $"{Fmt(q.MinAmountOut)} {to.Symbol}" : string.Empty;
                 break;
             }
             default:
@@ -493,6 +504,7 @@ public partial class MainViewModel
                     ? string.Format(Loc.Instance["swap.fee.rate"], Fx.Money((double)c))
                     : Loc.Instance["swap.fee.inRate"];
                 SwapEtaText = Loc.Instance["swap.eta.exchange"];
+                SwapMinOutText = string.Empty;
                 break;
             }
         }

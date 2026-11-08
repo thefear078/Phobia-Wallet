@@ -194,9 +194,39 @@ have left behind exactly the part that names their counterparties.
 build if the wiper does not handle it. A new store cannot be added without either being wiped or being
 named as a deliberate exception. Proven by removing the address book from the wiper: two tests fail.
 
-**Still open:** the address book is plaintext on disk while the wallet is installed. Encrypting it the
-way transaction notes are encrypted (a key derived from the seed) is the next step; until then, the
-honest statement is that anything running as the user can read it.
+The address book is no longer plaintext while the wallet is installed: it is sealed with AES-GCM under
+a key derived from the seed (`address-book.bin`), and a pre-4.7 plaintext book is migrated on the first
+unlock and then deleted. The wipe still removes either file.
+
+A wipe also forgets, in memory, what named the wallet — its name, the watchlist, the profile and
+lock-screen pictures, the run of failed unlocks. Before 2026-10-16 they stayed in memory and the next
+save of any setting wrote them back into the file the wipe had just removed. Language, look and the
+network settings stay, so a restore made straight afterwards does not quietly drop Tor.
+
+## The panic password
+
+Settings → Security can set a **panic password**. Typed on the unlock screen in place of the wallet
+password, it runs the same wipe as Delete everything, says nothing, and the app opens on its first-run
+screen — what a fresh install shows. The recovery phrase restores everything afterwards. It is the
+other half of the duress password: that one is for being made to open the wallet, this one for the
+device being about to be taken.
+
+- **Deniable.** The check is a salted PBKDF2-SHA256 hash in `unlock-guard.bin`, a file every install
+  has; with no panic password it holds random bytes of the same size. The screen never says whether one
+  is set, and setting or removing one is not written to Activity. The hash guards a trigger, not a key —
+  brute-forcing it would reveal the password that erases the wallet, nothing that opens it.
+- **It cannot misfire on a wallet.** It is refused if it opens any vault on the device — either slot of
+  every wallet, removed wallets included, since those can be put back — and setting or removing it
+  takes the wallet password. Every password chosen afterwards (a new wallet, an import, a reset, a
+  changed password, a decoy) is refused if it is the panic password.
+- **Forced mistakes do not block it.** It is checked before the unlock throttle, so the wait that
+  follows a few wrong guesses does not stand between the user and the wipe.
+
+What it does not do, stated on the card: it cannot be undone; it erases only this device, not copies
+of the data folder made earlier, backups or other devices; it does not remove the app; it does nothing
+about somebody watching the password being typed. `PanicPasswordTests` proves the wipe and, mostly,
+what never wipes — the real password, the decoy, a password that opens a wallet; disabling the unlock
+check or the "opens a wallet here" refusal fails exactly the tests that cover them.
 
 ## Code that waited for proof, and what it took
 

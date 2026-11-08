@@ -82,7 +82,7 @@ can receive, send, show its balance and read its history.
 
 **Security**
 - Encrypted vault; your password again before every send; auto-lock; seed screens hidden from screenshots.
-- Warnings for **address poisoning**, wrong-network addresses and look-alikes of your own; a **duress password**.
+- Warnings for **address poisoning**, wrong-network addresses and look-alikes of your own; a **duress password**, and a **panic password** that erases this device’s wallets when typed at unlock.
 - One amount box with its unit on it, a review that puts warnings first, and a receipt for every send;
   an unclear broadcast is settled against the chain — never offered as a retry that would pay twice.
 - Signed, attested releases with an SBOM; the code that derives keys and signs **rebuilds byte for byte**.
@@ -342,7 +342,7 @@ in [docs/testing.md](docs/testing.md) and [docs/BUILD_VERIFY.md](docs/BUILD_VERI
 
 | | |
 |---|---|
-| ✅ Shipped | 18 chains with send and history · Tor + kill-switch · Monero full wallet · swaps · staking · Security Center · Privacy Radar · PSBT and PayJoin · duress password · signed, attested releases with SBOM |
+| ✅ Shipped | 18 chains with send and history · Tor + kill-switch · Monero full wallet · swaps · staking · Security Center · Privacy Radar · PSBT and PayJoin · duress and panic passwords · signed, attested releases with SBOM |
 | 🔜 Next | Seedless watch-only mode · Ledger / Trezor |
 | 🧪 Beta | Android, with its own Tor and Monero service |
 | 🗓 Planned | Byte-for-byte reproducible installers · a CA-issued Windows certificate · an external security audit |

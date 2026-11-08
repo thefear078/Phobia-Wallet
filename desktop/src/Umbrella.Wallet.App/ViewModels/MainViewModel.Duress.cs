@@ -80,6 +80,13 @@ public partial class MainViewModel
             return;
         }
 
+        if (Panic.Matches(DuressNewPassword))
+        {
+            // The decoy would be erased instead of opened, in front of the person it was meant for.
+            DuressError = Loc.Instance["password.errTaken"];
+            return;
+        }
+
         await RunBusyAsync(async () =>
         {
             var decoy = _mnemonics.Generate();

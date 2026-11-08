@@ -1089,6 +1089,7 @@ public partial class MainViewModel : ViewModelBase
         {
             SettingsRevealedPhrase = string.Empty;
             IsSettingsPhraseVisible = false;
+            ClearPhraseCheck();
             HideMoneroKeys();
         }
     }
@@ -2995,6 +2996,16 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        // The panic password (roadmap P1.3) is checked first, before the throttle: it has to work after
+        // whatever mistakes somebody standing over the user forced. The check runs on every unlock and
+        // costs the same whether one is set or not.
+        var typed = Password;
+        if (await Task.Run(() => Panic.Matches(typed)))
+        {
+            PanicWipe();
+            return;
+        }
+
         // Somebody who finds this window open can otherwise type guesses as fast as they can type.
         // After three free mistakes the wait doubles, so the tenth guess costs minutes. It is not a
         // defence against anyone who can copy vault.json - that attack happens offline where no UI
@@ -3455,25 +3466,7 @@ public partial class MainViewModel : ViewModelBase
 
         try
         {
-            LockVault();
-            ShutdownMonero(); // release the Monero wallet-dir so it can be removed
-            var result = DataWiper.WipeAll();
-
-            // Every vault file (Main + additional) was just erased — rebuild the registry from the now
-            // empty state and reset the add-wallet flags so onboarding starts clean.
-            IsAddingWallet = false;
-            _pendingNewWalletId = null;
-            _registry.ReloadFromDisk();
-            _vault = BuildActiveVault();
-            RefreshWalletList();
-
-            HasVault = false;
-            SetupStage = "Welcome";              // a fresh start, not an empty portfolio
-            ActiveSection = "Portfolio";
-            DeleteConfirmation = string.Empty;
-            // The profile images were just deleted — drop them from memory so nothing points at them.
-            AvatarImage = BannerImage = SidebarBgImage = null;
-
+            var result = WipeThisDevice();
             StatusMessage = result.Failed.Count == 0
                 ? $"Wallet and all data erased — {result.Removed} item(s) removed. Restore from your 24-word phrase."
                 : $"Erased {result.Removed} item(s); {result.Failed.Count} were in use. Close the wallet and delete the data folder to finish.";
@@ -3482,6 +3475,38 @@ public partial class MainViewModel : ViewModelBase
         {
             Fail($"Could not delete the wallet: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Erases every wallet on this device and comes back as a fresh install: the shared end of "Delete
+    /// everything" and of the panic password. Wipes the folder the wallets actually live in.
+    /// </summary>
+    private DataWiper.WipeResult WipeThisDevice()
+    {
+        LockVault();
+        ShutdownMonero(); // release the Monero wallet-dir so it can be removed
+        var result = DataWiper.WipeAll(_registry.DataDirectory);
+        Panic.EnsureExists();        // part of every install, set or not — now noise again
+        _uiSettings.ForgetWallet();  // or the next save writes the wallet's name back
+
+        // Every vault file (Main + additional) was just erased — rebuild the registry from the now
+        // empty state and reset the add-wallet flags so onboarding starts clean.
+        IsAddingWallet = false;
+        _pendingNewWalletId = null;
+        _registry.ReloadFromDisk();
+        _vault = BuildActiveVault();
+        RefreshWalletList();
+
+        HasVault = false;
+        SetupStage = "Welcome";              // a fresh start, not an empty portfolio
+        ActiveSection = "Portfolio";
+        DeleteConfirmation = string.Empty;
+        // The profile images were just deleted — drop them from memory so nothing points at them.
+        AvatarImage = BannerImage = SidebarBgImage = LockBgImage = null;
+        OnPropertyChanged(nameof(WalletName));
+        OnPropertyChanged(nameof(WalletTitle));
+        OnPropertyChanged(nameof(HasWalletName));
+        return result;
     }
 
     [RelayCommand]
@@ -3528,6 +3553,12 @@ public partial class MainViewModel : ViewModelBase
         IsRecoveryPhraseVisible = false;
         SettingsRevealedPhrase = string.Empty;
         IsSettingsPhraseVisible = false;
+        ClearPhraseCheck();
+        // Passwords typed into Security's forms and never submitted must not outlive the session: the
+        // next one may be a decoy opened in front of somebody.
+        ClearDuressFields();
+        ClearPanicFields();
+        DuressRevealedPhrase = string.Empty;
         SettingsPassword = string.Empty;
         ReceiveQr = null;
         SelectedReceiveAddress = string.Empty;
@@ -3957,6 +3988,10 @@ public partial class MainViewModel : ViewModelBase
         {
             Fail("The two new passwords do not match."); return;
         }
+        if (Panic.Matches(ChangePwNew))
+        {
+            Fail(Loc.Instance["password.errTaken"]); return;
+        }
 
         await RunBusyAsync(async () =>
         {
@@ -4064,6 +4099,7 @@ public partial class MainViewModel : ViewModelBase
         {
             SettingsRevealedPhrase = string.Empty;
             IsSettingsPhraseVisible = false;
+            ClearPhraseCheck();
             SettingsPassword = string.Empty;
             HideMoneroKeys();
         }
@@ -6769,6 +6805,13 @@ public partial class MainViewModel : ViewModelBase
         if (!string.Equals(Password, ConfirmPassword, StringComparison.Ordinal))
         {
             Fail("The two passwords do not match.");
+            return false;
+        }
+
+        // A wallet whose password is the panic password would be erased by its own unlock.
+        if (Panic.Matches(Password))
+        {
+            Fail(Loc.Instance["password.errTaken"]);
             return false;
         }
 

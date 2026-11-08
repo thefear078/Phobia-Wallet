@@ -27,7 +27,8 @@ public sealed record SwapQuote(
     decimal RecommendedMinIn,
     decimal DustThreshold,
     int EtaSeconds,
-    string? Router)
+    string? Router,
+    decimal MinOut = 0m)
 {
     public DateTimeOffset Expiry => DateTimeOffset.FromUnixTimeSeconds(ExpiryUnix);
     public bool IsExpired => DateTimeOffset.UtcNow >= Expiry;
@@ -43,14 +44,19 @@ public sealed class ThorchainSwapClient
 {
     private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Swaps);
 
-    // Public THORNode endpoints, tried in order. The direct nodes want an x-client-id header; the
-    // cosmos.directory proxy is a keyless fallback that mirrors the same REST surface.
+    // Public THORNode endpoints, tried in order, each sent an x-client-id header. Nine Realms, long
+    // the default node, is gone (its host stopped resolving in October 2026), and so is Liquify's old
+    // thornode host; THORChain's dev docs now name Liquify's gateway. THORWallet runs the other public
+    // node, and the cosmos.directory proxy mirrors the same REST surface as a last resort.
     private static readonly string[] Endpoints =
     [
-        "https://thornode.ninerealms.com",
-        "https://thornode.thorchain.liquify.com",
+        "https://gateway.liquify.com/chain/thorchain_api",
+        "https://thorchain-thornode-lb-1.thorwallet.org",
         "https://rest.cosmos.directory/thorchain",
     ];
+
+    /// <summary>The nodes asked for a quote, in order (for the tests that keep the list honest).</summary>
+    public static IReadOnlyList<string> QuoteEndpoints => Endpoints;
 
     /// <summary>Wallet symbol -> THORChain asset id. Only assets THORChain actually supports.</summary>
     private static readonly Dictionary<string, string> AssetIds = new(StringComparer.OrdinalIgnoreCase)
@@ -144,11 +150,7 @@ public sealed class ThorchainSwapClient
         var amount1e8 = (long)decimal.Truncate(amountIn * 100_000_000m);
         if (amount1e8 <= 0) return (null, "Amount is too small.");
 
-        var query =
-            $"/thorchain/quote/swap?from_asset={Uri.EscapeDataString(fromAsset)}" +
-            $"&to_asset={Uri.EscapeDataString(toAsset)}" +
-            $"&amount={amount1e8}" +
-            $"&destination={Uri.EscapeDataString(destination)}";
+        var query = QuoteQuery(fromAsset, toAsset, amount1e8, destination);
 
         string? lastError = null;
         foreach (var host in Endpoints)
@@ -177,6 +179,47 @@ public sealed class ThorchainSwapClient
         }
 
         return (null, $"Could not reach THORChain — check your connection (or Tor). {lastError}");
+    }
+
+    /// <summary>
+    /// How far the price may move against the user between the quote and the swap, in basis points.
+    ///
+    /// THORChain puts a price limit in the memo only when asked for one: quoted without it, the memo's
+    /// limit is empty and the swap runs at whatever the pool gives when the deposit is seen — after a
+    /// large move, or a trade in front of it, for much less than was shown. With it, a swap that would
+    /// fill below the limit is refunded instead (less the network's fees), and the screen can say the
+    /// least the user will receive. 3%: room for an ordinary move during the minutes a deposit takes.
+    /// </summary>
+    public const int ToleranceBps = 300;
+
+    /// <summary>The quote request, the price limit included.</summary>
+    public static string QuoteQuery(string fromAsset, string toAsset, long amount1e8, string destination) =>
+        $"/thorchain/quote/swap?from_asset={Uri.EscapeDataString(fromAsset)}" +
+        $"&to_asset={Uri.EscapeDataString(toAsset)}" +
+        $"&amount={amount1e8}" +
+        $"&destination={Uri.EscapeDataString(destination)}" +
+        $"&liquidity_tolerance_bps={ToleranceBps}";
+
+    /// <summary>
+    /// The least the swap delivers, read from the memo's limit field — "=:ASSET:DEST:LIMIT" or
+    /// "=:ASSET:DEST:LIMIT/INTERVAL/QUANTITY", the limit in 1e8 units, sometimes written with an
+    /// exponent ("1234e3"). 0 when the memo carries no limit.
+    /// </summary>
+    public static decimal MemoLimitOut(string memo)
+    {
+        var parts = (memo ?? string.Empty).Split(':');
+        if (parts.Length < 4) return 0m;
+        var limit = parts[3].Split('/')[0].Trim();
+        if (limit.Length == 0) return 0m;
+        var e = limit.IndexOfAny(['e', 'E']);
+        if (e < 0)
+            return decimal.TryParse(limit, NumberStyles.None, CultureInfo.InvariantCulture, out var whole) ? whole / 100_000_000m : 0m;
+        if (!decimal.TryParse(limit[..e], NumberStyles.None, CultureInfo.InvariantCulture, out var mantissa) ||
+            !int.TryParse(limit[(e + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out var exponent) || exponent > 20)
+            return 0m;
+        var value = mantissa;
+        for (var i = 0; i < exponent; i++) value *= 10;
+        return value / 100_000_000m;
     }
 
     /// <summary>
@@ -220,7 +263,8 @@ public sealed class ThorchainSwapClient
             EtaSeconds:
                 (root.TryGetProperty("inbound_confirmation_seconds", out var ics) ? ics.GetInt32() : 0) +
                 (root.TryGetProperty("outbound_delay_seconds", out var ods) ? ods.GetInt32() : 0),
-            Router: root.TryGetProperty("router", out var rt) ? rt.GetString() : null);
+            Router: root.TryGetProperty("router", out var rt) ? rt.GetString() : null,
+            MinOut: MemoLimitOut(memo.GetString() ?? string.Empty));
 
         if (string.IsNullOrWhiteSpace(quote.InboundAddress) || string.IsNullOrWhiteSpace(quote.Memo))
             return (null, "THORChain returned no inbound address (the pool may be halted).");
@@ -228,8 +272,17 @@ public sealed class ThorchainSwapClient
         return (quote, null);
     }
 
-    /// <summary>A tracking URL for the funding transaction on THORChain's explorer.</summary>
-    public static string TrackUrl(string txId) => $"https://track.ninerealms.com/{txId}";
+    /// <summary>
+    /// The swap on THORChain's network explorer, found by the funding transaction. THORChain keeps
+    /// transaction ids upper-case and without "0x" (an ETH deposit's hash included), so the link uses
+    /// that form. Nine Realms' tracker, linked here before, no longer resolves.
+    /// </summary>
+    public static string TrackUrl(string txId)
+    {
+        var id = (txId ?? string.Empty).Trim();
+        if (id.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) id = id[2..];
+        return $"https://thorchain.net/tx/{Uri.EscapeDataString(id.ToUpperInvariant())}";
+    }
 
     private static decimal From1e8(JsonElement e)
     {

@@ -255,7 +255,9 @@ public sealed class OnChainHistoryClient
     /// </summary>
     public static readonly IReadOnlyList<(string Network, string Api, string Asset, string Explorer)> EvmSideHistory =
     [
-        ("Optimism", "https://optimism.blockscout.com/api", "ETH", "https://optimistic.etherscan.io/tx/"),
+        // optimism.blockscout.com answers 301 to explorer.optimism.io since October 2026: asked directly,
+        // so the request is not made twice and the privacy page names the host that really answers.
+        ("Optimism", "https://explorer.optimism.io/api", "ETH", "https://optimistic.etherscan.io/tx/"),
         ("zkSync Era", "https://zksync.blockscout.com/api", "ETH", "https://explorer.zksync.io/tx/"),
         ("Avalanche", "https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan/api", "AVAX", "https://snowtrace.io/tx/"),
     ];
@@ -369,6 +371,180 @@ public sealed class OnChainHistoryClient
                 "", byTx[h].UnixMs, explorerTxBase + h, h))
             .ToList();
     }
+
+    /// <summary>A token this wallet shows, as its history is read: only these contracts' transfers become rows.</summary>
+    public sealed record HeldToken(string Contract, string Symbol, int Decimals);
+
+    /// <summary>
+    /// Where each EVM network's token transfers are read (roadmap N.15), by the network name the Holdings
+    /// rows carry: an Etherscan-shaped <c>tokentx</c> API where one answers without a key, otherwise
+    /// 3xpl's ERC-20 module — Ethereum has both, 3xpl as the fallback. Checked 2026-10-16: BNB Chain has
+    /// neither (3xpl keeps no BEP-20 module for it, BscScan wants a key), so the Activity screen names its
+    /// tokens as not read rather than showing them with no history.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Network, string? Api, string? Chain, string Explorer)> EvmTokenHistory =
+    [
+        ("Ethereum", "https://eth.blockscout.com/api", "ethereum", "https://etherscan.io/tx/"),
+        ("Optimism", "https://explorer.optimism.io/api", null, "https://optimistic.etherscan.io/tx/"),
+        ("Avalanche", "https://api.routescan.io/v2/network/mainnet/evm/43114/etherscan/api", null, "https://snowtrace.io/tx/"),
+        ("Arbitrum One", null, "arbitrum-one", "https://arbiscan.io/tx/"),
+        ("Base", null, "base", "https://basescan.org/tx/"),
+        ("Polygon", null, "polygon", "https://polygonscan.com/tx/"),
+    ];
+
+    /// <summary>True when a network's token transfers have a source.</summary>
+    public static bool HasEvmTokenHistory(string network) =>
+        EvmTokenHistory.Any(s => s.Network.Equals(network, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Transfers of <paramref name="tokens"/> at <paramref name="address"/> on one network. Only the
+    /// contracts given count: an airdropped "USDT" on another contract — the look-alike that address
+    /// poisoning sends — never becomes a row, whatever it calls itself.
+    /// </summary>
+    public async Task<IReadOnlyList<ChainTx>> GetEvmTokenHistoryAsync(
+        string address, string network, IReadOnlyList<HeldToken> tokens, CancellationToken ct = default)
+    {
+        var source = EvmTokenHistory.FirstOrDefault(s => s.Network.Equals(network, StringComparison.OrdinalIgnoreCase));
+        if (source.Network is null || tokens.Count == 0) return [];
+
+        if (source.Api is not null)
+        {
+            try
+            {
+                var url = $"{source.Api}?module=account&action=tokentx&address={Uri.EscapeDataString(address)}" +
+                          $"&sort=desc&page=1&offset={HistoryPage.Evm}";
+                using var res = await Http.GetAsync(url, ct);
+                if (res.IsSuccessStatusCode)
+                {
+                    var json = await res.Content.ReadAsStringAsync(ct);
+                    if (IsTxlist(json)) return ParseEvmTokenTx(json, address, tokens, source.Explorer);
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                // not an answer: 3xpl below, where there is one
+            }
+        }
+
+        if (source.Chain is null) return [];
+        try
+        {
+            var module = source.Chain + "-erc-20";
+            var url = $"{ThreeXpl.Root}/{source.Chain}/address/{Uri.EscapeDataString(address)}" +
+                      $"?data=events&from={module}&limit={EvmEventsPage}";
+            var json = await ThreeXpl.GetAsync(Http, url, ct);
+            return json is null ? [] : ParseEvmTokenEvents(json, module, tokens, source.Explorer);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// An Etherscan-shaped <c>tokentx</c> list: one entry per token transfer, with its contract, both
+    /// sides and the raw amount. The decimals come from the wallet's own row, not the answer — a wrong
+    /// decimals value is an amount wrong by powers of ten. A transfer to oneself moves nothing and is no row.
+    /// </summary>
+    public static List<ChainTx> ParseEvmTokenTx(string json, string me, IReadOnlyList<HeldToken> tokens, string explorerTxBase)
+    {
+        var known = Known(tokens);
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("result", out var result) || result.ValueKind != JsonValueKind.Array) return [];
+
+        var moves = new Dictionary<(string Hash, string Contract), (System.Numerics.BigInteger Moved, long UnixMs, string Counter)>();
+        var order = new List<(string, string)>();
+        foreach (var tx in result.EnumerateArray())
+        {
+            var contract = Str(tx, "contractAddress").ToLowerInvariant();
+            if (!known.ContainsKey(contract)) continue;
+            var hash = Str(tx, "hash");
+            if (hash.Length == 0 ||
+                !System.Numerics.BigInteger.TryParse(Str(tx, "value"), NumberStyles.None, CultureInfo.InvariantCulture, out var value)) continue;
+            var incoming = Str(tx, "to").Equals(me, StringComparison.OrdinalIgnoreCase);
+            var outgoing = Str(tx, "from").Equals(me, StringComparison.OrdinalIgnoreCase);
+            if (incoming == outgoing) continue;   // to oneself, or not this address at all
+            var signed = incoming ? value : -value;
+            var key = (hash, contract);
+            if (!moves.TryGetValue(key, out var m))
+            {
+                order.Add(key);
+                m = (System.Numerics.BigInteger.Zero, Long(tx, "timeStamp") * 1000, incoming ? Str(tx, "from") : Str(tx, "to"));
+            }
+            moves[key] = (m.Moved + signed, m.UnixMs, m.Counter);
+        }
+
+        return Rows(order, moves, known, explorerTxBase);
+    }
+
+    /// <summary>
+    /// 3xpl's ERC-20 events for an address: each a signed change in one token (its contract in
+    /// <c>currency</c>, after the module's name), summed per transaction and token. The events name no
+    /// other side, so the row's counterparty is left empty rather than guessed.
+    /// </summary>
+    public static List<ChainTx> ParseEvmTokenEvents(string json, string module, IReadOnlyList<HeldToken> tokens, string explorerTxBase)
+    {
+        var known = Known(tokens);
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object ||
+            !doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object ||
+            !data.TryGetProperty("events", out var events) || events.ValueKind != JsonValueKind.Object ||
+            !events.TryGetProperty(module, out var list) || list.ValueKind != JsonValueKind.Array)
+            return [];
+
+        var prefix = module + "/";
+        var moves = new Dictionary<(string Hash, string Contract), (System.Numerics.BigInteger Moved, long UnixMs, string Counter)>();
+        var order = new List<(string, string)>();
+        foreach (var e in list.EnumerateArray())
+        {
+            if (e.TryGetProperty("failed", out var failed) && failed.ValueKind == JsonValueKind.True) continue;
+            var currency = Str(e, "currency");
+            if (!currency.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            var contract = currency[prefix.Length..].ToLowerInvariant();
+            if (!known.ContainsKey(contract)) continue;
+            var hash = Str(e, "transaction");
+            if (hash.Length == 0 ||
+                !System.Numerics.BigInteger.TryParse(Str(e, "effect"), NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture, out var effect)) continue;
+            var at = DateTimeOffset.TryParse(Str(e, "time"), CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal, out var t) ? t.ToUnixTimeMilliseconds() : 0;
+            var key = (hash, contract);
+            if (!moves.TryGetValue(key, out var m)) { order.Add(key); m = (System.Numerics.BigInteger.Zero, at, ""); }
+            moves[key] = (m.Moved + effect, Math.Max(m.UnixMs, at), m.Counter);
+        }
+
+        return Rows(order, moves, known, explorerTxBase);
+    }
+
+    private static Dictionary<string, HeldToken> Known(IReadOnlyList<HeldToken> tokens) =>
+        tokens.Where(t => t.Contract.Length > 0)
+            .GroupBy(t => t.Contract.ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.First());
+
+    private static List<ChainTx> Rows(
+        List<(string Hash, string Contract)> order,
+        Dictionary<(string Hash, string Contract), (System.Numerics.BigInteger Moved, long UnixMs, string Counter)> moves,
+        Dictionary<string, HeldToken> known, string explorerTxBase) =>
+        order
+            .Where(k => !moves[k].Moved.IsZero)
+            .Select(k =>
+            {
+                var (moved, at, counter) = moves[k];
+                var token = known[k.Contract];
+                return new ChainTx(
+                    moved.Sign > 0 ? "Received" : "Sent", token.Symbol,
+                    ScaleDown(System.Numerics.BigInteger.Abs(moved).ToString(CultureInfo.InvariantCulture), token.Decimals),
+                    counter, at, explorerTxBase + k.Hash, k.Hash);
+            })
+            .ToList();
 
     /// <summary>Native TON transfers for a user-friendly (UQ/EQ) address, via toncenter's keyless API.</summary>
     public async Task<IReadOnlyList<ChainTx>> GetTonAsync(string address, int limit = HistoryPage.Ton, CancellationToken ct = default)

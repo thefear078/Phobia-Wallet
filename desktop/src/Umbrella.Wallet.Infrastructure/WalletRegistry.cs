@@ -59,6 +59,34 @@ public sealed class WalletRegistry
 
     public IReadOnlyList<WalletEntry> Wallets => _wallets;
 
+    /// <summary>The folder this device's wallets live in (the main vault's): what a full wipe empties.</summary>
+    public string DataDirectory => Path.GetDirectoryName(Path.GetFullPath(_legacyVaultPath)) ?? ".";
+
+    /// <summary>
+    /// Every vault file on this device a password could open: each listed wallet's, and each removed
+    /// one's — a removed wallet can be put back, and unlocked, at any time.
+    /// </summary>
+    public IReadOnlyList<string> EveryVaultFile()
+    {
+        var files = new List<string>();
+        foreach (var w in _wallets)
+        {
+            var path = VaultPathFor(w);
+            if (File.Exists(path)) files.Add(path);
+        }
+
+        try
+        {
+            if (Directory.Exists(RemovedDir)) files.AddRange(Directory.EnumerateFiles(RemovedDir, "*.vault.json"));
+        }
+        catch
+        {
+            // an unreadable folder holds nothing this can check
+        }
+
+        return files;
+    }
+
     /// <summary>The selected wallet, or the first one, or null when no wallet exists yet.</summary>
     public WalletEntry? Active =>
         _wallets.FirstOrDefault(w => w.Id == _activeId) ?? _wallets.FirstOrDefault();

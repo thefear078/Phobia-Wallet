@@ -78,6 +78,10 @@ Settings → **Security**:
 - **Security Center** — what is actually protecting the wallet right now, and one button for the
   recommended protection.
 - **Duress password** — a second password that opens a decoy wallet.
+- **Panic password** — typed on the unlock screen instead of your password, it erases every wallet this
+  app keeps on the device and the app opens as if freshly installed; your recovery phrase restores
+  everything. It cannot be a password that opens a wallet here, and the wallet never says whether one
+  is set. Set it only once your phrase is written down.
 - **PSBT** — review and sign Bitcoin transactions prepared elsewhere (hardware-wallet workflows).
 - **Sign / verify a message.**
 
@@ -93,6 +97,9 @@ Settings → **Privacy**:
 
 - Settings → **Backup**: save an encrypted backup file and **check** it with its password; reveal the
   recovery phrase (password required, screen capture blocked while it is shown).
+- Settings → **Backup** → **Check the phrase you wrote down**: type the words from your paper and the
+  wallet says whether they restore this wallet, or which word positions are wrong — without ever
+  showing the phrase.
 - Settings → Appearance → **Updates**: the wallet looks for a new release by itself, downloads it and
   keeps it only if its checksum matches both the release's `SHA256SUMS` and GitHub's own digest.
   Installing is always your click.

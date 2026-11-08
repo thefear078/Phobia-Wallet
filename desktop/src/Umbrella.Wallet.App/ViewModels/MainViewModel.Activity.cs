@@ -197,7 +197,14 @@ public partial class MainViewModel
             .Select(a => $"{a.Symbol} ({a.Chain})")
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
-        HistoryGapCoins = string.Join(", ", HistoryCoverage.WithoutHistory(held).Concat(evmGaps));
+        // And tokens on a network whose token transfers nothing serves without a key (BNB Chain).
+        var tokenGaps = accounts
+            .Where(a => a.Derivation.StartsWith("ERC20 on ", StringComparison.Ordinal) && a.Amount > 0 &&
+                        !a.IsSuspectedSpam && !OnChainHistoryClient.HasEvmTokenHistory(a.Chain))
+            .Select(a => $"{a.Symbol} ({a.Chain})")
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        HistoryGapCoins = string.Join(", ", HistoryCoverage.WithoutHistory(held).Concat(evmGaps).Concat(tokenGaps));
     }
 
     /// <summary>The merged feed (roadmap §6): local events plus real on-chain history, deduped by explorer
@@ -459,6 +466,19 @@ public partial class MainViewModel
                 // a key, 3xpl does — under the same rule, only where something is held.
                 foreach (var (network, chain, asset, explorer) in OnChainHistoryClient.EvmSideEvents)
                     if (held.Contains(network)) reads.Add(_history.GetEvmEventsAsync(eth, chain, asset, explorer));
+
+                // Tokens (roadmap N.15): per network, the transfers of the tokens Holdings shows — their
+                // contracts only, never a folded-away look-alike — under the same rule: only where held.
+                foreach (var network in Accounts.ToArray()
+                             .Where(a => a.Derivation.StartsWith("ERC20 on ", StringComparison.Ordinal) &&
+                                         a.Contract.Length > 0 && a.Amount > 0 && !a.IsSuspectedSpam)
+                             .GroupBy(a => a.Chain, StringComparer.OrdinalIgnoreCase))
+                {
+                    var tokens = network
+                        .Select(a => new OnChainHistoryClient.HeldToken(a.Contract, a.Symbol, a.TokenDecimals))
+                        .ToList();
+                    reads.Add(_history.GetEvmTokenHistoryAsync(eth, network.Key, tokens));
+                }
             }
             if (AddressOf(ChainId.Ton) is { Length: > 0 } ton) reads.Add(_history.GetTonAsync(ton));
             if (AddressOf(ChainId.Ada) is { Length: > 0 } ada) reads.Add(_history.GetCardanoAsync(ada));
