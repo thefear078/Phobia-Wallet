@@ -34,7 +34,7 @@ if (($pins | Where-Object Project -eq 'tor').Count -lt 2 -or ($pins | Where-Obje
     throw "Expected at least two Tor and two Monero pins in fetch-android-helpers.sh, found $($pins.Count)."
 }
 
-$torSums = "https://dist.torproject.org/torbrowser/$torVersion/sha256sums-unsigned-build.txt"
+$torSums = "https://archive.torproject.org/tor-package-archive/torbrowser/$torVersion/sha256sums-unsigned-build.txt"
 # PUBLIC key fingerprints (the same ones fetch-tor.ps1 and fetch-monero.ps1 pin), named so that
 # .gitleaks.toml's allowlist recognises them as such.
 $torSigningKeyFingerprint = 'EF6E286DDA85EA2A4BA7DE684E2C6E8793298290'

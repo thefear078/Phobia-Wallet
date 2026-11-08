@@ -11,7 +11,7 @@
 [CmdletBinding()]
 param(
     # Pinned version + SHA-256 of the expert bundle, from
-    # https://dist.torproject.org/torbrowser/<Version>/sha256sums-unsigned-build.txt (see THIRD_PARTY_NOTICES.md).
+    # https://archive.torproject.org/tor-package-archive/torbrowser/<Version>/sha256sums-unsigned-build.txt (see THIRD_PARTY_NOTICES.md).
     #
     # The version is part of the URL, and the Tor Project PRUNES old releases from the mirror — a pin
     # left behind becomes a 404 rather than an old-but-working download. It has happened three times:
@@ -48,7 +48,7 @@ if ($haveAll -notcontains $false) {
 }
 
 $archive = "tor-expert-bundle-windows-x86_64-$Version.tar.gz"
-$url = "https://dist.torproject.org/torbrowser/$Version/$archive"
+$url = "https://archive.torproject.org/tor-package-archive/torbrowser/$Version/$archive"
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "umbrella-tor-$Version"
 
 Write-Host "Downloading $url"
@@ -59,7 +59,7 @@ Invoke-WebRequest -Uri $url -OutFile $archivePath -UseBasicParsing
 # Check the pin against the Tor Project's OWN signed sums file before trusting it. A hash that only
 # ever agrees with itself proves nothing — it says the download matches what this script expects, not
 # what Tor published. The signature is what connects the two.
-$sumsUrl = "https://dist.torproject.org/torbrowser/$Version/sha256sums-unsigned-build.txt"
+$sumsUrl = "https://archive.torproject.org/tor-package-archive/torbrowser/$Version/sha256sums-unsigned-build.txt"
 # The key comes from the Tor Project's own Web Key Directory first — the source their docs name
 # (gpg --locate-keys torbrowser@torproject.org). keys.openpgp.org strips the key's user ID, and
 # keyserver.ubuntu.com refused the release runner outright, which stopped the 4.8.0 Windows build.

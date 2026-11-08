@@ -61,7 +61,7 @@ for abi in ${ABIS}; do
     tor_archive="tor-expert-bundle-android-${tor_arch}-${TOR_VERSION}.tar.gz"
     if [ -f "${OUT}/${abi}/libTor.so" ]; then
         echo "${abi}: Tor already staged"
-    elif fetch "https://dist.torproject.org/torbrowser/${TOR_VERSION}/${tor_archive}" "${tor_sha}" "${tor_archive}" \
+    elif fetch "https://archive.torproject.org/tor-package-archive/torbrowser/${TOR_VERSION}/${tor_archive}" "${tor_sha}" "${tor_archive}" \
         && tar -xzf "${WORK}/${tor_archive}" -C "${WORK}" tor/libTor.so \
         && mv "${WORK}/tor/libTor.so" "${OUT}/${abi}/libTor.so"; then
         echo "${abi}: Tor ${TOR_VERSION} staged ($(du -h "${OUT}/${abi}/libTor.so" | cut -f1))"

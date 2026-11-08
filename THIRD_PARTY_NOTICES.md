@@ -21,9 +21,9 @@ project’s own signed hashes file — never a random mirror.
 | Component | `tor.exe` + GeoIP databases (Windows x86_64 expert bundle) |
 | Version | 15.0.25 |
 | Archive | `tor-expert-bundle-windows-x86_64-15.0.25.tar.gz` |
-| Source URL | https://dist.torproject.org/torbrowser/15.0.25/tor-expert-bundle-windows-x86_64-15.0.25.tar.gz |
+| Source URL | https://archive.torproject.org/tor-package-archive/torbrowser/15.0.25/tor-expert-bundle-windows-x86_64-15.0.25.tar.gz |
 | SHA-256 | `c1988c701de2f24f7d098d1d6d7f507b58f27740d097f29c246e0524d639b252` |
-| Hash source | https://dist.torproject.org/torbrowser/15.0.25/sha256sums-unsigned-build.txt (+ `.asc`) |
+| Hash source | https://archive.torproject.org/tor-package-archive/torbrowser/15.0.25/sha256sums-unsigned-build.txt (+ `.asc`) |
 | Signing key | `EF6E286DDA85EA2A4BA7DE684E2C6E8793298290` — Tor Browser Developers |
 | License | BSD 3-Clause (Tor Project upstream `LICENSE`) |
 

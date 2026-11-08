@@ -41,7 +41,7 @@ TOR_ARCHIVE="tor-expert-bundle-linux-x86_64-${TOR_VERSION}.tar.gz"
 if [ ! -f "${OUT}/tor/tor" ]; then
     echo "Fetching Tor ${TOR_VERSION}…"
     if mkdir -p "${OUT}/tor" /tmp/umbrella-tor \
-        && curl -fL "https://dist.torproject.org/torbrowser/${TOR_VERSION}/${TOR_ARCHIVE}" -o "/tmp/umbrella-tor/${TOR_ARCHIVE}" \
+        && curl -fL "https://archive.torproject.org/tor-package-archive/torbrowser/${TOR_VERSION}/${TOR_ARCHIVE}" -o "/tmp/umbrella-tor/${TOR_ARCHIVE}" \
         && echo "${TOR_SHA256}  /tmp/umbrella-tor/${TOR_ARCHIVE}" | sha256sum -c - \
         && tar -xzf "/tmp/umbrella-tor/${TOR_ARCHIVE}" -C /tmp/umbrella-tor; then
         cp /tmp/umbrella-tor/tor/tor "${OUT}/tor/tor" && chmod +x "${OUT}/tor/tor"
