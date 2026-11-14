@@ -22,6 +22,7 @@ In order. Each item says why it is here and what finishes it.
 | **N.1** | Merge pull requests #167 and #169 | Both carry this branch's work. | The maintainer merges (automated merges are blocked for this project). | ⏳ both open; #169 CI 11/11 green |
 | **N.2** | First real run of the `sign-checksums` release job | Tested only locally, against Beta 6's list. | Watch the job on the next tag. Then run `scripts/verify-published-release.sh` on the published files. | ⏳ |
 | **N.3** | Unlock is slow and the window stalls after the password | Reported on the maintainer's PC, 2026-11-08. Not measured yet. | Time each step of `SetUnlocked` in a Release build against a scratch vault. Move synchronous work off the UI thread. Targets: the window responds within 1 s of the key derivation; the full view is ready within 3 s on a typical desktop. | 📅 not measured |
+| **N.5** | Three open review threads on #169 (one High): legacy plaintext files are taken over by the first secret that opens, watch-only UTXO history is empty, and restore leaves the watch list inconsistent | Blocks the merge under the branch rule. Details and steps: [PRODUCT-QUALITY.md §1.3](PRODUCT-QUALITY.md#13-blockers-before-anything-else) (Q.1). | ⏳ open |
 | **N.4** | Set the panic password again after updating | The Argon2id check replaced PBKDF2 in the October build. | Put it in the release notes of the next Beta. | ⏳ |
 
 ---
@@ -80,6 +81,7 @@ All P1 items from the 2026 backlog are closed (§5). Open items that users will 
 | ID | Item | Status and next step |
 |---|---|---|
 | P2.1 | Ledger and Trezor: signing on the device (H.2) | 📅 Design in [HARDWARE_WALLETS.md](HARDWARE_WALLETS.md). Needs the devices to test on; nothing ships on emulator evidence alone. Order: Bitcoin, Ethereum family, then the other coins as each device's app allows. |
+| P2.6 | Cold signing with a phone: the computer builds a PSBT, the phone reviews and signs it through QR | 📅 Design direction in [PRODUCT-QUALITY.md §3.2](PRODUCT-QUALITY.md#32-cold-signing-with-a-phone-new). Threat model first; no code before it. |
 | P2.2 | Receiving a PayJoin (BIP-78) | 📅 Needs an always-reachable endpoint. Sending is done (P2.2 in §5). |
 | P2.3 | CoinJoin (P2.3) | 📅 |
 | P2.4 | Silent Payments for BTC (P2.5) | 📅 |
