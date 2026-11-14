@@ -8,18 +8,17 @@ namespace Umbrella.Wallet.Infrastructure;
 /// Encrypted-at-rest private notes on transactions — the user's own bookkeeping ("salary", "sold the
 /// car", "coffee"), keyed by transaction id. Unlike the address book (which holds only public
 /// addresses), a note can quietly link an on-chain payment to a real-world identity, so it is NEVER
-/// written in the clear: notes are AES-256-GCM encrypted with a key derived from the wallet seed —
-/// readable exactly while the wallet is unlocked, and unreadable to anything that copies the file.
+/// written in the clear: notes are sealed with AES-256-GCM under a key derived from the wallet's secret
+/// (<see cref="SealedFile"/>) — readable exactly while the wallet is unlocked, and unreadable to anything
+/// that copies the file.
 ///
-/// Mirrors <see cref="ExchangeCredentialStore"/>: same crypto, same fail-closed handling (a corrupt or
+/// Mirrors <see cref="ExchangeCredentialStore"/>: same sealing, same fail-closed handling (a corrupt or
 /// foreign file reads as "no notes", never a crash). Per wallet, so each wallet's notes are separate and
-/// each is sealed under its own seed-derived key.
+/// each is sealed under its own key.
 /// </summary>
 public sealed class TxNoteStore
 {
     private const string DerivationDomain = "umbrella-tx-notes-v1";
-    private const int NonceSize = 12;
-    private const int TagSize = 16;
 
     private readonly string _path;
 
@@ -42,36 +41,19 @@ public sealed class TxNoteStore
     /// <summary>Decrypts the notes for this wallet: a map of transaction id → note text.</summary>
     public async Task<Dictionary<string, string>> LoadAsync(string mnemonic, CancellationToken ct = default)
     {
-        if (!File.Exists(_path)) return new();
-
+        var plaintext = await SealedFile.ReadAsync(_path, mnemonic, DerivationDomain, ct);
+        if (plaintext is null) return new();   // none, or the wrong secret, or damaged: never a crash
         try
         {
-            var blob = await File.ReadAllBytesAsync(_path, ct);
-            if (blob.Length < NonceSize + TagSize) return new();
-
-            var nonce = blob[..NonceSize];
-            var tag = blob[NonceSize..(NonceSize + TagSize)];
-            var ciphertext = blob[(NonceSize + TagSize)..];
-            var plaintext = new byte[ciphertext.Length];
-
-            var key = DeriveKey(mnemonic);
-            try
-            {
-                using var aes = new AesGcm(key, TagSize);
-                aes.Decrypt(nonce, ciphertext, tag, plaintext);
-                var json = Encoding.UTF8.GetString(plaintext);
-                return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new();
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(key);
-                CryptographicOperations.ZeroMemory(plaintext);
-            }
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(Encoding.UTF8.GetString(plaintext)) ?? new();
         }
-        catch
+        catch (JsonException)
         {
-            // Wrong seed, tampered tag, or a foreign/corrupt file → treat as "no notes", never crash.
             return new();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plaintext);
         }
     }
 
@@ -84,40 +66,19 @@ public sealed class TxNoteStore
             .Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
             .ToDictionary(kv => kv.Key, kv => kv.Value.Trim());
 
-        var json = JsonSerializer.Serialize(trimmed);
-        var plaintext = Encoding.UTF8.GetBytes(json);
-        var nonce = RandomNumberGenerator.GetBytes(NonceSize);
-        var ciphertext = new byte[plaintext.Length];
-        var tag = new byte[TagSize];
-
-        var key = DeriveKey(mnemonic);
+        var plaintext = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(trimmed));
         try
         {
-            using var aes = new AesGcm(key, TagSize);
-            aes.Encrypt(nonce, plaintext, ciphertext, tag);
+            await SealedFile.WriteAsync(_path, plaintext, mnemonic, DerivationDomain, ct);
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(key);
             CryptographicOperations.ZeroMemory(plaintext);
         }
-
-        var blob = new byte[nonce.Length + tag.Length + ciphertext.Length];
-        Buffer.BlockCopy(nonce, 0, blob, 0, nonce.Length);
-        Buffer.BlockCopy(tag, 0, blob, nonce.Length, tag.Length);
-        Buffer.BlockCopy(ciphertext, 0, blob, nonce.Length + tag.Length, ciphertext.Length);
-
-        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        var temp = $"{_path}.{Guid.NewGuid():N}.tmp";
-        await File.WriteAllBytesAsync(temp, blob, ct);
-        File.Move(temp, _path, overwrite: true);
     }
 
     public void Delete()
     {
         if (File.Exists(_path)) File.Delete(_path);
     }
-
-    private static byte[] DeriveKey(string mnemonic) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(DerivationDomain + ":" + mnemonic));
 }

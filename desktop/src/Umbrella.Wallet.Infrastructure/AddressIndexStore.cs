@@ -244,9 +244,7 @@ public sealed class AddressIndexStore
         var dir = Path.GetDirectoryName(_path)!;
         Directory.CreateDirectory(dir);
 
-        var tmp = _path + ".tmp";
-        var json = JsonSerializer.Serialize(_model, JsonOpts);
-        File.WriteAllText(tmp, json);
-        File.Move(tmp, _path, overwrite: true);
+        // Whole or not at all, and owner-only from the moment it exists.
+        AtomicFile.WriteAllText(_path, JsonSerializer.Serialize(_model, JsonOpts));
     }
 }

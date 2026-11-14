@@ -1,0 +1,8 @@
+# Phobia Wallet: how to report a security problem (RFC 9116).
+# Please do not open a public issue for anything that could put funds at risk.
+Contact: https://github.com/thefear078/Phobia-Wallet/security/advisories/new
+Contact: https://t.me/PhobiaStat
+Expires: 2027-04-30T00:00:00.000Z
+Policy: https://github.com/thefear078/Phobia-Wallet/blob/main/SECURITY.md
+Preferred-Languages: en, uk
+Canonical: https://raw.githubusercontent.com/thefear078/Phobia-Wallet/main/.well-known/security.txt

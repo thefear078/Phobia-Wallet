@@ -135,14 +135,7 @@ public sealed class EncryptedFileSeedVault
                 ?? throw new InvalidOperationException("Vault directory cannot be resolved.");
             Directory.CreateDirectory(directory);
 
-            var tempPath = $"{_vaultPath}.{Guid.NewGuid():N}.tmp";
-            await File.WriteAllTextAsync(
-                tempPath,
-                JsonSerializer.Serialize(envelope, JsonOptions),
-                Encoding.UTF8,
-                cancellationToken);
-
-            File.Move(tempPath, _vaultPath, overwrite: true);
+            await AtomicFile.WriteAllTextAsync(_vaultPath, JsonSerializer.Serialize(envelope, JsonOptions), cancellationToken);
         }
         finally
         {
@@ -327,9 +320,8 @@ public sealed class EncryptedFileSeedVault
             ?? throw new InvalidOperationException("Vault directory cannot be resolved.");
         Directory.CreateDirectory(directory);
 
-        var tempPath = $"{_vaultPath}.{Guid.NewGuid():N}.tmp";
-        await File.WriteAllBytesAsync(tempPath, file, cancellationToken);
-        File.Move(tempPath, _vaultPath, overwrite: true);
+        // Flushed to disk before it replaces the old vault, and owner-only (0600) from the moment it exists.
+        await AtomicFile.WriteAllBytesAsync(_vaultPath, file, cancellationToken);
     }
 
     /// <summary>The wallet's real KDF, in the synchronous shape the vault format asks for.</summary>

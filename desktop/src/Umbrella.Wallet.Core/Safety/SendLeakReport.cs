@@ -22,7 +22,11 @@ public readonly record struct SendLeakSignals(
     /// <summary>An account chain (Ethereum, Solana, TRON…): one address pays for everything, and there
     /// is no change output. "Change went to a fresh address" would be a compliment for something that
     /// never happened, so such a send gets one plain line about its single address instead.</summary>
-    bool IsAccountChain = false);
+    bool IsAccountChain = false,
+    /// <summary>Where the transaction was first seen (roadmap P2.4): true for one random node of the network
+    /// over a Tor circuit of its own, false for the explorer that read the addresses; null where the
+    /// question does not arise (a chain without a relay, or a send not routed through Tor).</summary>
+    bool? RelayedThroughPeer = null);
 
 /// <summary>
 /// One line of the report: what happened, and whether it protected the user or exposed them.
@@ -58,6 +62,10 @@ public static class SendLeakReport
         if (s.RoutedThroughTor && !s.KillSwitchArmed)
             findings.Add(new SendLeakFinding("noKillSwitch", false));
 
+        // The first hop: whoever sees a transaction first is the best placed to guess who sent it.
+        if (s.RelayedThroughPeer is { } peer)
+            findings.Add(peer ? new SendLeakFinding("firstHopPeer", true) : new SendLeakFinding("firstHopExplorer", false));
+
         // 2. The ledger. On a transparent chain the transaction is public the moment it confirms, and
         //    no setting in this or any wallet changes that.
         findings.Add(s.ChainHidesAmounts
@@ -90,5 +98,5 @@ public static class SendLeakReport
 
     /// <summary>True when at least one line of the report is an exposure the user could have avoided.</summary>
     public static bool HasAvoidableExposure(IReadOnlyList<SendLeakFinding> findings) =>
-        findings.Any(f => !f.IsProtected && f.Code is "ipSeen" or "noKillSwitch" or "inputsLinked" or "changeReused");
+        findings.Any(f => !f.IsProtected && f.Code is "ipSeen" or "noKillSwitch" or "inputsLinked" or "changeReused" or "firstHopExplorer");
 }

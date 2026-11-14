@@ -113,17 +113,21 @@ bash scripts/verify-published-release.sh v4.10.0-beta.6
 
 A checksum proves the file matches what the release page says. It says nothing about **who put that
 page there** — somebody who can replace the artifacts can replace the manifest beside them. So every
-release from the next one on also carries a build attestation:
+release since 4.8.0 carries a build attestation for each file and for the checksum list:
 
 ```bash
 gh attestation verify PhobiaWallet-Setup-<version>.exe --repo thefear078/Phobia-Wallet
 ```
 
 That checks against a public transparency log — not against us — that these exact bytes came out of
-this repository's release workflow, at a named commit. There is no signing key involved, which means
-there is no signing key for anybody to steal.
+this repository's release workflow, at a named commit. The attestation needs no key that could be stolen.
 
-**Releases published before that have checksums only.** An attestation cannot be added to a build after the
+From the next Beta on, the checksum list is also signed with the project's release key, and the wallet's own
+updater refuses a release whose list is not signed by it. The public key and the commands are in
+[`keys/README.md`](../keys/README.md). Beta 6 and every earlier release have no `.sig` file; check those
+with the attestation.
+
+**Releases published before 4.8.0 have checksums only.** An attestation cannot be added to a build after the
 fact; a page claiming otherwise would be worth nothing.
 [AUDIT_STATUS.md](../AUDIT_STATUS.md) keeps that kind of gap in one place.
 

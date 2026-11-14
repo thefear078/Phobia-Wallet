@@ -136,8 +136,10 @@ public static class ChainEndpoints
             // NEAR JSON-RPC. near.lava.build was discontinued in 2025 — these two answered view_account.
             ["NEAR"] =
             [
-                new("https://rpc.mainnet.near.org", "NEAR Foundation"),
+                // The NEAR Foundation's endpoint answers 429 "deprecated, stop using it" since October 2026:
+                // FastNEAR first, the Foundation's kept behind it for as long as it still answers at all.
                 new("https://free.rpc.fastnear.com", "FastNEAR"),
+                new("https://rpc.mainnet.near.org", "NEAR Foundation"),
             ],
             // Horizon, Stellar's REST API. SDF runs the default; LOBSTR runs a public one too.
             ["XLM"] =

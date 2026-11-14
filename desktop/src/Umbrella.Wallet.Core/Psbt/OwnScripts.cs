@@ -67,6 +67,27 @@ public sealed class OwnScripts
         return new OwnScripts(paths);
     }
 
+    /// <summary>
+    /// The same set for a watched account (roadmap H.5): one branch pair of one address type, from its
+    /// extended public key, through the same horizon.
+    /// </summary>
+    public static OwnScripts For(XpubAddressSource source, UtxoScanFloors floors, int gap = UtxoAccountScanner.DefaultGapLimit)
+    {
+        var paths = new Dictionary<Script, UtxoDerivationPath>();
+        foreach (var (change, reach) in new[]
+                 {
+                     (0u, Max(floors.LastIssuedExternalIndex, floors.LastSeenUsedExternalIndex)),
+                     (1u, Max(floors.LastIssuedInternalIndex, floors.LastSeenUsedInternalIndex)),
+                 })
+        {
+            var last = (reach ?? 0) + (uint)gap;
+            for (uint i = 0; i <= last; i++)
+                paths[source.ScriptAt(change, i)] = new UtxoDerivationPath(source.Chain, change, i);
+        }
+
+        return new OwnScripts(paths);
+    }
+
     private static uint? Max(uint? a, uint? b) =>
         a is null ? b : b is null ? a : Math.Max(a.Value, b.Value);
 }

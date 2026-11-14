@@ -48,7 +48,7 @@ public partial class MainViewModel
     /// nothing rather than guessing — a made-up number in a privacy report is worse than no report,
     /// because it is a number somebody will act on.
     /// </summary>
-    private void BuildSendLeakReport(string symbol)
+    private void BuildSendLeakReport(string symbol, string? txId = null)
     {
         var sym = (symbol ?? string.Empty).Trim().ToUpperInvariant();
 
@@ -69,7 +69,12 @@ public partial class MainViewModel
             // account chain there is no change output at all, so there is nothing to reuse.
             FreshChangeUsed: !isUtxo || _btcPlan is null || _btcPlan.NeedsChange,
             CoinControlUsed: CoinControlOn && isUtxo,
-            IsAccountChain: !isUtxo && sym != "XMR");
+            IsAccountChain: !isUtxo && sym != "XMR",
+            RelayedThroughPeer: txId is not null && sym is "BTC" or "LTC" or "DOGE" &&
+                                !string.IsNullOrEmpty(Umbrella.Wallet.Infrastructure.Network.PublicHttp.ActiveProxy) &&
+                                Umbrella.Wallet.Infrastructure.Network.BitcoinTransactionSender.RouteOf(txId) is { } route
+                ? route == Umbrella.Wallet.Infrastructure.Network.BroadcastRoute.Peer
+                : null);
 
         var findings = SendLeakReport.Build(signals);
 

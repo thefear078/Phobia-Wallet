@@ -90,32 +90,29 @@ public partial class MainViewModel
     /// <summary>False until there is something to list in the home screen's recent transactions.</summary>
     public bool HasRecentActivity => RecentActivity.Count > 0;
 
-    private void PersistActivity() =>
-        _activityStore.Save(Activity.Select(a =>
-                new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status,
-                    a.UnixMs, a.WalletId, a.CounterpartyFull))
-            .Concat(_otherWalletsActivity));
-
-    /// <summary>Saved transfers of the wallets that are not open: kept for the file, never listed here.</summary>
-    private readonly List<ActivityStore.Entry> _otherWalletsActivity = [];
+    /// <summary>Seals the open wallet's feed into its own file; nothing is written while locked.</summary>
+    private void PersistActivity()
+    {
+        if (_dataKey is not { } key) return;
+        _activityStore.Save(key, Activity.Select(a =>
+            new ActivityStore.Entry(a.Kind, a.Asset, a.Amount, a.Counterparty, a.When, a.Explorer, a.Status,
+                a.UnixMs, a.WalletId, a.CounterpartyFull)));
+    }
 
     /// <summary>Loads the saved activity/transaction history from the data folder into the feeds.</summary>
     private void LoadActivity()
     {
         Activity.Clear();
-        _otherWalletsActivity.Clear();
         var droppedNoise = false;
-        var activeWallet = _registry.Active?.Id;
+        var key = _dataKey;
+        var activeWallet = key?.WalletId;
+        var saved = key is null ? [] : _activityStore.Load(key, _registry.Wallets.Select(w => w.Id).ToList());
         ActivityStore.Entry? prev = null;
-        foreach (var e in _activityStore.Load())
+        foreach (var e in saved)
         {
-            // Another wallet's transfer: not this wallet's history. (A row saved before rows carried a
-            // wallet has none, and stays listed everywhere, as it always was.)
+            // Each wallet's file holds its own rows; one that says otherwise is not listed here.
             if (e.WalletId is { Length: > 0 } owner && !string.Equals(owner, activeWallet, StringComparison.Ordinal))
-            {
-                if (_otherWalletsActivity.Count < 300) _otherWalletsActivity.Add(e);
                 continue;
-            }
             // Purge legacy UI-preference noise that older builds logged ("Theme Appearance changed",
             // "Settings … changed") so the feed reads as real wallet events, not a developer log.
             if (string.Equals(e.Kind, "Theme", StringComparison.OrdinalIgnoreCase) ||
@@ -193,14 +190,15 @@ public partial class MainViewModel
         // coin's name, which the catalog alone would not flag.
         var evmGaps = accounts
             .Where(a => a.Derivation == EvmSideDerivation && a.Amount > 0 &&
-                        !OnChainHistoryClient.HasEvmSideHistory(a.Chain))
+                        !OnChainHistoryClient.HasEvmSideHistory(a.Chain) && !_keyedOk.Contains(a.Chain))
             .Select(a => $"{a.Symbol} ({a.Chain})")
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
         // And tokens on a network whose token transfers nothing serves without a key (BNB Chain).
         var tokenGaps = accounts
             .Where(a => a.Derivation.StartsWith("ERC20 on ", StringComparison.Ordinal) && a.Amount > 0 &&
-                        !a.IsSuspectedSpam && !OnChainHistoryClient.HasEvmTokenHistory(a.Chain))
+                        !a.IsSuspectedSpam && !OnChainHistoryClient.HasEvmTokenHistory(a.Chain) &&
+                        !_keyedOk.Contains(a.Chain + ":tokens"))
             .Select(a => $"{a.Symbol} ({a.Chain})")
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
@@ -391,10 +389,11 @@ public partial class MainViewModel
         {
             var walletId = _registry.Active?.Id ?? "default";
             var mnemonic = _unlockedMnemonic!;
+            var dataKey = _dataKey;
 
             // What this wallet has read before is on screen at once, and stays whatever the explorers
             // answer this time: a server that is rate-limiting today must not make last month vanish.
-            var kept = _historyStore.Load(ActiveWalletCacheKey);
+            var kept = dataKey is null ? [] : _historyStore.Load(dataKey);
             if (_onChainRows.Count == 0 && kept.Count > 0)
             {
                 ShowOnChainHistory(kept);
@@ -408,98 +407,96 @@ public partial class MainViewModel
             // slowest one.
             var reads = new List<Task<IReadOnlyList<ChainTx>>>();
 
-            // BTC / LTC / BCH / DOGE: every address the wallet has used — receive AND change, every
-            // branch (Taproot included) — each transaction judged against the whole set, so change
-            // coming back is netted out of "sent" and a spend funded only by change still appears
-            // (roadmap P0.1). Capped per branch so a huge index never fans out into hundreds of calls.
-            foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch), ("DOGE", ChainId.Doge) })
+            // A watch-only wallet (H.5) reads what it watches; there is no phrase to derive from.
+            if (IsWatchWallet) reads.AddRange(WatchHistoryReads(knownSolana));
+            else
             {
-                HistoryAddressPlan plan;
-                try
+                // BTC / LTC / BCH / DOGE: every address the wallet has used — receive AND change, every
+                // branch (Taproot included) — each transaction judged against the whole set, so change
+                // coming back is netted out of "sent" and a spend funded only by change still appears
+                // (roadmap P0.1). Capped per branch so a huge index never fans out into hundreds of calls.
+                foreach (var (sym, chain) in new[] { ("BTC", ChainId.Btc), ("LTC", ChainId.Ltc), ("BCH", ChainId.Bch), ("DOGE", ChainId.Doge) })
                 {
-                    var floors = _addrIndex.FloorsFor(walletId, sym);
-                    var own = Umbrella.Wallet.Core.Psbt.OwnScripts.For(_deriver, mnemonic, chain, floors);
-                    var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(chain);
-                    plan = HistoryAddresses.Plan(own, floors, network);
+                    HistoryAddressPlan plan;
+                    try
+                    {
+                        var floors = _addrIndex.FloorsFor(walletId, sym);
+                        var own = Umbrella.Wallet.Core.Psbt.OwnScripts.For(_deriver, mnemonic, chain, floors);
+                        var (_, _, network, _) = HdAddressDeriver.BitcoinLikeParams(chain);
+                        plan = HistoryAddresses.Plan(own, floors, network);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    // BlockCypher (Dogecoin's source) answers a hundred keyless calls an hour: the first ten
+                    // used addresses, not every one.
+                    reads.Add(sym switch
+                    {
+                        "DOGE" => _coinHistory.GetDogecoinAsync(plan.Query.Take(10).ToList()),
+                        // Litecoin from BlockCypher too, unless the user chose their own (Esplora) server.
+                        "LTC" when Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor("LTC") is null
+                            => _coinHistory.GetLitecoinAsync(plan.Query.Take(10).ToList()),
+                        _ => ReadUtxoHistoryAsync(sym, plan),
+                    });
                 }
-                catch
+
+                string? AddressOf(ChainId chain)
                 {
-                    continue;
+                    try { return _deriver.DeriveReceiveAddress(mnemonic, chain).Address; }
+                    catch { return null; }
                 }
 
-                // BlockCypher (Dogecoin's source) answers a hundred keyless calls an hour: the first ten
-                // used addresses, not every one.
-                reads.Add(sym switch
+                // The single-address chains, each from the server its balance comes from.
+                foreach (var single in SingleAddressChains)
                 {
-                    "DOGE" => _coinHistory.GetDogecoinAsync(plan.Query.Take(10).ToList()),
-                    // Litecoin from BlockCypher too, unless the user chose their own (Esplora) server.
-                    "LTC" when Umbrella.Wallet.Core.Safety.ChainEndpoints.OverrideFor("LTC") is null
-                        => _coinHistory.GetLitecoinAsync(plan.Query.Take(10).ToList()),
-                    _ => ReadUtxoHistoryAsync(sym, plan),
-                });
-            }
-
-            string? AddressOf(ChainId chain)
-            {
-                try { return _deriver.DeriveReceiveAddress(mnemonic, chain).Address; }
-                catch { return null; }
-            }
-
-            // The single-address chains, each from the server its balance comes from.
-            if (AddressOf(ChainId.Tron) is { Length: > 0 } tron)
-            {
-                reads.Add(_history.GetTronTrc20Async(tron));
-                reads.Add(_history.GetTronNativeAsync(tron));
-            }
-            if (AddressOf(ChainId.Eth) is { Length: > 0 } eth)
-            {
-                reads.Add(_history.GetEthereumAsync(eth));
-                // The other EVM networks with a keyless indexer — only where this wallet holds something,
-                // so each indexer learns the 0x address only for a network it is used on.
-                var held = Accounts.ToArray()
-                    .Where(a => a.Derivation == EvmSideDerivation && a.Amount > 0)
-                    .Select(a => a.Chain)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                foreach (var (network, api, asset, explorer) in OnChainHistoryClient.EvmSideHistory)
-                    if (held.Contains(network)) reads.Add(_history.GetEvmAsync(eth, api, asset, explorer));
-                // Base, Arbitrum, Linea, BNB Chain, Polygon: no Etherscan-shaped indexer answers without
-                // a key, 3xpl does — under the same rule, only where something is held.
-                foreach (var (network, chain, asset, explorer) in OnChainHistoryClient.EvmSideEvents)
-                    if (held.Contains(network)) reads.Add(_history.GetEvmEventsAsync(eth, chain, asset, explorer));
-
-                // Tokens (roadmap N.15): per network, the transfers of the tokens Holdings shows — their
-                // contracts only, never a folded-away look-alike — under the same rule: only where held.
-                foreach (var network in Accounts.ToArray()
-                             .Where(a => a.Derivation.StartsWith("ERC20 on ", StringComparison.Ordinal) &&
-                                         a.Contract.Length > 0 && a.Amount > 0 && !a.IsSuspectedSpam)
-                             .GroupBy(a => a.Chain, StringComparer.OrdinalIgnoreCase))
+                    if (single == ChainId.Eth) continue;   // below, with the networks read at its address
+                    if (AddressOf(single) is { Length: > 0 } address) reads.AddRange(SingleAddressHistoryReads(single, address, knownSolana));
+                }
+                if (AddressOf(ChainId.Eth) is { Length: > 0 } eth)
                 {
-                    var tokens = network
-                        .Select(a => new OnChainHistoryClient.HeldToken(a.Contract, a.Symbol, a.TokenDecimals))
-                        .ToList();
-                    reads.Add(_history.GetEvmTokenHistoryAsync(eth, network.Key, tokens));
+                    reads.Add(_history.GetEthereumAsync(eth));
+                    // The other EVM networks with a keyless indexer — only where this wallet holds something,
+                    // so each indexer learns the 0x address only for a network it is used on.
+                    var held = Accounts.ToArray()
+                        .Where(a => a.Derivation == EvmSideDerivation && a.Amount > 0)
+                        .Select(a => a.Chain)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    foreach (var (network, api, asset, explorer) in OnChainHistoryClient.EvmSideHistory)
+                        if (held.Contains(network)) reads.Add(_history.GetEvmAsync(eth, api, asset, explorer));
+                    // Base, Arbitrum, Linea, BNB Chain, Polygon: no Etherscan-shaped indexer answers without
+                    // a key, 3xpl does — under the same rule, only where something is held.
+                    foreach (var (network, chain, asset, explorer) in OnChainHistoryClient.EvmSideEvents)
+                        if (held.Contains(network)) reads.Add(_history.GetEvmEventsAsync(eth, chain, asset, explorer));
+
+                    // Tokens (roadmap N.15): per network, the transfers of the tokens Holdings shows — their
+                    // contracts only, never a folded-away look-alike — under the same rule: only where held.
+                    foreach (var network in Accounts.ToArray()
+                                 .Where(a => a.Derivation.StartsWith("ERC20 on ", StringComparison.Ordinal) &&
+                                             a.Contract.Length > 0 && a.Amount > 0 && !a.IsSuspectedSpam)
+                                 .GroupBy(a => a.Chain, StringComparer.OrdinalIgnoreCase))
+                    {
+                        var tokens = network
+                            .Select(a => new OnChainHistoryClient.HeldToken(a.Contract, a.Symbol, a.TokenDecimals))
+                            .ToList();
+                        reads.Add(_history.GetEvmTokenHistoryAsync(eth, network.Key, tokens));
+                    }
+
+                    // Where nothing answers without a key, the user's own (N.15).
+                    reads.AddRange(KeyedHistoryReads(eth, held));
                 }
             }
-            if (AddressOf(ChainId.Ton) is { Length: > 0 } ton) reads.Add(_history.GetTonAsync(ton));
-            if (AddressOf(ChainId.Ada) is { Length: > 0 } ada) reads.Add(_history.GetCardanoAsync(ada));
-            if (AddressOf(ChainId.Sol) is { Length: > 0 } sol) reads.Add(_history.GetSolanaAsync(sol, knownSolana));
-            if (AddressOf(ChainId.Xrp) is { Length: > 0 } xrp) reads.Add(_accountHistory.GetXrpAsync(xrp));
-            if (AddressOf(ChainId.Xlm) is { Length: > 0 } xlm) reads.Add(_accountHistory.GetStellarAsync(xlm));
-            if (AddressOf(ChainId.Near) is { Length: > 0 } near) reads.Add(_accountHistory.GetNearAsync(near));
-            if (AddressOf(ChainId.Atom) is { Length: > 0 } atom) reads.Add(_accountHistory.GetCosmosAsync(atom));
-            if (AddressOf(ChainId.Dot) is { Length: > 0 } dot) reads.Add(_accountHistory.GetPolkadotAsync(dot));
-            if (AddressOf(ChainId.Nano) is { Length: > 0 } nano) reads.Add(_coinHistory.GetNanoAsync(nano));
-            if (AddressOf(ChainId.Dcr) is { Length: > 0 } dcr) reads.Add(_coinHistory.GetDecredAsync([dcr]));
-            if (AddressOf(ChainId.Zec) is { Length: > 0 } zec) reads.Add(_coinHistory.GetZcashAsync(zec));
 
             var fresh = new List<ChainTx>();
             foreach (var batch in await Task.WhenAll(reads.Select(QuietRead))) fresh.AddRange(batch);
+            RefreshHistoryCoverage();   // a keyed read that answered takes its network off the list
 
             if (epoch != _lockEpoch) return;
 
             // This read together with every earlier one, each transaction once.
             var all = HistoryStore.Merge(fresh, kept);
-            _historyStore.Save(ActiveWalletCacheKey, all);
+            if (dataKey is not null) _historyStore.Save(dataKey, all);
             ShowOnChainHistory(all);
             LastHistorySync = DateTime.Now.ToString("MMM d · HH:mm", Fx.Culture);
         }
@@ -515,6 +512,36 @@ public partial class MainViewModel
             if (epoch == _lockEpoch) HistorySynced = true;
         }
     }
+
+    /// <summary>The chains whose history is read at one address, each from the server its balance uses.</summary>
+    private static readonly ChainId[] SingleAddressChains =
+    [
+        ChainId.Tron, ChainId.Eth, ChainId.Ton, ChainId.Ada, ChainId.Sol, ChainId.Xrp, ChainId.Xlm,
+        ChainId.Near, ChainId.Atom, ChainId.Dot, ChainId.Nano, ChainId.Dcr, ChainId.Zec,
+    ];
+
+    /// <summary>
+    /// The history reads for one address on a single-address chain — the wallet's own, or one a
+    /// watch-only wallet watches. Ethereum is its native transfers only here; the networks read at the
+    /// same 0x address are added where the wallet holds something on them.
+    /// </summary>
+    private List<Task<IReadOnlyList<ChainTx>>> SingleAddressHistoryReads(ChainId chain, string address, HashSet<string> knownSolana) => chain switch
+    {
+        ChainId.Tron => [_history.GetTronTrc20Async(address), _history.GetTronNativeAsync(address)],
+        ChainId.Eth => [_history.GetEthereumAsync(address)],
+        ChainId.Ton => [_history.GetTonAsync(address)],
+        ChainId.Ada => [_history.GetCardanoAsync(address)],
+        ChainId.Sol => [_history.GetSolanaAsync(address, knownSolana)],
+        ChainId.Xrp => [_accountHistory.GetXrpAsync(address)],
+        ChainId.Xlm => [_accountHistory.GetStellarAsync(address)],
+        ChainId.Near => [_accountHistory.GetNearAsync(address)],
+        ChainId.Atom => [_accountHistory.GetCosmosAsync(address)],
+        ChainId.Dot => [_accountHistory.GetPolkadotAsync(address)],
+        ChainId.Nano => [_coinHistory.GetNanoAsync(address)],
+        ChainId.Dcr => [_coinHistory.GetDecredAsync([address])],
+        ChainId.Zec => [_coinHistory.GetZcashAsync(address)],
+        _ => [],
+    };
 
     /// <summary>This wallet's on-chain history as read so far, kept between runs (see <see cref="HistoryStore"/>).</summary>
     private readonly HistoryStore _historyStore = new();

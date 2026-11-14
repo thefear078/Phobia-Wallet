@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using Konscious.Security.Cryptography;
 
 namespace Umbrella.Wallet.Infrastructure;
 
@@ -9,13 +10,15 @@ namespace Umbrella.Wallet.Infrastructure;
 /// The panic password (roadmap P1.3): a password that, typed where the wallet password goes, erases
 /// this device's wallet data instead of opening it.
 ///
-/// What is kept is a salted PBKDF2-SHA256 hash, in a file that always exists and always has the same
-/// size: with no panic password set it holds random bytes. Somebody reading the disk cannot tell whether
-/// one is set — the same reason the vault always has two slots (the duress password, P1.1).
+/// What is kept is a salted Argon2id hash, in a file that always exists and always has the same size:
+/// with no panic password set it holds random bytes. Somebody reading the disk cannot tell whether one is
+/// set — the same reason the vault always has two slots (the duress password, P1.1).
 ///
 /// The hash protects a trigger, not a key: whoever brute-forced it would learn the password that wipes
-/// the wallet, nothing more. So it is cheaper than the vault's Argon2id — it is checked before every
-/// unlock and must not double the wait.
+/// the wallet, nothing more. So its cost is lighter than the vault's (19 MiB, 2 passes — OWASP's
+/// minimum for Argon2id, against the vault's 64 MiB and 4): it runs before every unlock and must not
+/// double the wait. It was PBKDF2 before release; the Altumptic baseline allows no PBKDF2 as a
+/// password's only protection, and nothing shipped with it.
 /// </summary>
 public sealed class PanicGuard
 {
@@ -23,7 +26,8 @@ public sealed class PanicGuard
 
     private const int SaltBytes = 16;
     private const int HashBytes = 32;
-    private const int Iterations = 210_000;
+    private const int MemoryKb = 19 * 1024;
+    private const int Passes = 2;
 
     private readonly string _path;
 
@@ -98,7 +102,14 @@ public sealed class PanicGuard
         var bytes = Encoding.UTF8.GetBytes(password.Normalize(NormalizationForm.FormKC));
         try
         {
-            return Rfc2898DeriveBytes.Pbkdf2(bytes, salt, Iterations, HashAlgorithmName.SHA256, HashBytes);
+            using var argon2 = new Argon2id(bytes)
+            {
+                Salt = salt.ToArray(),
+                DegreeOfParallelism = 1,
+                Iterations = Passes,
+                MemorySize = MemoryKb,
+            };
+            return argon2.GetBytes(HashBytes);
         }
         finally
         {

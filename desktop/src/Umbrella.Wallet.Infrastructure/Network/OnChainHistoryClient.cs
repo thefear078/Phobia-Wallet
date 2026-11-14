@@ -372,6 +372,97 @@ public sealed class OnChainHistoryClient
             .ToList();
     }
 
+    // ---- the user's own explorer key (roadmap N.15) ---------------------------------------------------
+
+    /// <summary>Etherscan's multichain API: one key for every chain it serves, picked by chain id.</summary>
+    public const string EtherscanV2 = "https://api.etherscan.io/v2/api";
+
+    /// <summary>
+    /// The networks read through the user's own Etherscan key — only the ones nothing answers for
+    /// without one, because the key ties every request it makes to the user's account at Etherscan:
+    /// native history on Fantom and Cronos, token history on BNB Chain.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Network, int ChainId, string Asset, string Explorer)> KeyedNetworks =
+    [
+        ("Fantom", 250, "FTM", "https://ftmscan.com/tx/"),
+        ("Cronos", 25, "CRO", "https://cronoscan.com/tx/"),
+        ("BSC", 56, "BNB", "https://bscscan.com/tx/"),
+    ];
+
+    /// <summary>
+    /// Native transfers on a keyed network; null when Etherscan refused (a chain its free tier does not
+    /// serve, a key it does not know) — which is not the same as an answer with nothing in it.
+    /// </summary>
+    public async Task<IReadOnlyList<ChainTx>?> GetKeyedNativeAsync(string apiKey, string network, string address, CancellationToken ct = default)
+    {
+        var source = KeyedNetworks.FirstOrDefault(n => n.Network.Equals(network, StringComparison.OrdinalIgnoreCase));
+        if (source.Network is null) return null;
+        var json = await EtherscanAsync(apiKey, source.ChainId, "txlist", address, ct);
+        return json is null ? null : ParseEvmTxlist(json, address, source.Asset, source.Explorer, 18);
+    }
+
+    /// <summary>Token transfers on a keyed network, for the given contracts only; null when refused.</summary>
+    public async Task<IReadOnlyList<ChainTx>?> GetKeyedTokensAsync(
+        string apiKey, string network, string address, IReadOnlyList<HeldToken> tokens, CancellationToken ct = default)
+    {
+        var source = KeyedNetworks.FirstOrDefault(n => n.Network.Equals(network, StringComparison.OrdinalIgnoreCase));
+        if (source.Network is null || tokens.Count == 0) return null;
+        var json = await EtherscanAsync(apiKey, source.ChainId, "tokentx", address, ct);
+        return json is null ? null : ParseEvmTokenTx(json, address, tokens, source.Explorer);
+    }
+
+    /// <summary>
+    /// What Etherscan answers a key with: null when it works, otherwise its own words ("Invalid API
+    /// Key", or that its free tier does not serve a chain). Asks for the newest block number — no address.
+    /// </summary>
+    public async Task<string?> CheckEtherscanKeyAsync(string apiKey, int chainId, CancellationToken ct = default)
+    {
+        try
+        {
+            var url = $"{EtherscanV2}?chainid={chainId}&module=proxy&action=eth_blockNumber&apikey={Uri.EscapeDataString(apiKey.Trim())}";
+            using var res = await Http.GetAsync(url, ct);
+            var json = await res.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.String &&
+                result.GetString() is { } r && r.StartsWith("0x", StringComparison.Ordinal))
+                return null;
+            return root.TryGetProperty("result", out var why) && why.ValueKind == JsonValueKind.String
+                ? why.GetString()
+                : "No answer";
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    private async Task<string?> EtherscanAsync(string apiKey, int chainId, string action, string address, CancellationToken ct)
+    {
+        try
+        {
+            var url = $"{EtherscanV2}?chainid={chainId}&module=account&action={action}" +
+                      $"&address={Uri.EscapeDataString(address)}&sort=desc&page=1&offset={HistoryPage.Evm}" +
+                      $"&apikey={Uri.EscapeDataString(apiKey.Trim())}";
+            using var res = await Http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode) return null;
+            var json = await res.Content.ReadAsStringAsync(ct);
+            return IsTxlist(json) ? json : null;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>A token this wallet shows, as its history is read: only these contracts' transfers become rows.</summary>
     public sealed record HeldToken(string Contract, string Symbol, int Decimals);
 

@@ -1,0 +1,4 @@
+# Signed bytes must reach every checkout exactly as they were signed: no line-ending conversion.
+desktop/tests/Umbrella.Wallet.Core.Tests/TestData/release/* -text
+keys/*.cer -text
+keys/*.sig -text

@@ -100,8 +100,9 @@ Settings → **Privacy**:
 - Settings → **Backup** → **Check the phrase you wrote down**: type the words from your paper and the
   wallet says whether they restore this wallet, or which word positions are wrong — without ever
   showing the phrase.
-- Settings → Appearance → **Updates**: the wallet looks for a new release by itself, downloads it and
-  keeps it only if its checksum matches both the release's `SHA256SUMS` and GitHub's own digest.
+- Settings → Appearance → **Updates**: the wallet looks for a new release by itself and downloads it
+  only if the release's checksum list carries the project's signature; it keeps the file only if it
+  matches that list and GitHub's own digest (and, on Windows, carries the project's code signature).
   Installing is always your click.
 
 ---

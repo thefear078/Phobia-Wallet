@@ -106,9 +106,12 @@ public sealed record VerifiedUpdate(ReleaseInfo Release, InstallKind Kind, strin
 /// <item>Nothing here touches the data folder or the vault: an update replaces the program, not the wallet.</item>
 /// </list>
 ///
-/// What a checksum cannot prove is WHO built the file — both lists come from the same release page.
-/// That is what the build attestations are for (<c>gh attestation verify</c>), and the wallet says so
-/// rather than presenting a matching hash as more than it is.
+/// A checksum alone cannot prove WHO published the file — the file and both lists come from the same
+/// release page. So the checksum list must carry the project's signature, made with a key pinned in the
+/// wallet (<see cref="ReleaseSignature"/>), before any hash in it is believed: a release page somebody
+/// else filled is refused on every platform before a byte of the file is fetched. On Windows the program
+/// must also carry an intact Authenticode signature by the project's pinned certificate
+/// (<see cref="WindowsSignature"/>), and Android installs an APK only over the same signing key.
 /// </summary>
 public static class UpdateService
 {
@@ -136,6 +139,9 @@ public static class UpdateService
 
     /// <summary>No release file is anywhere near this; a response that is, is not one.</summary>
     private const long MaxDownloadBytes = 400L * 1024 * 1024;
+
+    /// <summary>A checksum list names a dozen files; a megabyte is far beyond any real one.</summary>
+    private const long MaxSumsBytes = 1024 * 1024;
 
     private static HttpClient Http => PublicHttp.For(PublicHttp.NetworkPurpose.Maintenance);
 
@@ -434,21 +440,33 @@ public static class UpdateService
             return (null, $"The release has no {fileName} to download.");
 
         // The manifest first: without it there is nothing to check the file against, so nothing is fetched.
-        string sumsText;
+        // Read as its exact bytes, because those are what the project signed.
+        byte[] sumsBytes;
+        byte[]? sumsSignature;
         try
         {
-            var sumsUrl = DownloadUrl(release, SumsNameFor(release.Version));
-            using var res = await Http.GetAsync(sumsUrl, ct);
+            var sumsName = SumsNameFor(release.Version);
+            using var res = await Http.GetAsync(DownloadUrl(release, sumsName), ct);
             if (!res.IsSuccessStatusCode || !IsTrustedDownload(res.RequestMessage?.RequestUri))
                 return (null, $"Could not read the release's checksum list ({(int)res.StatusCode}).");
-            sumsText = await res.Content.ReadAsStringAsync(ct);
+            if (res.Content.Headers.ContentLength > MaxSumsBytes)
+                return (null, "The release's checksum list is far larger than any real one. Nothing was downloaded.");
+            sumsBytes = await res.Content.ReadAsByteArrayAsync(ct);
+
+            using var sig = await Http.GetAsync(DownloadUrl(release, ReleaseSignature.NameFor(sumsName)), ct);
+            sumsSignature = sig.IsSuccessStatusCode && IsTrustedDownload(sig.RequestMessage?.RequestUri) &&
+                            sig.Content.Headers.ContentLength is null or <= ReleaseSignature.MaxSignatureBytes
+                ? await sig.Content.ReadAsByteArrayAsync(ct)
+                : null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             return (null, $"Could not read the release's checksum list: {ex.Message}");
         }
 
-        var sums = ParseSums(sumsText);
+        if (SumsSignatureProblem(sumsBytes, sumsSignature) is { } unsignedList) return (null, unsignedList);
+
+        var sums = ParseSums(System.Text.Encoding.UTF8.GetString(sumsBytes));
         if (sums is null) return (null, "The release's checksum list names one file twice with different hashes.");
 
         var (expected, hashError) = ExpectedHash(sums, fileName, asset?.Sha256);
@@ -498,6 +516,12 @@ public static class UpdateService
                 }
 
                 file.Close();
+                if (SignatureProblem(kind, partial) is { } unsigned)
+                {
+                    TryDelete(partial);
+                    return (null, unsigned);
+                }
+
                 if (File.Exists(target)) File.Delete(target);
                 File.Move(partial, target);
                 progress?.Report(1.0);
@@ -533,6 +557,39 @@ public static class UpdateService
         }
     }
 
+    /// <summary>
+    /// Why a release's checksum list may not be trusted: it carries no signature, or one the project's
+    /// pinned release key did not make (<see cref="ReleaseSignature"/>). Null when the project signed
+    /// exactly these bytes. Checked before anything is downloaded, on every platform.
+    /// </summary>
+    public static string? SumsSignatureProblem(byte[] sums, byte[]? signature) =>
+        signature is null or { Length: 0 }
+            ? "The release's checksum list carries no signature from this project. Nothing was downloaded."
+            : ReleaseSignature.Verify(sums, signature)
+                ? null
+                : "The release's checksum list is not signed by this project's key. Nothing was downloaded.";
+
+    /// <summary>
+    /// On Windows, why a downloaded program may not run: not signed, changed after signing, or signed by
+    /// somebody other than the project. Null when it is the project's — and for the kinds a signature
+    /// does not apply to (the Linux tarball, the APK Android checks itself).
+    /// </summary>
+    public static string? SignatureProblem(InstallKind kind, string path)
+    {
+        if (!OperatingSystem.IsWindows() ||
+            kind is not (InstallKind.WindowsInstaller or InstallKind.WindowsFolder or InstallKind.WindowsPortable))
+            return null;
+
+        return WindowsSignature.Check(path) switch
+        {
+            WindowsSignature.Verdict.SignedByProject => null,
+            WindowsSignature.Verdict.NotSigned => "The downloaded program is not signed. It was deleted and not run.",
+            WindowsSignature.Verdict.Tampered => "The downloaded program's signature does not match its contents. It was deleted and not run.",
+            WindowsSignature.Verdict.SignedBySomeoneElse => "The downloaded program is signed, but not by this project. It was deleted and not run.",
+            _ => "The downloaded program's signature could not be checked. It was deleted and not run.",
+        };
+    }
+
     // --- installing ----------------------------------------------------------------------------------
 
     /// <summary>
@@ -545,6 +602,11 @@ public static class UpdateService
     {
         if (!StillMatches(update))
             return (false, "The downloaded file changed after it was checked. It was not run.");
+        if (SignatureProblem(update.Kind, update.FilePath) is { } unsigned)
+        {
+            TryDelete(update.FilePath);
+            return (false, unsigned);
+        }
 
         try
         {

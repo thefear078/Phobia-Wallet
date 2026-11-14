@@ -1,5 +1,7 @@
 # Phobia — Secure & Anonymous Wallet Roadmap
 
+> **Historical planning note.** The backlog is [ROADMAP.md](ROADMAP.md), updated 2026-11-08. Where this document differs from it, the roadmap is right.
+
 Goal: an **ideal non-custodial, private, self-verifiable** desktop wallet. No custody, no accounts,
 no KYC, no telemetry; keys and traffic never leak; the user can prove to themselves that this is true.
 

@@ -410,6 +410,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task PrepareStakeAction()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         StakeError = string.Empty;
         StakeResult = string.Empty;
         _stakeQuote = null;
@@ -515,6 +516,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task ConfirmStakeAction()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         if (_stakeQuote is not { } quote || _unlockedMnemonic is null || OwnAccount(_stakeSymbol) is not { } account) return;
         StakeError = string.Empty;
         if (TransportGateError() is { } routeError)

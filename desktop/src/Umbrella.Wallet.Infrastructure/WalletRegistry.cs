@@ -171,6 +171,9 @@ public sealed class WalletRegistry
                 var key = $"{entry.Id}-{DateTime.UtcNow:yyyyMMddHHmmss}";
                 Directory.CreateDirectory(RemovedDir);
                 File.Move(path, Path.Combine(RemovedDir, key + ".vault.json"));
+                // A watch-only wallet's description travels with its vault, both ways.
+                if (File.Exists(WatchWalletFile.PathFor(path)))
+                    File.Move(WatchWalletFile.PathFor(path), WatchWalletFile.PathFor(Path.Combine(RemovedDir, key + ".vault.json")));
                 var removed = LoadRemoved();
                 removed.Add(new RemovedRow(key, entry.Id, entry.Label, entry.Color, entry.Coins?.ToList(),
                     entry.MoneroScanFrom, DateTimeOffset.UtcNow));
@@ -202,6 +205,8 @@ public sealed class WalletRegistry
         var target = _managedVaultPath(id);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         File.Move(source, target);
+        if (File.Exists(WatchWalletFile.PathFor(source)))
+            File.Move(WatchWalletFile.PathFor(source), WatchWalletFile.PathFor(target));
 
         var entry = new WalletEntry(id, row.Label, IsLegacy: false, row.Color, row.Coins, row.MoneroScanFrom);
         _wallets.Add(entry);
@@ -233,9 +238,7 @@ public sealed class WalletRegistry
     private void SaveRemoved(List<RemovedRow> rows)
     {
         Directory.CreateDirectory(RemovedDir);
-        var tmp = $"{RemovedIndexPath}.{Guid.NewGuid():N}.tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(rows, JsonOptions), Encoding.UTF8);
-        File.Move(tmp, RemovedIndexPath, overwrite: true);
+        AtomicFile.WriteAllText(RemovedIndexPath, JsonSerializer.Serialize(rows, JsonOptions));
     }
 
     private sealed record RemovedRow(
@@ -303,9 +306,7 @@ public sealed class WalletRegistry
             var dir = Path.GetDirectoryName(_indexPath);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-            var tmp = $"{_indexPath}.{Guid.NewGuid():N}.tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(index, JsonOptions), Encoding.UTF8);
-            File.Move(tmp, _indexPath, overwrite: true);
+            AtomicFile.WriteAllText(_indexPath, JsonSerializer.Serialize(index, JsonOptions));
         }
         catch
         {

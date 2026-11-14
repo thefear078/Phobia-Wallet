@@ -17,10 +17,10 @@ public sealed record AddressBookEntry(string Label, string Address, string Chain
 /// "the lawyer" — tied to addresses that can be looked up on a public chain. It survived a wallet
 /// delete until 4.7, and it sat in the clear the whole time.
 ///
-/// So it is now sealed the same way private transaction notes are: AES-256-GCM under a key derived
-/// from the wallet seed, readable exactly while the wallet is unlocked and meaningless to anything
-/// that copies the file. Same crypto, same fail-closed handling — a corrupt or foreign file reads as
-/// an empty book, never a crash.
+/// So it is now sealed the same way private transaction notes are (<see cref="SealedFile"/>): AES-256-GCM
+/// under a key derived from the wallet's secret, readable exactly while the wallet is unlocked and
+/// meaningless to anything that copies the file. Same crypto, same fail-closed handling — a corrupt or
+/// foreign file reads as an empty book, never a crash.
 ///
 /// An existing plaintext book is migrated on the first unlock and the plaintext is then deleted. The
 /// migration is one-way on purpose: there is no path back to the readable file.
@@ -28,8 +28,6 @@ public sealed record AddressBookEntry(string Label, string Address, string Chain
 public sealed class AddressBookStore
 {
     private const string DerivationDomain = "umbrella-address-book-v1";
-    private const int NonceSize = 12;
-    private const int TagSize = 16;
 
     private readonly string _path;
     private readonly string _legacyPath;
@@ -63,36 +61,20 @@ public sealed class AddressBookStore
     /// </summary>
     private List<AddressBookEntry> LoadSealed(string mnemonic)
     {
-        if (!File.Exists(_path)) return new();
-
+        // Wrong secret, truncated file, or somebody else's book — all "no entries".
+        var plaintext = SealedFile.Read(_path, mnemonic, DerivationDomain);
+        if (plaintext is null) return new();
         try
         {
-            var blob = File.ReadAllBytes(_path);
-            if (blob.Length < NonceSize + TagSize) return new();
-
-            var nonce = blob[..NonceSize];
-            var tag = blob[NonceSize..(NonceSize + TagSize)];
-            var ciphertext = blob[(NonceSize + TagSize)..];
-            var plaintext = new byte[ciphertext.Length];
-
-            var key = DeriveKey(mnemonic);
-            try
-            {
-                using var aes = new AesGcm(key, TagSize);
-                aes.Decrypt(nonce, ciphertext, tag, plaintext);
-                var json = Encoding.UTF8.GetString(plaintext);
-                return JsonSerializer.Deserialize<List<AddressBookEntry>>(json) ?? new();
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(key);
-                CryptographicOperations.ZeroMemory(plaintext);
-            }
+            return JsonSerializer.Deserialize<List<AddressBookEntry>>(Encoding.UTF8.GetString(plaintext)) ?? new();
         }
-        catch
+        catch (JsonException)
         {
-            // Wrong seed, truncated file, or somebody else's book — all "no entries".
             return new();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plaintext);
         }
     }
 
@@ -101,30 +83,15 @@ public sealed class AddressBookStore
         try
         {
             var plaintext = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(entries.ToList()));
-            var nonce = RandomNumberGenerator.GetBytes(NonceSize);
-            var tag = new byte[TagSize];
-            var ciphertext = new byte[plaintext.Length];
-
-            var key = DeriveKey(mnemonic);
             try
             {
-                using var aes = new AesGcm(key, TagSize);
-                aes.Encrypt(nonce, plaintext, ciphertext, tag);
+                // Atomic: a write cut short left a sealed book that no longer opened — every contact gone.
+                SealedFile.Write(_path, plaintext, mnemonic, DerivationDomain);
             }
             finally
             {
-                CryptographicOperations.ZeroMemory(key);
                 CryptographicOperations.ZeroMemory(plaintext);
             }
-
-            var blob = new byte[nonce.Length + tag.Length + ciphertext.Length];
-            nonce.CopyTo(blob, 0);
-            tag.CopyTo(blob, nonce.Length);
-            ciphertext.CopyTo(blob, nonce.Length + tag.Length);
-
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            // Atomic: a write cut short left a sealed book that no longer opened — every contact gone.
-            Umbrella.Wallet.Infrastructure.AtomicFile.WriteAllBytes(_path, blob);
         }
         catch
         {
@@ -173,7 +140,4 @@ public sealed class AddressBookStore
             // on a failure path is the one thing that could lose the book outright.
         }
     }
-
-    private static byte[] DeriveKey(string mnemonic) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(DerivationDomain + ":" + mnemonic));
 }

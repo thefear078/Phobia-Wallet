@@ -107,7 +107,10 @@ public class ZcashSendTests
     [InlineData(3_428_142u, 0x5437F330u)]
     [InlineData(3_428_143u, 0x37A5165Bu)]
     [InlineData(3_517_266u, 0x37A5165Bu)] // a block of 14 October 2026 whose transactions carry 0x37a5165b
-    [InlineData(9_000_000u, 0x37A5165Bu)] // beyond the table: the last known upgrade still applies
+    // NU7 (ZIP-259), scheduled by Zebra on 2026-10-21.
+    [InlineData(3_543_404u, 0x37A5165Bu)]
+    [InlineData(3_543_405u, 0x77190AD9u)]
+    [InlineData(9_000_000u, 0x77190AD9u)] // beyond the table: the last known upgrade still applies
     public void BranchIdIsTheUpgradeInForceAtThatHeight(uint height, uint expected)
         => Assert.Equal(expected, ZcashTransactions.ConsensusBranchId(height));
 
@@ -121,6 +124,9 @@ public class ZcashSendTests
     // NU6.3 the same way.
     [InlineData(3_428_120u, 3_428_142u)]
     [InlineData(3_428_143u, 3_428_183u)]
+    // And NU7: a payment signed under NU6.3 must be mined before 3,543,405 or not at all.
+    [InlineData(3_543_380u, 3_543_404u)]
+    [InlineData(3_543_405u, 3_543_445u)]
     public void ExpiryNeverCrossesTheNextUpgrade(uint nextHeight, uint expected)
         => Assert.Equal(expected, ZcashTransactions.ExpiryHeight(nextHeight));
 
@@ -219,15 +225,19 @@ public class ZcashSendTests
     }
 
     [Fact]
-    public void SignedTransactionCarriesTheSaplingHeaderAndAVerifiableSignature()
+    public void SignedTransactionIsVersion5WithItsBranchIdAndAVerifiableSignature()
     {
         using var key = new HdAddressDeriver().DeriveZcashKey(Mnemonic);
         var quote = Quote(key, amountZat: 1_000_000, changeZat: 490_000);
         var (raw, txId) = ZcashTransactionSender.Build(quote, key);
 
-        // v4, with the overwintered bit set, and the Sapling version group.
-        Assert.Equal("0400008085202f89", Convert.ToHexString(raw[..8]).ToLowerInvariant());
-        Assert.Equal(64, txId.Length);
+        // v5 with the overwintered bit set, the v5 version group, then the branch id it is signed for —
+        // the format NU7 still accepts after it stops accepting v4.
+        Assert.Equal("050000800a27a726", Convert.ToHexString(raw[..8]).ToLowerInvariant());
+        Assert.Equal(quote.BranchId, System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(raw.AsSpan(8, 4)));
+        Assert.Equal(quote.ExpiryHeight, System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(raw.AsSpan(16, 4)));
+        // Empty Sapling and Orchard parts close it.
+        Assert.Equal("000000", Convert.ToHexString(raw[^3..]));
 
         // The signature in the script has to verify against the digest the signer claims to have signed.
         var inputs = quote.Inputs
@@ -238,9 +248,9 @@ public class ZcashSendTests
             new(quote.AmountZat, quote.ToScript),
             new(quote.ChangeZat, quote.FromScript),
         };
-        var digest = ZcashTransactions.SigHash(
-            inputs, outputs, 0, quote.FromScript, ZcashTransactions.SigHashAll,
-            lockTime: 0, expiryHeight: quote.ExpiryHeight, branchId: quote.BranchId);
+        var digest = ZcashTransactions.SigHashV5(
+            inputs, outputs, 0, lockTime: 0, expiryHeight: quote.ExpiryHeight, branchId: quote.BranchId);
+        Assert.Equal(ZcashTransactions.TxIdV5(inputs, outputs, 0, quote.ExpiryHeight, quote.BranchId), txId);
 
         var scriptSig = ExtractScriptSig(raw);
         var derLength = scriptSig[0];
@@ -376,8 +386,9 @@ public class ZcashSendTests
     /// <summary>The first input's signature script, read back out of the serialised transaction.</summary>
     private static byte[] ExtractScriptSig(byte[] raw)
     {
-        // 4 version + 4 group id + 1 input count + 32 txid + 4 index, then the script's length prefix.
-        var offset = 4 + 4 + 1 + 32 + 4;
+        // v5: 4 version + 4 group id + 4 branch id + 4 lock time + 4 expiry + 1 input count + 32 txid +
+        // 4 index, then the script's length prefix.
+        var offset = 4 + 4 + 4 + 4 + 4 + 1 + 32 + 4;
         var length = raw[offset];
         return raw[(offset + 1)..(offset + 1 + length)];
     }

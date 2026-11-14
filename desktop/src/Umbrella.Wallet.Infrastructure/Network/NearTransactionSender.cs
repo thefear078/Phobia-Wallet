@@ -38,7 +38,7 @@ public sealed class NearTransactionSender
     private static HttpClient Read => PublicHttp.For(PublicHttp.NetworkPurpose.ChainData);
     private static HttpClient Submit => PublicHttp.For(PublicHttp.NetworkPurpose.Broadcast);
 
-    private const string DefaultRpc = "https://rpc.mainnet.near.org";
+    private const string DefaultRpc = "https://free.rpc.fastnear.com";
 
     /// <summary>What a new implicit account must receive to pay for its own storage (about 0.00182 NEAR);
     /// a smaller first transfer fails on chain.</summary>
@@ -116,10 +116,19 @@ public sealed class NearTransactionSender
             return new NearSendOutcome(NearSubmitOutcome.Rejected, null, $"Could not sign the transaction: {ex.Message}");
         }
 
+        return await SubmitAsync(quote.Rpc, quote.From, signed, hash, ct);
+    }
+
+    /// <summary>
+    /// Submits a signed transaction once and says honestly how it ended — the transfer's path, used by
+    /// staking calls too (roadmap N.16). An unclear answer is followed by asking about THIS hash.
+    /// </summary>
+    public static async Task<NearSendOutcome> SubmitAsync(string rpc, string from, string signed, string hash, CancellationToken ct)
+    {
         NearSubmitResult result;
         try
         {
-            using var res = await Submit.PostAsJsonAsync(quote.Rpc, new
+            using var res = await Submit.PostAsJsonAsync(rpc, new
             {
                 jsonrpc = "2.0", id = "umbrella", method = "send_tx",
                 @params = new { signed_tx_base64 = signed, wait_until = "EXECUTED_OPTIMISTIC" },
@@ -144,10 +153,10 @@ public sealed class NearTransactionSender
             await Task.Delay(TimeSpan.FromSeconds(5), ct);
             try
             {
-                using var res = await Read.PostAsJsonAsync(quote.Rpc, new
+                using var res = await Read.PostAsJsonAsync(rpc, new
                 {
                     jsonrpc = "2.0", id = "umbrella", method = "tx",
-                    @params = new { tx_hash = hash, sender_account_id = quote.From, wait_until = "EXECUTED_OPTIMISTIC" },
+                    @params = new { tx_hash = hash, sender_account_id = from, wait_until = "EXECUTED_OPTIMISTIC" },
                 }, ct);
                 var status = NearSubmit.Parse(await res.Content.ReadAsStringAsync(ct));
                 if (status.Outcome != NearSubmitOutcome.Unknown)
@@ -173,7 +182,7 @@ public sealed class NearTransactionSender
 
     /// <summary>An RPC <c>query</c>. Null when the server did not answer at all; the JSON otherwise,
     /// including an error object (which may be a definite "does not exist").</summary>
-    private static async Task<JsonElement?> QueryAsync(string rpc, object parameters, CancellationToken ct)
+    internal static async Task<JsonElement?> QueryAsync(string rpc, object parameters, CancellationToken ct)
     {
         try
         {

@@ -14,8 +14,8 @@
 param(
     [string]$Destination = (Join-Path $PSScriptRoot '..\src\Umbrella.Wallet.App\monero'),
     # Pinned version + SHA-256 of monero-win-x64-v<Version>.zip, from https://www.getmonero.org/downloads/hashes.txt
-    [string]$Version = '0.18.5.3',
-    [string]$ExpectedSha256 = 'f58f8f803f0141c77f40f327c516e4721f61d112084eb3d6644028cb9680b82a',
+    [string]$Version = '0.18.5.4',
+    [string]$ExpectedSha256 = '1ccac3b476ba75bf6dfdfa848f6520a79b64cdf3457a160eaa0dad82d5a2a042',
     # binaryFate's key, which clearsigns the Monero project's hashes.txt. The pinned hash is only
     # worth as much as the file it came from; the signature is what ties it to the project rather
     # than to whoever answered the request.

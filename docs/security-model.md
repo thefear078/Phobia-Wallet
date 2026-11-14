@@ -19,7 +19,7 @@ Phobia is built for someone who assumes the network is hostile and the service i
 | Chain analysis linking your coins | ⚠️ Partly | Coin control, fresh change addresses, Privacy Radar warns you. It informs; it cannot undo a public ledger. |
 | Address-poisoning / lookalike addresses | ⚠️ Partly | Poisoning defence, EIP-55 checksum warnings, first-time-recipient notice. |
 | A fake token posing as USDT, ETH, … | ✅ | Tokens are priced on their contract, never their ticker; an impostor is worth nothing and folded away with the spam. |
-| A swapped or forged download | ⚠️ Mostly | Signed builds (Windows self-signed for now, Android stable key), build attestations, SBOM, immutable release tags — if you check them. See [BUILD_VERIFY.md](BUILD_VERIFY.md). |
+| A swapped or forged download | ⚠️ Mostly | Signed builds (Windows self-signed for now, Android stable key), build attestations, SBOM, immutable release tags — if you check them. From the next Beta, updates made inside the wallet check the project's signatures themselves. See [BUILD_VERIFY.md](BUILD_VERIFY.md). |
 | A web page talking to the local Monero service | ✅ | Random Digest login since 2026-10-07; before that there was none. |
 | Malware already running as you | ❌ | See below. |
 | Someone who has your 24 words | ❌ | Those *are* the wallet. |

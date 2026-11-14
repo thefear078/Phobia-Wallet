@@ -169,12 +169,12 @@ public sealed class ZcashTransactionSender
         var outputs = new List<ZcashOutput> { new(quote.AmountZat, quote.ToScript) };
         if (quote.ChangeZat > 0) outputs.Add(new ZcashOutput(quote.ChangeZat, quote.FromScript));
 
+        // v5 (ZIP-225 / ZIP-244): valid since NU5 and still under NU7, which refuses v4.
         var scriptSigs = new List<byte[]>();
         for (var i = 0; i < inputs.Count; i++)
         {
-            var sigHash = ZcashTransactions.SigHash(
-                inputs, outputs, i, quote.FromScript, ZcashTransactions.SigHashAll,
-                lockTime: 0, expiryHeight: quote.ExpiryHeight, branchId: quote.BranchId);
+            var sigHash = ZcashTransactions.SigHashV5(
+                inputs, outputs, i, lockTime: 0, expiryHeight: quote.ExpiryHeight, branchId: quote.BranchId);
 
             // Zcash verifies transparent signatures exactly as Bitcoin does: a low-S DER signature over
             // the digest, with the hash type appended.
@@ -182,8 +182,8 @@ public sealed class ZcashTransactionSender
             scriptSigs.Add(ZcashTransactions.SignatureScript(der, key.PubKey.ToBytes()));
         }
 
-        var raw = ZcashTransactions.Serialize(inputs, outputs, scriptSigs, lockTime: 0, expiryHeight: quote.ExpiryHeight);
-        return (raw, ZcashTransactions.TxId(raw));
+        var raw = ZcashTransactions.SerializeV5(inputs, outputs, scriptSigs, lockTime: 0, expiryHeight: quote.ExpiryHeight, branchId: quote.BranchId);
+        return (raw, ZcashTransactions.TxIdV5(inputs, outputs, lockTime: 0, expiryHeight: quote.ExpiryHeight, branchId: quote.BranchId));
     }
 
     /// <summary>

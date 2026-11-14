@@ -185,24 +185,31 @@ public sealed class SwapPaymentTests : IDisposable
     [Fact]
     public void Paid_swaps_are_kept_so_they_can_be_followed_after_a_restart()
     {
-        var path = Path.Combine(_directory, "swaps.json");
+        var folder = Path.Combine(_directory, "swaps");
+        var legacy = Path.Combine(_directory, "swaps.json");
+        var key = Umbrella.Wallet.Infrastructure.WalletDataKey.For("w1",
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about");
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var store = new SwapStore(path);
-        store.Upsert(new SwapStore.Entry("w1", "NearIntents", "SOL", "ETH", 0.25m, 0.01m, Deposit, null, null, "tx1", now));
-        store.Upsert(new SwapStore.Entry("w2", "Exolix", "BTC", "XMR", 0.01m, 2m, "other", null, "order-1", "tx2", now - 5));
+        var store = new SwapStore(folder, legacy);
+        store.Upsert(key, new SwapStore.Entry("w1", "NearIntents", "SOL", "ETH", 0.25m, 0.01m, Deposit, null, null, "tx1", now));
+        store.Upsert(key, new SwapStore.Entry("w1", "Exolix", "BTC", "XMR", 0.01m, 2m, "other", null, "order-1", "tx2", now - 5));
 
-        var again = new SwapStore(path).Load();
-        Assert.Equal(new[] { "w1", "w2" }, again.Select(e => e.WalletId));   // newest first
+        var again = new SwapStore(folder, legacy).Load(key);
+        Assert.Equal(new[] { "tx1", "tx2" }, again.Select(e => e.TxId));   // newest first
         Assert.False(again[0].Ended);
 
         // The same swap, now ended: replaced, not added.
-        store.Upsert(again[0] with { Status = "REFUNDED", Ended = true });
-        var ended = new SwapStore(path).Load();
+        store.Upsert(key, again[0] with { Status = "REFUNDED", Ended = true });
+        var ended = new SwapStore(folder, legacy).Load(key);
         Assert.Equal(2, ended.Count);
-        Assert.True(ended.Single(e => e.WalletId == "w1").Ended);
+        Assert.True(ended.Single(e => e.TxId == "tx1").Ended);
+
+        // Sealed: the deposit address is not readable on disk.
+        var file = Assert.Single(Directory.GetFiles(folder));
+        Assert.DoesNotContain(Deposit, File.ReadAllText(file), StringComparison.Ordinal);
 
         store.Clear();
-        Assert.Empty(new SwapStore(path).Load());
+        Assert.Empty(new SwapStore(folder, legacy).Load(key));
     }
 
     // ---- the balance after a send ---------------------------------------------------------------------------

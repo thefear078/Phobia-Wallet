@@ -16,9 +16,12 @@ public sealed record ZcashInput(byte[] TxId, uint Index, ulong Zatoshi, byte[] S
 public sealed record ZcashOutput(ulong Zatoshi, byte[] ScriptPubKey);
 
 /// <summary>
-/// Zcash transparent transactions (roadmap: the last chain in the catalogue that could receive but not
-/// send): a v4 (Sapling) transaction with transparent inputs and outputs only, signed with the
-/// signature hash ZIP-243 defines.
+/// Zcash transparent transactions: inputs and outputs on <c>t1…</c> / <c>t3…</c> addresses only.
+///
+/// Sends are built as <b>v5</b> transactions (ZIP-225) and signed with the ZIP-244 signature hash. v5 has
+/// been valid since NU5 (2022) and is still valid under NU7, which no longer accepts v4 (ZIP-2003). The v4
+/// form with its ZIP-243 signature hash (<see cref="SigHash"/>, <see cref="Serialize"/>) is what the wallet
+/// built until 2026-10-29; it stays here, pinned to its vectors, because it documents what was sent then.
 ///
 /// Zcash does not sign the way Bitcoin does. The digest is BLAKE2b-256 personalised with the network
 /// upgrade's consensus branch id, over committed hashes of the prevouts, sequences and outputs — so a
@@ -33,6 +36,10 @@ public static class ZcashTransactions
     /// <summary>v4, with the "overwintered" flag set in the top bit.</summary>
     public const uint Version = 0x8000_0004;
     public const uint VersionGroupId = 0x892F_2085;
+
+    /// <summary>v5 (ZIP-225), with the "overwintered" flag set in the top bit: what a send builds.</summary>
+    public const uint VersionV5 = 0x8000_0005;
+    public const uint VersionGroupIdV5 = 0x26A7_270A;
 
     public const int SigHashAll = 1;
     private const int SigHashNone = 2;
@@ -51,7 +58,8 @@ public static class ZcashTransactions
     /// carries the old branch id, the coinbase of the activation block the new one.
     ///
     /// NU6.3 was missing until 2026-10-14 — every Zcash send signed after block 3,428,143 (late July
-    /// 2026) was refused by the network, and nothing was spent.
+    /// 2026) was refused by the network, and nothing was spent. NU7 was scheduled for mainnet on
+    /// 2026-10-21 (Zebra, ZIP-259) and added here on 2026-10-29, with sends moved to v5 because NU7 refuses v4.
     /// </summary>
     private static readonly (uint Height, uint BranchId)[] Upgrades =
     [
@@ -65,7 +73,8 @@ public static class ZcashTransactions
         (2_726_400, 0xC8E7_1055),   // NU6
         (3_146_400, 0x4DEC_4DF0),   // NU6.1
         (3_364_600, 0x5437_F330),   // NU6.2
-        (3_428_143, 0x37A5_165B),   // NU6.3 (Ironwood) — v4 still valid; NU7, not scheduled, drops it
+        (3_428_143, 0x37A5_165B),   // NU6.3 (Ironwood)
+        (3_543_405, 0x7719_0AD9),   // NU7 (ZIP-259) — v5 or v6 only from here (ZIP-2003)
     ];
 
     /// <summary>
@@ -259,7 +268,176 @@ public static class ZcashTransactions
         return ms.ToArray();
     }
 
-    /// <summary>The transaction id explorers show: double SHA-256, reversed, as hex.</summary>
+    // --- v5 (ZIP-225 format, ZIP-244 digests) -------------------------------------------------------
+
+    /// <summary>
+    /// The ZIP-244 signature hash for one transparent input, SIGHASH_ALL — the only kind the wallet signs.
+    /// Each input commits to the amounts and scripts of EVERY coin spent, so a signature cannot be
+    /// reused against a different set of coins. <paramref name="saplingDigest"/> and
+    /// <paramref name="orchardDigest"/> are the shielded parts' digests; the wallet's own transactions
+    /// have none (null = the empty bundles), and the official vectors supply them.
+    /// </summary>
+    public static byte[] SigHashV5(
+        IReadOnlyList<ZcashInput> inputs,
+        IReadOnlyList<ZcashOutput> outputs,
+        int index,
+        uint lockTime,
+        uint expiryHeight,
+        uint branchId,
+        byte[]? saplingDigest = null,
+        byte[]? orchardDigest = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, inputs.Count);
+
+        var amounts = new MemoryStream();
+        var scripts = new MemoryStream();
+        foreach (var input in inputs)
+        {
+            amounts.Write(LE64(input.Zatoshi));
+            WriteVarBytes(scripts, input.ScriptPubKey);
+        }
+
+        var signed = inputs[index];
+        var txIn = new MemoryStream();
+        txIn.Write(signed.TxId);
+        txIn.Write(LE32(signed.Index));
+        txIn.Write(LE64(signed.Zatoshi));
+        WriteVarBytes(txIn, signed.ScriptPubKey);
+        txIn.Write(signed.Sequence);
+
+        var transparent = new MemoryStream();
+        transparent.WriteByte(SigHashAll);
+        transparent.Write(PrevoutsDigest(inputs));
+        transparent.Write(Blake2b("ZTxTrAmountsHash", amounts.ToArray()));
+        transparent.Write(Blake2b("ZTxTrScriptsHash", scripts.ToArray()));
+        transparent.Write(SequenceDigest(inputs));
+        transparent.Write(OutputsDigest(outputs));
+        transparent.Write(Blake2b("Zcash___TxInHash", txIn.ToArray()));
+
+        return TxDigest(
+            HeaderDigest(lockTime, expiryHeight, branchId),
+            Blake2b("ZTxIdTranspaHash", transparent.ToArray()),
+            saplingDigest, orchardDigest, branchId);
+    }
+
+    /// <summary>
+    /// The ZIP-244 transaction id digest. Unlike v4 it does not cover the signatures, so the id is known
+    /// before signing and no one can change it by re-encoding a signature.
+    /// </summary>
+    public static byte[] TxIdDigestV5(
+        IReadOnlyList<ZcashInput> inputs,
+        IReadOnlyList<ZcashOutput> outputs,
+        uint lockTime,
+        uint expiryHeight,
+        uint branchId,
+        byte[]? saplingDigest = null,
+        byte[]? orchardDigest = null)
+    {
+        var transparent = inputs.Count == 0 && outputs.Count == 0
+            ? Blake2b("ZTxIdTranspaHash", [])
+            : Blake2b("ZTxIdTranspaHash", [.. PrevoutsDigest(inputs), .. SequenceDigest(inputs), .. OutputsDigest(outputs)]);
+
+        return TxDigest(HeaderDigest(lockTime, expiryHeight, branchId), transparent, saplingDigest, orchardDigest, branchId);
+    }
+
+    /// <summary>The v5 transaction id as explorers show it: the digest, byte-reversed, as hex.</summary>
+    public static string TxIdV5(
+        IReadOnlyList<ZcashInput> inputs,
+        IReadOnlyList<ZcashOutput> outputs,
+        uint lockTime,
+        uint expiryHeight,
+        uint branchId)
+    {
+        var digest = TxIdDigestV5(inputs, outputs, lockTime, expiryHeight, branchId);
+        Array.Reverse(digest);
+        return Convert.ToHexString(digest).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// The v5 transaction as it goes on the wire (ZIP-225): header with the consensus branch id,
+    /// the transparent part with each input's signature script, and empty Sapling and Orchard parts.
+    /// </summary>
+    public static byte[] SerializeV5(
+        IReadOnlyList<ZcashInput> inputs,
+        IReadOnlyList<ZcashOutput> outputs,
+        IReadOnlyList<byte[]> scriptSigs,
+        uint lockTime,
+        uint expiryHeight,
+        uint branchId)
+    {
+        if (scriptSigs.Count != inputs.Count) throw new ArgumentException("One signature script per input.", nameof(scriptSigs));
+
+        using var ms = new MemoryStream();
+        ms.Write(LE32(VersionV5));
+        ms.Write(LE32(VersionGroupIdV5));
+        ms.Write(LE32(branchId));
+        ms.Write(LE32(lockTime));
+        ms.Write(LE32(expiryHeight));
+
+        WriteVarInt(ms, (ulong)inputs.Count);
+        for (var i = 0; i < inputs.Count; i++)
+        {
+            ms.Write(inputs[i].TxId);
+            ms.Write(LE32(inputs[i].Index));
+            WriteVarBytes(ms, scriptSigs[i]);
+            ms.Write(inputs[i].Sequence);
+        }
+
+        WriteVarInt(ms, (ulong)outputs.Count);
+        foreach (var output in outputs)
+        {
+            ms.Write(LE64(output.Zatoshi));
+            WriteVarBytes(ms, output.ScriptPubKey);
+        }
+
+        WriteVarInt(ms, 0);   // no Sapling spends
+        WriteVarInt(ms, 0);   // no Sapling outputs
+        WriteVarInt(ms, 0);   // no Orchard actions
+        return ms.ToArray();
+    }
+
+    private static byte[] HeaderDigest(uint lockTime, uint expiryHeight, uint branchId) =>
+        Blake2b("ZTxIdHeadersHash",
+            [.. LE32(VersionV5), .. LE32(VersionGroupIdV5), .. LE32(branchId), .. LE32(lockTime), .. LE32(expiryHeight)]);
+
+    private static byte[] PrevoutsDigest(IReadOnlyList<ZcashInput> inputs)
+    {
+        var ms = new MemoryStream();
+        foreach (var input in inputs)
+        {
+            ms.Write(input.TxId);
+            ms.Write(LE32(input.Index));
+        }
+
+        return Blake2b("ZTxIdPrevoutHash", ms.ToArray());
+    }
+
+    private static byte[] SequenceDigest(IReadOnlyList<ZcashInput> inputs)
+    {
+        var ms = new MemoryStream();
+        foreach (var input in inputs) ms.Write(input.Sequence);
+        return Blake2b("ZTxIdSequencHash", ms.ToArray());
+    }
+
+    private static byte[] OutputsDigest(IReadOnlyList<ZcashOutput> outputs)
+    {
+        var ms = new MemoryStream();
+        foreach (var output in outputs)
+        {
+            ms.Write(LE64(output.Zatoshi));
+            WriteVarBytes(ms, output.ScriptPubKey);
+        }
+
+        return Blake2b("ZTxIdOutputsHash", ms.ToArray());
+    }
+
+    private static byte[] TxDigest(byte[] header, byte[] transparent, byte[]? sapling, byte[]? orchard, uint branchId) =>
+        Blake2b("ZcashTxHash_",
+            [.. header, .. transparent, .. sapling ?? Blake2b("ZTxIdSaplingHash", []), .. orchard ?? Blake2b("ZTxIdOrchardHash", [])],
+            branchId);
+
+    /// <summary>The v4 transaction id explorers show: double SHA-256, reversed, as hex.</summary>
     public static string TxId(byte[] transaction)
     {
         var hash = SHA256.HashData(SHA256.HashData(transaction));

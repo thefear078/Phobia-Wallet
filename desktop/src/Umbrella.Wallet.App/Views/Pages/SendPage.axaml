@@ -16,6 +16,12 @@
     </StackPanel>
     <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" FontSize="12.5"
                Text="{Binding [sec.sendDesc], Source={x:Static app:Loc.Instance}}"/>
+    <!-- Roadmap H.5: a watch-only wallet has no keys, so nothing on this page can sign for it. -->
+    <Border IsVisible="{Binding IsWatchWallet}" Background="{DynamicResource UmCardAlt}" BorderBrush="#4A5E86"
+            BorderThickness="1" CornerRadius="8" Padding="12,10">
+      <TextBlock Foreground="{DynamicResource UmTextSoft}" FontSize="12" TextWrapping="Wrap"
+                 Text="{Binding [watch.banner], Source={x:Static app:Loc.Instance}}"/>
+    </Border>
 
     <!-- Paying a swap: what it buys and through whom, above the fields it filled in. -->
     <Border IsVisible="{Binding HasSwapPayment}" Background="{DynamicResource UmCardAlt}"
@@ -29,8 +35,43 @@
       </StackPanel>
     </Border>
 
+    <!-- Roadmap H.5: a watch-only wallet pays by an unsigned PSBT, signed in the wallet with the keys. -->
+    <Border Classes="card" IsVisible="{Binding CanMakeWatchPsbt}">
+      <StackPanel Spacing="10">
+        <TextBlock Classes="eyebrow" Text="{Binding [watch.psbt.title], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                   Text="{Binding [watch.psbt.hint], Source={x:Static app:Loc.Instance}}"/>
+        <ComboBox ItemsSource="{Binding WatchPsbtAccounts}" SelectedItem="{Binding WatchPsbtAccount}"
+                  HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:WatchPsbtChoice">
+              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBox Classes="mono" Text="{Binding WatchPsbtTo}" Watermark="{Binding [watch.psbt.to], Source={x:Static app:Loc.Instance}}"/>
+        <TextBox Text="{Binding WatchPsbtAmount}" Watermark="{Binding [watch.psbt.amountPh], Source={x:Static app:Loc.Instance}}"/>
+        <Button Classes="primary" HorizontalAlignment="Left" IsEnabled="{Binding !IsBusy}"
+                Content="{Binding [watch.psbt.make], Source={x:Static app:Loc.Instance}}" Command="{Binding MakeWatchPsbtCommand}"/>
+        <Border IsVisible="{Binding WatchPsbtError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Background="#2A1618" BorderBrush="#7A3034" BorderThickness="1" CornerRadius="8" Padding="12,9">
+          <TextBlock Text="{Binding WatchPsbtError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
+        <StackPanel Spacing="8" IsVisible="{Binding HasWatchPsbt}">
+          <TextBlock Text="{Binding WatchPsbtSummary}" FontSize="12.5" TextWrapping="Wrap"/>
+          <TextBlock IsVisible="{Binding WatchPsbtNoOrigin}" Foreground="#E7CA83" FontSize="11.5" TextWrapping="Wrap"
+                     Text="{Binding [watch.psbt.noOrigin], Source={x:Static app:Loc.Instance}}"/>
+          <TextBox Classes="mono" Text="{Binding WatchPsbtText}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="120" FontSize="11"/>
+          <WrapPanel>
+            <Button Classes="ghost" Margin="0,0,8,0" Content="{Binding [common.copy], Source={x:Static app:Loc.Instance}}" Command="{Binding CopyWatchPsbtCommand}"/>
+            <Button Classes="ghost" Content="{Binding [psbt.saveBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding SaveWatchPsbtCommand}"/>
+          </WrapPanel>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
     <!-- Step 1 · what & where -->
-    <Border Classes="card">
+    <Border Classes="card" IsVisible="{Binding !IsWatchWallet}">
       <StackPanel Spacing="12">
         <Grid ColumnDefinitions="*,Auto">
           <TextBlock Classes="eyebrow" Text="{Binding [col.asset], Source={x:Static app:Loc.Instance}}"/>

@@ -41,7 +41,7 @@ TOR_ARCHIVE="tor-expert-bundle-linux-x86_64-${TOR_VERSION}.tar.gz"
 if [ ! -f "${OUT}/tor/tor" ]; then
     echo "Fetching Tor ${TOR_VERSION}…"
     if mkdir -p "${OUT}/tor" /tmp/umbrella-tor \
-        && curl -fL "https://dist.torproject.org/torbrowser/${TOR_VERSION}/${TOR_ARCHIVE}" -o "/tmp/umbrella-tor/${TOR_ARCHIVE}" \
+        && curl -fL "https://archive.torproject.org/tor-package-archive/torbrowser/${TOR_VERSION}/${TOR_ARCHIVE}" -o "/tmp/umbrella-tor/${TOR_ARCHIVE}" \
         && echo "${TOR_SHA256}  /tmp/umbrella-tor/${TOR_ARCHIVE}" | sha256sum -c - \
         && tar -xzf "/tmp/umbrella-tor/${TOR_ARCHIVE}" -C /tmp/umbrella-tor; then
         cp /tmp/umbrella-tor/tor/tor "${OUT}/tor/tor" && chmod +x "${OUT}/tor/tor"
@@ -64,8 +64,8 @@ if [ ! -f "${OUT}/tor/tor" ]; then
 fi
 
 # --- monero-wallet-rpc (official CLI bundle, linux-x64) ---
-MONERO_VERSION="${MONERO_VERSION:-v0.18.5.3}"
-MONERO_SHA256="${MONERO_SHA256:-3333d0e04c9cbe3023e7e2b6dd369c407f36bb8df5b05fb0a19d7685b3d56dfc}"
+MONERO_VERSION="${MONERO_VERSION:-v0.18.5.4}"
+MONERO_SHA256="${MONERO_SHA256:-ba2928962c101b609434bf8c1b43ad59ebe96c5525977284ca599d8bf0f02d10}"
 if [ ! -f "${OUT}/monero/monero-wallet-rpc" ]; then
     echo "Fetching Monero ${MONERO_VERSION}…"
     if mkdir -p "${OUT}/monero" /tmp/umbrella-monero \

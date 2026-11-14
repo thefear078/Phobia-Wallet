@@ -40,6 +40,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task RevealXpubsAsync()
     {
+        if (RefuseWatchOnly()) return;   // it watches keys it was given; it has none to derive
         XpubError = string.Empty;
         ExportedXpubs.Clear();
         OnPropertyChanged(nameof(HasExportedXpubs));

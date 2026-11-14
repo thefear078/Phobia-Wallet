@@ -43,6 +43,11 @@ public partial class MainViewModel
         PhraseCheckResult = string.Empty;
         PhraseCheckOk = false;
         if (!HasVault) return;
+        if (IsWatchWallet)
+        {
+            PhraseCheckResult = Loc.Instance["watch.noPhrase"];
+            return;
+        }
         if (PhraseCheck.Words(PhraseCheckInput).Count == 0)
         {
             PhraseCheckResult = Loc.Instance["backup.check.empty"];

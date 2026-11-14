@@ -180,6 +180,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task LoadCoinControlAsync()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         var chain = SendChain.Trim().ToUpperInvariant();
         if (!IsUtxoSendChain(chain)) return;
         if (_unlockedMnemonic is null) { SendError = Loc.Instance["send.errUnlock"]; CoinControlOn = false; return; }
@@ -267,6 +268,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task PrepareSendAsync()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         SendError = string.Empty;
         SendSuccess = string.Empty;
         SendReceipt = null;
@@ -1156,6 +1158,7 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task ConfirmSendAsync()
     {
+        if (RefuseWatchOnly()) return;   // nothing here can sign (H.5)
         var haveQuote = _sendQuote is not null || _btcQuote is not null || _solQuote is not null
                         || _tonQuote is not null || _tronQuote is not null || _adaQuote is not null
                         || _splQuote is not null
@@ -1753,7 +1756,7 @@ public partial class MainViewModel
         {
             // Built BEFORE the quotes are cleared: the plan is what knows how many of the user's own
             // addresses funded this spend, and it is about to be thrown away (roadmap P1.12).
-            BuildSendLeakReport(symbol);
+            BuildSendLeakReport(symbol, reference);
             ShowSendReceipt(confirmed ? SendReceiptState.Confirmed : SendReceiptState.Broadcast,
                 symbol, amount, to, reference, explorer);
             var spentFrom = SelectedSendAsset?.Symbol;   // read before the form is cleared

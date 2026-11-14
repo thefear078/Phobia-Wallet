@@ -150,6 +150,7 @@
         <WrapPanel HorizontalAlignment="Center" Margin="0,18,0,0">
           <Button Classes="primary" Margin="6" Content="{Binding [onboard.createBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding GoToCreateCommand}"/>
           <Button Classes="ghost" Margin="6" Content="{Binding [onboard.importBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding GoToImportCommand}"/>
+          <Button Classes="ghost" Margin="6" Content="{Binding [onboard.watchBtn], Source={x:Static app:Loc.Instance}}" Command="{Binding GoToWatchCommand}"/>
         </WrapPanel>
 
         <!-- Only while adding an additional wallet: a way back to the wallet you already had. -->
@@ -254,6 +255,67 @@
         <Button Classes="primary" Content="{Binding [onboard.importSubmit], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center" Margin="0,18,0,0"
                 IsEnabled="{Binding !IsBusy}" Command="{Binding ImportWalletCommand}"/>
+      </StackPanel>
+
+      <!-- Watch-only (roadmap H.5): a wallet from extended public keys and addresses, with no
+           phrase on this machine. What will be watched is shown as it is typed. -->
+      <StackPanel IsVisible="{Binding IsWatchStage}" MaxWidth="560" Margin="24,40,24,24"
+                  HorizontalAlignment="Center" Spacing="0">
+        <Button Classes="ghost" Content="{Binding [common.back], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Left" Padding="12,7"
+                Command="{Binding GoToWelcomeCommand}"/>
+        <TextBlock Classes="serif" FontSize="30" TextWrapping="Wrap" Text="{Binding [watch.title], Source={x:Static app:Loc.Instance}}" Margin="0,20,0,0"/>
+        <TextBlock Foreground="{DynamicResource UmTextDim}" TextWrapping="Wrap" Margin="0,8,0,0"
+                   Text="{Binding [watch.desc], Source={x:Static app:Loc.Instance}}"/>
+
+        <TextBlock Classes="eyebrow" Text="{Binding [watch.label], Source={x:Static app:Loc.Instance}}" Margin="0,22,0,8"/>
+        <TextBox Classes="mono" Text="{Binding WatchSpecInput}" AcceptsReturn="True" Height="130" TextWrapping="Wrap"
+                 Watermark="{Binding [watch.placeholder], Source={x:Static app:Loc.Instance}}"/>
+        <TextBlock Foreground="{DynamicResource UmTextMuted}" FontSize="11" TextWrapping="Wrap" Margin="2,8,0,0"
+                   Text="{Binding [watch.note], Source={x:Static app:Loc.Instance}}"/>
+
+        <StackPanel Spacing="3" Margin="0,12,0,0" IsVisible="{Binding HasWatchSpecPreview}">
+          <TextBlock Classes="eyebrow" Text="{Binding [watch.previewTitle], Source={x:Static app:Loc.Instance}}"/>
+          <ItemsControl ItemsSource="{Binding WatchSpecPreview}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Classes="mono" FontSize="11.5" Foreground="{DynamicResource UmTextSoft}" TextWrapping="Wrap" Text="{Binding}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+        <Border IsVisible="{Binding HasWatchSpecIssues}" Background="#2A1618" BorderBrush="#7A3034"
+                BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,10,0,0">
+          <ItemsControl ItemsSource="{Binding WatchSpecIssues}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Foreground="#E09A9A" FontSize="11.5" TextWrapping="Wrap" Text="{Binding}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+
+        <StackPanel Spacing="0" IsVisible="{Binding ShowVaultPasswordFields}">
+          <TextBlock Classes="eyebrow" Text="{Binding [onboard.vaultPassword], Source={x:Static app:Loc.Instance}}" Margin="0,16,0,8"/>
+          <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="{Binding [onboard.pwPlaceholder], Source={x:Static app:Loc.Instance}}"/>
+          <TextBlock Classes="mono" FontSize="11" Margin="2,8,0,0"
+                     Text="{Binding PasswordMeterLabel}" Foreground="{Binding PasswordMeterColor}"/>
+          <TextBlock Classes="eyebrow" Text="{Binding [onboard.confirmPassword], Source={x:Static app:Loc.Instance}}" Margin="0,16,0,8"/>
+          <TextBox Text="{Binding ConfirmPassword}" PasswordChar="●" Watermark="{Binding [onboard.pwRepeat], Source={x:Static app:Loc.Instance}}"/>
+        </StackPanel>
+        <Border IsVisible="{Binding ReuseAppPassword}" Background="{DynamicResource UmCardAlt}"
+                CornerRadius="8" Padding="12,9" Margin="0,16,0,0">
+          <TextBlock Foreground="{DynamicResource UmTextDim}" FontSize="12" TextWrapping="Wrap"
+                     Text="{Binding [onboard.reusePw], Source={x:Static app:Loc.Instance}}"/>
+        </Border>
+
+        <Border IsVisible="{Binding HasFormError}" Background="#2A1618" BorderBrush="#7A3034"
+                BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,14,0,0">
+          <TextBlock Text="{Binding FormError}" Foreground="#E09A9A" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
+
+        <Button Classes="primary" Content="{Binding [watch.submit], Source={x:Static app:Loc.Instance}}" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" Margin="0,18,0,0"
+                IsEnabled="{Binding !IsBusy}" Command="{Binding ImportWatchWalletCommand}"/>
       </StackPanel>
 
       <!-- Unlock -->
