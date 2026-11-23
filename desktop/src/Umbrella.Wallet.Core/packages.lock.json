@@ -10,9 +10,9 @@
       },
       "NBitcoin": {
         "type": "Direct",
-        "requested": "[10.0.16, )",
-        "resolved": "10.0.16",
-        "contentHash": "v5bi8ry8W6UpB5qxDotEfCF1bwvXv5ZhDDpmYgIlZvl/JPADNiRVVIBNlBTYiUFTMe7Zx7U73iBC+03Citio4A==",
+        "requested": "[10.0.23, )",
+        "resolved": "10.0.23",
+        "contentHash": "l6ACsWor078hbo6nl4jyKMRuwp28ice/SH5NgS0GjSOM26YbWQkKRwj8qEO+bPvgQTZrgiiHQp6Ky3v8gRMh7g==",
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "1.0.0",
           "Newtonsoft.Json": "13.0.4"
@@ -20,22 +20,22 @@
       },
       "NBitcoin.Altcoins": {
         "type": "Direct",
-        "requested": "[6.0.10, )",
-        "resolved": "6.0.10",
-        "contentHash": "MbYhKhzXJwVIoAJdzNv/A9v7DlczyK5Odf+zpMLYv1dBF5qWdIKBGeibZ5uEMWH92ddjy4mSO8vsZ5O9pNzfKQ==",
+        "requested": "[6.0.13, )",
+        "resolved": "6.0.13",
+        "contentHash": "zPm8m0Ef0cOzvqlXGzvZaCdkrfRmiInwR3EYxPPTwgStQf180rIqhHZJ0Bd3DK93yHkosS/oStIhrB37Q2+0Rw==",
         "dependencies": {
-          "NBitcoin": "10.0.16"
+          "NBitcoin": "10.0.23"
         }
       },
       "Nethereum.Util": {
         "type": "Direct",
-        "requested": "[7.0.0, )",
-        "resolved": "7.0.0",
-        "contentHash": "oPGB2K8hMM1g8bjJcoPCbs/rVIpgdxYe+C77JJau9Q/U3cOrf0nW8U4BqODEvHn+6OciAHxR71muhH8bU9K5Qw==",
+        "requested": "[7.1.0, )",
+        "resolved": "7.1.0",
+        "contentHash": "InociKzU8YYkhsFfsgmjAFFhnEZ9Ax59eNeYGu6IUaJvo3FwvywQa/I7ezArbTklmHPnY6kqd/dI6Crgl4OlYg==",
         "dependencies": {
-          "Nethereum.Hex": "7.0.0",
-          "Nethereum.RLP": "7.0.0",
-          "Newtonsoft.Json": "[11.0.2, 14.0.0)"
+          "Nethereum.Hex": "7.1.0",
+          "Nethereum.RLP": "7.1.0",
+          "Newtonsoft.Json": "[13.0.4, 14.0.0)"
         }
       },
       "Microsoft.Extensions.Logging.Abstractions": {
@@ -66,19 +66,19 @@
       },
       "Nethereum.Hex": {
         "type": "Transitive",
-        "resolved": "7.0.0",
-        "contentHash": "uEdB+TeN6Pj3jY7OarOjjpJMu0FsLeUD/qDYSrjht2PchgADgFaAc0y1JitH2ccXv6csTIiCqDR4xL2Gqzmg2A==",
+        "resolved": "7.1.0",
+        "contentHash": "a5qw5lMDaZ3QFuSGM+4fK+9rez6buZdqmaUl6eqt2J0zWrC7VCeFz5NIixiLogsr5wf635ptN5i6I+waG/3ifw==",
         "dependencies": {
-          "Newtonsoft.Json": "[11.0.2, 14.0.0)"
+          "Newtonsoft.Json": "[13.0.4, 14.0.0)"
         }
       },
       "Nethereum.RLP": {
         "type": "Transitive",
-        "resolved": "7.0.0",
-        "contentHash": "SbUqK/xcxkTdBwLFMoOj1wda2IhGxQsF6XTsJhBoztrACKmTgG9QshzgK+q4vpCsp0frurQLJaFSMBQJJsZcEw==",
+        "resolved": "7.1.0",
+        "contentHash": "eB/SfkJpZg4nilHk9mi2O0HyVxdxoNscQRTxcVDZJruR+GMXGM8VUe4AYo6wI+uQ5c+iPu9yRZdRZmD0+qiOaw==",
         "dependencies": {
-          "Nethereum.Hex": "7.0.0",
-          "Newtonsoft.Json": "[11.0.2, 14.0.0)"
+          "Nethereum.Hex": "7.1.0",
+          "Newtonsoft.Json": "[13.0.4, 14.0.0)"
         }
       },
       "Newtonsoft.Json": {
